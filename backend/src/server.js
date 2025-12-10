@@ -11,6 +11,8 @@ require('dotenv').config();
 const { pool, query, tenantStorage } = require('./config/database');
 const { errorHandler, notFound } = require('./middleware/errorHandler');
 const { sanitizeBody } = require('./middleware/validate');
+const fs = require('fs');
+const path = require('path');
 
 // Import routes
 const authRoutes = require('./routes/authRoutes');
@@ -83,6 +85,67 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(morgan('dev')); // Logging
 app.use(sanitizeBody); // Input sanitization
 // app.use('/api/', limiter); // Rate limiting - DISABLED for development
+
+// ONE-OFF DATABASE SETUP ROUTE (For Render deployment)
+app.get('/api/setup-db', async (req, res) => {
+  const client = await pool.connect();
+  try {
+    console.log('🔄 Starting Database Setup via HTTP...');
+
+    // 1. Create Shared Schema
+    const sharedSchemaPath = path.join(__dirname, 'config/shared_schema.sql');
+    if (fs.existsSync(sharedSchemaPath)) {
+      const sharedSchemaSql = fs.readFileSync(sharedSchemaPath, 'utf8');
+      await client.query(sharedSchemaSql);
+      console.log('✅ Shared schema created.');
+    } else {
+      // Fallback if shared_schema.sql doesn't exist (basic create)
+      await client.query(`CREATE SCHEMA IF NOT EXISTS shared`);
+      await client.query(`
+         CREATE TABLE IF NOT EXISTS shared.tenants (
+           tenant_id VARCHAR(50) PRIMARY KEY,
+           name VARCHAR(255) NOT NULL,
+           status VARCHAR(20) DEFAULT 'active',
+           db_name VARCHAR(255),
+           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+         )
+       `);
+    }
+
+    // 2. Create Default Tenant
+    const defaultTenantId = 'tenant_default';
+    await client.query(`
+      INSERT INTO shared.tenants (tenant_id, name, status)
+      VALUES ($1, $2, 'active')
+      ON CONFLICT (tenant_id) DO NOTHING
+    `, [defaultTenantId, 'Default Company']);
+
+    // 3. Create Schema for Default Tenant
+    await client.query(`CREATE SCHEMA IF NOT EXISTS "${defaultTenantId}"`);
+
+    // 4. Run Tenant Schema SQL
+    const tenantSchemaPath = path.join(__dirname, 'config/tenant_schema.sql');
+    if (fs.existsSync(tenantSchemaPath)) {
+      await client.query(`SET search_path TO "${defaultTenantId}"`);
+      const tenantSchemaSql = fs.readFileSync(tenantSchemaPath, 'utf8');
+      await client.query(tenantSchemaSql);
+
+      // 5. Ensure Admin User Exists
+      await client.query(`
+        INSERT INTO users (email, password_hash, role, first_name, last_name) 
+        VALUES ('admin@hrmspro.com', '$2b$10$ZI0JCV5V.vT7b4sMK/FUA.xOFngGT9VQ64TK.ug4EvYwlda2FyTou', 'admin', 'Admin', 'User')
+        ON CONFLICT (email) DO NOTHING
+      `);
+    }
+
+    res.json({ success: true, message: 'Database setup completed successfully!' });
+  } catch (error) {
+    console.error('Setup failed:', error);
+    res.status(500).json({ success: false, error: error.message });
+  } finally {
+    client.release();
+  }
+});
 
 // Multi-tenancy Middleware
 const tenantMiddleware = require('./middleware/tenantMiddleware');

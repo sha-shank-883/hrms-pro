@@ -34,9 +34,10 @@ const app = express();
 const server = http.createServer(app);
 
 // Initialize Socket.IO
+// Initialize Socket.IO
 const io = socketIo(server, {
   cors: {
-    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+    origin: '*', // Allow all for socket.io to prevent connection issues, or match the express cors logic
     methods: ['GET', 'POST'],
     credentials: true,
   },
@@ -59,7 +60,22 @@ const limiter = rateLimit({
 app.use(helmet()); // Security headers
 app.use(compression()); // Compress responses
 app.use(cors({
-  origin: [process.env.FRONTEND_URL || 'http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175'],
+  origin: function (origin, callback) {
+    const allowedOrigins = [
+      process.env.FRONTEND_URL,
+      'http://localhost:5173',
+      'http://localhost:5174',
+      'http://localhost:5175',
+      'https://hrms-pro-rose.vercel.app' // Hardcoded for redundancy in case env var is missed
+    ];
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) === -1 && !origin.endsWith('.vercel.app')) { // Allow all vercel subdomains for preview
+      var msg = 'The CORS policy for this site does not allow access from the specified Origin.';
+      return callback(new Error(msg), false);
+    }
+    return callback(null, true);
+  },
   credentials: true,
 }));
 app.use(express.json({ limit: '10mb' }));

@@ -1,0 +1,468 @@
+import { useState, useEffect } from 'react';
+import { settingsService } from '../services';
+import { useSettings } from '../hooks/useSettings.jsx';
+
+const Settings = () => {
+  const { refreshSettings } = useSettings();
+  const [settings, setSettings] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [activeTab, setActiveTab] = useState('general');
+  const [formData, setFormData] = useState({});
+
+  useEffect(() => {
+    loadSettings();
+  }, []);
+
+  const loadSettings = async () => {
+    try {
+      setLoading(true);
+      const response = await settingsService.getAll();
+      const settingsObj = {};
+      response.data.forEach(setting => {
+        settingsObj[setting.setting_key] = setting.setting_value;
+      });
+      setSettings(settingsObj);
+      setFormData(settingsObj);
+      setError('');
+    } catch (error) {
+      setError('Failed to load settings: ' + (error.response?.data?.message || error.message));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleChange = (key, value) => {
+    setFormData({ ...formData, [key]: value });
+  };
+
+  const handleSave = async () => {
+    try {
+      setLoading(true);
+      const settingsArray = Object.keys(formData).map(key => {
+        let category = null;
+        if (['brand_primary_color', 'brand_secondary_color', 'company_logo', 'login_message'].includes(key)) category = 'branding';
+        else if (['company_name', 'company_email', 'company_phone', 'company_website', 'company_address', 'timezone', 'date_format'].includes(key)) category = 'general';
+        else if (['working_hours', 'working_days', 'overtime_rate', 'late_arrival_threshold', 'grace_period', 'break_time', 'overtime_enabled', 'auto_clock_out'].includes(key)) category = 'attendance';
+        else if (['annual_leave_days', 'sick_leave_days', 'casual_leave_days', 'max_carry_forward_days', 'advance_notice_days', 'carry_forward_enabled', 'leave_approval_required'].includes(key)) category = 'leave';
+        else if (['currency', 'currency_symbol', 'pay_frequency', 'default_tax_rate', 'social_security_rate', 'tax_enabled', 'bonus_enabled'].includes(key)) category = 'payroll';
+        else if (key.startsWith('password_') || key === 'max_login_attempts' || key === 'session_timeout' || key === 'two_factor_auth') category = 'security';
+        else if (['backup_frequency', 'data_retention_days', 'api_rate_limit', 'backup_enabled', 'audit_logging', 'maintenance_mode'].includes(key)) category = 'system';
+
+        return {
+          key,
+          value: formData[key],
+          category
+        };
+      });
+      await settingsService.bulkUpdate(settingsArray);
+      setSuccess('Settings saved successfully!');
+      refreshSettings(); // Refresh global settings
+      loadSettings();
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (error) {
+      setError('Failed to save settings: ' + (error.response?.data?.message || error.message));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading && !formData.company_name) return <div className="loading">Loading...</div>;
+
+  const categories = [
+    { id: 'general', name: 'General', icon: 'fas fa-building' },
+    { id: 'attendance', name: 'Attendance', icon: 'fas fa-clock' },
+    { id: 'leave', name: 'Leave', icon: 'fas fa-umbrella-beach' },
+    { id: 'payroll', name: 'Payroll', icon: 'fas fa-money-bill-wave' },
+    { id: 'recruitment', name: 'Recruitment', icon: 'fas fa-bullseye' },
+    { id: 'performance', name: 'Performance', icon: 'fas fa-chart-bar' },
+    { id: 'security', name: 'Security', icon: 'fas fa-lock' },
+    { id: 'notifications', name: 'Notifications', icon: 'fas fa-bell' },
+    { id: 'documents', name: 'Documents', icon: 'fas fa-file' },
+    { id: 'branding', name: 'Branding', icon: 'fas fa-palette' },
+    { id: 'system', name: 'System', icon: 'fas fa-cog' }
+  ];
+
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+        <h1>Settings</h1>
+        <button className="btn btn-primary" onClick={handleSave} disabled={loading}>Save All Settings</button>
+      </div>
+
+      {error && <div className="error" style={{ marginBottom: '1rem', padding: '1rem', backgroundColor: '#fee2e2', borderRadius: '0.375rem' }}>{error}</div>}
+      {success && <div style={{ marginBottom: '1rem', padding: '1rem', backgroundColor: '#d1fae5', color: '#065f46', borderRadius: '0.375rem' }}>{success}</div>}
+
+      {/* Tab Navigation */}
+      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '2rem', overflowX: 'auto', padding: '0.5rem 0' }}>
+        {categories.map(cat => (
+          <button
+            key={cat.id}
+            className={`btn ${activeTab === cat.id ? 'btn-primary' : 'btn-secondary'}`}
+            style={{ fontSize: '0.875rem', whiteSpace: 'nowrap' }}
+            onClick={() => setActiveTab(cat.id)}
+          >
+            <i className={cat.icon}></i> {cat.name}
+          </button>
+        ))}
+      </div>
+
+      {/* General Settings */}
+      {activeTab === 'general' && (
+        <div className="card">
+          <h3 style={{ marginBottom: '1.5rem' }}>General Settings</h3>
+          <div className="grid grid-cols-2" style={{ gap: '1rem' }}>
+            <div className="form-group">
+              <label className="form-label">Company Name *</label>
+              <input type="text" className="form-input" value={formData.company_name || ''} onChange={(e) => handleChange('company_name', e.target.value)} />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Company Email *</label>
+              <input type="email" className="form-input" value={formData.company_email || ''} onChange={(e) => handleChange('company_email', e.target.value)} />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Company Phone</label>
+              <input type="text" className="form-input" value={formData.company_phone || ''} onChange={(e) => handleChange('company_phone', e.target.value)} />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Company Website</label>
+              <input type="url" className="form-input" value={formData.company_website || ''} onChange={(e) => handleChange('company_website', e.target.value)} />
+            </div>
+            <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+              <label className="form-label">Company Address</label>
+              <textarea className="form-input" value={formData.company_address || ''} onChange={(e) => handleChange('company_address', e.target.value)} rows="2" />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Timezone</label>
+              <select className="form-input" value={formData.timezone || ''} onChange={(e) => handleChange('timezone', e.target.value)}>
+                <option value="America/New_York">Eastern Time (ET)</option>
+                <option value="America/Chicago">Central Time (CT)</option>
+                <option value="America/Denver">Mountain Time (MT)</option>
+                <option value="America/Los_Angeles">Pacific Time (PT)</option>
+                <option value="Europe/London">London (GMT)</option>
+                <option value="Asia/Kolkata">India (IST)</option>
+              </select>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Date Format</label>
+              <select className="form-input" value={formData.date_format || ''} onChange={(e) => handleChange('date_format', e.target.value)}>
+                <option value="MM/DD/YYYY">MM/DD/YYYY</option>
+                <option value="DD/MM/YYYY">DD/MM/YYYY</option>
+                <option value="YYYY-MM-DD">YYYY-MM-DD</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Attendance Settings */}
+      {activeTab === 'attendance' && (
+        <div className="card">
+          <h3 style={{ marginBottom: '1.5rem' }}>Attendance Settings</h3>
+          <div className="grid grid-cols-2" style={{ gap: '1rem' }}>
+            <div className="form-group">
+              <label className="form-label">Working Hours per Day *</label>
+              <input type="number" className="form-input" value={formData.working_hours || ''} onChange={(e) => handleChange('working_hours', e.target.value)} />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Working Days per Week *</label>
+              <input type="number" className="form-input" value={formData.working_days || ''} onChange={(e) => handleChange('working_days', e.target.value)} min="1" max="7" />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Overtime Rate Multiplier</label>
+              <input type="number" step="0.1" className="form-input" value={formData.overtime_rate || ''} onChange={(e) => handleChange('overtime_rate', e.target.value)} />
+              <small style={{ color: '#6b7280' }}>e.g., 1.5 for 150% of regular pay</small>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Late Arrival Threshold (minutes)</label>
+              <input type="number" className="form-input" value={formData.late_arrival_threshold || ''} onChange={(e) => handleChange('late_arrival_threshold', e.target.value)} />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Grace Period (minutes)</label>
+              <input type="number" className="form-input" value={formData.grace_period || ''} onChange={(e) => handleChange('grace_period', e.target.value)} />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Break Time (minutes)</label>
+              <input type="number" className="form-input" value={formData.break_time || ''} onChange={(e) => handleChange('break_time', e.target.value)} />
+            </div>
+            <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+              <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                <input type="checkbox" checked={formData.overtime_enabled === 'true'} onChange={(e) => handleChange('overtime_enabled', e.target.checked ? 'true' : 'false')} style={{ marginRight: '0.5rem' }} />
+                Enable Overtime Tracking
+              </label>
+            </div>
+            <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+              <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                <input type="checkbox" checked={formData.auto_clock_out === 'true'} onChange={(e) => handleChange('auto_clock_out', e.target.checked ? 'true' : 'false')} style={{ marginRight: '0.5rem' }} />
+                Auto Clock-Out at End of Day
+              </label>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Leave Settings */}
+      {activeTab === 'leave' && (
+        <div className="card">
+          <h3 style={{ marginBottom: '1.5rem' }}>Leave Settings</h3>
+          <div className="grid grid-cols-2" style={{ gap: '1rem' }}>
+            <div className="form-group">
+              <label className="form-label">Annual Leave Days *</label>
+              <input type="number" className="form-input" value={formData.annual_leave_days || ''} onChange={(e) => handleChange('annual_leave_days', e.target.value)} />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Sick Leave Days *</label>
+              <input type="number" className="form-input" value={formData.sick_leave_days || ''} onChange={(e) => handleChange('sick_leave_days', e.target.value)} />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Casual Leave Days *</label>
+              <input type="number" className="form-input" value={formData.casual_leave_days || ''} onChange={(e) => handleChange('casual_leave_days', e.target.value)} />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Max Carry Forward Days</label>
+              <input type="number" className="form-input" value={formData.max_carry_forward_days || ''} onChange={(e) => handleChange('max_carry_forward_days', e.target.value)} />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Advance Notice Days</label>
+              <input type="number" className="form-input" value={formData.advance_notice_days || ''} onChange={(e) => handleChange('advance_notice_days', e.target.value)} />
+              <small style={{ color: '#6b7280' }}>Minimum days notice required for leave request</small>
+            </div>
+            <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+              <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                <input type="checkbox" checked={formData.carry_forward_enabled === 'true'} onChange={(e) => handleChange('carry_forward_enabled', e.target.checked ? 'true' : 'false')} style={{ marginRight: '0.5rem' }} />
+                Allow Leave Carry Forward
+              </label>
+            </div>
+            <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+              <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                <input type="checkbox" checked={formData.leave_approval_required === 'true'} onChange={(e) => handleChange('leave_approval_required', e.target.checked ? 'true' : 'false')} style={{ marginRight: '0.5rem' }} />
+                Require Manager Approval
+              </label>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Payroll Settings */}
+      {activeTab === 'payroll' && (
+        <div className="card">
+          <h3 style={{ marginBottom: '1.5rem' }}>Payroll Settings</h3>
+          <div className="grid grid-cols-2" style={{ gap: '1rem' }}>
+            <div className="form-group">
+              <label className="form-label">Currency *</label>
+              <select className="form-input" value={formData.currency || ''} onChange={(e) => handleChange('currency', e.target.value)}>
+                <option value="USD">USD - US Dollar</option>
+                <option value="EUR">EUR - Euro</option>
+                <option value="GBP">GBP - British Pound</option>
+                <option value="INR">INR - Indian Rupee</option>
+                <option value="CAD">CAD - Canadian Dollar</option>
+              </select>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Currency Symbol *</label>
+              <input type="text" className="form-input" value={formData.currency_symbol || ''} onChange={(e) => handleChange('currency_symbol', e.target.value)} placeholder="$, €, £, Rs." />
+              <small style={{ color: '#6b7280' }}>Displayed throughout the system (e.g., $, €, £, Rs.)</small>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Pay Frequency</label>
+              <select className="form-input" value={formData.pay_frequency || ''} onChange={(e) => handleChange('pay_frequency', e.target.value)}>
+                <option value="weekly">Weekly</option>
+                <option value="bi-weekly">Bi-Weekly</option>
+                <option value="monthly">Monthly</option>
+              </select>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Default Tax Rate (%)</label>
+              <input type="number" step="0.1" className="form-input" value={formData.default_tax_rate || ''} onChange={(e) => handleChange('default_tax_rate', e.target.value)} />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Social Security Rate (%)</label>
+              <input type="number" step="0.1" className="form-input" value={formData.social_security_rate || ''} onChange={(e) => handleChange('social_security_rate', e.target.value)} />
+            </div>
+            <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+              <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                <input type="checkbox" checked={formData.tax_enabled === 'true'} onChange={(e) => handleChange('tax_enabled', e.target.checked ? 'true' : 'false')} style={{ marginRight: '0.5rem' }} />
+                Enable Tax Calculations
+              </label>
+            </div>
+            <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+              <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                <input type="checkbox" checked={formData.bonus_enabled === 'true'} onChange={(e) => handleChange('bonus_enabled', e.target.checked ? 'true' : 'false')} style={{ marginRight: '0.5rem' }} />
+                Enable Bonus Payments
+              </label>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Security Settings */}
+      {activeTab === 'security' && (
+        <div className="card">
+          <h3 style={{ marginBottom: '1.5rem' }}>Security Settings</h3>
+          <div className="grid grid-cols-2" style={{ gap: '1rem' }}>
+            <div className="form-group">
+              <label className="form-label">Minimum Password Length</label>
+              <input type="number" className="form-input" value={formData.password_min_length || ''} onChange={(e) => handleChange('password_min_length', e.target.value)} min="6" max="32" />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Password Expiry (days)</label>
+              <input type="number" className="form-input" value={formData.password_expiry_days || ''} onChange={(e) => handleChange('password_expiry_days', e.target.value)} />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Max Login Attempts</label>
+              <input type="number" className="form-input" value={formData.max_login_attempts || ''} onChange={(e) => handleChange('max_login_attempts', e.target.value)} />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Session Timeout (minutes)</label>
+              <input type="number" className="form-input" value={formData.session_timeout || ''} onChange={(e) => handleChange('session_timeout', e.target.value)} />
+            </div>
+            <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+              <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                <input type="checkbox" checked={formData.password_require_uppercase === 'true'} onChange={(e) => handleChange('password_require_uppercase', e.target.checked ? 'true' : 'false')} style={{ marginRight: '0.5rem' }} />
+                Require Uppercase in Password
+              </label>
+            </div>
+            <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+              <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                <input type="checkbox" checked={formData.password_require_number === 'true'} onChange={(e) => handleChange('password_require_number', e.target.checked ? 'true' : 'false')} style={{ marginRight: '0.5rem' }} />
+                Require Number in Password
+              </label>
+            </div>
+            <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+              <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                <input type="checkbox" checked={formData.two_factor_auth === 'true'} onChange={(e) => handleChange('two_factor_auth', e.target.checked ? 'true' : 'false')} style={{ marginRight: '0.5rem' }} />
+                Enable Two-Factor Authentication
+              </label>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Branding Settings */}
+      {activeTab === 'branding' && (
+        <div className="card">
+          <h3 style={{ marginBottom: '1.5rem' }}>Branding & Customization</h3>
+          <div className="grid grid-cols-2" style={{ gap: '1rem' }}>
+            <div className="form-group">
+              <label className="form-label">Primary Brand Color</label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <input
+                  type="color"
+                  value={formData.brand_primary_color || '#8cc63f'}
+                  onChange={(e) => handleChange('brand_primary_color', e.target.value)}
+                  style={{ width: '50px', height: '50px', padding: '0', border: 'none', cursor: 'pointer' }}
+                />
+                <input
+                  type="text"
+                  className="form-input"
+                  value={formData.brand_primary_color || ''}
+                  onChange={(e) => handleChange('brand_primary_color', e.target.value)}
+                  placeholder="#8cc63f"
+                />
+              </div>
+              <small style={{ color: '#6b7280' }}>Used for buttons, links, and active states.</small>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Secondary Brand Color</label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <input
+                  type="color"
+                  value={formData.brand_secondary_color || '#2c3e50'}
+                  onChange={(e) => handleChange('brand_secondary_color', e.target.value)}
+                  style={{ width: '50px', height: '50px', padding: '0', border: 'none', cursor: 'pointer' }}
+                />
+                <input
+                  type="text"
+                  className="form-input"
+                  value={formData.brand_secondary_color || ''}
+                  onChange={(e) => handleChange('brand_secondary_color', e.target.value)}
+                  placeholder="#2c3e50"
+                />
+              </div>
+              <small style={{ color: '#6b7280' }}>Used for headers, sidebars, and text.</small>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Company Logo URL</label>
+              <input type="url" className="form-input" value={formData.company_logo || ''} onChange={(e) => handleChange('company_logo', e.target.value)} placeholder="https://example.com/logo.png" />
+              {formData.company_logo && (
+                <div style={{ marginTop: '0.5rem', padding: '1rem', background: '#f4f6f8', borderRadius: '0.5rem', textAlign: 'center' }}>
+                  <p style={{ fontSize: '0.75rem', marginBottom: '0.5rem', color: '#6b7280' }}>Preview</p>
+                  <img src={formData.company_logo} alt="Logo Preview" style={{ maxHeight: '60px' }} />
+                </div>
+              )}
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Login Page Message</label>
+              <textarea
+                className="form-input"
+                value={formData.login_message || ''}
+                onChange={(e) => handleChange('login_message', e.target.value)}
+                rows="3"
+                placeholder="Welcome to our HR Portal..."
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* System Settings */}
+      {activeTab === 'system' && (
+        <div className="card">
+          <h3 style={{ marginBottom: '1.5rem' }}>System Settings</h3>
+          <div className="grid grid-cols-2" style={{ gap: '1rem' }}>
+            <div className="form-group">
+              <label className="form-label">Backup Frequency</label>
+              <select className="form-input" value={formData.backup_frequency || ''} onChange={(e) => handleChange('backup_frequency', e.target.value)}>
+                <option value="hourly">Hourly</option>
+                <option value="daily">Daily</option>
+                <option value="weekly">Weekly</option>
+                <option value="monthly">Monthly</option>
+              </select>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Data Retention (days)</label>
+              <input type="number" className="form-input" value={formData.data_retention_days || ''} onChange={(e) => handleChange('data_retention_days', e.target.value)} />
+            </div>
+            <div className="form-group">
+              <label className="form-label">API Rate Limit (requests/hour)</label>
+              <input type="number" className="form-input" value={formData.api_rate_limit || ''} onChange={(e) => handleChange('api_rate_limit', e.target.value)} />
+            </div>
+            <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+              <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                <input type="checkbox" checked={formData.backup_enabled === 'true'} onChange={(e) => handleChange('backup_enabled', e.target.checked ? 'true' : 'false')} style={{ marginRight: '0.5rem' }} />
+                Enable Automatic Backups
+              </label>
+            </div>
+            <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+              <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                <input type="checkbox" checked={formData.audit_logging === 'true'} onChange={(e) => handleChange('audit_logging', e.target.checked ? 'true' : 'false')} style={{ marginRight: '0.5rem' }} />
+                Enable Audit Logging
+              </label>
+            </div>
+            <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+              <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                <input type="checkbox" checked={formData.maintenance_mode === 'true'} onChange={(e) => handleChange('maintenance_mode', e.target.checked ? 'true' : 'false')} style={{ marginRight: '0.5rem' }} />
+                <span style={{ color: '#dc2626' }}>Maintenance Mode (disables access for non-admins)</span>
+              </label>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Other tabs placeholder */}
+      {['recruitment', 'performance', 'notifications', 'documents'].includes(activeTab) && (
+        <div className="card" style={{ textAlign: 'center', padding: '3rem' }}>
+          <h3 style={{ marginBottom: '1rem' }}>{categories.find(c => c.id === activeTab)?.icon} {categories.find(c => c.id === activeTab)?.name} Settings</h3>
+          <p style={{ color: '#6b7280', marginBottom: '1.5rem' }}>Advanced settings for {activeTab} will be configured based on your needs.</p>
+          <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>Contact administrator for custom configuration.</p>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default Settings;

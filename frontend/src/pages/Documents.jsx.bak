@@ -1,0 +1,352 @@
+import React, { useEffect, useState } from 'react';
+import { documentService, employeeService, departmentService } from '../services';
+
+const Documents = () => {
+  const [documents, setDocuments] = useState([]);
+  const [employees, setEmployees] = useState([]);
+  const [departments, setDepartments] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showModal, setShowModal] = useState(false);
+  const [editingDoc, setEditingDoc] = useState(null);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [filters, setFilters] = useState({
+    employee_id: '',
+    department_id: '',
+    document_type: ''
+  });
+  const [formData, setFormData] = useState({
+    employee_id: '',
+    department_id: '',
+    document_type: 'contract',
+    title: '',
+    description: '',
+    file_url: '',
+    is_confidential: 'false',
+    expiry_date: ''
+  });
+
+  useEffect(() => {
+    loadDocuments();
+    loadEmployees();
+    loadDepartments();
+  }, []);
+
+  const loadDocuments = async () => {
+    try {
+      setLoading(true);
+      const response = await documentService.getAll(filters);
+      setDocuments(response.data);
+      setError('');
+    } catch (error) {
+      setError('Failed to load documents: ' + (error.response?.data?.message || error.message));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadEmployees = async () => {
+    try {
+      const response = await employeeService.getAll();
+      setEmployees(response.data);
+    } catch (error) {
+      console.error('Failed to load employees:', error);
+    }
+  };
+
+  const loadDepartments = async () => {
+    try {
+      const response = await departmentService.getAll();
+      setDepartments(response.data);
+    } catch (error) {
+      console.error('Failed to load departments:', error);
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    
+    try {
+      if (editingDoc) {
+        await documentService.update(editingDoc.document_id, formData);
+        setSuccess('Document updated successfully!');
+      } else {
+        await documentService.create(formData);
+        setSuccess('Document uploaded successfully!');
+      }
+      loadDocuments();
+      handleCloseModal();
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (error) {
+      setError('Operation failed: ' + (error.response?.data?.message || error.message));
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (window.confirm('Are you sure you want to delete this document?')) {
+      try {
+        await documentService.delete(id);
+        setSuccess('Document deleted!');
+        loadDocuments();
+        setTimeout(() => setSuccess(''), 3000);
+      } catch (error) {
+        setError('Delete failed: ' + (error.response?.data?.message || error.message));
+      }
+    }
+  };
+
+  const handleEdit = (doc) => {
+    setEditingDoc(doc);
+    setFormData({
+      employee_id: doc.employee_id || '',
+      department_id: doc.department_id || '',
+      document_type: doc.document_type,
+      title: doc.document_name || doc.title,
+      description: doc.description || '',
+      file_url: doc.file_url,
+      is_confidential: doc.is_confidential ? 'true' : 'false',
+      expiry_date: doc.expiry_date || ''
+    });
+    setShowModal(true);
+  };
+
+  const handleCloseModal = () => {
+    setShowModal(false);
+    setEditingDoc(null);
+    setError('');
+    setFormData({
+      employee_id: '',
+      department_id: '',
+      document_type: 'contract',
+      title: '',
+      description: '',
+      file_url: '',
+      is_confidential: 'false',
+      expiry_date: ''
+    });
+  };
+
+  const handleFilter = () => {
+    loadDocuments();
+  };
+
+  if (loading) return <div className="loading">Loading...</div>;
+
+  const documentTypes = ['contract', 'certificate', 'policy', 'id_proof', 'resume', 'offer_letter', 'other'];
+
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+        <h1>Documents</h1>
+        <button className="btn btn-primary" onClick={() => setShowModal(true)}>+ Upload Document</button>
+      </div>
+
+      {error && <div className="error" style={{ marginBottom: '1rem', padding: '1rem', backgroundColor: '#fee2e2', borderRadius: '0.375rem' }}>{error}</div>}
+      {success && <div style={{ marginBottom: '1rem', padding: '1rem', backgroundColor: '#d1fae5', color: '#065f46', borderRadius: '0.375rem' }}>{success}</div>}
+
+      {/* Statistics */}
+      <div className="grid grid-cols-4" style={{ marginBottom: '2rem' }}>
+        <div className="card" style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white' }}>
+          <h3 style={{ fontSize: '2rem' }}>{documents.length}</h3>
+          <p>Total Documents</p>
+        </div>
+        <div className="card" style={{ background: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)', color: 'white' }}>
+          <h3 style={{ fontSize: '2rem' }}>{documents.filter(d => d.document_type === 'contract').length}</h3>
+          <p>Contracts</p>
+        </div>
+        <div className="card" style={{ background: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)', color: 'white' }}>
+          <h3 style={{ fontSize: '2rem' }}>{documents.filter(d => d.document_type === 'certificate').length}</h3>
+          <p>Certificates</p>
+        </div>
+        <div className="card" style={{ background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)', color: 'white' }}>
+          <h3 style={{ fontSize: '2rem' }}>{documents.filter(d => d.expiry_date && new Date(d.expiry_date) < new Date()).length}</h3>
+          <p>Expired</p>
+        </div>
+      </div>
+
+      {/* Filters */}
+      <div className="card" style={{ marginBottom: '1.5rem' }}>
+        <h3 style={{ marginBottom: '1rem' }}>Filters</h3>
+        <div className="grid grid-cols-3" style={{ gap: '1rem' }}>
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label className="form-label">Employee</label>
+            <select className="form-input" value={filters.employee_id} onChange={(e) => setFilters({ ...filters, employee_id: e.target.value })}>
+              <option value="">All Employees</option>
+              {employees.map(emp => <option key={emp.employee_id} value={emp.employee_id}>{emp.first_name} {emp.last_name}</option>)}
+            </select>
+          </div>
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label className="form-label">Department</label>
+            <select className="form-input" value={filters.department_id} onChange={(e) => setFilters({ ...filters, department_id: e.target.value })}>
+              <option value="">All Departments</option>
+              {departments.map(dept => <option key={dept.department_id} value={dept.department_id}>{dept.department_name}</option>)}
+            </select>
+          </div>
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label className="form-label">Document Type</label>
+            <select className="form-input" value={filters.document_type} onChange={(e) => setFilters({ ...filters, document_type: e.target.value })}>
+              <option value="">All Types</option>
+              {documentTypes.map(type => <option key={type} value={type}>{type.replace('_', ' ').toUpperCase()}</option>)}
+            </select>
+          </div>
+        </div>
+        <button className="btn btn-primary" style={{ marginTop: '1rem' }} onClick={handleFilter}>Apply Filters</button>
+      </div>
+
+      <div className="card">
+        <table className="table">
+          <thead>
+            <tr>
+              <th>Title</th>
+              <th>Type</th>
+              <th>Employee</th>
+              <th>Department</th>
+              <th>Upload Date</th>
+              <th>Expiry Date</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {documents.length === 0 ? (
+              <tr>
+                <td colSpan="8" style={{ textAlign: 'center', padding: '2rem', color: '#6b7280' }}>
+                  No documents found.
+                </td>
+              </tr>
+            ) : (
+              documents.map((doc) => {
+                const isExpired = doc.expiry_date && new Date(doc.expiry_date) < new Date();
+                return (
+                  <tr key={doc.document_id}>
+                    <td>
+                      <strong>{doc.title}</strong>
+                      {doc.is_confidential && (
+                        <span className="badge badge-danger" style={{ marginLeft: '0.5rem' }}>🔒 Confidential</span>
+                      )}
+                      {!doc.employee_id && (
+                        <span className="badge badge-success" style={{ marginLeft: '0.5rem' }}>🌐 Public</span>
+                      )}
+                    </td>
+                    <td><span className="badge badge-info">{doc.document_type.replace('_', ' ')}</span></td>
+                    <td>{doc.employee_name || 'All Employees (Public)'}</td>
+                    <td>{doc.department_name || 'N/A'}</td>
+                    <td>{new Date(doc.uploaded_at).toLocaleDateString()}</td>
+                    <td>{doc.expiry_date ? new Date(doc.expiry_date).toLocaleDateString() : 'N/A'}</td>
+                    <td>
+                      <span className={`badge badge-${isExpired ? 'danger' : 'success'}`}>
+                        {isExpired ? 'Expired' : 'Valid'}
+                      </span>
+                    </td>
+                    <td>
+                      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                        {doc.file_url && (
+                          <a href={doc.file_url} target="_blank" rel="noopener noreferrer" className="btn btn-primary" style={{ fontSize: '0.75rem', textDecoration: 'none' }}>View</a>
+                        )}
+                        <button className="btn btn-secondary" style={{ fontSize: '0.75rem' }} onClick={() => handleEdit(doc)}>Edit</button>
+                        <button className="btn btn-danger" style={{ fontSize: '0.75rem' }} onClick={() => handleDelete(doc.document_id)}>Delete</button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {showModal && (
+        <div className="modal-overlay" onClick={handleCloseModal}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <h2>{editingDoc ? 'Edit Document' : 'Upload Document'}</h2>
+            {error && <div className="error" style={{ marginBottom: '1rem' }}>{error}</div>}
+            <form onSubmit={handleSubmit}>
+              <div className="form-group">
+                <label className="form-label">Title *</label>
+                <input type="text" className="form-input" value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} required />
+              </div>
+              <div className="grid grid-cols-2" style={{ gap: '1rem' }}>
+                <div className="form-group">
+                  <label className="form-label">Document Type *</label>
+                  <select className="form-input" value={formData.document_type} onChange={(e) => setFormData({ ...formData, document_type: e.target.value })} required>
+                    {documentTypes.map(type => <option key={type} value={type}>{type.replace('_', ' ').toUpperCase()}</option>)}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Expiry Date</label>
+                  <input type="date" className="form-input" value={formData.expiry_date} onChange={(e) => setFormData({ ...formData, expiry_date: e.target.value })} />
+                </div>
+              </div>
+              <div className="form-group">
+                <label className="form-label">
+                  <input 
+                    type="checkbox" 
+                    checked={!formData.employee_id}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setFormData({ ...formData, employee_id: '' });
+                      } else {
+                        // If unchecking, we don't automatically select an employee
+                        // User needs to select one manually
+                      }
+                    }}
+                    style={{ marginRight: '0.5rem' }}
+                  />
+                  Public Document (Visible to all employees)
+                </label>
+              </div>
+              <div className="grid grid-cols-2" style={{ gap: '1rem' }}>
+                <div className="form-group">
+                  <label className="form-label">Employee</label>
+                  <select 
+                    className="form-input" 
+                    value={formData.employee_id} 
+                    onChange={(e) => setFormData({ ...formData, employee_id: e.target.value })}
+                    disabled={!formData.employee_id}
+                  >
+                    <option value="">All Employees (Public Document)</option>
+                    {employees.map(emp => <option key={emp.employee_id} value={emp.employee_id}>{emp.first_name} {emp.last_name}</option>)}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Department</label>
+                  <select className="form-input" value={formData.department_id} onChange={(e) => setFormData({ ...formData, department_id: e.target.value })}>
+                    <option value="">Select Department</option>
+                    {departments.map(dept => <option key={dept.department_id} value={dept.department_id}>{dept.department_name}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div className="form-group">
+                <label className="form-label">File URL *</label>
+                <input type="url" className="form-input" value={formData.file_url} onChange={(e) => setFormData({ ...formData, file_url: e.target.value })} placeholder="https://..." required />
+                <small style={{ color: '#6b7280' }}>Enter the URL of the uploaded document</small>
+              </div>
+              <div className="form-group">
+                <label className="form-label">
+                  <input 
+                    type="checkbox" 
+                    checked={formData.is_confidential === 'true' || formData.is_confidential === true}
+                    onChange={(e) => setFormData({ ...formData, is_confidential: e.target.checked ? 'true' : 'false' })}
+                    style={{ marginRight: '0.5rem' }}
+                  />
+                  Confidential (Only visible to assigned employee)
+                </label>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Description</label>
+                <textarea className="form-input" value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} rows="3" />
+              </div>
+              <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
+                <button type="submit" className="btn btn-primary">{editingDoc ? 'Update' : 'Upload'}</button>
+                <button type="button" className="btn btn-secondary" onClick={handleCloseModal}>Cancel</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default Documents;

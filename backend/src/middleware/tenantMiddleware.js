@@ -17,6 +17,13 @@ const tenantMiddleware = async (req, res, next) => {
             return res.status(404).json({ error: 'Tenant not found' });
         }
 
+        if (tenant.status !== 'active') {
+            return res.status(403).json({
+                error: 'Tenant is inactive. Please contact support.',
+                code: 'TENANT_INACTIVE'
+            });
+        }
+
         // Wrap the next() call in the AsyncLocalStorage run context
         // This ensures that any DB queries triggered by next() will have access to this tenantId
         tenantStorage.run(tenantId, () => {

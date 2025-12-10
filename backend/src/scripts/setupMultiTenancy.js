@@ -43,8 +43,8 @@ const setupMultiTenancy = async () => {
         // 5. Create Default Admin User
         console.log('Creating default admin user...');
         await client.query(`
-          INSERT INTO users (email, password_hash, role, first_name, last_name) 
-          VALUES ('admin@hrmspro.com', '$2b$10$ZI0JCV5V.vT7b4sMK/FUA.xOFngGT9VQ64TK.ug4EvYwlda2FyTou', 'admin', 'Admin', 'User')
+          INSERT INTO users (email, password_hash, role) 
+          VALUES ('admin@hrmspro.com', '$2b$10$ZI0JCV5V.vT7b4sMK/FUA.xOFngGT9VQ64TK.ug4EvYwlda2FyTou', 'admin')
           ON CONFLICT (email) DO NOTHING
         `);
         console.log('✅ Default admin user created (if not exists).');

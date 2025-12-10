@@ -132,8 +132,8 @@ app.get('/api/setup-db', async (req, res) => {
 
       // 5. Ensure Admin User Exists
       await client.query(`
-        INSERT INTO users (email, password_hash, role, first_name, last_name) 
-        VALUES ('admin@hrmspro.com', '$2b$10$ZI0JCV5V.vT7b4sMK/FUA.xOFngGT9VQ64TK.ug4EvYwlda2FyTou', 'admin', 'Admin', 'User')
+        INSERT INTO users (email, password_hash, role) 
+        VALUES ('admin@hrmspro.com', '$2b$10$ZI0JCV5V.vT7b4sMK/FUA.xOFngGT9VQ64TK.ug4EvYwlda2FyTou', 'admin')
         ON CONFLICT (email) DO NOTHING
       `);
     }

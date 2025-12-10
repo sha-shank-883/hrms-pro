@@ -39,7 +39,14 @@ const server = http.createServer(app);
 // Initialize Socket.IO
 const io = socketIo(server, {
   cors: {
-    origin: '*', // Allow all for socket.io to prevent connection issues, or match the express cors logic
+    origin: [
+      process.env.FRONTEND_URL,
+      'http://localhost:5173',
+      'http://localhost:5174',
+      'http://localhost:5175',
+      'https://hrms-pro-rose.vercel.app',
+      'https://hrms-pro.onrender.com'
+    ],
     methods: ['GET', 'POST'],
     credentials: true,
   },

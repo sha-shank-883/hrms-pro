@@ -108,7 +108,12 @@ const updateTenant = async (req, res) => {
 
         Object.keys(tenantUpdates).forEach(key => {
             if (allowedFields.includes(key)) {
-                filteredUpdates[key] = tenantUpdates[key];
+                // Fix for empty timestamp error
+                if (key === 'subscription_expiry' && tenantUpdates[key] === '') {
+                    filteredUpdates[key] = null;
+                } else {
+                    filteredUpdates[key] = tenantUpdates[key];
+                }
             }
         });
 

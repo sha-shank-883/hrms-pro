@@ -19,10 +19,23 @@ const setupMultiTenancy = async () => {
 
         // Insert into shared.tenants
         await client.query(`
-      INSERT INTO shared.tenants (tenant_id, name, status)
-      VALUES ($1, $2, 'active')
-      ON CONFLICT (tenant_id) DO NOTHING
-    `, [defaultTenantId, 'Default Company']);
+          INSERT INTO shared.tenants (tenant_id, name, status)
+          VALUES ($1, $2, 'active')
+          ON CONFLICT (tenant_id) DO NOTHING
+        `, [defaultTenantId, 'Default Company']);
+
+        // 2.5 Migration: Ensure subscription columns exist (for existing live DBs)
+        console.log('Checking for subscription columns...');
+        try {
+            await client.query(`
+                ALTER TABLE shared.tenants 
+                ADD COLUMN IF NOT EXISTS subscription_plan VARCHAR(50) DEFAULT 'free',
+                ADD COLUMN IF NOT EXISTS subscription_expiry TIMESTAMP;
+            `);
+            console.log('✅ Subscription columns verified.');
+        } catch (migErr) {
+            console.warn('⚠️ Migration warning:', migErr.message);
+        }
 
         // 3. Create Schema for Default Tenant
         console.log(`Creating schema for ${defaultTenantId}...`);

@@ -103,8 +103,17 @@ const updateTenant = async (req, res) => {
         await client.query('BEGIN');
 
         // 1. Update shared.tenants details
-        if (Object.keys(tenantUpdates).length > 0) {
-            const updatedTenant = await Tenant.update(tenantId, tenantUpdates);
+        const allowedFields = ['name', 'status', 'domain', 'db_name', 'subscription_plan', 'subscription_expiry'];
+        const filteredUpdates = {};
+
+        Object.keys(tenantUpdates).forEach(key => {
+            if (allowedFields.includes(key)) {
+                filteredUpdates[key] = tenantUpdates[key];
+            }
+        });
+
+        if (Object.keys(filteredUpdates).length > 0) {
+            const updatedTenant = await Tenant.update(tenantId, filteredUpdates);
             if (!updatedTenant) {
                 await client.query('ROLLBACK');
                 return res.status(404).json({ error: 'Tenant not found' });

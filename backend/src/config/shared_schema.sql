@@ -8,6 +8,8 @@ CREATE TABLE IF NOT EXISTS shared.tenants (
     name VARCHAR(255) NOT NULL,
     domain VARCHAR(255), -- for subdomain routing if needed
     status VARCHAR(50) DEFAULT 'active',
+    subscription_plan VARCHAR(50) DEFAULT 'free',
+    subscription_expiry TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

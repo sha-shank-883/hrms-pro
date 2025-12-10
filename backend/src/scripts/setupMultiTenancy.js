@@ -40,6 +40,15 @@ const setupMultiTenancy = async () => {
 
         console.log(`✅ Tenant ${defaultTenantId} setup complete.`);
 
+        // 5. Create Default Admin User
+        console.log('Creating default admin user...');
+        await client.query(`
+          INSERT INTO users (email, password_hash, role, first_name, last_name) 
+          VALUES ('admin@hrmspro.com', '$2b$10$ZI0JCV5V.vT7b4sMK/FUA.xOFngGT9VQ64TK.ug4EvYwlda2FyTou', 'admin', 'Admin', 'User')
+          ON CONFLICT (email) DO NOTHING
+        `);
+        console.log('✅ Default admin user created (if not exists).');
+
         // 5. (Optional) Migrate data from public to default tenant
         // This is complex and depends on if 'public' has data. 
         // For now, we assume we are setting up fresh or user will manually migrate.

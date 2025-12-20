@@ -96,6 +96,20 @@
     --radius-xxl: 24px;
     --radius-full: 9999px;
 
+    /* Accent Colors for Professional UI (Reports, etc.) */
+    --accent-indigo: #6366f1;
+    --accent-pink: #ec4899;
+    --accent-emerald: #10b981;
+    --accent-orange: #f97316;
+    --accent-cyan: #06b6d4;
+    --accent-violet: #8b5cf6;
+    --accent-indigo-light: #e0e7ff;
+    --accent-pink-light: #fce7f3;
+    --accent-emerald-light: #d1fae5;
+    --accent-orange-light: #ffedd5;
+    --accent-cyan-light: #ecfeff;
+    --accent-violet-light: #ede9fe;
+
     /* Transitions */
     --transition: all 0.2s ease-in-out;
     --transition-slow: all 0.3s ease-in-out;
@@ -728,7 +742,34 @@ h3.card-title {
     border-color: var(--neutral-300);
     border-radius: 0.25rem;
     box-shadow: var(--shadow-xs);
-    padding: 0.375rem 0.625rem;
+    padding-top: 0.375rem;
+    padding-right: 0.625rem;
+    padding-bottom: 0.375rem;
+    padding-left: 0.625rem;
+    /* Default if no pl- class is present */
+}
+
+/* Fix for overlapping icons in inputs */
+.relative svg.absolute {
+    pointer-events: none !important;
+    z-index: 10 !important;
+}
+
+[class*="pl-"].form-input,
+[class*="pl-"].form-select {
+    padding-left: 2.25rem !important;
+}
+
+.pl-10 {
+    padding-left: 2.5rem !important;
+}
+
+.pl-12 {
+    padding-left: 3rem !important;
+}
+
+input[type="date"].form-input {
+    height: 36px;
 }
 
 .form-input:focus,
@@ -1916,4 +1957,117 @@ h6 {
     border: 1px solid var(--neutral-200);
     overflow: hidden;
 }
-.avatar { width: 2.25rem; height: 2.25rem; border-radius: 9999px; background-color: var(--neutral-100); color: var(--neutral-600); display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 0.75rem; text-transform: uppercase; flex-shrink: 0; border: 1px solid var(--neutral-200); overflow: hidden; }
+
+.avatar {
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 9999px;
+    background-color: var(--neutral-100);
+    color: var(--neutral-600);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    flex-shrink: 0;
+    border: 1px solid var(--neutral-200);
+    overflow: hidden;
+}
+
+/* Accent Utilities */
+.bg-accent-indigo {
+    background-color: var(--accent-indigo);
+}
+
+.bg-accent-pink {
+    background-color: var(--accent-pink);
+}
+
+.bg-accent-emerald {
+    background-color: var(--accent-emerald);
+}
+
+.bg-accent-orange {
+    background-color: var(--accent-orange);
+}
+
+.bg-accent-cyan {
+    background-color: var(--accent-cyan);
+}
+
+.bg-accent-violet {
+    background-color: var(--accent-violet);
+}
+
+.text-accent-indigo {
+    color: var(--accent-indigo);
+}
+
+.text-accent-pink {
+    color: var(--accent-pink);
+}
+
+.text-accent-emerald {
+    color: var(--accent-emerald);
+}
+
+.text-accent-orange {
+    color: var(--accent-orange);
+}
+
+.text-accent-cyan {
+    color: var(--accent-cyan);
+}
+
+.text-accent-violet {
+    color: var(--accent-violet);
+}
+
+.border-t-accent-indigo {
+    border-top-color: var(--accent-indigo) !important;
+}
+
+.border-t-accent-pink {
+    border-top-color: var(--accent-pink) !important;
+}
+
+.border-t-accent-emerald {
+    border-top-color: var(--accent-emerald) !important;
+}
+
+.border-t-accent-orange {
+    border-top-color: var(--accent-orange) !important;
+}
+
+.border-t-accent-cyan {
+    border-top-color: var(--accent-cyan) !important;
+}
+
+.border-t-accent-violet {
+    border-top-color: var(--accent-violet) !important;
+}
+
+.bg-accent-indigo-light {
+    background-color: var(--accent-indigo-light);
+}
+
+.bg-accent-pink-light {
+    background-color: var(--accent-pink-light);
+}
+
+.bg-accent-emerald-light {
+    background-color: var(--accent-emerald-light);
+}
+
+.bg-accent-orange-light {
+    background-color: var(--accent-orange-light);
+}
+
+.bg-accent-cyan-light {
+    background-color: var(--accent-cyan-light);
+}
+
+.bg-accent-violet-light {
+    background-color: var(--accent-violet-light);
+}

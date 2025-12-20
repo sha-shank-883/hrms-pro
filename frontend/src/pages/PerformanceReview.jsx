@@ -114,7 +114,7 @@ const PerformanceReview = () => {
 
     return (
         <div className="w-full pb-8">
-            <div class="page-header">
+            <div className="page-header">
                 <div>
                     <button
                         onClick={() => navigate('/performance')}
@@ -122,8 +122,8 @@ const PerformanceReview = () => {
                     >
                         <FaArrowLeft /> Back to Performance
                     </button>
-                    <h1 class="page-title">Performance Review</h1>
-                    <div class="text-neutral-600 mt-1">
+                    <h1 className="page-title">Performance Review</h1>
+                    <div className="text-neutral-600 mt-1">
                         {review.cycle_title} • ID: #{review.review_id}
                     </div>
                 </div>
@@ -163,7 +163,7 @@ const PerformanceReview = () => {
 
             <form onSubmit={handleSubmit} className="space-y-8">
                 {/* Self Review Section */}
-                <div class="card">
+                <div className="card">
                     <div className="p-4 border-b border-neutral-100 flex items-center gap-3">
                         <div className="w-8 h-8 rounded-full bg-primary-600 text-white flex items-center justify-center font-bold shadow-sm">1</div>
                         <h3 className="font-semibold text-neutral-800">Self Assessment</h3>
@@ -220,7 +220,7 @@ const PerformanceReview = () => {
                 </div>
 
                 {/* Manager Review Section */}
-                <div class="card">
+                <div className="card">
                     <div className="p-4 border-b border-neutral-100 flex items-center gap-3">
                         <div className="w-8 h-8 rounded-full bg-purple-600 text-white flex items-center justify-center font-bold shadow-sm">2</div>
                         <h3 className="font-semibold text-neutral-800">Manager Evaluation</h3>

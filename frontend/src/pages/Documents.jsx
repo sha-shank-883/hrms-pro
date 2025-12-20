@@ -172,6 +172,17 @@ const Documents = () => {
     loadDocuments(1);
   };
 
+  const clearFilters = () => {
+    const defaultFilters = {
+      employee_id: '',
+      department_id: '',
+      document_type: ''
+    };
+    setFilters(defaultFilters);
+    // Reload documents with default filters
+    loadDocuments(1);
+  };
+
   if (loading) return (
     <div className="flex justify-center items-center h-64">
       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
@@ -181,11 +192,11 @@ const Documents = () => {
   const documentTypes = ['contract', 'certificate', 'policy', 'id_proof', 'resume', 'offer_letter', 'other'];
 
   return (
-    <div className="w-full pb-8">
+    <div className="page-container">
       <div className="page-header">
         <div>
           <h1 className="page-title">Documents</h1>
-          <p className="mt-1 text-neutral-600">Manage employee documents and contracts.</p>
+          <p className="page-subtitle">Manage employee documents and contracts.</p>
         </div>
         <div>
           <button className="btn btn-primary" onClick={() => {
@@ -199,74 +210,118 @@ const Documents = () => {
             }
             setShowModal(true);
           }}>
-            <FaPlus className="mr-2" /> Upload Document
+            <FaPlus /> Upload Document
           </button>
         </div>
       </div>
 
-      {error && <div className="mb-6 bg-red-50 border border-red-200 text-red-600 rounded-lg p-4 flex items-center"><FaExclamationCircle className="mr-2" /> {error}</div>}
-      {success && <div className="mb-6 bg-green-50 border border-green-200 text-green-600 rounded-lg p-4 flex items-center"><FaCheckCircle className="mr-2" /> {success}</div>}
+      {error && <div className="mb-6 p-4 rounded-lg bg-danger-50 text-danger-700 border border-danger-200 flex items-center gap-3"><FaExclamationCircle /> {error}</div>}
+      {success && <div className="mb-6 p-4 rounded-lg bg-success-50 text-success-700 border border-success-200 flex items-center gap-3"><FaCheckCircle /> {success}</div>}
 
       {/* Statistics */}
-      <div className="grid sm:grid-cols-2 grid-cols-4 gap-4 mb-6">
-        <div className="card bg-gradient-to-br from-indigo-500 to-indigo-600 text-white border-none">
-          <div className="p-3">
-            <h3 className="text-2xl font-bold mb-1">{documents.length}</h3>
-            <p className="text-indigo-100 text-xs font-medium opacity-90">Total Documents</p>
+      <div className="grid grid-cols-4 gap-4 mb-6">
+        <div className="card border-l-4 border-l-primary-500 shadow-sm">
+          <div className="card-body p-4 flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-primary-50 flex items-center justify-center text-primary-600">
+              <FaFileAlt size={20} />
+            </div>
+            <div>
+              <p className="text-xs font-bold text-neutral-500 uppercase tracking-wider">Total Docs</p>
+              <h3 className="text-xl font-bold text-neutral-900">{documents.length}</h3>
+            </div>
           </div>
         </div>
-        <div className="card bg-gradient-to-br from-emerald-500 to-emerald-600 text-white border-none">
-          <div className="p-3">
-            <h3 className="text-2xl font-bold mb-1">{documents.filter(d => d.document_type === 'contract').length}</h3>
-            <p className="text-emerald-100 text-xs font-medium opacity-90">Contracts</p>
+        <div className="card border-l-4 border-l-emerald-500 shadow-sm">
+          <div className="card-body p-4 flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600">
+              <FaFileAlt size={20} />
+            </div>
+            <div>
+              <p className="text-xs font-bold text-neutral-500 uppercase tracking-wider">Contracts</p>
+              <h3 className="text-xl font-bold text-neutral-900">{documents.filter(d => d.document_type === 'contract').length}</h3>
+            </div>
           </div>
         </div>
-        <div className="card bg-gradient-to-br from-pink-500 to-rose-500 text-white border-none">
-          <div className="p-3">
-            <h3 className="text-2xl font-bold mb-1">{documents.filter(d => d.document_type === 'certificate').length}</h3>
-            <p className="text-pink-100 text-xs font-medium opacity-90">Certificates</p>
+        <div className="card border-l-4 border-l-indigo-500 shadow-sm">
+          <div className="card-body p-4 flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600">
+              <FaFileAlt size={20} />
+            </div>
+            <div>
+              <p className="text-xs font-bold text-neutral-500 uppercase tracking-wider">Certificates</p>
+              <h3 className="text-xl font-bold text-neutral-900">{documents.filter(d => d.document_type === 'certificate').length}</h3>
+            </div>
           </div>
         </div>
-        <div className="card bg-gradient-to-br from-cyan-500 to-blue-500 text-white border-none">
-          <div className="p-3">
-            <h3 className="text-2xl font-bold mb-1">{documents.filter(d => d.expiry_date && new Date(d.expiry_date) < new Date()).length}</h3>
-            <p className="text-cyan-100 text-xs font-medium opacity-90">Expired</p>
+        <div className="card border-l-4 border-l-danger-500 shadow-sm">
+          <div className="card-body p-4 flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-danger-50 flex items-center justify-center text-danger-600">
+              <FaExclamationCircle size={20} />
+            </div>
+            <div>
+              <p className="text-xs font-bold text-neutral-500 uppercase tracking-wider">Expired</p>
+              <h3 className="text-xl font-bold text-neutral-900">{documents.filter(d => d.expiry_date && new Date(d.expiry_date) < new Date()).length}</h3>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Filters */}
       <div className="card mb-6">
-        <div className="p-4 border-b border-neutral-100">
-          <h3 className="font-semibold text-neutral-800">Filters</h3>
-        </div>
-        <div className="p-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="form-group mb-0">
-              <label className="block text-xs font-bold text-neutral-500 uppercase tracking-wider mb-1">Employee</label>
-              <select className="form-input" value={filters.employee_id} onChange={(e) => setFilters({ ...filters, employee_id: e.target.value })}>
-                <option value="">All Employees</option>
-                {employees.map(emp => <option key={emp.employee_id} value={emp.employee_id}>{emp.first_name} {emp.last_name}</option>)}
-              </select>
+        <div className="card-body">
+          <div className="flex flex-wrap gap-4 items-end">
+            <div className="min-w-[200px] flex-grow">
+              <label className="form-label mb-1">Employee</label>
+              <div className="relative">
+                <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" size={12} />
+                <select
+                  className="form-select pl-9 w-full"
+                  value={filters.employee_id}
+                  onChange={(e) => setFilters({ ...filters, employee_id: e.target.value })}
+                >
+                  <option value="">All Employees</option>
+                  {employees.map(emp => <option key={emp.employee_id} value={emp.employee_id}>{emp.first_name} {emp.last_name}</option>)}
+                </select>
+              </div>
             </div>
 
-            <div className="form-group mb-0">
-              <label className="block text-xs font-bold text-neutral-500 uppercase tracking-wider mb-1">Department</label>
-              <select className="form-input" value={filters.department_id} onChange={(e) => setFilters({ ...filters, department_id: e.target.value })}>
-                <option value="">All Departments</option>
-                {departments.map(dept => <option key={dept.department_id} value={dept.department_id}>{dept.department_name}</option>)}
-              </select>
+            <div className="min-w-[200px] flex-grow">
+              <label className="form-label mb-1">Department</label>
+              <div className="relative">
+                <FaFilter className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" size={12} />
+                <select
+                  className="form-select pl-9 w-full"
+                  value={filters.department_id}
+                  onChange={(e) => setFilters({ ...filters, department_id: e.target.value })}
+                >
+                  <option value="">All Departments</option>
+                  {departments.map(dept => <option key={dept.department_id} value={dept.department_id}>{dept.department_name}</option>)}
+                </select>
+              </div>
             </div>
 
-            <div className="form-group mb-0">
-              <label className="block text-xs font-bold text-neutral-500 uppercase tracking-wider mb-1">Document Type</label>
-              <select className="form-input" value={filters.document_type} onChange={(e) => setFilters({ ...filters, document_type: e.target.value })}>
-                <option value="">All Types</option>
-                {documentTypes.map(type => <option key={type} value={type}>{type.replace('_', ' ')}</option>)}
-              </select>
+            <div className="min-w-[180px]">
+              <label className="form-label mb-1">Doc Type</label>
+              <div className="relative">
+                <FaFileAlt className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" size={12} />
+                <select
+                  className="form-select pl-9 w-full"
+                  value={filters.document_type}
+                  onChange={(e) => setFilters({ ...filters, document_type: e.target.value })}
+                >
+                  <option value="">All Types</option>
+                  {documentTypes.map(type => <option key={type} value={type}>{type.replace('_', ' ')}</option>)}
+                </select>
+              </div>
             </div>
-            <div className="flex items-end">
-              <button className="btn btn-secondary w-full" onClick={handleFilter}>Apply Filters</button>
+
+            <div className="flex gap-2 ml-auto">
+              <button className="btn btn-secondary h-[34px]" onClick={clearFilters}>
+                <FaTrash className="mr-1" size={10} /> Clear
+              </button>
+              <button className="btn btn-primary h-[34px]" onClick={handleFilter}>
+                <FaSearch className="mr-1" size={10} /> Search
+              </button>
             </div>
           </div>
         </div>

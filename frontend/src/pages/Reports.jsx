@@ -9,7 +9,8 @@ import {
   FaFileContract,
   FaDownload,
   FaFilter,
-  FaArrowRight
+  FaArrowRight,
+  FaTrash
 } from 'react-icons/fa';
 
 const Reports = () => {
@@ -26,6 +27,19 @@ const Reports = () => {
     year: new Date().getFullYear(),
     month: new Date().getMonth() + 1
   });
+
+  const clearFilters = () => {
+    setFilters({
+      start_date: '',
+      end_date: '',
+      department_id: '',
+      employee_id: '',
+      year: new Date().getFullYear(),
+      month: new Date().getMonth() + 1
+    });
+    setReportData(null);
+    setSelectedReport(null);
+  };
 
   const generateReport = async (reportType) => {
     setLoading(true);
@@ -154,7 +168,7 @@ const Reports = () => {
     if (!reportData || typeof reportData !== 'object') return null;
 
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-4 gap-6">
         {Object.entries(reportData).map(([key, value]) => (
           <div key={key} className="card">
             <h4 className="font-bold text-neutral-800 mb-4 capitalize">{key.replace(/_/g, ' ')}</h4>
@@ -241,42 +255,122 @@ const Reports = () => {
         </div>
       )}
 
+      {/* Statistics */}
+      <div className="grid grid-cols-4 gap-4 mb-6">
+        <div className="card border-l-4 border-l-primary-500 shadow-sm">
+          <div className="card-body p-4 flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-primary-50 flex items-center justify-center text-primary-600">
+              <FaChartBar size={20} />
+            </div>
+            <div>
+              <p className="text-xs font-bold text-neutral-500 uppercase tracking-wider">Report Types</p>
+              <h3 className="text-xl font-bold text-neutral-900">6</h3>
+            </div>
+          </div>
+        </div>
+        <div className="card border-l-4 border-l-emerald-500 shadow-sm">
+          <div className="card-body p-4 flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600">
+              <FaDownload size={20} />
+            </div>
+            <div>
+              <p className="text-xs font-bold text-neutral-500 uppercase tracking-wider">Exports</p>
+              <h3 className="text-xl font-bold text-neutral-900">Active</h3>
+            </div>
+          </div>
+        </div>
+        <div className="card border-l-4 border-l-indigo-500 shadow-sm">
+          <div className="card-body p-4 flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600">
+              <FaUsers size={20} />
+            </div>
+            <div>
+              <p className="text-xs font-bold text-neutral-500 uppercase tracking-wider">Workforce</p>
+              <h3 className="text-xl font-bold text-neutral-900">Demographics</h3>
+            </div>
+          </div>
+        </div>
+        <div className="card border-l-4 border-l-orange-500 shadow-sm">
+          <div className="card-body p-4 flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-orange-50 flex items-center justify-center text-orange-600">
+              <FaBullseye size={20} />
+            </div>
+            <div>
+              <p className="text-xs font-bold text-neutral-500 uppercase tracking-wider">Status</p>
+              <h3 className="text-xl font-bold text-neutral-900">Real-time</h3>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Report Filters */}
       <div className="card mb-8">
-        <div className="card-header">
-          <h3 className="card-title flex items-center gap-2">
-            <FaFilter className="text-neutral-400" /> Report Filters
-          </h3>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 p-6">
-          <div className="form-group">
-            <label className="form-label">Start Date</label>
-            <input type="date" className="form-input" value={filters.start_date} onChange={(e) => setFilters({ ...filters, start_date: e.target.value })} />
+        <div className="card-body">
+          <div className="flex flex-wrap gap-4 items-end">
+            <div className="min-w-[180px] flex-grow">
+              <label className="form-label mb-1">Start Date</label>
+              <div className="relative">
+                <FaFilter className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" size={12} />
+                <input
+                  type="date"
+                  className="form-input pl-9 w-full"
+                  value={filters.start_date}
+                  onChange={(e) => setFilters({ ...filters, start_date: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <div className="min-w-[180px] flex-grow">
+              <label className="form-label mb-1">End Date</label>
+              <div className="relative">
+                <FaFilter className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" size={12} />
+                <input
+                  type="date"
+                  className="form-input pl-9 w-full"
+                  value={filters.end_date}
+                  onChange={(e) => setFilters({ ...filters, end_date: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <div className="min-w-[120px]">
+              <label className="form-label mb-1">Year</label>
+              <input
+                type="number"
+                className="form-input w-full"
+                value={filters.year}
+                onChange={(e) => setFilters({ ...filters, year: e.target.value })}
+                placeholder="2024"
+              />
+            </div>
+
+            <div className="min-w-[160px]">
+              <label className="form-label mb-1">Month</label>
+              <select
+                className="form-select w-full"
+                value={filters.month}
+                onChange={(e) => setFilters({ ...filters, month: e.target.value })}
+              >
+                {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].map((month, idx) => (
+                  <option key={month} value={idx + 1}>{month}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="ml-auto">
+              <button className="btn btn-secondary h-[34px]" onClick={clearFilters}>
+                <FaTrash className="mr-1" size={10} /> Clear Filters
+              </button>
+            </div>
           </div>
-          <div className="form-group">
-            <label className="form-label">End Date</label>
-            <input type="date" className="form-input" value={filters.end_date} onChange={(e) => setFilters({ ...filters, end_date: e.target.value })} />
+          <div className="mt-2 text-[10px] text-neutral-400 italic">
+            * Filters apply based on the specific report type selected below.
           </div>
-          <div className="form-group">
-            <label className="form-label">Year</label>
-            <input type="number" className="form-input" value={filters.year} onChange={(e) => setFilters({ ...filters, year: e.target.value })} placeholder="2024" />
-          </div>
-          <div className="form-group">
-            <label className="form-label">Month</label>
-            <select className="form-input" value={filters.month} onChange={(e) => setFilters({ ...filters, month: e.target.value })}>
-              {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].map((month, idx) => (
-                <option key={month} value={idx + 1}>{month}</option>
-              ))}
-            </select>
-          </div>
-        </div>
-        <div className="px-6 pb-4">
-          <p className="text-xs text-neutral-400 italic">Filters are applied based on the report type. Not all filters apply to all reports.</p>
         </div>
       </div>
 
       {/* Report Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
         {[
           { id: 'attendance', name: 'Attendance Report', icon: FaChartBar, color: 'indigo', desc: 'View detailed attendance statistics, lateness trends, and working hours.' },
           { id: 'leave', name: 'Leave Report', icon: FaUmbrellaBeach, color: 'pink', desc: 'Analyze leave balances, patterns, and team availability.' },
@@ -285,13 +379,11 @@ const Reports = () => {
           { id: 'recruitment', name: 'Recruitment Stats', icon: FaBullseye, color: 'cyan', desc: 'Hiring pipeline metrics, open positions, and candidate stats.' },
           { id: 'employee', name: 'Employee Master', icon: FaFileContract, color: 'violet', desc: 'Complete employee database export with all profile details.' }
         ].map(report => (
-          <div
-            key={report.id}
-            className={`card cursor-pointer hover:shadow-lg transition-all border-t-4 border-t-accent-${report.color} group`}
+          <div key={report.id} className={`card p-6 cursor-pointer hover:shadow-lg transition-all border-t-4 border-t-accent-${report.color} group`}
             onClick={() => !loading && generateReport(report.id)}
           >
             <div className="flex items-center justify-between mb-4">
-              <div className={`p-3 bg-accent-${report.color} bg-opacity-10 rounded-lg text-accent-${report.color} group-hover:bg-opacity-20 transition-colors`}>
+              <div className={`p-3 bg-accent-${report.color}-light rounded-lg text-accent-${report.color} group-hover:bg-accent-${report.color} group-hover:text-white transition-all`}>
                 <report.icon className="text-xl" />
               </div>
             </div>
@@ -313,7 +405,7 @@ const Reports = () => {
           <div className="card-header border-none">
             <h3 className="card-title">Report Features</h3>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-6">
+          <div className="grid grid-cols-3 gap-6 p-6">
             <div className="flex flex-col items-center text-center p-4 bg-white rounded-xl shadow-sm">
               <div className="w-12 h-12 bg-primary-50 rounded-full flex items-center justify-center text-primary-600 mb-4">
                 <FaChartBar size={24} />

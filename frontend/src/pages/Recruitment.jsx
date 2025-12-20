@@ -5,6 +5,7 @@ import { useSettings } from '../hooks/useSettings.jsx';
 import { formatDate } from '../utils/settingsHelper';
 import { FaBriefcase, FaUsers, FaPlus, FaSearch, FaTimes, FaFilter, FaCheckCircle, FaExclamationCircle, FaCloudUploadAlt } from 'react-icons/fa';
 import { FiEdit2, FiTrash2, FiExternalLink } from 'react-icons/fi';
+
 const Recruitment = () => {
   const { user } = useAuth();
   const { getSetting } = useSettings();
@@ -58,6 +59,14 @@ const Recruitment = () => {
     hasNext: false,
     hasPrev: false
   });
+  const [jobFilters, setJobFilters] = useState({
+    status: '',
+    department_id: ''
+  });
+  const [appFilters, setAppFilters] = useState({
+    status: '',
+    job_id: ''
+  });
   const [parsingLoading, setParsingLoading] = useState(false);
 
   useEffect(() => {
@@ -71,7 +80,9 @@ const Recruitment = () => {
       setLoading(true);
       const params = {
         page: page,
-        limit: 10
+        limit: 10,
+        status: jobFilters.status || undefined,
+        department_id: jobFilters.department_id || undefined
       };
 
       const response = await recruitmentService.getAllJobs(params);
@@ -89,7 +100,9 @@ const Recruitment = () => {
     try {
       const params = {
         page: page,
-        limit: 10
+        limit: 10,
+        status: appFilters.status || undefined,
+        job_id: appFilters.job_id || undefined
       };
 
       const response = await recruitmentService.getAllApplications(params);
@@ -99,6 +112,14 @@ const Recruitment = () => {
       console.error('Failed to load applications:', error);
     }
   };
+
+  useEffect(() => {
+    loadJobs(1);
+  }, [jobFilters]);
+
+  useEffect(() => {
+    loadApplications(1);
+  }, [appFilters]);
 
   const loadDepartments = async () => {
     try {
@@ -186,7 +207,6 @@ const Recruitment = () => {
     const file = e.target.files[0];
     if (!file) return;
 
-    // Check if file is PDF
     if (file.type !== 'application/pdf') {
       setError('Only PDF files are supported for parsing');
       return;
@@ -202,7 +222,6 @@ const Recruitment = () => {
         applicant_name: data.data.name || prev.applicant_name,
         email: data.data.email || prev.email,
         phone: data.data.phone || prev.phone,
-        // Append skills to cover letter or notes if found
         cover_letter: prev.cover_letter + (data.data.skills ? `\n\nSkills found in resume: ${data.data.skills}` : '')
       }));
 
@@ -213,7 +232,6 @@ const Recruitment = () => {
       setError('Failed to parse resume: ' + (error.response?.data?.message || error.message));
     } finally {
       setParsingLoading(false);
-      // Clear the file input
       e.target.value = '';
     }
   };
@@ -348,224 +366,324 @@ const Recruitment = () => {
       </div>
 
       {activeTab === 'jobs' && (
-        <div className="card p-0">
-          <div className="data-table-wrapper">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Job Title</th>
-                  <th>Department</th>
-                  <th>Type</th>
-                  <th>Location</th>
-                  <th>Applicants</th>
-                  <th>Posted / Deadline</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {jobs.length === 0 ? (
-                  <tr>
-                    <td colSpan="7" className="text-center py-12 text-neutral-500">
-                      <div className="flex flex-col items-center">
-                        <FaBriefcase size={32} className="text-neutral-200 mb-2" />
-                        <p>No job postings found.</p>
-                      </div>
-                    </td>
-                  </tr>
-                ) : (
-                  jobs.map((job) => (
-                    <tr key={job.job_id}>
-                      <td className="font-semibold text-neutral-900">{job.title}</td>
-                      <td>{job.department_name || '-'}</td>
-                      <td>
-                        <span className="capitalize">{job.position_type?.replace('-', ' ')}</span>
-                      </td>
-                      <td>{job.location}</td>
-                      <td>
-                        <button
-                          className="text-primary-600 hover:underline text-sm font-medium"
-                          onClick={() => setActiveTab('applications')}
-                        >
-                          View Applicants
-                        </button>
-                      </td>
-                      <td>
-                        <div className="text-xs text-neutral-500">
-                          <div>Posted: {formatDate(job.posted_date || new Date(), getSetting('date_format'))}</div>
-                          {job.deadline && <div className="text-neutral-400 mt-0.5">Due: {formatDate(job.deadline, getSetting('date_format'))}</div>}
-                        </div>
-                      </td>
-                      <td>
-                        <div className="flex gap-1">
-                          <button
-                            className="p-1.5 text-neutral-400 hover:text-primary-600 hover:bg-primary-50 rounded transition-colors"
-                            onClick={() => handleEditJob(job)}
-                            title="Edit"
-                          >
-                            <FiEdit2 size={16} />
-                          </button>
-                          <button
-                            className="p-1.5 text-neutral-400 hover:text-danger hover:bg-danger-50 rounded transition-colors"
-                            onClick={() => handleDeleteJob(job.job_id)}
-                            title="Delete"
-                          >
-                            <FiTrash2 size={16} />
-                          </button>
-                          <button
-                            className="p-1.5 text-neutral-400 hover:text-info hover:bg-info-50 rounded transition-colors"
-                            onClick={() => {
-                              setSelectedJob(job);
-                              setAppFormData(prev => ({ ...prev, job_id: job.job_id }));
-                              setShowAppModal(true);
-                            }}
-                            title="Add Applicant"
-                          >
-                            <FaPlus size={16} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+        <div className="space-y-6">
+          {/* Job Filters */}
+          <div className="card">
+            <div className="card-body">
+              <div className="flex flex-wrap gap-4 items-end">
+                <div className="min-w-[200px] flex-grow">
+                  <label className="form-label mb-1">Department</label>
+                  <div className="relative">
+                    <FaFilter className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" size={12} />
+                    <select
+                      className="form-select pl-9 w-full"
+                      value={jobFilters.department_id}
+                      onChange={(e) => setJobFilters({ ...jobFilters, department_id: e.target.value })}
+                    >
+                      <option value="">All Departments</option>
+                      {departments.map(dept => (
+                        <option key={dept.department_id} value={dept.department_id}>{dept.department_name}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
 
-          {/* Job Pagination */}
-          {jobPagination.totalPages > 1 && (
-            <div className="flex justify-between items-center p-4 border-t border-neutral-100 bg-neutral-50">
-              <span className="text-xs text-neutral-500">
-                Showing page {jobPagination.currentPage} of {jobPagination.totalPages}
-              </span>
-              <div className="flex gap-2">
+                <div className="min-w-[160px]">
+                  <label className="form-label mb-1">Status</label>
+                  <div className="relative">
+                    <FaFilter className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" size={12} />
+                    <select
+                      className="form-select pl-9 w-full"
+                      value={jobFilters.status}
+                      onChange={(e) => setJobFilters({ ...jobFilters, status: e.target.value })}
+                    >
+                      <option value="">All Statuses</option>
+                      <option value="open">Open</option>
+                      <option value="closed">Closed</option>
+                      <option value="on-hold">On Hold</option>
+                    </select>
+                  </div>
+                </div>
+
                 <button
-                  className="btn btn-secondary btn-sm"
-                  onClick={() => handleJobPageChange(jobPagination.currentPage - 1)}
-                  disabled={!jobPagination.hasPrev}
+                  className="btn btn-secondary h-[42px] px-4"
+                  onClick={() => setJobFilters({ status: '', department_id: '' })}
                 >
-                  Previous
-                </button>
-                <button
-                  className="btn btn-secondary btn-sm"
-                  onClick={() => handleJobPageChange(jobPagination.currentPage + 1)}
-                  disabled={!jobPagination.hasNext}
-                >
-                  Next
+                  <FaSearch size={14} />
                 </button>
               </div>
             </div>
-          )}
+          </div>
+
+          <div className="card p-0">
+            <div className="data-table-wrapper">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Job Title</th>
+                    <th>Department</th>
+                    <th>Type</th>
+                    <th>Location</th>
+                    <th>Applicants</th>
+                    <th>Posted / Deadline</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {jobs.length === 0 ? (
+                    <tr>
+                      <td colSpan="7" className="text-center py-12 text-neutral-500">
+                        <div className="flex flex-col items-center">
+                          <FaBriefcase size={32} className="text-neutral-200 mb-2" />
+                          <p>No job postings found.</p>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : (
+                    jobs.map((job) => (
+                      <tr key={job.job_id}>
+                        <td className="font-semibold text-neutral-900">{job.title}</td>
+                        <td>{job.department_name || '-'}</td>
+                        <td>
+                          <span className="capitalize">{job.position_type?.replace('-', ' ')}</span>
+                        </td>
+                        <td>{job.location}</td>
+                        <td>
+                          <button
+                            className="text-primary-600 hover:underline text-sm font-medium"
+                            onClick={() => setActiveTab('applications')}
+                          >
+                            View Applicants
+                          </button>
+                        </td>
+                        <td>
+                          <div className="text-xs text-neutral-500">
+                            <div>Posted: {formatDate(job.posted_date || new Date(), getSetting('date_format'))}</div>
+                            {job.deadline && <div className="text-neutral-400 mt-0.5">Due: {formatDate(job.deadline, getSetting('date_format'))}</div>}
+                          </div>
+                        </td>
+                        <td>
+                          <div className="flex gap-1">
+                            <button
+                              className="p-1.5 text-neutral-400 hover:text-primary-600 hover:bg-primary-50 rounded transition-colors"
+                              onClick={() => handleEditJob(job)}
+                              title="Edit"
+                            >
+                              <FiEdit2 size={16} />
+                            </button>
+                            <button
+                              className="p-1.5 text-neutral-400 hover:text-danger hover:bg-danger-50 rounded transition-colors"
+                              onClick={() => handleDeleteJob(job.job_id)}
+                              title="Delete"
+                            >
+                              <FiTrash2 size={16} />
+                            </button>
+                            <button
+                              className="p-1.5 text-neutral-400 hover:text-info hover:bg-info-50 rounded transition-colors"
+                              onClick={() => {
+                                setSelectedJob(job);
+                                setAppFormData(prev => ({ ...prev, job_id: job.job_id }));
+                                setShowAppModal(true);
+                              }}
+                              title="Add Applicant"
+                            >
+                              <FaPlus size={16} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Job Pagination */}
+            {jobPagination.totalPages > 1 && (
+              <div className="flex justify-between items-center p-4 border-t border-neutral-100 bg-neutral-50">
+                <span className="text-xs text-neutral-500">
+                  Showing page {jobPagination.currentPage} of {jobPagination.totalPages}
+                </span>
+                <div className="flex gap-2">
+                  <button
+                    className="btn btn-secondary btn-sm"
+                    onClick={() => handleJobPageChange(jobPagination.currentPage - 1)}
+                    disabled={!jobPagination.hasPrev}
+                  >
+                    Previous
+                  </button>
+                  <button
+                    className="btn btn-secondary btn-sm"
+                    onClick={() => handleJobPageChange(jobPagination.currentPage + 1)}
+                    disabled={!jobPagination.hasNext}
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
       {activeTab === 'applications' && (
-        <div className="card p-0">
-          <div className="data-table-wrapper">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Candidate</th>
-                  <th>Job Applied For</th>
-                  <th>Experience</th>
-                  <th>Status</th>
-                  <th>Applied On</th>
-                  <th>Resume</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {applications.length === 0 ? (
-                  <tr>
-                    <td colSpan="7" className="text-center py-12 text-neutral-500">
-                      <div className="flex flex-col items-center">
-                        <FaUsers size={32} className="text-neutral-200 mb-2" />
-                        <p>No applications found.</p>
-                      </div>
-                    </td>
-                  </tr>
-                ) : (
-                  applications.map((app) => (
-                    <tr key={app.application_id}>
-                      <td>
-                        <div className="font-semibold text-neutral-900">{app.applicant_name}</div>
-                        <div className="text-xs text-neutral-500">{app.email}</div>
-                        <div className="text-xs text-neutral-500">{app.phone}</div>
-                      </td>
-                      <td>
-                        <div className="font-medium text-neutral-700">{app.job_title || 'Unknown Job'}</div>
-                      </td>
-                      <td>{app.experience_years ? `${app.experience_years} years` : '-'}</td>
-                      <td>
-                        <select
-                          className={`badge badge-${app.status === 'offered' ? 'success' :
-                            app.status === 'rejected' ? 'danger' :
-                              app.status === 'interview' ? 'info' :
-                                app.status === 'reviewed' ? 'info' :
-                                  'neutral'
-                            } border-none font-semibold cursor-pointer outline-none`}
-                          value={app.status}
-                          onChange={(e) => handleUpdateAppStatus(app.application_id, e.target.value)}
-                        >
-                          {appStatuses.map(status => (
-                            <option key={status} value={status}>{status.charAt(0).toUpperCase() + status.slice(1)}</option>
-                          ))}
-                        </select>
-                      </td>
-                      <td className="text-neutral-600 text-sm">
-                        {formatDate(app.application_date, getSetting('date_format'))}
-                      </td>
-                      <td>
-                        {app.resume_url ? (
-                          <a
-                            href={app.resume_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-primary-600 hover:text-primary-800 flex items-center gap-1 text-sm font-semibold"
-                          >
-                            View <FiExternalLink size={12} />
-                          </a>
-                        ) : <span className="text-neutral-400 text-sm">-</span>}
-                      </td>
-                      <td>
-                        <button
-                          className="p-1.5 text-neutral-400 hover:text-danger hover:bg-danger-50 rounded transition-colors"
-                          onClick={() => handleDeleteApp(app.application_id)}
-                          title="Delete"
-                        >
-                          <FiTrash2 size={16} />
-                        </button>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+        <div className="space-y-6">
+          {/* Application Filters */}
+          <div className="card">
+            <div className="card-body">
+              <div className="flex flex-wrap gap-4 items-end">
+                <div className="min-w-[200px] flex-grow">
+                  <label className="form-label mb-1">Job Role</label>
+                  <div className="relative">
+                    <FaBriefcase className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" size={12} />
+                    <select
+                      className="form-select pl-9 w-full"
+                      value={appFilters.job_id}
+                      onChange={(e) => setAppFilters({ ...appFilters, job_id: e.target.value })}
+                    >
+                      <option value="">All Job Roles</option>
+                      {jobs.map(job => (
+                        <option key={job.job_id} value={job.job_id}>{job.title}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
 
-          {/* Application Pagination */}
-          {appPagination.totalPages > 1 && (
-            <div className="flex justify-between items-center p-4 border-t border-neutral-100 bg-neutral-50">
-              <span className="text-xs text-neutral-500">
-                Showing page {appPagination.currentPage} of {appPagination.totalPages}
-              </span>
-              <div className="flex gap-2">
+                <div className="min-w-[160px]">
+                  <label className="form-label mb-1">Status</label>
+                  <div className="relative">
+                    <FaFilter className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" size={12} />
+                    <select
+                      className="form-select pl-9 w-full"
+                      value={appFilters.status}
+                      onChange={(e) => setAppFilters({ ...appFilters, status: e.target.value })}
+                    >
+                      <option value="">All Statuses</option>
+                      {appStatuses.map(status => (
+                        <option key={status} value={status}>{status.charAt(0).toUpperCase() + status.slice(1)}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
                 <button
-                  className="btn btn-secondary btn-sm"
-                  onClick={() => handleAppPageChange(appPagination.currentPage - 1)}
-                  disabled={!appPagination.hasPrev}
+                  className="btn btn-secondary h-[42px] px-4"
+                  onClick={() => setAppFilters({ status: '', job_id: '' })}
                 >
-                  Previous
-                </button>
-                <button
-                  className="btn btn-secondary btn-sm"
-                  onClick={() => handleAppPageChange(appPagination.currentPage + 1)}
-                  disabled={!appPagination.hasNext}
-                >
-                  Next
+                  <FaSearch size={14} />
                 </button>
               </div>
             </div>
-          )}
+          </div>
+
+          <div className="card p-0">
+            <div className="data-table-wrapper">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Candidate</th>
+                    <th>Job Applied For</th>
+                    <th>Experience</th>
+                    <th>Status</th>
+                    <th>Applied On</th>
+                    <th>Resume</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {applications.length === 0 ? (
+                    <tr>
+                      <td colSpan="7" className="text-center py-12 text-neutral-500">
+                        <div className="flex flex-col items-center">
+                          <FaUsers size={32} className="text-neutral-200 mb-2" />
+                          <p>No applications found.</p>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : (
+                    applications.map((app) => (
+                      <tr key={app.application_id}>
+                        <td>
+                          <div className="font-semibold text-neutral-900">{app.applicant_name}</div>
+                          <div className="text-xs text-neutral-500">{app.email}</div>
+                          <div className="text-xs text-neutral-500">{app.phone}</div>
+                        </td>
+                        <td>
+                          <div className="font-medium text-neutral-700">{app.job_title || 'Unknown Job'}</div>
+                        </td>
+                        <td>{app.experience_years ? `${app.experience_years} years` : '-'}</td>
+                        <td>
+                          <select
+                            className={`badge badge-${app.status === 'offered' ? 'success' :
+                              app.status === 'rejected' ? 'danger' :
+                                app.status === 'interview' ? 'info' :
+                                  app.status === 'reviewed' ? 'info' :
+                                    'neutral'
+                              } border-none font-semibold cursor-pointer outline-none`}
+                            value={app.status}
+                            onChange={(e) => handleUpdateAppStatus(app.application_id, e.target.value)}
+                          >
+                            {appStatuses.map(status => (
+                              <option key={status} value={status}>{status.charAt(0).toUpperCase() + status.slice(1)}</option>
+                            ))}
+                          </select>
+                        </td>
+                        <td className="text-neutral-600 text-sm">
+                          {formatDate(app.application_date, getSetting('date_format'))}
+                        </td>
+                        <td>
+                          {app.resume_url ? (
+                            <a
+                              href={app.resume_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-primary-600 hover:text-primary-800 flex items-center gap-1 text-sm font-semibold"
+                            >
+                              View <FiExternalLink size={12} />
+                            </a>
+                          ) : <span className="text-neutral-400 text-sm">-</span>}
+                        </td>
+                        <td>
+                          <button
+                            className="p-1.5 text-neutral-400 hover:text-danger hover:bg-danger-50 rounded transition-colors"
+                            onClick={() => handleDeleteApp(app.application_id)}
+                            title="Delete"
+                          >
+                            <FiTrash2 size={16} />
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Application Pagination */}
+            {appPagination.totalPages > 1 && (
+              <div className="flex justify-between items-center p-4 border-t border-neutral-100 bg-neutral-50">
+                <span className="text-xs text-neutral-500">
+                  Showing page {appPagination.currentPage} of {appPagination.totalPages}
+                </span>
+                <div className="flex gap-2">
+                  <button
+                    className="btn btn-secondary btn-sm"
+                    onClick={() => handleAppPageChange(appPagination.currentPage - 1)}
+                    disabled={!appPagination.hasPrev}
+                  >
+                    Previous
+                  </button>
+                  <button
+                    className="btn btn-secondary btn-sm"
+                    onClick={() => handleAppPageChange(appPagination.currentPage + 1)}
+                    disabled={!appPagination.hasNext}
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -851,4 +969,3 @@ const Recruitment = () => {
 };
 
 export default Recruitment;
-

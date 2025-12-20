@@ -236,7 +236,7 @@ const Performance = () => {
             <div>
                 {/* Goals Content */}
                 {activeTab === 'goals' && (
-                    <div className="grid sm:grid-cols-1 grid-cols-4 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                         {goals.length === 0 ? (
                             <div className="col-span-full card p-12 flex flex-col items-center justify-center text-center border-dashed border-2 border-neutral-200 shadow-none">
                                 <div className="w-16 h-16 bg-neutral-50 rounded-full flex items-center justify-center mb-4 text-neutral-300">

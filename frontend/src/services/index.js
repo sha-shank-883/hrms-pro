@@ -563,6 +563,31 @@ export const reportService = {
     return response.data;
   },
 
+  getAttendanceReport: async (params) => {
+    const response = await api.get('/reports/attendance', { params });
+    return response.data;
+  },
+
+  getLeaveReport: async (params) => {
+    const response = await api.get('/reports/leave', { params });
+    return response.data;
+  },
+
+  getPayrollReport: async (params) => {
+    const response = await api.get('/reports/payroll', { params });
+    return response.data;
+  },
+
+  getEmployeeReport: async () => {
+    const response = await api.get('/reports/employee');
+    return response.data;
+  },
+
+  getRecruitmentReport: async (params) => {
+    const response = await api.get('/reports/recruitment', { params });
+    return response.data;
+  },
+
   getEmployeeDemographics: async (params) => {
     const response = await api.get('/reports/employee-demographics', { params });
     return response.data;

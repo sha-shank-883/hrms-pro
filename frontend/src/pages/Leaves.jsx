@@ -20,7 +20,8 @@ import {
   FaTrash,
   FaGift,
   FaUmbrellaBeach,
-  FaPlane
+  FaPlane,
+  FaFilter
 } from 'react-icons/fa';
 import CompOffRequestModal from '../components/leaves/CompOffRequestModal';
 
@@ -61,7 +62,12 @@ const Leaves = () => {
     hasNext: false,
     hasPrev: false
   });
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [filters, setFilters] = useState({
+    status: 'all',
+    employee_id: '',
+    start_date: '',
+    end_date: ''
+  });
   const [holidays, setHolidays] = useState([]);
   const [myRestrictedHolidays, setMyRestrictedHolidays] = useState([]);
   const [compOffRequests, setCompOffRequests] = useState([]);
@@ -103,7 +109,10 @@ const Leaves = () => {
   const fetchLeaveStatistics = async () => {
     try {
       const params = {
-        status: statusFilter !== 'all' ? statusFilter : undefined
+        status: filters.status !== 'all' ? filters.status : undefined,
+        employee_id: filters.employee_id || undefined,
+        start_date: filters.start_date || undefined,
+        end_date: filters.end_date || undefined
       };
       const response = await leaveService.getStatistics(params);
       setLeaveStatistics(response.data);
@@ -198,7 +207,10 @@ const Leaves = () => {
       const params = {
         page: page,
         limit: 10,
-        status: statusFilter !== 'all' ? statusFilter : undefined
+        status: filters.status !== 'all' ? filters.status : undefined,
+        employee_id: filters.employee_id || undefined,
+        start_date: filters.start_date || undefined,
+        end_date: filters.end_date || undefined
       };
 
       const response = await leaveService.getAll(params);
@@ -212,6 +224,12 @@ const Leaves = () => {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (activeTab === 'requests') {
+      loadLeaveRequests(1);
+    }
+  }, [filters]);
 
   const loadEmployees = async () => {
     try {
@@ -510,28 +528,83 @@ const Leaves = () => {
 
             {/* Filters */}
             <div className="card mb-6">
-              <div className="p-4 border-b border-neutral-100">
-                <div className="flex items-center gap-3">
-                  <FaListAlt className="text-neutral-400" />
-                  <span className="text-sm font-semibold text-neutral-600 uppercase tracking-wide">Filter Requests</span>
+              <div className="card-body">
+                <div className="flex flex-wrap gap-4 items-end">
+                  {/* Employee Filter (Admin/Manager only) */}
+                  {(user?.role === 'admin' || user?.role === 'manager') && (
+                    <div className="min-w-[200px] flex-grow">
+                      <label className="form-label mb-1">Employee</label>
+                      <div className="relative">
+                        <FaUser className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" size={12} />
+                        <select
+                          className="form-select pl-9 w-full"
+                          value={filters.employee_id}
+                          onChange={(e) => setFilters({ ...filters, employee_id: e.target.value })}
+                        >
+                          <option value="">All Employees</option>
+                          {employees.map(emp => (
+                            <option key={emp.employee_id} value={emp.employee_id}>
+                              {emp.first_name} {emp.last_name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="min-w-[160px]">
+                    <label className="form-label mb-1">Status</label>
+                    <div className="relative">
+                      <FaFilter className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" size={12} />
+                      <select
+                        className="form-select pl-9 w-full"
+                        value={filters.status}
+                        onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+                      >
+                        <option value="all">All Statuses</option>
+                        <option value="pending">Pending</option>
+                        <option value="approved">Approved</option>
+                        <option value="rejected">Rejected</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="min-w-[160px]">
+                    <label className="form-label mb-1">Start Date</label>
+                    <div className="relative">
+                      <FaCalendarAlt className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" size={12} />
+                      <input
+                        type="date"
+                        className="form-input pl-9 w-full"
+                        value={filters.start_date}
+                        onChange={(e) => setFilters({ ...filters, start_date: e.target.value })}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="min-w-[160px]">
+                    <label className="form-label mb-1">End Date</label>
+                    <div className="relative">
+                      <FaCalendarAlt className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" size={12} />
+                      <input
+                        type="date"
+                        className="form-input pl-9 w-full"
+                        value={filters.end_date}
+                        onChange={(e) => setFilters({ ...filters, end_date: e.target.value })}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2 ml-auto">
+                    <button
+                      className="btn btn-secondary h-[34px]"
+                      onClick={() => setFilters({ status: 'all', employee_id: '', start_date: '', end_date: '' })}
+                      title="Clear Filters"
+                    >
+                      <FaTrash className="mr-1" size={10} /> Clear
+                    </button>
+                  </div>
                 </div>
-              </div>
-              <div className="p-5 flex items-center gap-4">
-                <label className="text-sm font-medium text-neutral-700 whitespace-nowrap">Status:</label>
-                <select
-                  className="w-full md:w-64 p-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-100 focus:border-primary-500 outline-none transition-all"
-                  value={statusFilter}
-                  onChange={(e) => {
-                    setStatusFilter(e.target.value);
-                    loadLeaveRequests(1);
-                    fetchLeaveStatistics();
-                  }}
-                >
-                  <option value="all">All Statuses</option>
-                  <option value="pending">Pending</option>
-                  <option value="approved">Approved</option>
-                  <option value="rejected">Rejected</option>
-                </select>
               </div>
             </div>
 
@@ -998,12 +1071,12 @@ const Leaves = () => {
       {/* Holidays Tab */}
       {
         activeTab === 'holidays' && (
-          <div class="card p-0">
+          <div className="card p-0">
             <div className="p-5 border-b border-neutral-100">
               <h3 className="text-lg font-semibold text-neutral-800">Holiday Calendar {new Date().getFullYear()}</h3>
             </div>
             <div className="overflow-x-auto">
-              <table class="table">
+              <table className="table">
                 <thead>
                   <tr>
                     <th>Date</th>

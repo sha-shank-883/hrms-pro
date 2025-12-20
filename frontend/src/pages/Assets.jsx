@@ -134,59 +134,69 @@ const Assets = () => {
     if (loading && !assets.length) return <div className="loading">Loading...</div>;
 
     return (
-        <div className="w-full pb-8">
+        <div className="page-container">
             <div className="page-header">
                 <div>
                     <h1 className="page-title">Asset Management</h1>
-                    <p className="page-subtitle mt-1">Track and manage company assets.</p>
+                    <p className="page-subtitle">Track and manage company assets.</p>
                 </div>
                 {(user.role === 'admin' || user.role === 'manager') && (
                     <button className="btn btn-primary" onClick={() => openModal()}>
-                        <FaPlus className="mr-2" /> Add Asset
+                        <FaPlus /> Add Asset
                     </button>
                 )}
             </div>
 
             {/* Filters */}
             <div className="card mb-6">
-                <div className="grid grid-cols-4 gap-4 p-4">
-                    <div className="form-group mb-0">
-                        <div className="relative">
-                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400"><FaSearch /></span>
-                            <input
-                                type="text"
-                                className="w-full pl-10 p-2.5 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-100 focus:border-primary-500 outline-none transition-all"
-                                placeholder="Search assets..."
-                                value={filters.search}
-                                onChange={(e) => setFilters({ ...filters, search: e.target.value })}
-                            />
+                <div className="card-body">
+                    <div className="flex flex-wrap gap-4 items-end">
+                        <div className="flex-grow min-w-[200px]">
+                            <label className="form-label mb-1">Search</label>
+                            <div className="relative">
+                                <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" size={12} />
+                                <input
+                                    type="text"
+                                    className="form-input pl-10"
+                                    placeholder="Search assets..."
+                                    value={filters.search}
+                                    onChange={(e) => setFilters({ ...filters, search: e.target.value })}
+                                />
+                            </div>
                         </div>
-                    </div>
-                    <div className="form-group mb-0">
-                        <select
-                            className="w-full p-2.5 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-100 focus:border-primary-500 outline-none transition-all block bg-white"
-                            value={filters.type}
-                            onChange={(e) => setFilters({ ...filters, type: e.target.value })}
-                        >
-                            <option value="">All Types</option>
-                            <option value="Hardware">Hardware</option>
-                            <option value="Software">Software</option>
-                            <option value="License">License</option>
-                            <option value="Other">Other</option>
-                        </select>
-                    </div>
-                    <div className="form-group mb-0">
-                        <select
-                            className="w-full p-2.5 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-100 focus:border-primary-500 outline-none transition-all block bg-white"
-                            value={filters.status}
-                            onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-                        >
-                            <option value="">All Statuses</option>
-                            <option value="Available">Available</option>
-                            <option value="Assigned">Assigned</option>
-                            <option value="Maintenance">Maintenance</option>
-                            <option value="Retired">Retired</option>
-                        </select>
+                        <div className="min-w-[160px]">
+                            <label className="form-label mb-1">Type</label>
+                            <select
+                                className="form-select"
+                                value={filters.type}
+                                onChange={(e) => setFilters({ ...filters, type: e.target.value })}
+                            >
+                                <option value="">All Types</option>
+                                <option value="Hardware">Hardware</option>
+                                <option value="Software">Software</option>
+                                <option value="License">License</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                        <div className="min-w-[160px]">
+                            <label className="form-label mb-1">Status</label>
+                            <select
+                                className="form-select"
+                                value={filters.status}
+                                onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+                            >
+                                <option value="">All Statuses</option>
+                                <option value="Available">Available</option>
+                                <option value="Assigned">Assigned</option>
+                                <option value="Maintenance">Maintenance</option>
+                                <option value="Retired">Retired</option>
+                            </select>
+                        </div>
+                        <div className="ml-auto">
+                            <button className="btn btn-secondary h-[34px]" onClick={() => setFilters({ search: '', type: '', status: '' })}>
+                                <FaTrash className="mr-1" size={10} /> Clear
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -297,7 +307,7 @@ const Assets = () => {
                             <button className="text-neutral-400 hover:text-neutral-600 transition-colors" onClick={() => setShowModal(false)}>&times;</button>
                         </div>
                         <form onSubmit={handleSubmit} className="p-6">
-                            <div className="grid sm:grid-cols-1 grid-cols-4 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                                 <div className="form-group">
                                     <label className="block text-sm font-medium text-neutral-700 mb-1">Asset Name</label>
                                     <input

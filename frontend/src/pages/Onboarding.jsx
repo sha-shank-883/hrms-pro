@@ -179,116 +179,238 @@ const Onboarding = () => {
             )}
 
             {/* Main Content */}
-            <div className="grid grid-cols-4 gap-8">
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
 
-                {/* Left Column: Task List */}
-                <div className="lg:col-span-2">
-                    <div class="card">
-                        <div class="p-4 border-b border-neutral-100">
-                            <h3 class="font-semibold text-neutral-800">{isOffboarding ? 'Offboarding Checklist' : 'Onboarding Checklist'}</h3>
-                        </div>
+                {/* Left Column: Journey Timeline */}
+                <div className="lg:col-span-3">
+                    <div className="relative ml-4 pl-8 border-l-2 border-neutral-100 dark:border-neutral-800 space-y-12 pb-12">
+                        <div className="absolute top-0 -left-[2px] w-[2px] h-full bg-gradient-to-b from-primary-500 via-neutral-100 to-transparent"></div>
 
-                        <div className="space-y-4">
-                            {myTasks.length > 0 ? (
-                                myTasks.map(task => (
-                                    <div key={task.task_id} className={`p-4 rounded-lg border transition-all ${task.status === 'completed'
-                                            ? 'bg-neutral-50 border-neutral-100'
-                                            : 'bg-white border-neutral-200 hover:border-primary-200 hover:shadow-sm'
-                                        } flex items-center gap-4`}>
-                                        <div
-                                            onClick={() => handleTaskStatusUpdate(task.task_id, task.status === 'completed' ? 'in_progress' : 'completed')}
-                                            className={`cursor-pointer text-2xl transition-colors ${task.status === 'completed' ? 'text-emerald-500' : 'text-neutral-300 hover:text-primary-500'
-                                                }`}
-                                        >
-                                            <FaCheckCircle />
-                                        </div>
-                                        <div className="flex-1">
-                                            <h4 className={`font-semibold ${task.status === 'completed' ? 'text-neutral-400 line-through' : 'text-neutral-800'
-                                                }`}>
-                                                {task.title}
-                                            </h4>
-                                            <p className="text-sm text-neutral-500 mt-0.5">{task.description}</p>
-                                        </div>
-                                        <span className={`badge badge-${task.priority === 'urgent' ? 'danger' :
-                                                task.priority === 'high' ? 'warning' :
-                                                    'secondary'
-                                            }`}>
-                                            {task.priority}
-                                        </span>
+                        {myTasks.length > 0 ? (
+                            myTasks.map((task, index) => (
+                                <div key={task.task_id} className="relative">
+                                    {/* Journey Node */}
+                                    <div className={`absolute -left-[41px] top-4 w-5 h-5 rounded-full border-4 border-white shadow-md transition-all duration-300 ${task.status === 'completed'
+                                            ? 'bg-emerald-500 scale-110 shadow-emerald-100'
+                                            : 'bg-neutral-200'
+                                        }`}>
+                                        {task.status === 'completed' && <FaCheckCircle className="text-white absolute inset-0 m-auto" size={10} />}
                                     </div>
-                                ))
-                            ) : (
-                                <div className="text-center py-12">
-                                    <div className="inline-flex p-4 rounded-full bg-neutral-50 text-neutral-300 mb-3">
-                                        <FaClipboardList size={32} />
+
+                                    {/* Task Card */}
+                                    <div className={`card overflow-hidden transition-all duration-300 ${task.status === 'completed'
+                                            ? 'bg-neutral-50/50 border-neutral-100 opacity-80'
+                                            : 'hover:shadow-lg hover:-translate-y-1'
+                                        }`}>
+                                        <div className="card-body p-6">
+                                            <div className="flex items-start gap-5">
+                                                <div className={`p-4 rounded-2xl flex-shrink-0 transition-colors ${task.status === 'completed'
+                                                        ? 'bg-emerald-100 text-emerald-600'
+                                                        : 'bg-indigo-50 text-indigo-600'
+                                                    }`}>
+                                                    <FaClipboardList size={24} />
+                                                </div>
+
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4">
+                                                        <div>
+                                                            <div className="flex items-center gap-3 mb-1">
+                                                                <h4 className={`text-xl font-bold transition-all ${task.status === 'completed'
+                                                                        ? 'text-neutral-400 line-through'
+                                                                        : 'text-neutral-900'
+                                                                    }`}>
+                                                                    {task.title}
+                                                                </h4>
+                                                                <span className={`badge badge-${task.priority === 'urgent' ? 'danger' :
+                                                                        task.priority === 'high' ? 'warning' : 'secondary'
+                                                                    }`}>
+                                                                    {task.priority}
+                                                                </span>
+                                                            </div>
+                                                            <p className={`text-neutral-600 leading-relaxed max-w-3xl ${task.status === 'completed' ? 'text-neutral-400' : ''
+                                                                }`}>
+                                                                {task.description}
+                                                            </p>
+                                                        </div>
+
+                                                        <div className="flex items-center self-end md:self-start">
+                                                            <button
+                                                                onClick={() => handleTaskStatusUpdate(task.task_id, task.status === 'completed' ? 'in_progress' : 'completed')}
+                                                                className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold transition-all ${task.status === 'completed'
+                                                                        ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                                                                        : 'bg-primary-600 text-white hover:bg-primary-700 shadow-lg shadow-primary-100 hover:shadow-primary-200'
+                                                                    }`}
+                                                            >
+                                                                {task.status === 'completed' ? (
+                                                                    <><FaCheckCircle /> Completed</>
+                                                                ) : (
+                                                                    'Complete Step'
+                                                                )}
+                                                            </button>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="mt-6 pt-5 border-t border-dashed border-neutral-100 flex flex-wrap items-center gap-6 text-sm text-neutral-500">
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="w-8 h-8 rounded-full bg-neutral-100 flex items-center justify-center">
+                                                                <FaClock className="text-neutral-400" size={12} />
+                                                            </div>
+                                                            <span>
+                                                                Due: <span className="font-medium text-neutral-700">
+                                                                    {task.due_date ? new Date(task.due_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'No deadline'}
+                                                                </span>
+                                                            </span>
+                                                        </div>
+                                                        <div className="h-4 w-[1px] bg-neutral-200" />
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="w-8 h-8 rounded-full bg-neutral-100 flex items-center justify-center">
+                                                                <FaTasks className="text-neutral-400" size={12} />
+                                                            </div>
+                                                            <span>
+                                                                Status: <span className={`font-medium ${task.status === 'completed' ? 'text-emerald-600' : 'text-amber-600'
+                                                                    }`}>
+                                                                    {task.status.replace('_', ' ').toUpperCase()}
+                                                                </span>
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <h3 className="text-lg font-semibold text-neutral-700">All caught up!</h3>
-                                    <p className="text-neutral-500 text-sm">You have no pending {mode} tasks.</p>
                                 </div>
-                            )}
-                        </div>
+                            ))
+                        ) : (
+                            <div className="text-center py-20 bg-neutral-50 rounded-3xl border-2 border-dashed border-neutral-200">
+                                <div className="inline-flex p-6 rounded-full bg-white shadow-sm text-neutral-300 mb-4">
+                                    <FaClipboardList size={48} />
+                                </div>
+                                <h3 className="text-2xl font-bold text-neutral-800">Your journey is clear!</h3>
+                                <p className="text-neutral-500 max-w-xs mx-auto mt-2">No tasks are currently assigned to your {mode} journey.</p>
+                            </div>
+                        )}
                     </div>
                 </div>
 
-                {/* Right Column: New Hires (Admin) or Resources (Employee) */}
-                <div>
-                    {(user.role === 'admin' || user.role === 'manager') ? (
+                {/* Right Column: Insights & Resources */}
+                <div className="space-y-6">
+                    {/* Progress Circle (Only for Employee) */}
+                    {user.role === 'employee' && (
+                        <div className="card text-center p-6 bg-gradient-to-br from-indigo-600 to-indigo-800 text-white border-0 shadow-xl shadow-indigo-100">
+                            <h3 className="text-lg font-bold mb-4">Your Progress</h3>
+                            <div className="relative w-32 h-32 mx-auto mb-4">
+                                <svg className="w-full h-full transform -rotate-90">
+                                    <circle
+                                        cx="64"
+                                        cy="64"
+                                        r="58"
+                                        stroke="rgba(255,255,255,0.1)"
+                                        strokeWidth="8"
+                                        fill="none"
+                                    />
+                                    <circle
+                                        cx="64"
+                                        cy="64"
+                                        r="58"
+                                        stroke="white"
+                                        strokeWidth="8"
+                                        fill="none"
+                                        strokeDasharray={364.4}
+                                        strokeDashoffset={364.4 - (364.4 * (stats.completedTasks / (stats.total_tasks || stats.pendingTasks + stats.completedTasks || 1)))}
+                                        strokeLinecap="round"
+                                        className="transition-all duration-1000 ease-out"
+                                    />
+                                </svg>
+                                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                                    <span className="text-3xl font-black">
+                                        {Math.round((stats.completedTasks / (stats.total_tasks || stats.pendingTasks + stats.completedTasks || 1)) * 100)}%
+                                    </span>
+                                </div>
+                            </div>
+                            <p className="text-indigo-100 text-sm font-medium">
+                                {stats.pendingTasks} tasks remaining
+                            </p>
+                        </div>
+                    )}
+
+                    {/* People section (Admin) */}
+                    {(user.role === 'admin' || user.role === 'manager') && (
                         <div className="card">
-                            <div className="p-4 border-b border-neutral-100">
-                                <h3 className="font-semibold text-neutral-800">
+                            <div className="p-5 border-b border-neutral-100">
+                                <h3 className="font-bold text-neutral-800 flex items-center gap-2">
+                                    <FaUserTie className="text-primary-500" />
                                     {isOffboarding ? 'Recent Exits' : 'Recent Hires'}
                                 </h3>
                             </div>
-                            <div className="space-y-4">
+                            <div className="p-2 space-y-1">
                                 {newHires.map(emp => (
-                                    <div key={emp.employee_id} className="flex items-center gap-4 pb-4 border-b border-neutral-100 last:border-0 last:pb-0">
-                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${isOffboarding ? 'bg-red-50 text-red-600' : 'bg-indigo-50 text-indigo-600'
+                                    <div key={emp.employee_id} className="flex items-center gap-3 p-3 rounded-xl hover:bg-neutral-50 transition-colors cursor-pointer group">
+                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm shadow-sm ${isOffboarding ? 'bg-red-50 text-red-600' : 'bg-indigo-50 text-indigo-600'
                                             }`}>
-                                            {emp.first_name.charAt(0)}
+                                            {emp.first_name.charAt(0)}{emp.last_name.charAt(0)}
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                            <div className="font-semibold text-neutral-900 truncate">{emp.first_name} {emp.last_name}</div>
+                                            <div className="font-bold text-neutral-900 truncate group-hover:text-primary-600 transition-colors">
+                                                {emp.first_name} {emp.last_name}
+                                            </div>
                                             <div className="text-xs text-neutral-500 truncate">{emp.position}</div>
                                         </div>
-                                        <button className="text-neutral-400 hover:text-primary-600 transition-colors">
-                                            <FaChevronRight size={14} />
-                                        </button>
+                                        <FaChevronRight className="text-neutral-300 group-hover:text-primary-400 group-hover:translate-x-1 transition-all" size={12} />
                                     </div>
                                 ))}
                                 {newHires.length === 0 && (
-                                    <p className="text-center text-neutral-500 py-4 text-sm">
-                                        {isOffboarding ? 'No exiting employees found.' : 'No recent hires found.'}
+                                    <p className="text-center text-neutral-400 py-8 text-sm italic">
+                                        No recent {isOffboarding ? 'exits' : 'hires'} found
                                     </p>
                                 )}
                             </div>
                         </div>
-                    ) : (
-                        <div className="card">
-                            <div className="p-4 border-b border-neutral-100">
-                                <h3 className="font-semibold text-neutral-800">Quick Resources</h3>
-                            </div>
-                            <ul className="space-y-2">
-                                <li>
-                                    <a href="#" className="flex items-center gap-3 p-2.5 rounded-lg text-neutral-600 hover:bg-neutral-50 hover:text-primary-600 transition-all font-medium text-sm group">
-                                        <FaBriefcase className="text-neutral-400 group-hover:text-primary-500" />
-                                        <span>{isOffboarding ? 'Exit Policy' : 'Employee Handbook'}</span>
-                                    </a>
-                                </li>
-                                <li>
-                                    <a href="#" className="flex items-center gap-3 p-2.5 rounded-lg text-neutral-600 hover:bg-neutral-50 hover:text-primary-600 transition-all font-medium text-sm group">
-                                        <FaUserTie className="text-neutral-400 group-hover:text-primary-500" />
-                                        <span>{isOffboarding ? 'Asset Return Guide' : 'IT Policy'}</span>
-                                    </a>
-                                </li>
-                                <li>
-                                    <a href="#" className="flex items-center gap-3 p-2.5 rounded-lg text-neutral-600 hover:bg-neutral-50 hover:text-primary-600 transition-all font-medium text-sm group">
-                                        <FaClock className="text-neutral-400 group-hover:text-primary-500" />
-                                        <span>{isOffboarding ? 'Final Settlement' : 'Holiday Calendar'}</span>
-                                    </a>
-                                </li>
-                            </ul>
-                        </div>
                     )}
+
+                    {/* Resources Hub */}
+                    <div className="card">
+                        <div className="p-5 border-b border-neutral-100">
+                            <h3 className="font-bold text-neutral-800 flex items-center gap-2">
+                                <FaBriefcase className="text-primary-500" />
+                                Resources Hub
+                            </h3>
+                        </div>
+                        <div className="p-3 space-y-2">
+                            <a href="#" className="flex items-center gap-4 p-3 rounded-xl text-neutral-600 hover:bg-primary-50 hover:text-primary-700 transition-all group border border-transparent hover:border-primary-100">
+                                <div className="w-10 h-10 rounded-lg bg-neutral-100 flex items-center justify-center group-hover:bg-white transition-colors">
+                                    <FaClipboardList className="text-neutral-400 group-hover:text-primary-500" />
+                                </div>
+                                <div>
+                                    <div className="text-sm font-bold">
+                                        {isOffboarding ? 'Exit Guidelines' : 'Employee Handbook'}
+                                    </div>
+                                    <div className="text-[10px] text-neutral-400 uppercase tracking-wider font-bold">Policy Document</div>
+                                </div>
+                            </a>
+                            <a href="#" className="flex items-center gap-4 p-3 rounded-xl text-neutral-600 hover:bg-primary-50 hover:text-primary-700 transition-all group border border-transparent hover:border-primary-100">
+                                <div className="w-10 h-10 rounded-lg bg-neutral-100 flex items-center justify-center group-hover:bg-white transition-colors">
+                                    <FaUserTie className="text-neutral-400 group-hover:text-primary-500" />
+                                </div>
+                                <div>
+                                    <div className="text-sm font-bold">
+                                        {isOffboarding ? 'Asset Recovery' : 'Work Culture Info'}
+                                    </div>
+                                    <div className="text-[10px] text-neutral-400 uppercase tracking-wider font-bold">Getting Started</div>
+                                </div>
+                            </a>
+                            <a href="#" className="flex items-center gap-4 p-3 rounded-xl text-neutral-600 hover:bg-primary-50 hover:text-primary-700 transition-all group border border-transparent hover:border-primary-100">
+                                <div className="w-10 h-10 rounded-lg bg-neutral-100 flex items-center justify-center group-hover:bg-white transition-colors">
+                                    <FaClock className="text-neutral-400 group-hover:text-primary-500" />
+                                </div>
+                                <div>
+                                    <div className="text-sm font-bold">
+                                        {isOffboarding ? 'Final Settlement' : 'Company Benefits'}
+                                    </div>
+                                    <div className="text-[10px] text-neutral-400 uppercase tracking-wider font-bold">Financials</div>
+                                </div>
+                            </a>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

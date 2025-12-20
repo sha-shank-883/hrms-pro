@@ -15,7 +15,9 @@ import {
   FaEdit,
   FaTrash,
   FaPlay,
-  FaFileContract
+  FaFileContract,
+  FaUser,
+  FaCalendarDay
 } from 'react-icons/fa';
 import TaxDeclarationModal from '../components/payroll/TaxDeclarationModal';
 
@@ -452,82 +454,89 @@ const Payroll = () => {
 
           {/* Filter Section */}
           <div className="card mb-6">
-            <div className="p-4 border-b border-neutral-100">
-              <h3 className="font-semibold text-neutral-800 flex items-center gap-2">
-                <FaFilter className="text-neutral-400 text-sm" /> Filter Records
-              </h3>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-md mb-6">
-              <div className="form-group">
-                <label className="text-xs font-semibold text-neutral-500 uppercase tracking-wide mb-1.5 block">Employee</label>
-                <select
-                  className="w-full p-2.5 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-100 focus:border-primary-500 outline-none transition-all"
-                  name="employee_id"
-                  value={filters.employee_id}
-                  onChange={handleFilterChange}
-                >
-                  <option value="">All Employees</option>
-                  {employees.map(emp => (
-                    <option key={emp.employee_id} value={emp.employee_id}>
-                      {emp.first_name} {emp.last_name}
-                    </option>
-                  ))}
-                </select>
-              </div>
+            <div className="card-body">
+              <div className="flex flex-wrap gap-4 items-end">
+                {/* Employee Filter */}
+                <div className="min-w-[200px] flex-grow">
+                  <label className="form-label mb-1">Employee</label>
+                  <div className="relative">
+                    <FaUser className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" size={12} />
+                    <select
+                      className="form-select pl-9 w-full"
+                      name="employee_id"
+                      value={filters.employee_id}
+                      onChange={handleFilterChange}
+                    >
+                      <option value="">All Employees</option>
+                      {employees.map(emp => (
+                        <option key={emp.employee_id} value={emp.employee_id}>
+                          {emp.first_name} {emp.last_name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
 
-              <div className="form-group">
-                <label className="text-xs font-semibold text-neutral-500 uppercase tracking-wide mb-1.5 block">Month</label>
-                <select
-                  className="w-full p-2.5 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-100 focus:border-primary-500 outline-none transition-all"
-                  name="month"
-                  value={filters.month}
-                  onChange={handleFilterChange}
-                >
-                  <option value="">All Months</option>
-                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(m => (
-                    <option key={m} value={m}>
-                      {new Date(2020, m - 1, 1).toLocaleString('default', { month: 'long' })}
-                    </option>
-                  ))}
-                </select>
-              </div>
+                <div className="min-w-[150px]">
+                  <label className="form-label mb-1">Month</label>
+                  <div className="relative">
+                    <FaCalendarDay className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" size={12} />
+                    <select
+                      className="form-select pl-9 w-full"
+                      name="month"
+                      value={filters.month}
+                      onChange={handleFilterChange}
+                    >
+                      <option value="">All Months</option>
+                      {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(m => (
+                        <option key={m} value={m}>
+                          {new Date(2020, m - 1, 1).toLocaleString('default', { month: 'long' })}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
 
-              <div className="form-group">
-                <label className="text-xs font-semibold text-neutral-500 uppercase tracking-wide mb-1.5 block">Year</label>
-                <input
-                  type="number"
-                  className="w-full p-2.5 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-100 focus:border-primary-500 outline-none transition-all"
-                  name="year"
-                  value={filters.year}
-                  onChange={handleFilterChange}
-                  min="2020"
-                  max="2030"
-                />
-              </div>
+                <div className="min-w-[120px]">
+                  <label className="form-label mb-1">Year</label>
+                  <input
+                    type="number"
+                    className="form-input w-full"
+                    name="year"
+                    value={filters.year}
+                    onChange={handleFilterChange}
+                    min="2020"
+                    max="2030"
+                  />
+                </div>
 
-              <div className="form-group">
-                <label className="text-xs font-semibold text-neutral-500 uppercase tracking-wide mb-1.5 block">Status</label>
-                <select
-                  className="w-full p-2.5 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-100 focus:border-primary-500 outline-none transition-all"
-                  name="payment_status"
-                  value={filters.payment_status}
-                  onChange={handleFilterChange}
-                >
-                  <option value="">All Statuses</option>
-                  <option value="pending">Pending</option>
-                  <option value="paid">Paid</option>
-                  <option value="cancelled">Cancelled</option>
-                </select>
-              </div>
-            </div>
+                <div className="min-w-[150px]">
+                  <label className="form-label mb-1">Status</label>
+                  <div className="relative">
+                    <FaFilter className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" size={12} />
+                    <select
+                      className="form-select pl-9 w-full"
+                      name="payment_status"
+                      value={filters.payment_status}
+                      onChange={handleFilterChange}
+                    >
+                      <option value="">All Statuses</option>
+                      <option value="pending">Pending</option>
+                      <option value="paid">Paid</option>
+                      <option value="cancelled">Cancelled</option>
+                    </select>
+                  </div>
+                </div>
 
-            <div className="flex justify-end gap-sm pt-2">
-              <button className="btn btn-ghost" onClick={clearFilters}>
-                <FaTimes /> Clear
-              </button>
-              <button className="btn btn-secondary" onClick={applyFilters}>
-                <FaSearch /> Apply Filters
-              </button>
+                <div className="flex gap-2">
+                  <button className="btn btn-primary" onClick={applyFilters}>
+                    <FaSearch className="mr-2" /> Apply
+                  </button>
+                  <button className="btn btn-secondary" onClick={clearFilters}>
+                    Reset
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -563,7 +572,7 @@ const Payroll = () => {
                     <tr key={record.payroll_id}>
                       <td>
                         <div className="flex items-center gap-3">
-                          <div class="w-8 h-8 rounded-full bg-primary-100 text-primary-800 flex items-center justify-center font-semibold text-sm">
+                          <div className="w-8 h-8 rounded-full bg-primary-100 text-primary-800 flex items-center justify-center font-semibold text-sm">
                             {record.employee_name.charAt(0)}
                           </div>
                           <div className="font-semibold text-neutral-800">{record.employee_name}</div>
@@ -771,7 +780,7 @@ const Payroll = () => {
 
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div className="form-group mb-4">
-                    <label class="form-label mb-1 block">Employee <span className="text-danger">*</span></label>
+                    <label className="form-label mb-1 block">Employee <span className="text-danger">*</span></label>
                     <select
                       className="form-input"
                       value={formData.employee_id}
@@ -813,7 +822,7 @@ const Payroll = () => {
                   </div>
 
                   <div className="form-group mb-4">
-                    <label class="form-label mb-1 block">Basic Salary <span className="text-danger">*</span></label>
+                    <label className="form-label mb-1 block">Basic Salary <span className="text-danger">*</span></label>
                     <div className="relative">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400">{currencySymbol}</span>
                       <input
@@ -829,7 +838,7 @@ const Payroll = () => {
 
                   <div className="grid grid-cols-2 gap-4">
                     <div className="form-group">
-                      <label class="form-label">Allowances</label>
+                      <label className="form-label">Allowances</label>
                       <div className="relative">
                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400">{currencySymbol}</span>
                         <input
@@ -843,7 +852,7 @@ const Payroll = () => {
                     </div>
 
                     <div className="form-group">
-                      <label class="form-label">Deductions</label>
+                      <label className="form-label">Deductions</label>
                       <div className="relative">
                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400">{currencySymbol}</span>
                         <input
@@ -907,7 +916,7 @@ const Payroll = () => {
                   </div>
 
                   <div className="form-group">
-                    <label class="form-label">Payment Method</label>
+                    <label className="form-label">Payment Method</label>
                     <select
                       className="form-input"
                       value={formData.payment_method}
@@ -920,7 +929,7 @@ const Payroll = () => {
                   </div>
 
                   <div className="form-group mb-4">
-                    <label class="form-label mb-1 block">Notes</label>
+                    <label className="form-label mb-1 block">Notes</label>
                     <textarea
                       className="form-input"
                       value={formData.notes}
@@ -968,7 +977,7 @@ const Payroll = () => {
 
                 <form onSubmit={handleAutoGenerate} className="space-y-4">
                   <div className="form-group mb-4">
-                    <label class="form-label mb-1 block">Employee</label>
+                    <label className="form-label mb-1 block">Employee</label>
                     <select
                       className="form-input"
                       value={autoGenerateData.employee_id}

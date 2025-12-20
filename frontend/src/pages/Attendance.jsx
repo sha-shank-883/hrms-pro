@@ -13,7 +13,11 @@ import {
   FaPlus,
   FaFilter,
   FaTrash,
-  FaEdit
+  FaEdit,
+  FaUser,
+  FaCalendarAlt,
+  FaSearch,
+  FaBuilding
 } from 'react-icons/fa';
 import AttendanceRegularizationModal from '../components/attendance/AttendanceRegularizationModal';
 
@@ -418,77 +422,91 @@ const Attendance = () => {
           </div>
           {/* Filters */}
           <div className="card mb-6">
-            <div className="card-header">
-              <h3 className="card-title flex items-center gap-2">
-                <FaFilter className="text-neutral-400 text-sm" /> Filter Records
-              </h3>
-            </div>
+            <div className="card-body">
+              <div className="flex flex-wrap gap-4 items-end">
+                {/* Employee Filter (Admin/Manager only) */}
+                {(user?.role === 'admin' || user?.role === 'manager') && (
+                  <div className="min-w-[200px] flex-grow">
+                    <label className="form-label mb-1">Employee</label>
+                    <div className="relative">
+                      <FaUser className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" size={12} />
+                      <select
+                        className="form-select pl-9 w-full"
+                        name="employee_id"
+                        value={filters.employee_id}
+                        onChange={handleFilterChange}
+                      >
+                        <option value="">All Employees</option>
+                        {employees.map(emp => (
+                          <option key={emp.employee_id} value={emp.employee_id}>
+                            {emp.first_name} {emp.last_name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                )}
 
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-md mb-6">
-              {/* Employee Filter (Admin/Manager only) */}
-              {(user?.role === 'admin' || user?.role === 'manager') && (
-                <div className="form-group mb-4">
-                  <label className="form-label">Employee</label>
-                  <select
-                    className="form-input"
-                    name="employee_id"
-                    value={filters.employee_id}
-                    onChange={handleFilterChange}
-                  >
-                    <option value="">All Employees</option>
-                    {employees.map(emp => (
-                      <option key={emp.employee_id} value={emp.employee_id}>
-                        {emp.first_name} {emp.last_name}
-                      </option>
-                    ))}
-                  </select>
+                <div className="min-w-[160px]">
+                  <label className="form-label mb-1">Start Date</label>
+                  <div className="relative">
+                    <FaCalendarAlt className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" size={12} />
+                    <input
+                      type="date"
+                      className="form-input pl-9 w-full"
+                      name="start_date"
+                      value={filters.start_date}
+                      onChange={handleFilterChange}
+                    />
+                  </div>
                 </div>
-              )}
 
-              <div className="form-group mb-4">
-                <label className="form-label">Start Date</label>
-                <input
-                  type="date"
-                  className="form-input"
-                  name="start_date"
-                  value={filters.start_date}
-                  onChange={handleFilterChange}
-                />
+                <div className="min-w-[160px]">
+                  <label className="form-label mb-1">End Date</label>
+                  <div className="relative">
+                    <FaCalendarAlt className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" size={12} />
+                    <input
+                      type="date"
+                      className="form-input pl-9 w-full"
+                      name="end_date"
+                      value={filters.end_date}
+                      onChange={handleFilterChange}
+                    />
+                  </div>
+                </div>
+
+                <div className="min-w-[150px]">
+                  <label className="form-label mb-1">Status</label>
+                  <div className="relative">
+                    <FaFilter className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" size={12} />
+                    <select
+                      className="form-select pl-9 w-full"
+                      name="status"
+                      value={filters.status}
+                      onChange={handleFilterChange}
+                    >
+                      <option value="">All Statuses</option>
+                      <option value="present">Present</option>
+                      <option value="absent">Absent</option>
+                      <option value="leave">On Leave</option>
+                      <option value="late">Late</option>
+                      <option value="half_day">Half Day</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="flex gap-2">
+                  <button className="btn btn-primary" onClick={handleFilter}>
+                    <FaSearch className="mr-2" /> Apply
+                  </button>
+                  <button className="btn btn-secondary" onClick={() => {
+                    setFilters({ employee_id: '', start_date: '', end_date: '', status: '' });
+                    loadAttendance(1);
+                  }}>
+                    Reset
+                  </button>
+                </div>
               </div>
-
-              <div className="form-group mb-4">
-                <label className="form-label">End Date</label>
-                <input
-                  type="date"
-                  className="form-input"
-                  name="end_date"
-                  value={filters.end_date}
-                  onChange={handleFilterChange}
-                />
-              </div>
-
-              <div className="form-group mb-4">
-                <label className="form-label">Status</label>
-                <select
-                  className="form-input"
-                  name="status"
-                  value={filters.status}
-                  onChange={handleFilterChange}
-                >
-                  <option value="">All Statuses</option>
-                  <option value="present">Present</option>
-                  <option value="absent">Absent</option>
-                  <option value="leave">On Leave</option>
-                  <option value="late">Late</option>
-                  <option value="half_day">Half Day</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-sm pt-2">
-              <button className="btn btn-secondary" onClick={handleFilter}>
-                Apply Filters
-              </button>
             </div>
           </div>
 

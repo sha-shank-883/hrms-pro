@@ -438,68 +438,80 @@ const Tasks = () => {
 
       {/* Filter Options */}
       <div className="card mb-6">
-        <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
-          <div className="grid grid-cols-4 gap-3 w-full flex-1">
-            <div className="relative">
-              <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-neutral-400" />
-              <input
-                type="text"
-                name="search"
-                placeholder="Search tasks..."
-                value={filters.search}
-                onChange={handleFilterChange}
-                className="form-input pl-10"
-              />
+        <div className="card-body">
+          <div className="flex flex-wrap gap-4 items-end">
+            <div className="flex-grow min-w-[200px]">
+              <label className="form-label mb-1">Search</label>
+              <div className="relative">
+                <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" size={12} />
+                <input
+                  type="text"
+                  name="search"
+                  placeholder="Search tasks..."
+                  value={filters.search}
+                  onChange={handleFilterChange}
+                  className="form-input pl-10"
+                />
+              </div>
             </div>
 
-            <select
-              className="form-select"
-              name="status"
-              value={filters.status}
-              onChange={handleFilterChange}
-            >
-              <option value="">All Status</option>
-              <option value="todo">To Do</option>
-              <option value="in_progress">In Progress</option>
-              <option value="completed">Completed</option>
-              <option value="cancelled">Cancelled</option>
-            </select>
+            <div className="min-w-[140px]">
+              <label className="form-label mb-1">Status</label>
+              <select
+                className="form-select"
+                name="status"
+                value={filters.status}
+                onChange={handleFilterChange}
+              >
+                <option value="">All Status</option>
+                <option value="todo">To Do</option>
+                <option value="in_progress">In Progress</option>
+                <option value="completed">Completed</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+            </div>
 
-            <select
-              className="form-select"
-              name="priority"
-              value={filters.priority}
-              onChange={handleFilterChange}
-            >
-              <option value="">All Priority</option>
-              <option value="low">Low</option>
-              <option value="medium">Medium</option>
-              <option value="high">High</option>
-              <option value="urgent">Urgent</option>
-            </select>
+            <div className="min-w-[140px]">
+              <label className="form-label mb-1">Priority</label>
+              <select
+                className="form-select"
+                name="priority"
+                value={filters.priority}
+                onChange={handleFilterChange}
+              >
+                <option value="">All Priority</option>
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+                <option value="urgent">Urgent</option>
+              </select>
+            </div>
 
-            <select
-              className="form-select"
-              name="department_id"
-              value={filters.department_id}
-              onChange={handleFilterChange}
-            >
-              <option value="">All Departments</option>
-              {departments.map(dept => (
-                <option key={dept.department_id} value={dept.department_id}>
-                  {dept.department_name}
-                </option>
-              ))}
-            </select>
-          </div>
+            <div className="min-w-[180px]">
+              <label className="form-label mb-1">Department</label>
+              <select
+                className="form-select"
+                name="department_id"
+                value={filters.department_id}
+                onChange={handleFilterChange}
+              >
+                <option value="">All Departments</option>
+                {departments.map(dept => (
+                  <option key={dept.department_id} value={dept.department_id}>
+                    {dept.department_name}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-          <div className="flex gap-2">
-            <button className="btn btn-primary" onClick={applyFilters}>
-              <FaFilter className="mr-2" /> Filter
-            </button>
-            <button className="btn btn-secondary" onClick={clearFilters}>
-              <FaTimes className="mr-2" /> Clear
-            </button>
+            <div className="flex gap-2 ml-auto">
+              <button className="btn btn-secondary h-[34px]" onClick={clearFilters}>
+                <FaTrash className="mr-1" size={10} /> Clear
+              </button>
+              <button className="btn btn-primary h-[34px]" onClick={applyFilters}>
+                <FaFilter className="mr-1" size={10} /> Filter
+              </button>
+            </div>
           </div>
         </div>
       </div>

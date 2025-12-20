@@ -4,8 +4,8 @@ import { FaBell, FaCheckCircle, FaClock, FaTasks, FaCalendarCheck, FaInfoCircle,
 import { useSocket } from '../../../context/SocketContext';
 import { leaveService, taskService, attendanceService } from '../../../services';
 
-const ActivityWidget = memo(({ 
-    limit = 10, 
+const ActivityWidget = memo(({
+    limit = 10,
     chartType = 'list',
     onToggle,
     onSettingsClick,
@@ -253,32 +253,24 @@ const ActivityWidget = memo(({
                 ) : (
                     <div className="flex flex-col">
                         {filteredNotifications.map((req) => (
-                            <div key={req.id} className="p-4 border-b border-neutral-100 hover:bg-neutral-50 transition-colors last:border-0 group">
-                                <div className="flex justify-between items-start mb-1 h-auto">
-                                    <div className="flex items-center gap-sm">
-                                        <div className={`notification-icon ${req.color}`}>
-                                            {req.icon}
-                                        </div>
-                                        <div>
-                                            <p className="text-sm font-medium text-neutral-900 leading-none m-0">
-                                                {req.title}
-                                            </p>
-                                            <p className="text-xs text-neutral-500 mt-1 m-0">
-                                                {req.subtitle}
-                                            </p>
-                                        </div>
+                            <div key={req.id} className="px-4 py-2 border-b border-neutral-100 hover:bg-neutral-50 transition-colors last:border-0 group flex items-center justify-between min-h-[48px]">
+                                <div className="flex items-center gap-3 flex-1 min-w-0">
+                                    <div className={`notification-icon ${req.color}`}>
+                                        {req.icon}
                                     </div>
-                                    <span className="text-xs text-neutral-400 whitespace-nowrap ml-2">
-                                        {getTimeAgo(req.time)}
-                                    </span>
+                                    <div className="flex items-center gap-1.5 min-w-0 text-xs overflow-hidden">
+                                        <span className="font-semibold text-neutral-900 truncate shrink-0">{req.title}</span>
+                                        <span className="text-neutral-500 truncate shrink-0">· {req.subtitle}</span>
+                                        {req.message && (
+                                            <span className="text-neutral-500 truncate italic opacity-80 border-l border-neutral-200 pl-1.5 ml-0.5">
+                                                {req.message}
+                                            </span>
+                                        )}
+                                    </div>
                                 </div>
-                                {req.message && (
-                                    <div className="mt-2 pl-10" style={{ paddingLeft: '2.75rem' }}>
-                                        <p className="text-xs text-neutral-600 m-0 line-clamp-2">
-                                            {req.message}
-                                        </p>
-                                    </div>
-                                )}
+                                <span className="text-[10px] text-neutral-400 whitespace-nowrap ml-3 shrink-0 italic">
+                                    {getTimeAgo(req.time)}
+                                </span>
                             </div>
                         ))}
                     </div>

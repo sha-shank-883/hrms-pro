@@ -2071,3 +2071,14 @@ h6 {
 .bg-accent-violet-light {
     background-color: var(--accent-violet-light);
 }
+
+.notification-icon {
+    width: 1.75rem;
+    height: 1.75rem;
+    border-radius: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8125rem;
+    flex-shrink: 0;
+}

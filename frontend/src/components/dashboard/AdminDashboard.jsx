@@ -196,24 +196,23 @@ const AdminDashboard = () => {
         }
         return [
             'chart-attendance',
-            'widget-notifications',
+            'widget-activity',
             'chart-payroll',
             'chart-leave',
             'chart-department',
-            'chart-task',
-            'widget-activity'
-        ];    };
+            'chart-task'
+        ];
+    };
 
     const getInitialLayoutConfig = () => {
         const defaults = {
-            'chart-attendance': { colSpan: 2, height: '256px', chartType: 'area', label: 'Attendance' },
-            'widget-notifications': { colSpan: 1, height: '256px', chartType: 'list', label: 'Recent Requests' },
-            'chart-payroll': { colSpan: 1, height: '256px', chartType: 'bar', label: 'Payroll' },
-            'chart-leave': { colSpan: 1, height: '256px', chartType: 'pie', label: 'Leave' },
-            'chart-department': { colSpan: 2, height: '256px', chartType: 'bar', label: 'Department' },
-            'chart-task': { colSpan: 2, height: '256px', chartType: 'bar', label: 'Task' },
-            'widget-activity': { colSpan: 2, height: '256px', chartType: 'list', label: 'Live Activity' },
-        };        try {
+            'chart-attendance': { colSpan: 2, height: '384px', chartType: 'area', label: 'Attendance' },
+            'chart-payroll': { colSpan: 1, height: '384px', chartType: 'bar', label: 'Payroll' },
+            'chart-leave': { colSpan: 1, height: '384px', chartType: 'pie', label: 'Leave' },
+            'chart-department': { colSpan: 2, height: '384px', chartType: 'bar', label: 'Department' },
+            'chart-task': { colSpan: 2, height: '384px', chartType: 'bar', label: 'Task' },
+            'widget-activity': { colSpan: 2, height: '384px', chartType: 'list', label: 'Live Activity' },
+        }; try {
             const key = user ? `hrms_dashboard_${user.tenant_id}_${user.id}_config` : null;
             if (key) {
                 const saved = localStorage.getItem(key);

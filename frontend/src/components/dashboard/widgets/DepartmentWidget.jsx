@@ -115,23 +115,23 @@ const DepartmentWidget = memo(({ chartType, onToggle, onSettingsClick, isSetting
                         <p style={{ fontSize: '0.65rem', color: '#9CA3AF', fontStyle: 'italic', marginTop: '0.5rem' }}>
                             Filters based on employee joining date.
                         </p>
-                        <div className="filter-actions">
-                            <button
-                                className="btn-sm btn-outline"
-                                onClick={() => {
-                                    setFilters({ startDate: '', endDate: '' });
-                                    setShowFilters(false);
-                                }}
-                            >
-                                Reset
-                            </button>
-                            <button
-                                className="btn-sm btn-primary-sm"
-                                onClick={() => setShowFilters(false)}
-                            >
-                                Apply
-                            </button>
-                        </div>
+                    </div>
+                    <div className="filter-actions">
+                        <button
+                            className="btn-sm btn-outline"
+                            onClick={() => {
+                                setFilters({ startDate: '', endDate: '' });
+                                setShowFilters(false);
+                            }}
+                        >
+                            Reset
+                        </button>
+                        <button
+                            className="btn-sm btn-primary-sm"
+                            onClick={() => setShowFilters(false)}
+                        >
+                            Apply
+                        </button>
                     </div>
                 </div>
             )}

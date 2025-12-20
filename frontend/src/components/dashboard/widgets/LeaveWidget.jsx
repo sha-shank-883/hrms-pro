@@ -152,24 +152,24 @@ const LeaveWidget = memo(({ chartType, onToggle, onSettingsClick, isSettingsOpen
                                 ))}
                             </select>
                         </div>
+                    </div>
 
-                        <div className="filter-actions">
-                            <button
-                                className="btn-sm btn-outline"
-                                onClick={() => {
-                                    setFilters({ startDate: '', endDate: '', departmentId: '' });
-                                    setShowFilters(false);
-                                }}
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                className="btn-sm btn-primary-sm"
-                                onClick={() => setShowFilters(false)}
-                            >
-                                Apply
-                            </button>
-                        </div>
+                    <div className="filter-actions">
+                        <button
+                            className="btn-sm btn-outline"
+                            onClick={() => {
+                                setFilters({ startDate: '', endDate: '', departmentId: '' });
+                                setShowFilters(false);
+                            }}
+                        >
+                            Reset
+                        </button>
+                        <button
+                            className="btn-sm btn-primary-sm"
+                            onClick={() => setShowFilters(false)}
+                        >
+                            Apply
+                        </button>
                     </div>
                 </div>
             )}

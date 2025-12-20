@@ -128,23 +128,23 @@ const PayrollWidget = React.memo(({ chartType = 'bar', onToggle, currencySymbol 
                                 ))}
                             </select>
                         </div>
-                        <div className="filter-actions">
-                            <button
-                                className="btn-sm btn-outline"
-                                onClick={() => {
-                                    setFilters({ year: new Date().getFullYear(), department_id: '' });
-                                    setShowFilters(false);
-                                }}
-                            >
-                                Reset
-                            </button>
-                            <button
-                                className="btn-sm btn-primary-sm"
-                                onClick={() => setShowFilters(false)}
-                            >
-                                Apply
-                            </button>
-                        </div>
+                    </div>
+                    <div className="filter-actions">
+                        <button
+                            className="btn-sm btn-outline"
+                            onClick={() => {
+                                setFilters({ year: new Date().getFullYear(), department_id: '' });
+                                setShowFilters(false);
+                            }}
+                        >
+                            Reset
+                        </button>
+                        <button
+                            className="btn-sm btn-primary-sm"
+                            onClick={() => setShowFilters(false)}
+                        >
+                            Apply
+                        </button>
                     </div>
                 </div>
             )}

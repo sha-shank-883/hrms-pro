@@ -135,23 +135,23 @@ const AttendanceWidget = React.memo(({ chartType = 'area', onToggle, onSettingsC
                                 ))}
                             </select>
                         </div>
-                        <div className="filter-actions">
-                            <button
-                                className="btn-sm btn-outline"
-                                onClick={() => {
-                                    setFilters({ start_date: '', end_date: '', department_id: '' });
-                                    setShowFilters(false);
-                                }}
-                            >
-                                Reset
-                            </button>
-                            <button
-                                className="btn-sm btn-primary-sm"
-                                onClick={() => setShowFilters(false)}
-                            >
-                                Apply
-                            </button>
-                        </div>
+                    </div>
+                    <div className="filter-actions">
+                        <button
+                            className="btn-sm btn-outline"
+                            onClick={() => {
+                                setFilters({ start_date: '', end_date: '', department_id: '' });
+                                setShowFilters(false);
+                            }}
+                        >
+                            Reset
+                        </button>
+                        <button
+                            className="btn-sm btn-primary-sm"
+                            onClick={() => setShowFilters(false)}
+                        >
+                            Apply
+                        </button>
                     </div>
                 </div>
             )}

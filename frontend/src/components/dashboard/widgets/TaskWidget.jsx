@@ -204,24 +204,23 @@ const TaskWidget = React.memo(({ chartType = 'pie', onToggle, onSettingsClick, i
                                 </select>
                             </div>
                         </div>
-
-                        <div className="filter-actions">
-                            <button
-                                className="btn-sm btn-outline"
-                                onClick={() => {
-                                    setFilters({ startDate: '', endDate: '', departmentId: '', priority: '', status: '' });
-                                    setShowFilters(false);
-                                }}
-                            >
-                                Reset
-                            </button>
-                            <button
-                                className="btn-sm btn-primary-sm"
-                                onClick={() => setShowFilters(false)}
-                            >
-                                Apply
-                            </button>
-                        </div>
+                    </div>
+                    <div className="filter-actions">
+                        <button
+                            className="btn-sm btn-outline"
+                            onClick={() => {
+                                setFilters({ startDate: '', endDate: '', departmentId: '', priority: '', status: '' });
+                                setShowFilters(false);
+                            }}
+                        >
+                            Reset
+                        </button>
+                        <button
+                            className="btn-sm btn-primary-sm"
+                            onClick={() => setShowFilters(false)}
+                        >
+                            Apply
+                        </button>
                     </div>
                 </div>
             )}

@@ -3,6 +3,7 @@ import { attendanceService, employeeService } from '../services';
 import { useSettings } from '../hooks/useSettings.jsx';
 import { formatDate } from '../utils/settingsHelper';
 import { useAuth } from '../context/AuthContext';
+import { useNotifications } from '../context/NotificationContext';
 import {
   FaClock,
   FaCalendarCheck,
@@ -23,6 +24,7 @@ import AttendanceRegularizationModal from '../components/attendance/AttendanceRe
 
 const Attendance = () => {
   const { user } = useAuth();
+  const { notifications, markAsRead } = useNotifications();
   const { getSetting } = useSettings();
   const [attendanceRecords, setAttendanceRecords] = useState([]);
   const [employees, setEmployees] = useState([]);
@@ -61,6 +63,12 @@ const Attendance = () => {
     hasNext: false,
     hasPrev: false
   });
+
+  useEffect(() => {
+    if (activeTab === 'regularization') {
+      markAsRead('attendance');
+    }
+  }, [activeTab, markAsRead]);
 
   useEffect(() => {
     if (activeTab === 'attendance') {
@@ -357,6 +365,11 @@ const Attendance = () => {
           onClick={() => setActiveTab('regularization')}
         >
           <FaExclamationTriangle className="inline mr-2" /> Regularization Requests
+          {notifications.attendance > 0 && (
+            <span className="badge badge-primary badge-sm bg-primary-600 text-white min-w-[20px] h-[20px] flex items-center justify-center rounded-full text-[10px] ml-1 inline-flex">
+              {notifications.attendance}
+            </span>
+          )}
         </button>
       </div>
 

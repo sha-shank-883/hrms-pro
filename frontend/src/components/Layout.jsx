@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
+import { useNotifications } from '../context/NotificationContext';
 import { useSettings } from '../hooks/useSettings.jsx';
 import { leaveService, taskService } from '../services';
 import {
@@ -10,24 +11,30 @@ import {
   FaUserPlus, FaUserMinus, FaBoxOpen, FaHistory, FaComments,
   FaUserSlash, FaBuilding, FaChartLine, FaSitemap, FaBolt,
   FaSearch, FaBell, FaQuestionCircle, FaEnvelope,
-  FaChevronDown, FaUser, FaFileInvoiceDollar, FaCheckDouble
+  FaChevronDown, FaUser, FaFileInvoiceDollar, FaCheckDouble,
+  FaPlane
 } from 'react-icons/fa';
 
 const Layout = () => {
   const { user, logout } = useAuth();
   const { settings } = useSettings();
-  const { socket } = useSocket();
+  const { notifications, markAsRead } = useNotifications();
   const navigate = useNavigate();
   const location = useLocation();
   const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth > 1024);
-  const [notifications, setNotifications] = useState({
-    leaves: 0,
-    tasks: 0,
-    chat: 0
-  });
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+
+  // Auto-mark as read on route change
+  useEffect(() => {
+    const path = location.pathname;
+    if (path === '/leaves') markAsRead('leaves');
+    if (path === '/tasks') markAsRead('tasks');
+    if (path === '/chat') markAsRead('chat');
+    if (path === '/attendance') markAsRead('attendance');
+    if (path === '/live-activity') markAsRead('liveActivity');
+  }, [location.pathname, markAsRead]);
 
   // Close sidebar on route change on mobile
   useEffect(() => {
@@ -35,52 +42,6 @@ const Layout = () => {
       setIsSidebarOpen(false);
     }
   }, [location.pathname]);
-
-  useEffect(() => {
-    loadNotifications();
-
-    if (socket) {
-      socket.on('notification', (data) => {
-        if (data.type === 'LEAVE_APPLICATION') {
-          setNotifications(prev => ({ ...prev, leaves: prev.leaves + 1 }));
-        } else if (data.type === 'TASK_ASSIGNED') {
-          setNotifications(prev => ({ ...prev, tasks: prev.tasks + 1 }));
-        } else if (data.type === 'NEW_MESSAGE') {
-          setNotifications(prev => ({ ...prev, chat: prev.chat + 1 }));
-        }
-        loadNotifications();
-      });
-
-      socket.on('dashboard_update', () => {
-        loadNotifications();
-      });
-    }
-
-    const interval = setInterval(loadNotifications, 60000);
-    return () => {
-      clearInterval(interval);
-      if (socket) {
-        socket.off('notification');
-        socket.off('dashboard_update');
-      }
-    };
-  }, [socket]);
-
-  const loadNotifications = async () => {
-    try {
-      const leavesResponse = await leaveService.getAll();
-      const pendingLeaves = leavesResponse.data.filter(l => l.status === 'pending').length;
-      const tasksResponse = await taskService.getAll();
-      const pendingTasks = tasksResponse.data.filter(t => t.status === 'todo' || t.status === 'in_progress').length;
-      setNotifications({
-        leaves: pendingLeaves,
-        tasks: pendingTasks,
-        chat: 0
-      });
-    } catch (error) {
-      console.error('Failed to load notifications:', error);
-    }
-  };
 
   const handleLogout = () => {
     logout();
@@ -245,49 +206,29 @@ const Layout = () => {
           <NavItem to="/" icon={<FaHome />} label="Dashboard" />
 
           {(user.role === 'admin' || user.role === 'manager') && (
-            <NavItem to="/live-activity" icon={<FaBolt />} label="Live Activity" />
+            <NavItem to="/live-activity" icon={<FaBolt />} label="Live Activity" count={notifications.liveActivity} />
           )}
 
           <NavItem to="/chat" icon={<FaComments />} label="Chat" count={notifications.chat} />
 
-          {(user.role === 'admin' || user.role === 'manager') && (
-            <>
-              <NavSection title="Organization" />
-              <NavItem to="/employees" icon={<FaUsers />} label="Employees" />
-              <NavItem to="/departments" icon={<FaBuilding />} label="Departments" />
-              <NavItem to="/org-chart" icon={<FaSitemap />} label="Org Chart" />
-              <NavItem to="/onboarding" icon={<FaUserPlus />} label="Onboarding" />
-              <NavItem to="/offboarding" icon={<FaUserSlash />} label="Offboarding" />
-            </>
-          )}
-
-          <NavSection title="Time & Attendance" />
-          <NavItem to="/attendance" icon={<FaCalendarCheck />} label="Attendance" />
-          <NavItem to="/leaves" icon={<FaCalendarCheck />} label="Leave Tracker" count={notifications.leaves} />
-
-          <NavSection title="Performance & Tasks" />
-          <NavItem to="/tasks" icon={<FaTasks />} label="Tasks / Projects" count={notifications.tasks} />
+          <NavSection title="Main Modules" />
+          <NavItem to="/employees" icon={<FaUsers />} label="Employees" />
+          <NavItem to="/departments" icon={<FaBuilding />} label="Departments" />
+          <NavItem to="/attendance" icon={<FaCalendarCheck />} label="Attendance" count={notifications.attendance} />
+          <NavItem to="/leaves" icon={<FaPlane />} label="Leaves" count={notifications.leaves} />
+          <NavItem to="/tasks" icon={<FaTasks />} label="Tasks" count={notifications.tasks} />
           <NavItem to="/performance" icon={<FaChartLine />} label="Performance" />
-
-          {(user.role === 'admin' || user.role === 'manager') && (
-            <>
-              <NavSection title="Finance" />
-              <NavItem to="/payroll" icon={<FaMoneyBillWave />} label="Payroll" />
-            </>
-          )}
-
-          <NavSection title="Resources" />
+          <NavItem to="/payroll" icon={<FaMoneyBillWave />} label="Payroll" />
+          <NavItem to="/recruitment" icon={<FaUserPlus />} label="Recruitment" />
           <NavItem to="/documents" icon={<FaFileAlt />} label="Documents" />
           <NavItem to="/assets" icon={<FaBoxOpen />} label="Assets" />
 
-          {(user.role === 'admin') && (
+          {user.role === 'admin' && (
             <>
               <NavSection title="Administration" />
-              {/* Only show Super Admin / SaaS Admin for tenant_default */}
               {localStorage.getItem('tenant_id') === 'tenant_default' && (
                 <NavItem to="/super-admin" icon={<FaBolt />} label="SaaS Admin" />
               )}
-              <NavItem to="/recruitment" icon={<FaUserPlus />} label="Recruitment" />
               <NavItem to="/reports" icon={<FaFileAlt />} label="Reports" />
               <NavItem to="/email-templates" icon={<FaFileAlt />} label="Email Templates" />
               <NavItem to="/send-email" icon={<FaEnvelope />} label="Send Email" />

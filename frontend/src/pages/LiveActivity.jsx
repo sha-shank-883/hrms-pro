@@ -6,11 +6,13 @@ import {
 import { leaveService, taskService, attendanceService } from '../services';
 import { useSocket } from '../context/SocketContext';
 import { useAuth } from '../context/AuthContext';
+import { useNotifications } from '../context/NotificationContext';
 import '../styles/LiveActivity.css';
 
 const LiveActivity = () => {
     const { user } = useAuth();
     const { socket } = useSocket();
+    const { markAsRead } = useNotifications();
     const [activities, setActivities] = useState([]);
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState('all'); // all, leaves, tasks, attendance
@@ -20,7 +22,8 @@ const LiveActivity = () => {
     // Fetch initial data
     useEffect(() => {
         fetchActivities();
-    }, []);
+        markAsRead('liveActivity');
+    }, [markAsRead]);
 
     const fetchActivities = async () => {
         try {

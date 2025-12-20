@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { SocketProvider } from './context/SocketContext';
+import { NotificationProvider } from './context/NotificationContext';
 import { SettingsProvider } from './hooks/useSettings.jsx';
 import './styles/global.css';
 
@@ -56,127 +57,129 @@ function App() {
   return (
     <AuthProvider>
       <SocketProvider>
-        <SettingsProvider>
-          <Router>
-            <Routes>
-              {/* Public/View-Only Routes */}
-              <Route path="/view/id-card/:id" element={<PublicIDCard />} />
+        <NotificationProvider>
+          <SettingsProvider>
+            <Router>
+              <Routes>
+                {/* Public/View-Only Routes */}
+                <Route path="/view/id-card/:id" element={<PublicIDCard />} />
 
-              <Route path="/login" element={<Login />} />
-              <Route path="/forgot-password" element={<ForgotPassword />} />
-              <Route path="/reset-password/:token" element={<ResetPassword />} />
+                <Route path="/login" element={<Login />} />
+                <Route path="/forgot-password" element={<ForgotPassword />} />
+                <Route path="/reset-password/:token" element={<ResetPassword />} />
 
-              <Route path="/" element={
-                <AuthRoute>
-                  <Layout />
-                </AuthRoute>
-              }>
-                <Route index element={<Dashboard />} />
-                <Route path="departments" element={
-                  <ProtectedRoute allowedRoles={['admin', 'manager']}>
-                    <Departments />
-                  </ProtectedRoute>
-                } />
-                <Route path="employees" element={
-                  <ProtectedRoute allowedRoles={['admin', 'manager']}>
-                    <Employees />
-                  </ProtectedRoute>
-                } />
-                <Route path="employees/:id" element={
-                  <ProtectedRoute allowedRoles={['admin', 'manager', 'employee']}>
-                    <Profile />
-                  </ProtectedRoute>
-                } />
-                <Route path="attendance" element={<Attendance />} />
-                <Route path="leaves" element={<Leaves />} />
-                <Route path="tasks" element={<Tasks />} />
-                <Route path="onboarding" element={<Onboarding />} />
-                <Route path="offboarding" element={<Onboarding />} />
-                <Route path="performance" element={<Performance />} />
-                <Route path="performance/review/:id" element={<PerformanceReview />} />
-                <Route path="performance/cycles" element={
-                  <ProtectedRoute allowedRoles={['admin']}>
-                    <PerformanceCycles />
-                  </ProtectedRoute>
-                } />
-                <Route path="payroll" element={
-                  <ProtectedRoute allowedRoles={['admin', 'manager']}>
-                    <Payroll />
-                  </ProtectedRoute>
-                } />
-                <Route path="my-payslips" element={
-                  <ProtectedRoute allowedRoles={['employee']}>
-                    <MyPayslips />
-                  </ProtectedRoute>
-                } />
-                <Route path="recruitment" element={
-                  <ProtectedRoute allowedRoles={['admin', 'manager']}>
-                    <Recruitment />
-                  </ProtectedRoute>
-                } />
-                <Route path="documents" element={<Documents />} />
-                <Route path="my-documents" element={
-                  <ProtectedRoute allowedRoles={['employee']}>
-                    <MyDocuments />
-                  </ProtectedRoute>
-                } />
-                <Route path="assets" element={<Assets />} />
-                <Route path="audit-logs" element={
-                  <ProtectedRoute allowedRoles={['admin']}>
-                    <AuditLogs />
-                  </ProtectedRoute>
-                } />
-                <Route path="chat" element={<Chat />} />
-                <Route path="reports" element={
-                  <ProtectedRoute allowedRoles={['admin', 'manager']}>
-                    <Reports />
-                  </ProtectedRoute>
-                } />
-                <Route path="reports/churn-risk" element={
-                  <ProtectedRoute allowedRoles={['admin']}>
-                    <ChurnRiskReport />
-                  </ProtectedRoute>
-                } />
-                <Route path="live-activity" element={
-                  <ProtectedRoute allowedRoles={['admin', 'manager']}>
-                    <LiveActivity />
-                  </ProtectedRoute>
-                } />
-                <Route path="analytics" element={
-                  <ProtectedRoute allowedRoles={['admin', 'manager']}>
-                    <Analytics />
-                  </ProtectedRoute>
-                } />
-                <Route path="settings" element={
-                  <ProtectedRoute allowedRoles={['admin']}>
-                    <Settings />
-                  </ProtectedRoute>
-                } />
-                <Route path="email-templates" element={
-                  <ProtectedRoute allowedRoles={['admin']}>
-                    <EmailTemplates />
-                  </ProtectedRoute>
-                } />
-                <Route path="send-email" element={
-                  <ProtectedRoute allowedRoles={['admin', 'manager']}>
-                    <SendEmail />
-                  </ProtectedRoute>
-                } />
-                <Route path="super-admin" element={
-                  <SuperAdminRoute>
-                    <SuperAdmin />
-                  </SuperAdminRoute>
-                } />
-                <Route path="profile" element={<Profile />} />
-                <Route path="org-chart" element={
-                  <ProtectedRoute allowedRoles={['admin', 'manager', 'employee']}>
-                    <OrgChart />
-                  </ProtectedRoute>
-                } />
-              </Route>
-            </Routes>
-          </Router>
-        </SettingsProvider>
+                <Route path="/" element={
+                  <AuthRoute>
+                    <Layout />
+                  </AuthRoute>
+                }>
+                  <Route index element={<Dashboard />} />
+                  <Route path="departments" element={
+                    <ProtectedRoute allowedRoles={['admin', 'manager']}>
+                      <Departments />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="employees" element={
+                    <ProtectedRoute allowedRoles={['admin', 'manager']}>
+                      <Employees />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="employees/:id" element={
+                    <ProtectedRoute allowedRoles={['admin', 'manager', 'employee']}>
+                      <Profile />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="attendance" element={<Attendance />} />
+                  <Route path="leaves" element={<Leaves />} />
+                  <Route path="tasks" element={<Tasks />} />
+                  <Route path="onboarding" element={<Onboarding />} />
+                  <Route path="offboarding" element={<Onboarding />} />
+                  <Route path="performance" element={<Performance />} />
+                  <Route path="performance/review/:id" element={<PerformanceReview />} />
+                  <Route path="performance/cycles" element={
+                    <ProtectedRoute allowedRoles={['admin']}>
+                      <PerformanceCycles />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="payroll" element={
+                    <ProtectedRoute allowedRoles={['admin', 'manager']}>
+                      <Payroll />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="my-payslips" element={
+                    <ProtectedRoute allowedRoles={['employee']}>
+                      <MyPayslips />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="recruitment" element={
+                    <ProtectedRoute allowedRoles={['admin', 'manager']}>
+                      <Recruitment />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="documents" element={<Documents />} />
+                  <Route path="my-documents" element={
+                    <ProtectedRoute allowedRoles={['employee']}>
+                      <MyDocuments />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="assets" element={<Assets />} />
+                  <Route path="audit-logs" element={
+                    <ProtectedRoute allowedRoles={['admin']}>
+                      <AuditLogs />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="chat" element={<Chat />} />
+                  <Route path="reports" element={
+                    <ProtectedRoute allowedRoles={['admin', 'manager']}>
+                      <Reports />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="reports/churn-risk" element={
+                    <ProtectedRoute allowedRoles={['admin']}>
+                      <ChurnRiskReport />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="live-activity" element={
+                    <ProtectedRoute allowedRoles={['admin', 'manager']}>
+                      <LiveActivity />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="analytics" element={
+                    <ProtectedRoute allowedRoles={['admin', 'manager']}>
+                      <Analytics />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="settings" element={
+                    <ProtectedRoute allowedRoles={['admin']}>
+                      <Settings />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="email-templates" element={
+                    <ProtectedRoute allowedRoles={['admin']}>
+                      <EmailTemplates />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="send-email" element={
+                    <ProtectedRoute allowedRoles={['admin', 'manager']}>
+                      <SendEmail />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="super-admin" element={
+                    <SuperAdminRoute>
+                      <SuperAdmin />
+                    </SuperAdminRoute>
+                  } />
+                  <Route path="profile" element={<Profile />} />
+                  <Route path="org-chart" element={
+                    <ProtectedRoute allowedRoles={['admin', 'manager', 'employee']}>
+                      <OrgChart />
+                    </ProtectedRoute>
+                  } />
+                </Route>
+              </Routes>
+            </Router>
+          </SettingsProvider>
+        </NotificationProvider>
       </SocketProvider>
     </AuthProvider>
   );

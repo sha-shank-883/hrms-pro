@@ -1,13 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { taskService, employeeService, departmentService } from '../services';
 import { useAuth } from '../context/AuthContext';
+import { useNotifications } from '../context/NotificationContext';
 import { useSettings } from '../hooks/useSettings.jsx';
 import { formatDate } from '../utils/settingsHelper';
-import { FaTasks, FaPlus, FaSearch, FaTimes, FaFilter, FaCheckCircle, FaSpinner, FaPaperclip, FaClock } from 'react-icons/fa';
+import { FaTasks, FaPlus, FaSearch, FaTimes, FaFilter, FaCheckCircle, FaSpinner, FaPaperclip, FaClock, FaTrash, FaHistory } from 'react-icons/fa';
 import { FiMoreVertical, FiEdit2, FiTrash2, FiAlertCircle } from 'react-icons/fi';
 
 const Tasks = () => {
   const { user } = useAuth();
+  const { notifications, markAsRead } = useNotifications();
   const { getSetting } = useSettings();
   const [tasks, setTasks] = useState([]);
   const [employees, setEmployees] = useState([]);
@@ -63,6 +65,10 @@ const Tasks = () => {
 
   // Fetch tasks and statistics on component mount
   useEffect(() => {
+    markAsRead('tasks');
+  }, [markAsRead]);
+
+  useEffect(() => {
     fetchTasks();
     fetchTaskStatistics();
     if (user?.role === 'admin' || user?.role === 'manager') {
@@ -79,7 +85,13 @@ const Tasks = () => {
     } else {
       setFilteredEmployees(employees);
     }
-  }, [formData.department_id, employees]);
+
+    // Reset assigned employees on department change to maintain data integrity
+    // (Only if it's a manual change, not initial load for edit)
+    if (!editingTask) {
+      setFormData(prev => ({ ...prev, assigned_employees: [] }));
+    }
+  }, [formData.department_id, employees, editingTask]);
 
   const fetchTasks = async (page = 1) => {
     try {
@@ -202,11 +214,20 @@ const Tasks = () => {
     setError('');
 
     try {
+      // Prepare data for submission, ensuring numeric/optional fields are sent correctly
+      const submissionData = {
+        ...formData,
+        estimated_hours: formData.estimated_hours === '' ? null : formData.estimated_hours,
+        actual_hours: formData.actual_hours === '' ? null : formData.actual_hours,
+        progress: formData.progress === '' ? 0 : formData.progress,
+        department_id: formData.department_id === '' ? null : formData.department_id
+      };
+
       if (editingTask) {
-        await taskService.update(editingTask.task_id, formData);
+        await taskService.update(editingTask.task_id, submissionData);
         setSuccess('Task updated successfully!');
       } else {
-        await taskService.create(formData);
+        await taskService.create(submissionData);
         setSuccess('Task created successfully!');
       }
       fetchTasks();
@@ -252,6 +273,8 @@ const Tasks = () => {
       due_date: task.due_date || '',
       department_id: task.department_id || '',
       estimated_hours: task.estimated_hours || '',
+      actual_hours: task.actual_hours || '',
+      progress: task.progress || 0,
       assigned_employees: task.assigned_employee_ids || [],
       category: task.category || 'general'
     });
@@ -270,6 +293,8 @@ const Tasks = () => {
       due_date: '',
       department_id: '',
       estimated_hours: '',
+      actual_hours: '',
+      progress: 0,
       assigned_employees: [],
       category: 'general'
     });
@@ -407,7 +432,12 @@ const Tasks = () => {
               <FaClock className="text-amber-600" />
             </div>
             <div>
-              <div className="text-neutral-500 text-xs font-semibold uppercase tracking-wider">To Do</div>
+              <div className="text-neutral-500 text-xs font-semibold uppercase tracking-wider flex items-center gap-2">
+                To Do
+                {notifications.tasks > 0 && (
+                  <span className="bg-primary-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">New</span>
+                )}
+              </div>
               <div className="text-2xl font-bold text-neutral-800">{taskStatistics.todo_tasks}</div>
             </div>
           </div>
@@ -686,113 +716,183 @@ const Tasks = () => {
       {/* Task Modal */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-neutral-900/50 backdrop-blur-sm" onClick={handleCloseModal}>
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in duration-200" onClick={(e) => e.stopPropagation()}>
-            <div className="px-6 py-4 border-b border-neutral-100 flex justify-between items-center bg-neutral-50/50">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200" onClick={(e) => e.stopPropagation()}>
+            {/* Header - Fixed */}
+            <div className="px-6 py-4 border-b border-neutral-100 flex justify-between items-center bg-neutral-50/50 shrink-0">
               <h2 className="text-lg font-bold text-neutral-800">{editingTask ? 'Edit Task' : 'New Task'}</h2>
               <button onClick={handleCloseModal} className="text-neutral-400 hover:text-neutral-600 transition-colors">
                 <FaTimes size={18} />
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-6">
-              <div className="space-y-4">
-                <div>
-                  <label className="form-label">Title <span className="text-red-500">*</span></label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={formData.title}
-                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="form-label">Description</label>
-                  <textarea
-                    className="form-input"
-                    value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    rows="3"
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Form - Body + Footer */}
+            <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
+              {/* Scrollable Content */}
+              <div className="p-6 overflow-y-auto custom-scrollbar flex-1">
+                <div className="space-y-4">
                   <div>
-                    <label className="form-label">Priority</label>
-                    <select
-                      className="form-select"
-                      value={formData.priority}
-                      onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
-                    >
-                      <option value="low">Low</option>
-                      <option value="medium">Medium</option>
-                      <option value="high">High</option>
-                      <option value="urgent">Urgent</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="form-label">Status</label>
-                    <select
-                      className="form-select"
-                      value={formData.status}
-                      onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                    >
-                      <option value="todo">To Do</option>
-                      <option value="in_progress">In Progress</option>
-                      <option value="completed">Completed</option>
-                      <option value="cancelled">Cancelled</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="form-label">Due Date</label>
+                    <label className="form-label">Title <span className="text-red-500">*</span></label>
                     <input
-                      type="date"
+                      type="text"
                       className="form-input"
-                      value={formData.due_date}
-                      onChange={(e) => setFormData({ ...formData, due_date: e.target.value })}
+                      value={formData.title}
+                      onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                      required
                     />
                   </div>
 
                   <div>
-                    <label className="form-label">Category</label>
-                    <select
-                      className="form-select"
-                      value={formData.category}
-                      onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                    >
-                      <option value="general">General</option>
-                      <option value="onboarding">Onboarding</option>
-                      <option value="offboarding">Offboarding</option>
-                    </select>
+                    <label className="form-label">Description</label>
+                    <textarea
+                      className="form-input"
+                      value={formData.description}
+                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                      rows="3"
+                    />
                   </div>
-                </div>
 
-                <div>
-                  <label className="form-label">Assign Employees</label>
-                  <div className="border border-neutral-300 rounded-lg p-3 max-h-48 overflow-y-auto bg-neutral-50/50">
-                    {filteredEmployees.map(emp => (
-                      <label key={emp.employee_id} className="flex items-center gap-3 p-2 hover:bg-white hover:shadow-sm rounded cursor-pointer transition-all">
-                        <input
-                          type="checkbox"
-                          checked={formData.assigned_employees.includes(emp.employee_id)}
-                          onChange={() => toggleEmployee(emp.employee_id)}
-                          className="form-checkbox"
-                        />
-                        <div className="text-sm">
-                          <span className="font-medium text-neutral-900">{emp.first_name} {emp.last_name}</span>
-                          <span className="text-neutral-500 ml-2 text-xs">({emp.position || 'No Title'})</span>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="form-label">Priority</label>
+                      <select
+                        className="form-select"
+                        value={formData.priority}
+                        onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
+                      >
+                        <option value="low">Low</option>
+                        <option value="medium">Medium</option>
+                        <option value="high">High</option>
+                        <option value="urgent">Urgent</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="form-label">Status</label>
+                      <select
+                        className="form-select"
+                        value={formData.status}
+                        onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                      >
+                        <option value="todo">To Do</option>
+                        <option value="in_progress">In Progress</option>
+                        <option value="completed">Completed</option>
+                        <option value="cancelled">Cancelled</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="form-label">Due Date</label>
+                      <input
+                        type="date"
+                        className="form-input"
+                        value={formData.due_date}
+                        onChange={(e) => setFormData({ ...formData, due_date: e.target.value })}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="form-label">Estimated Hours</label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        className="form-input"
+                        placeholder="0.0"
+                        value={formData.estimated_hours}
+                        onChange={(e) => setFormData({ ...formData, estimated_hours: e.target.value })}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="form-label">Actual Hours</label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        className="form-input"
+                        placeholder="0.0"
+                        value={formData.actual_hours}
+                        onChange={(e) => setFormData({ ...formData, actual_hours: e.target.value })}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="form-label">Category</label>
+                      <select
+                        className="form-select"
+                        value={formData.category}
+                        onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                      >
+                        <option value="general">General</option>
+                        <option value="onboarding">Onboarding</option>
+                        <option value="offboarding">Offboarding</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="form-label">Progress (%)</label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        className="form-input"
+                        placeholder="0"
+                        value={formData.progress}
+                        onChange={(e) => setFormData({ ...formData, progress: e.target.value })}
+                      />
+                    </div>
+
+                    <div className="md:col-span-2">
+                      <label className="form-label">Department <span className="text-red-500">*</span></label>
+                      <select
+                        className="form-select"
+                        value={formData.department_id}
+                        onChange={(e) => setFormData({ ...formData, department_id: e.target.value })}
+                        required
+                      >
+                        <option value="">Select Department</option>
+                        {departments.map(dept => (
+                          <option key={dept.department_id} value={dept.department_id}>
+                            {dept.department_name}
+                          </option>
+                        ))}
+                      </select>
+                      <p className="text-[10px] text-neutral-400 mt-1">Filtering employees based on selected department.</p>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="form-label">Assign Employees</label>
+                    <div className="border border-neutral-300 rounded-lg p-3 max-h-48 overflow-y-auto bg-neutral-50/50 custom-scrollbar">
+                      {!formData.department_id ? (
+                        <div className="text-center py-4 text-neutral-400 italic text-xs">
+                          Please select a department first to see employees.
                         </div>
-                      </label>
-                    ))}
+                      ) : filteredEmployees.length === 0 ? (
+                        <div className="text-center py-4 text-neutral-400 italic text-xs">
+                          No employees found in this department.
+                        </div>
+                      ) : (
+                        filteredEmployees.map(emp => (
+                          <label key={emp.employee_id} className="flex items-center gap-3 p-2 hover:bg-white hover:shadow-sm rounded cursor-pointer transition-all">
+                            <input
+                              type="checkbox"
+                              checked={formData.assigned_employees.includes(emp.employee_id)}
+                              onChange={() => toggleEmployee(emp.employee_id)}
+                              className="form-checkbox"
+                            />
+                            <div className="text-sm">
+                              <span className="font-medium text-neutral-900">{emp.first_name} {emp.last_name}</span>
+                              <span className="text-neutral-500 ml-2 text-xs">({emp.position || 'No Title'})</span>
+                            </div>
+                          </label>
+                        ))
+                      )}
+                    </div>
                   </div>
                 </div>
-
               </div>
 
-              <div className="flex justify-end gap-3 pt-6 border-t border-neutral-100 mt-6">
+              {/* Footer - Sticky */}
+              <div className="flex justify-end gap-3 px-6 py-4 border-t border-neutral-100 bg-neutral-50/50 shrink-0">
                 <button type="button" className="btn btn-secondary" onClick={handleCloseModal}>Cancel</button>
                 <button type="submit" className="btn btn-primary">{editingTask ? 'Update Task' : 'Create Task'}</button>
               </div>
@@ -804,98 +904,158 @@ const Tasks = () => {
       {/* Task Updates Modal */}
       {showUpdateModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-neutral-900/50 backdrop-blur-sm" onClick={handleCloseUpdateModal}>
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-3xl overflow-hidden animate-in fade-in zoom-in duration-200" onClick={(e) => e.stopPropagation()}>
-            <div className="px-6 py-4 border-b border-neutral-100 flex justify-between items-center bg-neutral-50/50">
-              <h2 className="text-lg font-bold text-neutral-800">Task Timeline: {selectedTaskForUpdate?.title}</h2>
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200" onClick={(e) => e.stopPropagation()}>
+            {/* Header - Fixed */}
+            <div className="px-6 py-4 border-b border-neutral-100 flex justify-between items-center bg-neutral-50/50 shrink-0">
+              <div>
+                <h2 className="text-lg font-bold text-neutral-800">Task Timeline</h2>
+                <p className="text-xs text-neutral-500 font-medium truncate max-w-md">{selectedTaskForUpdate?.title}</p>
+              </div>
               <button onClick={handleCloseUpdateModal} className="text-neutral-400 hover:text-neutral-600 transition-colors">
                 <FaTimes size={18} />
               </button>
             </div>
 
-            <div className="p-6">
-              <div className="bg-neutral-50 rounded-lg border border-neutral-200 p-4 mb-6 max-h-[300px] overflow-y-auto">
-                {taskUpdates.length === 0 ? (
-                  <div className="text-center py-8 text-neutral-500">
-                    <FaClock className="mx-auto mb-2 opacity-20" size={32} />
-                    <p>No activity recorded yet.</p>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {taskUpdates.map((update, index) => (
-                      <div key={update.update_id} className="relative pl-6 border-l-2 border-neutral-200 pb-2">
-                        <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-white border-2 border-primary-500"></div>
-                        <div className="flex justify-between items-start mb-1">
-                          <span className="font-semibold text-sm text-neutral-900">
-                            {update.employee?.first_name} {update.employee?.last_name}
-                          </span>
-                          <span className="text-xs text-neutral-400">{new Date(update.created_at).toLocaleString()}</span>
-                        </div>
-                        <p className="text-sm text-neutral-700 bg-white p-3 rounded border border-neutral-100 shadow-sm mb-2">{update.update_text}</p>
-                        <div className="flex gap-3 text-xs text-neutral-500 font-medium">
-                          {update.hours_spent && <span className="flex items-center gap-1"><FaClock size={10} /> {update.hours_spent}h</span>}
-                          {update.progress_percentage && <span>Progress: {update.progress_percentage}%</span>}
-                          {update.status && <span className={`badge ${getStatusBadgeClass(update.status)} text-[10px]`}>{update.status.replace('_', ' ')}</span>}
-                        </div>
+            {/* Content - Scrollable Body */}
+            <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
+              <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 h-full">
+                {/* Timeline Column */}
+                <div className="lg:col-span-3 space-y-4">
+                  <h3 className="text-sm font-bold text-neutral-700 flex items-center gap-2 mb-4">
+                    <FaHistory className="text-primary-600" /> Activity History
+                  </h3>
+                  <div className="bg-neutral-50/50 rounded-xl border border-neutral-200/60 p-5 overflow-hidden">
+                    {taskUpdates.length === 0 ? (
+                      <div className="text-center py-12 text-neutral-400">
+                        <FaClock className="mx-auto mb-3 opacity-20" size={40} />
+                        <p className="text-sm font-medium">No activity recorded yet for this task.</p>
                       </div>
-                    ))}
+                    ) : (
+                      <div className="space-y-6">
+                        {taskUpdates.map((update, index) => (
+                          <div key={update.update_id} className="relative pl-7 border-l-2 border-primary-100 last:border-l-transparent pb-1">
+                            <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-white border-2 border-primary-500 shadow-sm z-10"></div>
+                            <div className="flex justify-between items-start mb-2 group">
+                              <div className="flex items-center gap-2">
+                                <div className="h-6 w-6 rounded-full bg-primary-100 flex items-center justify-center text-[10px] font-bold text-primary-700 uppercase">
+                                  {update.employee?.first_name?.charAt(0)}{update.employee?.last_name?.charAt(0)}
+                                </div>
+                                <span className="font-bold text-xs text-neutral-900">
+                                  {update.employee?.first_name} {update.employee?.last_name}
+                                </span>
+                              </div>
+                              <span className="text-[10px] text-neutral-400 font-medium bg-neutral-100 px-2 py-0.5 rounded-full">
+                                {new Date(update.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
+                              </span>
+                            </div>
+                            <div className="bg-white p-3 rounded-lg border border-neutral-100 shadow-sm mb-3">
+                              <p className="text-sm text-neutral-700 leading-relaxed whitespace-pre-wrap">{update.update_text}</p>
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                              {update.hours_spent && (
+                                <span className="flex items-center gap-1 text-[10px] font-bold text-neutral-500 bg-neutral-100 px-2 py-0.5 rounded">
+                                  <FaClock size={8} /> {update.hours_spent}h Spent
+                                </span>
+                              )}
+                              {update.progress_percentage !== null && (
+                                <span className="text-[10px] font-bold text-neutral-500 bg-neutral-100 px-2 py-0.5 rounded">
+                                  Progress: {update.progress_percentage}%
+                                </span>
+                              )}
+                              {update.status && (
+                                <span className={`badge ${getStatusBadgeClass(update.status)} text-[9px] !px-2 !py-0.5`}>
+                                  {update.status.replace('_', ' ')}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                )}
+                </div>
+
+                {/* Post Update Column */}
+                <div className="lg:col-span-2">
+                  <div className="sticky top-0">
+                    <h3 className="text-sm font-bold text-neutral-700 flex items-center gap-2 mb-4">
+                      <FaPlus className="text-primary-600" /> New Update
+                    </h3>
+
+                    {(user.role === 'admin' || user.role === 'manager' || selectedTaskForUpdate?.assigned_employee_ids?.includes(user.userId)) ? (
+                      <form onSubmit={handleAddUpdate} className="bg-white border border-neutral-200 rounded-xl p-5 shadow-sm space-y-4">
+                        <div>
+                          <label className="form-label text-xs mb-1.5">Description of work <span className="text-red-500">*</span></label>
+                          <textarea
+                            className="form-input text-sm min-h-[100px]"
+                            value={updateFormData.update_text}
+                            onChange={(e) => setUpdateFormData({ ...updateFormData, update_text: e.target.value })}
+                            required
+                            placeholder="Describe what has been accomplished..."
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="form-label text-xs mb-1.5">Hours Spent</label>
+                            <input
+                              type="number"
+                              step="0.5"
+                              className="form-input text-sm"
+                              value={updateFormData.hours_spent}
+                              onChange={(e) => setUpdateFormData({ ...updateFormData, hours_spent: e.target.value })}
+                              placeholder="0.0"
+                            />
+                          </div>
+                          <div>
+                            <label className="form-label text-xs mb-1.5">Progress %</label>
+                            <input
+                              type="number"
+                              min="0"
+                              max="100"
+                              className="form-input text-sm"
+                              value={updateFormData.progress_percentage}
+                              onChange={(e) => setUpdateFormData({ ...updateFormData, progress_percentage: e.target.value })}
+                              placeholder="0-100"
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="form-label text-xs mb-1.5">Updated Status</label>
+                          <select
+                            className="form-select text-sm"
+                            value={updateFormData.status}
+                            onChange={(e) => setUpdateFormData({ ...updateFormData, status: e.target.value })}
+                          >
+                            <option value="">Maintain Current Status</option>
+                            <option value="todo">To Do</option>
+                            <option value="in_progress">In Progress</option>
+                            <option value="completed">Completed</option>
+                          </select>
+                        </div>
+
+                        <button type="submit" className="btn btn-primary w-full py-2.5 text-sm font-bold shadow-md hover:shadow-lg transition-all mt-2">
+                          Post Activity Update
+                        </button>
+                      </form>
+                    ) : (
+                      <div className="bg-amber-50 border border-amber-200 rounded-xl p-5 text-center">
+                        <FiAlertCircle className="mx-auto text-amber-500 mb-3" size={32} />
+                        <h4 className="text-sm font-bold text-amber-900 mb-1">Restricted Access</h4>
+                        <p className="text-xs text-amber-700 leading-relaxed">
+                          Only assigned employees or administrators can post updates for this task.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
+            </div>
 
-              <form onSubmit={handleAddUpdate} className="bg-white border border-neutral-200 rounded-lg p-4 shadow-sm">
-                <h4 className="text-sm font-bold text-neutral-700 mb-3 border-b border-neutral-100 pb-2">Add New Update</h4>
-                <div className="space-y-3">
-                  <textarea
-                    className="form-input"
-                    value={updateFormData.update_text}
-                    onChange={(e) => setUpdateFormData({ ...updateFormData, update_text: e.target.value })}
-                    rows="2"
-                    required
-                    placeholder="What did you work on?"
-                  />
-
-                  <div className="grid grid-cols-3 gap-3">
-                    <div>
-                      <label className="form-label text-xs">Hours</label>
-                      <input
-                        type="number"
-                        className="form-input text-xs"
-                        value={updateFormData.hours_spent}
-                        onChange={(e) => setUpdateFormData({ ...updateFormData, hours_spent: e.target.value })}
-                        placeholder="0.0"
-                      />
-                    </div>
-                    <div>
-                      <label className="form-label text-xs">Progress %</label>
-                      <input
-                        type="number"
-                        min="0"
-                        max="100"
-                        className="form-input text-xs"
-                        value={updateFormData.progress_percentage}
-                        onChange={(e) => setUpdateFormData({ ...updateFormData, progress_percentage: e.target.value })}
-                        placeholder="0-100"
-                      />
-                    </div>
-                    <div>
-                      <label className="form-label text-xs">Status</label>
-                      <select
-                        className="form-select text-xs"
-                        value={updateFormData.status}
-                        onChange={(e) => setUpdateFormData({ ...updateFormData, status: e.target.value })}
-                      >
-                        <option value="">No change</option>
-                        <option value="todo">To Do</option>
-                        <option value="in_progress">In Progress</option>
-                        <option value="completed">Completed</option>
-                      </select>
-                    </div>
-                  </div>
-                </div>
-                <div className="flex justify-end pt-3 mt-2">
-                  <button type="submit" className="btn btn-primary text-xs py-1.5">Post Update</button>
-                </div>
-              </form>
+            {/* Footer - Fixed */}
+            <div className="px-6 py-4 border-t border-neutral-100 bg-neutral-50/50 flex justify-end shrink-0">
+              <button onClick={handleCloseUpdateModal} className="btn btn-secondary px-6">Close Explorer</button>
             </div>
           </div>
         </div>

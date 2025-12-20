@@ -345,6 +345,16 @@ export const taskService = {
     const response = await api.delete(`/tasks/${id}`);
     return response.data;
   },
+
+  getUpdates: async (taskId) => {
+    const response = await api.get(`/tasks/${taskId}/updates`);
+    return response.data;
+  },
+
+  addUpdate: async (taskId, data) => {
+    const response = await api.post(`/tasks/${taskId}/updates`, data);
+    return response.data;
+  },
 };
 
 // Payroll services

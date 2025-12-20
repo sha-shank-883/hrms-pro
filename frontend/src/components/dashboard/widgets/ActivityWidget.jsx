@@ -1,8 +1,10 @@
 import React, { useState, useEffect, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FaBell, FaCheckCircle, FaClock, FaTasks, FaCalendarCheck, FaInfoCircle, FaFilter, FaCog } from 'react-icons/fa';
-import { useSocket } from '../../../context/SocketContext';
 import { leaveService, taskService, attendanceService } from '../../../services';
+import { useNotifications } from '../../../context/NotificationContext';
+import { useSocket } from '../../../context/SocketContext';
+import { useAuth } from '../../../context/AuthContext';
 
 const ActivityWidget = memo(({
     limit = 10,
@@ -12,8 +14,9 @@ const ActivityWidget = memo(({
     isSettingsOpen
 }) => {
     const { socket } = useSocket();
+    const { notifications: globalNotifications, markAsRead } = useNotifications();
     const navigate = useNavigate();
-    const [notifications, setNotifications] = useState([]);
+    const [activities, setActivities] = useState([]);
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState('all'); // all, leaves, tasks, attendance
 
@@ -81,7 +84,7 @@ const ActivityWidget = memo(({
 
                 // Sort by time descending
                 combined.sort((a, b) => new Date(b.time) - new Date(a.time));
-                setNotifications(combined.slice(0, limit));
+                setActivities(combined.slice(0, limit));
 
             } catch (error) {
                 console.error("Failed to fetch activity feed", error);
@@ -155,20 +158,25 @@ const ActivityWidget = memo(({
             }
 
             if (newItem) {
-                setNotifications(prev => [newItem, ...prev].slice(0, limit));
+                setActivities(prev => {
+                    const next = [newItem, ...prev];
+                    return next.slice(0, limit);
+                });
             }
         };
 
         socket.on('notification', handleNotification);
-        return () => socket.off('notification', handleNotification);
+        return () => {
+            socket.off('notification', handleNotification);
+        };
     }, [socket, limit]);
 
-    // Filter Logic
-    const filteredNotifications = notifications.filter(item => {
+    // Filter activities
+    const filteredActivities = activities.filter(act => {
         if (filter === 'all') return true;
-        if (filter === 'leaves' && item.type === 'LEAVE_APPLICATION') return true;
-        if (filter === 'tasks' && (item.type === 'TASK_ASSIGNED' || item.type === 'TASK_UPDATE')) return true;
-        if (filter === 'attendance' && item.type === 'ATTENDANCE_LOG') return true;
+        if (filter === 'leaves' && act.type === 'LEAVE_APPLICATION') return true;
+        if (filter === 'tasks' && (act.type === 'TASK_ASSIGNED' || act.type === 'TASK_UPDATE')) return true;
+        if (filter === 'attendance' && act.type === 'ATTENDANCE_LOG') return true;
         return false;
     });
 
@@ -190,17 +198,27 @@ const ActivityWidget = memo(({
 
     return (
         <div className="card h-full flex flex-col">
-            <div className="card-header flex justify-between items-center py-3 px-4">
-                <div className="flex items-center gap-3">
-                    <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary-50 text-primary-600">
-                        <FaBell size={14} />
-                    </div>
-                    <div>
-                        <h3 className="font-semibold text-gray-900 text-sm m-0">Live Activity</h3>
-                        <p className="text-xs text-gray-500 mt-0.5">Real-time system updates</p>
-                    </div>
+            <div className="flex items-center justify-between p-4 border-b border-neutral-100">
+                <div className="flex items-center gap-2">
+                    <h3 className="font-bold text-neutral-800 flex items-center gap-2">
+                        <FaBell className="text-primary-600" /> Live Activity
+                        {globalNotifications.liveActivity > 0 && (
+                            <span className="bg-primary-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full animate-pulse">
+                                {globalNotifications.liveActivity}
+                            </span>
+                        )}
+                    </h3>
                 </div>
-                <div className="flex gap-1">
+                <div className="flex items-center gap-1">
+                    <button
+                        className="text-xs font-semibold text-primary-600 hover:text-primary-700 px-2 py-1 hover:bg-primary-50 rounded transition-colors"
+                        onClick={() => {
+                            markAsRead('liveActivity');
+                            navigate('/live-activity');
+                        }}
+                    >
+                        View All
+                    </button>
                     <button
                         onClick={onSettingsClick}
                         className={`btn-icon-only ${isSettingsOpen ? 'active' : ''}`}
@@ -244,7 +262,7 @@ const ActivityWidget = memo(({
                     <div className="flex items-center justify-center h-40 bg-gray-50 rounded-lg m-4">
                         <div className="w-6 h-6 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--primary-600)', borderTopColor: 'transparent' }}></div>
                     </div>
-                ) : filteredNotifications.length === 0 ? (
+                ) : filteredActivities.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-40 text-gray-400 bg-gray-50 rounded-lg m-4">
                         <FaCheckCircle className="mb-3 text-success" size={36} />
                         <p className="text-sm font-medium text-gray-600">No recent activity</p>
@@ -252,25 +270,23 @@ const ActivityWidget = memo(({
                     </div>
                 ) : (
                     <div className="flex flex-col">
-                        {filteredNotifications.map((req) => (
-                            <div key={req.id} className="px-4 py-2 border-b border-neutral-100 hover:bg-neutral-50 transition-colors last:border-0 group flex items-center justify-between min-h-[48px]">
+                        {filteredActivities.map((act) => (
+                            <div key={act.id} className="px-4 py-2 border-b border-neutral-100 hover:bg-neutral-50 transition-colors last:border-0 group flex items-center justify-between min-h-[48px]">
                                 <div className="flex items-center gap-3 flex-1 min-w-0">
-                                    <div className={`notification-icon ${req.color}`}>
-                                        {req.icon}
+                                    <div className={`notification-icon ${act.color}`}>
+                                        {act.icon}
                                     </div>
                                     <div className="flex items-center gap-1.5 min-w-0 text-xs overflow-hidden">
-                                        <span className="font-semibold text-neutral-900 truncate shrink-0">{req.title}</span>
-                                        <span className="text-neutral-500 truncate shrink-0">· {req.subtitle}</span>
-                                        {req.message && (
-                                            <span className="text-neutral-500 truncate italic opacity-80 border-l border-neutral-200 pl-1.5 ml-0.5">
-                                                {req.message}
-                                            </span>
-                                        )}
+                                        <span className="font-semibold text-neutral-900 truncate shrink-0">{act.title}</span>
+                                        <span className="text-neutral-400 shrink-0">·</span>
+                                        <span className="text-neutral-500 truncate shrink-0">{act.subtitle}</span>
+                                        <span className="text-neutral-400 shrink-0">·</span>
+                                        <span className="text-neutral-600 truncate italic">"{act.message}"</span>
                                     </div>
                                 </div>
-                                <span className="text-[10px] text-neutral-400 whitespace-nowrap ml-3 shrink-0 italic">
-                                    {getTimeAgo(req.time)}
-                                </span>
+                                <div className="text-[10px] text-neutral-400 whitespace-nowrap ml-4 tabular-nums">
+                                    {new Date(act.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                </div>
                             </div>
                         ))}
                     </div>

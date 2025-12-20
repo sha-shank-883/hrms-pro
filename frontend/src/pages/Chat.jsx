@@ -1,11 +1,13 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { chatService, employeeService } from '../services';
 import { useAuth } from '../context/AuthContext';
+import { useNotifications } from '../context/NotificationContext';
 import io from 'socket.io-client';
 import EmojiPicker from 'emoji-picker-react';
 
 const Chat = () => {
   const { user } = useAuth();
+  const { markAsRead } = useNotifications();
   const [employees, setEmployees] = useState([]);
   const [filteredEmployees, setFilteredEmployees] = useState([]); // For search filtering
   const [conversations, setConversations] = useState([]);
@@ -229,6 +231,7 @@ const Chat = () => {
   useEffect(() => {
     loadEmployees();
     loadConversations();
+    markAsRead('chat');
   }, []);
 
   useEffect(() => {

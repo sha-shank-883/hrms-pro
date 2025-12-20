@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { leaveService, employeeService, holidayService } from '../services';
 import { useAuth } from '../context/AuthContext';
+import { useNotifications } from '../context/NotificationContext';
 import { useSettings } from '../hooks/useSettings.jsx';
 import { formatDate } from '../utils/settingsHelper';
 import {
@@ -27,6 +28,7 @@ import CompOffRequestModal from '../components/leaves/CompOffRequestModal';
 
 const Leaves = () => {
   const { user } = useAuth();
+  const { notifications, markAsRead } = useNotifications();
   const { getSetting } = useSettings();
   const [activeTab, setActiveTab] = useState('requests'); // 'requests' or 'balance'
   const [leaveRequests, setLeaveRequests] = useState([]);
@@ -72,6 +74,12 @@ const Leaves = () => {
   const [myRestrictedHolidays, setMyRestrictedHolidays] = useState([]);
   const [compOffRequests, setCompOffRequests] = useState([]);
   const [currentEmployeeId, setCurrentEmployeeId] = useState(null);
+
+  useEffect(() => {
+    if (activeTab === 'requests') {
+      markAsRead('leaves');
+    }
+  }, [activeTab, markAsRead]);
 
   useEffect(() => {
     // Initial load
@@ -437,6 +445,11 @@ const Leaves = () => {
           onClick={() => setActiveTab('requests')}
         >
           <FaTasks /> Leave Requests
+          {notifications.leaves > 0 && (
+            <span className="badge badge-primary badge-sm bg-primary-600 text-white min-w-[20px] h-[20px] flex items-center justify-center rounded-full text-[10px] ml-1">
+              {notifications.leaves}
+            </span>
+          )}
         </button>
         <button
           className={`pb-3 px-5 text-sm font-semibold transition-colors border-b-2 whitespace-nowrap flex items-center gap-2 ${activeTab === 'balance' ? 'text-primary-600 border-primary-600' : 'text-neutral-500 border-transparent hover:text-neutral-700'}`}

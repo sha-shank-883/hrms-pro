@@ -217,6 +217,15 @@ const createTask = async (req, res) => {
       message: 'Task created successfully',
       data: result.rows[0],
     });
+
+    if (req.io && req.tenant) {
+      req.io.to(req.tenant.tenant_id).emit('notification', {
+        type: 'TASK_ASSIGNED',
+        message: `New task assigned: ${title}`,
+        data: result.rows[0]
+      });
+      req.io.to(req.tenant.tenant_id).emit('dashboard_update', { type: 'TASK' });
+    }
   } catch (error) {
     console.error('Create task error:', error);
     res.status(500).json({
@@ -300,6 +309,10 @@ const updateTask = async (req, res) => {
       message: 'Task updated successfully',
       data: result.rows[0],
     });
+
+    if (req.io && req.tenant) {
+      req.io.to(req.tenant.tenant_id).emit('dashboard_update', { type: 'TASK' });
+    }
   } catch (error) {
     console.error('Update task error:', error);
     res.status(500).json({
@@ -358,6 +371,10 @@ const deleteTask = async (req, res) => {
       success: true,
       message: 'Task deleted successfully',
     });
+
+    if (req.io && req.tenant) {
+      req.io.to(req.tenant.tenant_id).emit('dashboard_update', { type: 'TASK' });
+    }
   } catch (error) {
     console.error('Delete task error:', error);
     res.status(500).json({
@@ -455,6 +472,15 @@ const addTaskUpdate = async (req, res) => {
       message: 'Task update added successfully',
       data: result.rows[0],
     });
+
+    if (req.io && req.tenant) {
+      req.io.to(req.tenant.tenant_id).emit('notification', {
+        type: 'TASK_UPDATE',
+        message: `Task update submitted for Task #${task_id}`,
+        data: { ...result.rows[0], task_id }
+      });
+      req.io.to(req.tenant.tenant_id).emit('dashboard_update', { type: 'TASK' });
+    }
   } catch (error) {
     console.error('Add task update error:', error);
     res.status(500).json({

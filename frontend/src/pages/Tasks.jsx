@@ -3,6 +3,8 @@ import { taskService, employeeService, departmentService } from '../services';
 import { useAuth } from '../context/AuthContext';
 import { useSettings } from '../hooks/useSettings.jsx';
 import { formatDate } from '../utils/settingsHelper';
+import { FaTasks, FaPlus, FaSearch, FaTimes, FaFilter, FaCheckCircle, FaSpinner, FaPaperclip, FaClock } from 'react-icons/fa';
+import { FiMoreVertical, FiEdit2, FiTrash2, FiAlertCircle } from 'react-icons/fi';
 
 const Tasks = () => {
   const { user } = useAuth();
@@ -339,179 +341,276 @@ const Tasks = () => {
     urgent: 'danger'
   };
 
+  const getPriorityBadgeClass = (priority) => {
+    switch (priority) {
+      case 'low': return 'badge-success';
+      case 'medium': return 'badge-warning';
+      case 'high': return 'badge-danger';
+      case 'urgent': return 'badge-danger';
+      default: return 'badge-secondary';
+    }
+  };
+
+  const getStatusBadgeClass = (status) => {
+    switch (status) {
+      case 'todo': return 'badge-secondary';
+      case 'in_progress': return 'badge-warning';
+      case 'completed': return 'badge-success';
+      case 'cancelled': return 'badge-info';
+      default: return 'badge-secondary';
+    }
+  };
+
   return (
-    <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-        <h1><i className="fas fa-tasks"></i> Tasks</h1>
-        <button className="btn btn-primary" onClick={() => setShowModal(true)}><i className="fas fa-plus"></i> New Task</button>
+    <div className="page-container pb-8">
+      {/* Page Header */}
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">Tasks</h1>
+          <p className="page-subtitle">Manage, track, and collaborate on team tasks.</p>
+        </div>
+        <button className="btn btn-primary" onClick={() => setShowModal(true)}>
+          <FaPlus className="mr-2" /> New Task
+        </button>
       </div>
 
-      {error && <div className="error" style={{ marginBottom: '1rem', padding: '1rem', backgroundColor: '#fee2e2', borderRadius: '0.375rem' }}>{error}</div>}
-      {success && <div style={{ marginBottom: '1rem', padding: '1rem', backgroundColor: '#d1fae5', color: '#065f46', borderRadius: '0.375rem' }}>{success}</div>}
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative mb-4 flex items-center gap-2">
+          <FiAlertCircle />
+          <span>{error}</span>
+        </div>
+      )}
 
-      {/* Filter Controls */}
-      <div className="card" style={{ marginBottom: '1rem', padding: '1rem' }}>
-        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flex: 1 }}>
-            <input
-              type="text"
-              className="form-input"
-              name="search"
-              placeholder="Search tasks..."
-              value={filters.search}
+      {success && (
+        <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded relative mb-4 flex items-center gap-2">
+          <FaCheckCircle />
+          <span>{success}</span>
+        </div>
+      )}
+
+      {/* Statistics */}
+      <div className="grid grid-cols-4 gap-6 mb-8">
+        <div className="card stat-card">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-blue-100">
+              <FaTasks className="text-blue-600" />
+            </div>
+            <div>
+              <div className="text-neutral-500 text-xs font-semibold uppercase tracking-wider">Total Tasks</div>
+              <div className="text-2xl font-bold text-neutral-800">{taskStatistics.total_tasks}</div>
+            </div>
+          </div>
+        </div>
+        <div className="card stat-card">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-amber-100">
+              <FaClock className="text-amber-600" />
+            </div>
+            <div>
+              <div className="text-neutral-500 text-xs font-semibold uppercase tracking-wider">To Do</div>
+              <div className="text-2xl font-bold text-neutral-800">{taskStatistics.todo_tasks}</div>
+            </div>
+          </div>
+        </div>
+        <div className="card stat-card">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-indigo-100">
+              <FaSpinner className="text-indigo-600" />
+            </div>
+            <div>
+              <div className="text-neutral-500 text-xs font-semibold uppercase tracking-wider">In Progress</div>
+              <div className="text-2xl font-bold text-neutral-800">{taskStatistics.in_progress_tasks}</div>
+            </div>
+          </div>
+        </div>
+        <div className="card stat-card">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-green-100">
+              <FaCheckCircle className="text-green-600" />
+            </div>
+            <div>
+              <div className="text-neutral-500 text-xs font-semibold uppercase tracking-wider">Completed</div>
+              <div className="text-2xl font-bold text-neutral-800">{taskStatistics.completed_tasks}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Filter Options */}
+      <div className="card mb-6">
+        <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
+          <div className="grid grid-cols-4 gap-3 w-full flex-1">
+            <div className="relative">
+              <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-neutral-400" />
+              <input
+                type="text"
+                name="search"
+                placeholder="Search tasks..."
+                value={filters.search}
+                onChange={handleFilterChange}
+                className="form-input pl-10"
+              />
+            </div>
+
+            <select
+              className="form-select"
+              name="status"
+              value={filters.status}
               onChange={handleFilterChange}
-              style={{ flex: 1, maxWidth: '200px' }}
-            />
-            <select className="form-input" name="status" value={filters.status} onChange={handleFilterChange} style={{ width: '150px' }}>
+            >
               <option value="">All Status</option>
               <option value="todo">To Do</option>
               <option value="in_progress">In Progress</option>
               <option value="completed">Completed</option>
               <option value="cancelled">Cancelled</option>
             </select>
-            <select className="form-input" name="priority" value={filters.priority} onChange={handleFilterChange} style={{ width: '150px' }}>
+
+            <select
+              className="form-select"
+              name="priority"
+              value={filters.priority}
+              onChange={handleFilterChange}
+            >
               <option value="">All Priority</option>
               <option value="low">Low</option>
               <option value="medium">Medium</option>
               <option value="high">High</option>
               <option value="urgent">Urgent</option>
             </select>
-            <select className="form-input" name="department_id" value={filters.department_id} onChange={handleFilterChange} style={{ width: '150px' }}>
-              <option value="">All Depts</option>
+
+            <select
+              className="form-select"
+              name="department_id"
+              value={filters.department_id}
+              onChange={handleFilterChange}
+            >
+              <option value="">All Departments</option>
               {departments.map(dept => (
                 <option key={dept.department_id} value={dept.department_id}>
                   {dept.department_name}
                 </option>
               ))}
             </select>
-            <select className="form-input" name="assigned_to" value={filters.assigned_to} onChange={handleFilterChange} style={{ width: '150px' }}>
-              <option value="">All Emps</option>
-              {employees.map(emp => (
-                <option key={emp.employee_id} value={emp.employee_id}>
-                  {emp.first_name} {emp.last_name}
-                </option>
-              ))}
-            </select>
           </div>
-          <div style={{ display: 'flex', gap: '0.25rem' }}>
-            <button className="btn btn-primary" style={{ padding: '0.25rem 0.75rem', fontSize: '0.875rem' }} onClick={applyFilters}><i className="fas fa-search"></i> Search</button>
-            <button className="btn btn-secondary" style={{ padding: '0.25rem 0.75rem', fontSize: '0.875rem' }} onClick={clearFilters}><i className="fas fa-times"></i> Clear</button>
+
+          <div className="flex gap-2">
+            <button className="btn btn-primary" onClick={applyFilters}>
+              <FaFilter className="mr-2" /> Filter
+            </button>
+            <button className="btn btn-secondary" onClick={clearFilters}>
+              <FaTimes className="mr-2" /> Clear
+            </button>
           </div>
         </div>
       </div>
 
-      {/* Statistics */}
-      <div className="grid grid-cols-4" style={{ marginBottom: '2rem' }}>
-        <div className="card" style={{ background: '#667eea', color: 'white' }}>
-          <h3 style={{ fontSize: '2rem' }}>{taskStatistics.todo_tasks}</h3>
-          <p>To Do</p>
-        </div>
-        <div className="card" style={{ background: '#43e97b', color: 'white' }}>
-          <h3 style={{ fontSize: '2rem' }}>{taskStatistics.in_progress_tasks}</h3>
-          <p>In Progress</p>
-        </div>
-        <div className="card" style={{ background: '#fa709a', color: 'white' }}>
-          <h3 style={{ fontSize: '2rem' }}>{taskStatistics.completed_tasks}</h3>
-          <p>Completed</p>
-        </div>
-        <div className="card" style={{ background: '#4facfe', color: 'white' }}>
-          <h3 style={{ fontSize: '2rem' }}>{taskStatistics.total_tasks}</h3>
-          <p>Total Tasks</p>
-        </div>
-      </div>
-
-      <div className="card">
-        <table className="table">
+      {/* Task Table */}
+      <div className="card p-0">
+        <table className="data-table data-table-striped">
           <thead>
             <tr>
-              <th>Title</th>
-              <th>Assigned To</th>
-              <th>Priority</th>
-              <th>Status</th>
-              <th>Due Date</th>
-              <th>Progress</th>
-              <th>Actions</th>
+              <th className="w-1/4">Title</th>
+              <th className="w-1/6">Assigned To</th>
+              <th className="w-1/12">Priority</th>
+              <th className="w-1/12">Status</th>
+              <th className="w-1/12">Due Date</th>
+              <th className="w-1/6">Progress</th>
+              <th className="w-1/12 text-right">Actions</th>
             </tr>
           </thead>
           <tbody>
             {tasks.length === 0 ? (
               <tr>
-                <td colSpan="7" style={{ textAlign: 'center', padding: '2rem', color: '#6b7280' }}>
-                  No tasks found.
+                <td colSpan="7" className="data-table-empty">
+                  <div className="flex flex-col items-center">
+                    <FaTasks size={32} className="text-neutral-300 mb-2" />
+                    <p>No tasks found. Try adjusting filters or create a new task.</p>
+                  </div>
                 </td>
               </tr>
             ) : (
               tasks.map((task) => (
-                <tr key={task.task_id}>
-                  <td>
-                    <strong>{task.title}</strong>
-                    <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: '0.25rem' }}>
-                      {task.description?.substring(0, 50)}{task.description?.length > 50 ? '...' : ''}
+                <tr key={task.task_id} className="group hover:bg-neutral-50">
+                  <td className="align-top">
+                    <div className="font-semibold text-neutral-900">{task.title}</div>
+                    <div className="text-xs text-neutral-500 mt-1 line-clamp-2 max-w-xs" title={task.description}>
+                      {task.description}
                     </div>
                   </td>
-                  <td>
+                  <td className="align-top">
                     {task.assigned_employees?.length > 0 ? (
-                      <div key={`assigned-${task.task_id}`}>
-                        {task.assigned_employees.slice(0, 2).map((emp, index) => (
-                          <div key={emp.employee_id} style={{ marginBottom: '0.25rem' }}>
-                            <div>
-                              <strong>{emp.first_name} {emp.last_name}</strong>
-                            </div>
-                            <div style={{ fontSize: '0.75rem', color: '#6b7280', marginLeft: '0.5rem' }}>
-                              {task.assigned_employee_departments && task.assigned_employee_departments[index]
-                                ? `(${task.assigned_employee_departments[index]})`
-                                : '(No Department)'}
-                            </div>
+                      <div className="flex -space-x-2 overflow-hidden py-1">
+                        {task.assigned_employees.slice(0, 3).map((emp, i) => (
+                          <div
+                            key={emp.employee_id}
+                            className="inline-block h-8 w-8 rounded-full ring-2 ring-white bg-neutral-200 flex items-center justify-center text-xs font-bold text-neutral-600 uppercase"
+                            title={`${emp.first_name} ${emp.last_name}`}
+                          >
+                            {emp.first_name.charAt(0)}{emp.last_name.charAt(0)}
                           </div>
                         ))}
-                        {task.assigned_employees.length > 2 && (
-                          <div key="more-employees" style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem' }}>
-                            +{task.assigned_employees.length - 2} more
+                        {task.assigned_employees.length > 3 && (
+                          <div className="inline-block h-8 w-8 rounded-full ring-2 ring-white bg-neutral-100 flex items-center justify-center text-xs font-semibold text-neutral-500">
+                            +{task.assigned_employees.length - 3}
                           </div>
                         )}
                       </div>
                     ) : (
-                      <span style={{ color: '#9ca3af' }}>Unassigned</span>
+                      <span className="text-neutral-400 text-sm italic">Unassigned</span>
                     )}
                   </td>
-                  <td>
-                    <span className={`badge badge-${priorityColors[task.priority]}`}>
+                  <td className="align-middle">
+                    <span className={`badge ${getPriorityBadgeClass(task.priority)}`}>
                       {task.priority}
                     </span>
                   </td>
-                  <td>
-                    <span className={`badge badge-${task.status === 'completed' ? 'success' : task.status === 'in_progress' ? 'warning' : task.status === 'todo' ? 'secondary' : 'info'}`}>
+                  <td className="align-middle">
+                    <span className={`badge ${getStatusBadgeClass(task.status)}`}>
                       {task.status.replace('_', ' ')}
                     </span>
                   </td>
-                  <td>
-                    {task.due_date ? formatDate(task.due_date, getSetting('date_format')) : 'No due date'}
+                  <td className="align-middle text-neutral-700">
+                    {task.due_date ? formatDate(task.due_date, getSetting('date_format')) : <span className="text-neutral-400">-</span>}
                   </td>
-                  <td>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <div style={{ flex: 1, height: '8px', backgroundColor: '#e5e7eb', borderRadius: '4px' }}>
+                  <td className="align-middle min-w-[120px]">
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 h-2 bg-neutral-100 rounded-full overflow-hidden">
                         <div
-                          style={{
-                            height: '100%',
-                            width: `${task.progress || 0}%`,
-                            backgroundColor: task.progress > 75 ? '#43e97b' : task.progress > 50 ? '#4facfe' : '#fa709a',
-                            borderRadius: '4px'
-                          }}
+                          className={`h-full rounded-full ${task.progress > 75 ? 'bg-success' : task.progress > 40 ? 'bg-info' : 'bg-warning'
+                            }`}
+                          style={{ width: `${task.progress || 0}%` }}
                         ></div>
                       </div>
-                      <span>{task.progress || 0}%</span>
+                      <span className="text-xs font-medium text-neutral-600 w-8">{task.progress || 0}%</span>
                     </div>
                   </td>
-                  <td>
-                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                      {/* Only show edit/delete buttons for admins/managers or if the user created the task */}
+                  <td className="align-middle text-right">
+                    <div className="flex justify-end gap-1">
                       {(user?.role === 'admin' || user?.role === 'manager' || task.created_by === user?.userId) && (
                         <>
-                          <button className="btn btn-secondary" style={{ fontSize: '0.75rem' }} onClick={() => handleEdit(task)}>Edit</button>
-                          <button className="btn btn-danger" style={{ fontSize: '0.75rem' }} onClick={() => handleDelete(task.task_id)}>Delete</button>
+                          <button
+                            className="btn btn-secondary btn-icon"
+                            onClick={() => handleEdit(task)}
+                            title="Edit"
+                          >
+                            <FiEdit2 size={16} />
+                          </button>
+                          <button
+                            className="btn btn-danger btn-icon"
+                            onClick={() => handleDelete(task.task_id)}
+                            title="Delete"
+                          >
+                            <FiTrash2 size={16} />
+                          </button>
                         </>
                       )}
-                      <button className="btn btn-info" style={{ fontSize: '0.75rem' }} onClick={() => handleViewUpdates(task)}>Updates</button>
+                      <button
+                        className="btn btn-secondary btn-icon"
+                        onClick={() => handleViewUpdates(task)}
+                        title="View Updates"
+                      >
+                        <FaClock size={16} />
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -523,7 +622,7 @@ const Tasks = () => {
 
       {/* Pagination Controls */}
       {pagination.totalPages > 1 && (
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', marginTop: '2rem', gap: '0.5rem' }}>
+        <div className="flex justify-center items-center mt-6 gap-2">
           <button
             className="btn btn-secondary"
             onClick={() => handlePageChange(pagination.currentPage - 1)}
@@ -532,7 +631,6 @@ const Tasks = () => {
             Previous
           </button>
 
-          {/* Numbered page buttons */}
           {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
             let pageNum;
             if (pagination.totalPages <= 5) {
@@ -548,9 +646,11 @@ const Tasks = () => {
             return (
               <button
                 key={pageNum}
-                className={`btn ${pageNum === pagination.currentPage ? 'btn-primary' : 'btn-secondary'}`}
+                className={`w-8 h-8 rounded-md flex items-center justify-center text-sm font-medium transition-colors ${pageNum === pagination.currentPage
+                  ? 'bg-primary-600 text-white shadow-sm'
+                  : 'text-neutral-600 hover:bg-neutral-100'
+                  }`}
                 onClick={() => handlePageChange(pageNum)}
-                style={{ minWidth: '40px' }}
               >
                 {pageNum}
               </button>
@@ -565,102 +665,124 @@ const Tasks = () => {
             Next
           </button>
 
-          <span style={{ marginLeft: '1rem', color: '#6b7280' }}>
-            Page {pagination.currentPage} of {pagination.totalPages}
-            {' '}({pagination.totalItems} total tasks)
+          <span className="text-xs text-neutral-500 ml-4">
+            Page {pagination.currentPage} of {pagination.totalPages} ({pagination.totalItems} tasks)
           </span>
         </div>
       )}
 
       {/* Task Modal */}
       {showModal && (
-        <div className="modal-overlay" onClick={handleCloseModal}>
-          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '700px' }}>
-            <h2>{editingTask ? 'Edit Task' : 'New Task'}</h2>
-            {error && <div className="error" style={{ marginBottom: '1rem' }}>{error}</div>}
-            <form onSubmit={handleSubmit}>
-              <div className="form-group">
-                <label className="form-label">Title *</label>
-                <input type="text" className="form-input" value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} required />
-              </div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-neutral-900/50 backdrop-blur-sm" onClick={handleCloseModal}>
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in duration-200" onClick={(e) => e.stopPropagation()}>
+            <div className="px-6 py-4 border-b border-neutral-100 flex justify-between items-center bg-neutral-50/50">
+              <h2 className="text-lg font-bold text-neutral-800">{editingTask ? 'Edit Task' : 'New Task'}</h2>
+              <button onClick={handleCloseModal} className="text-neutral-400 hover:text-neutral-600 transition-colors">
+                <FaTimes size={18} />
+              </button>
+            </div>
 
-              <div className="form-group">
-                <label className="form-label">Description</label>
-                <textarea className="form-input" value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} rows="3" />
-              </div>
-
-              <div className="grid grid-cols-2" style={{ gap: '1rem' }}>
-                <div className="form-group">
-                  <label className="form-label">Priority</label>
-                  <select className="form-input" value={formData.priority} onChange={(e) => setFormData({ ...formData, priority: e.target.value })}>
-                    <option value="low">Low</option>
-                    <option value="medium">Medium</option>
-                    <option value="high">High</option>
-                    <option value="urgent">Urgent</option>
-                  </select>
+            <form onSubmit={handleSubmit} className="p-6">
+              <div className="space-y-4">
+                <div>
+                  <label className="form-label">Title <span className="text-red-500">*</span></label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={formData.title}
+                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                    required
+                  />
                 </div>
 
-                <div className="form-group">
-                  <label className="form-label">Status</label>
-                  <select className="form-input" value={formData.status} onChange={(e) => setFormData({ ...formData, status: e.target.value })}>
-                    <option value="todo">To Do</option>
-                    <option value="in_progress">In Progress</option>
-                    <option value="completed">Completed</option>
-                    <option value="cancelled">Cancelled</option>
-                  </select>
+                <div>
+                  <label className="form-label">Description</label>
+                  <textarea
+                    className="form-input"
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    rows="3"
+                  />
                 </div>
 
-                <div className="form-group">
-                  <label className="form-label">Category</label>
-                  <select className="form-input" value={formData.category} onChange={(e) => setFormData({ ...formData, category: e.target.value })}>
-                    <option value="general">General</option>
-                    <option value="onboarding">Onboarding</option>
-                    <option value="offboarding">Offboarding</option>
-                  </select>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="form-label">Priority</label>
+                    <select
+                      className="form-select"
+                      value={formData.priority}
+                      onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
+                    >
+                      <option value="low">Low</option>
+                      <option value="medium">Medium</option>
+                      <option value="high">High</option>
+                      <option value="urgent">Urgent</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="form-label">Status</label>
+                    <select
+                      className="form-select"
+                      value={formData.status}
+                      onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                    >
+                      <option value="todo">To Do</option>
+                      <option value="in_progress">In Progress</option>
+                      <option value="completed">Completed</option>
+                      <option value="cancelled">Cancelled</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="form-label">Due Date</label>
+                    <input
+                      type="date"
+                      className="form-input"
+                      value={formData.due_date}
+                      onChange={(e) => setFormData({ ...formData, due_date: e.target.value })}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="form-label">Category</label>
+                    <select
+                      className="form-select"
+                      value={formData.category}
+                      onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                    >
+                      <option value="general">General</option>
+                      <option value="onboarding">Onboarding</option>
+                      <option value="offboarding">Offboarding</option>
+                    </select>
+                  </div>
                 </div>
 
-                <div className="form-group">
-                  <label className="form-label">Due Date</label>
-                  <input type="date" className="form-input" value={formData.due_date} onChange={(e) => setFormData({ ...formData, due_date: e.target.value })} />
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">Estimated Hours</label>
-                  <input type="number" className="form-input" value={formData.estimated_hours} onChange={(e) => setFormData({ ...formData, estimated_hours: e.target.value })} />
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">Department</label>
-                  <select className="form-input" value={formData.department_id} onChange={(e) => setFormData({ ...formData, department_id: e.target.value })}>
-                    <option value="">All Departments</option>
-                    {departments.map(dept => <option key={dept.department_id} value={dept.department_id}>{dept.department_name}</option>)}
-                  </select>
-                </div>
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Assign Employees</label>
-                <div style={{ maxHeight: '200px', overflowY: 'auto', border: '1px solid #d1d5db', borderRadius: '0.375rem', padding: '0.5rem' }}>
-                  {filteredEmployees.map(emp => (
-                    <div key={emp.employee_id} style={{ display: 'flex', alignItems: 'center', padding: '0.25rem 0' }}>
-                      <input
-                        type="checkbox"
-                        id={`emp-${emp.employee_id}`}
-                        checked={formData.assigned_employees.includes(emp.employee_id)}
-                        onChange={() => toggleEmployee(emp.employee_id)}
-                        style={{ marginRight: '0.5rem' }}
-                      />
-                      <label htmlFor={`emp-${emp.employee_id}`} style={{ cursor: 'pointer' }}>
-                        {emp.first_name} {emp.last_name} - {emp.position || 'No position'}
+                <div>
+                  <label className="form-label">Assign Employees</label>
+                  <div className="border border-neutral-300 rounded-lg p-3 max-h-48 overflow-y-auto bg-neutral-50/50">
+                    {filteredEmployees.map(emp => (
+                      <label key={emp.employee_id} className="flex items-center gap-3 p-2 hover:bg-white hover:shadow-sm rounded cursor-pointer transition-all">
+                        <input
+                          type="checkbox"
+                          checked={formData.assigned_employees.includes(emp.employee_id)}
+                          onChange={() => toggleEmployee(emp.employee_id)}
+                          className="form-checkbox"
+                        />
+                        <div className="text-sm">
+                          <span className="font-medium text-neutral-900">{emp.first_name} {emp.last_name}</span>
+                          <span className="text-neutral-500 ml-2 text-xs">({emp.position || 'No Title'})</span>
+                        </div>
                       </label>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
+
               </div>
 
-              <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
-                <button type="submit" className="btn btn-primary">{editingTask ? 'Update' : 'Create'}</button>
+              <div className="flex justify-end gap-3 pt-6 border-t border-neutral-100 mt-6">
                 <button type="button" className="btn btn-secondary" onClick={handleCloseModal}>Cancel</button>
+                <button type="submit" className="btn btn-primary">{editingTask ? 'Update Task' : 'Create Task'}</button>
               </div>
             </form>
           </div>
@@ -669,94 +791,100 @@ const Tasks = () => {
 
       {/* Task Updates Modal */}
       {showUpdateModal && (
-        <div className="modal-overlay" onClick={handleCloseUpdateModal}>
-          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '800px' }}>
-            <h2>Task Updates: {selectedTaskForUpdate?.title}</h2>
-            {error && <div className="error" style={{ marginBottom: '1rem' }}>{error}</div>}
-            {success && <div style={{ marginBottom: '1rem', padding: '0.5rem', backgroundColor: '#d1fae5', color: '#065f46', borderRadius: '0.375rem' }}>{success}</div>}
-
-            <div style={{ maxHeight: '300px', overflowY: 'auto', marginBottom: '1rem' }}>
-              {taskUpdates.length === 0 ? (
-                <p style={{ textAlign: 'center', color: '#6b7280', padding: '2rem' }}>No updates yet.</p>
-              ) : (
-                taskUpdates.map((update, index) => (
-                  <div key={update.update_id} style={{
-                    padding: '1rem',
-                    borderBottom: index < taskUpdates.length - 1 ? '1px solid #e5e7eb' : 'none',
-                    backgroundColor: index % 2 === 0 ? '#f9fafb' : 'white'
-                  }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                      <strong>{update.employee?.first_name} {update.employee?.last_name}</strong>
-                      <span style={{ color: '#6b7280', fontSize: '0.875rem' }}>
-                        {new Date(update.created_at).toLocaleString()}
-                      </span>
-                    </div>
-                    <p>{update.update_text}</p>
-                    <div style={{ display: 'flex', gap: '1rem', fontSize: '0.875rem', color: '#6b7280' }}>
-                      {update.hours_spent && <span>Hours: {update.hours_spent}</span>}
-                      {update.progress_percentage && <span>Progress: {update.progress_percentage}%</span>}
-                      {update.status && <span>Status: {update.status.replace('_', ' ')}</span>}
-                    </div>
-                  </div>
-                ))
-              )}
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-neutral-900/50 backdrop-blur-sm" onClick={handleCloseUpdateModal}>
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-3xl overflow-hidden animate-in fade-in zoom-in duration-200" onClick={(e) => e.stopPropagation()}>
+            <div className="px-6 py-4 border-b border-neutral-100 flex justify-between items-center bg-neutral-50/50">
+              <h2 className="text-lg font-bold text-neutral-800">Task Timeline: {selectedTaskForUpdate?.title}</h2>
+              <button onClick={handleCloseUpdateModal} className="text-neutral-400 hover:text-neutral-600 transition-colors">
+                <FaTimes size={18} />
+              </button>
             </div>
 
-            <form onSubmit={handleAddUpdate}>
-              <div className="form-group">
-                <label className="form-label">Update Text *</label>
-                <textarea
-                  className="form-input"
-                  value={updateFormData.update_text}
-                  onChange={(e) => setUpdateFormData({ ...updateFormData, update_text: e.target.value })}
-                  rows="3"
-                  required
-                />
+            <div className="p-6">
+              <div className="bg-neutral-50 rounded-lg border border-neutral-200 p-4 mb-6 max-h-[300px] overflow-y-auto">
+                {taskUpdates.length === 0 ? (
+                  <div className="text-center py-8 text-neutral-500">
+                    <FaClock className="mx-auto mb-2 opacity-20" size={32} />
+                    <p>No activity recorded yet.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {taskUpdates.map((update, index) => (
+                      <div key={update.update_id} className="relative pl-6 border-l-2 border-neutral-200 pb-2">
+                        <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-white border-2 border-primary-500"></div>
+                        <div className="flex justify-between items-start mb-1">
+                          <span className="font-semibold text-sm text-neutral-900">
+                            {update.employee?.first_name} {update.employee?.last_name}
+                          </span>
+                          <span className="text-xs text-neutral-400">{new Date(update.created_at).toLocaleString()}</span>
+                        </div>
+                        <p className="text-sm text-neutral-700 bg-white p-3 rounded border border-neutral-100 shadow-sm mb-2">{update.update_text}</p>
+                        <div className="flex gap-3 text-xs text-neutral-500 font-medium">
+                          {update.hours_spent && <span className="flex items-center gap-1"><FaClock size={10} /> {update.hours_spent}h</span>}
+                          {update.progress_percentage && <span>Progress: {update.progress_percentage}%</span>}
+                          {update.status && <span className={`badge ${getStatusBadgeClass(update.status)} text-[10px]`}>{update.status.replace('_', ' ')}</span>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
-              <div className="grid grid-cols-3" style={{ gap: '1rem' }}>
-                <div className="form-group">
-                  <label className="form-label">Hours Spent</label>
-                  <input
-                    type="number"
+              <form onSubmit={handleAddUpdate} className="bg-white border border-neutral-200 rounded-lg p-4 shadow-sm">
+                <h4 className="text-sm font-bold text-neutral-700 mb-3 border-b border-neutral-100 pb-2">Add New Update</h4>
+                <div className="space-y-3">
+                  <textarea
                     className="form-input"
-                    value={updateFormData.hours_spent}
-                    onChange={(e) => setUpdateFormData({ ...updateFormData, hours_spent: e.target.value })}
+                    value={updateFormData.update_text}
+                    onChange={(e) => setUpdateFormData({ ...updateFormData, update_text: e.target.value })}
+                    rows="2"
+                    required
+                    placeholder="What did you work on?"
                   />
-                </div>
 
-                <div className="form-group">
-                  <label className="form-label">Progress %</label>
-                  <input
-                    type="number"
-                    min="0"
-                    max="100"
-                    className="form-input"
-                    value={updateFormData.progress_percentage}
-                    onChange={(e) => setUpdateFormData({ ...updateFormData, progress_percentage: e.target.value })}
-                  />
+                  <div className="grid grid-cols-3 gap-3">
+                    <div>
+                      <label className="form-label text-xs">Hours</label>
+                      <input
+                        type="number"
+                        className="form-input text-xs"
+                        value={updateFormData.hours_spent}
+                        onChange={(e) => setUpdateFormData({ ...updateFormData, hours_spent: e.target.value })}
+                        placeholder="0.0"
+                      />
+                    </div>
+                    <div>
+                      <label className="form-label text-xs">Progress %</label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        className="form-input text-xs"
+                        value={updateFormData.progress_percentage}
+                        onChange={(e) => setUpdateFormData({ ...updateFormData, progress_percentage: e.target.value })}
+                        placeholder="0-100"
+                      />
+                    </div>
+                    <div>
+                      <label className="form-label text-xs">Status</label>
+                      <select
+                        className="form-select text-xs"
+                        value={updateFormData.status}
+                        onChange={(e) => setUpdateFormData({ ...updateFormData, status: e.target.value })}
+                      >
+                        <option value="">No change</option>
+                        <option value="todo">To Do</option>
+                        <option value="in_progress">In Progress</option>
+                        <option value="completed">Completed</option>
+                      </select>
+                    </div>
+                  </div>
                 </div>
-
-                <div className="form-group">
-                  <label className="form-label">Status</label>
-                  <select
-                    className="form-input"
-                    value={updateFormData.status}
-                    onChange={(e) => setUpdateFormData({ ...updateFormData, status: e.target.value })}
-                  >
-                    <option value="">No change</option>
-                    <option value="todo">To Do</option>
-                    <option value="in_progress">In Progress</option>
-                    <option value="completed">Completed</option>
-                  </select>
+                <div className="flex justify-end pt-3 mt-2">
+                  <button type="submit" className="btn btn-primary text-xs py-1.5">Post Update</button>
                 </div>
-              </div>
-
-              <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
-                <button type="submit" className="btn btn-primary">Add Update</button>
-                <button type="button" className="btn btn-secondary" onClick={handleCloseUpdateModal}>Close</button>
-              </div>
-            </form>
+              </form>
+            </div>
           </div>
         </div>
       )}

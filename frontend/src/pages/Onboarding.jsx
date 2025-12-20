@@ -113,64 +113,65 @@ const Onboarding = () => {
         : (isOffboarding ? 'Manage exiting employees and exit workflows.' : 'Manage new hires and onboarding workflows.');
 
     return (
-        <div className="container" style={{ paddingBottom: '2rem' }}>
-
+        <div className="w-full pb-8">
             {showWelcomeHero ? (
                 <WelcomeHero stats={stats} />
             ) : (
                 <>
                     {/* Header */}
-                    <div className="page-header" style={{ marginTop: '1rem', marginBottom: '2rem' }}>
-                        <h1 className="page-title">{title}</h1>
-                        <p className="page-description">{description}</p>
+                    <div className="page-header">
+                        <div>
+                            <h1 className="page-title">{title}</h1>
+                            <p className="mt-1 text-neutral-600">{description}</p>
+                        </div>
                     </div>
 
                     {/* Stats Cards */}
-                    <div className="grid grid-cols-1 md:grid-cols-3" style={{ marginBottom: '2rem' }}>
-                        <div className="stat-card">
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                                <div style={{ background: isOffboarding ? '#fee2e2' : '#e0e7ff', padding: '0.75rem', borderRadius: '0.5rem', color: isOffboarding ? '#dc2626' : '#4f46e5' }}>
+                    <div className="grid grid-cols-4 gap-6 mb-8">
+                        <div className="card">
+                            <div className="flex justify-between items-center mb-4">
+                                <div className={`p-3 rounded-lg ${isOffboarding ? 'bg-red-50 text-red-600' : 'bg-indigo-50 text-indigo-600'}`}>
                                     {isOffboarding ? <FaUserMinus size={20} /> : <FaUserPlus size={20} />}
                                 </div>
-                                <span style={{ fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase', color: '#9ca3af' }}>
+                                <span className="text-xs font-bold uppercase text-neutral-400 tracking-wider">
                                     {user.role === 'employee' ? 'My Status' : (isOffboarding ? 'Exiting Employees' : 'Active Onboarding')}
                                 </span>
                             </div>
-                            <div style={{ display: 'flex', alignItems: 'flex-end', gap: '0.5rem' }}>
-                                <h3 style={{ fontSize: '1.875rem', fontWeight: 'bold', color: '#111827', lineHeight: 1 }}>
+                            <div className="flex items-end gap-2">
+                                <h3 className="text-3xl font-bold text-neutral-900 leading-none">
                                     {stats.total}
                                 </h3>
-                                <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+                                <span className="text-sm text-neutral-500 mb-1">
                                     {user.role === 'employee' ? 'active' : 'employees'}
                                 </span>
                             </div>
                         </div>
-                        <div className="stat-card">
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                                <div style={{ background: '#fef3c7', padding: '0.75rem', borderRadius: '0.5rem', color: '#d97706' }}>
+                        <div className="card">
+                            <div className="flex justify-between items-center mb-4">
+                                <div className="p-3 rounded-lg bg-amber-50 text-amber-600">
                                     <FaTasks size={20} />
                                 </div>
-                                <span style={{ fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase', color: '#9ca3af' }}>Pending Tasks</span>
+                                <span className="text-xs font-bold uppercase text-neutral-400 tracking-wider">Pending Tasks</span>
                             </div>
-                            <div style={{ display: 'flex', alignItems: 'flex-end', gap: '0.5rem' }}>
-                                <h3 style={{ fontSize: '1.875rem', fontWeight: 'bold', color: '#111827', lineHeight: 1 }}>
+                            <div className="flex items-end gap-2">
+                                <h3 className="text-3xl font-bold text-neutral-900 leading-none">
                                     {stats.pendingTasks}
                                 </h3>
-                                <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>tasks remaining</span>
+                                <span className="text-sm text-neutral-500 mb-1">tasks remaining</span>
                             </div>
                         </div>
-                        <div className="stat-card">
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                                <div style={{ background: '#d1fae5', padding: '0.75rem', borderRadius: '0.5rem', color: '#059669' }}>
+                        <div className="card">
+                            <div className="flex justify-between items-center mb-4">
+                                <div className="p-3 rounded-lg bg-emerald-50 text-emerald-600">
                                     <FaCheckCircle size={20} />
                                 </div>
-                                <span style={{ fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase', color: '#9ca3af' }}>Completed</span>
+                                <span className="text-xs font-bold uppercase text-neutral-400 tracking-wider">Completed</span>
                             </div>
-                            <div style={{ display: 'flex', alignItems: 'flex-end', gap: '0.5rem' }}>
-                                <h3 style={{ fontSize: '1.875rem', fontWeight: 'bold', color: '#111827', lineHeight: 1 }}>
+                            <div className="flex items-end gap-2">
+                                <h3 className="text-3xl font-bold text-neutral-900 leading-none">
                                     {stats.completedTasks}
                                 </h3>
-                                <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>tasks done</span>
+                                <span className="text-sm text-neutral-500 mb-1">tasks done</span>
                             </div>
                         </div>
                     </div>
@@ -178,63 +179,51 @@ const Onboarding = () => {
             )}
 
             {/* Main Content */}
-            <div className="grid grid-cols-1 lg:grid-cols-3" style={{ gap: '2rem' }}>
+            <div className="grid grid-cols-4 gap-8">
 
                 {/* Left Column: Task List */}
-                <div style={{ gridColumn: 'span 2' }}>
-                    <div className="card">
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                            <h3 style={{ fontSize: '1.125rem', fontWeight: 'bold', color: '#111827' }}>{isOffboarding ? 'Offboarding Checklist' : 'Onboarding Checklist'}</h3>
-                            {/* Admin controls could go here */}
+                <div className="lg:col-span-2">
+                    <div class="card">
+                        <div class="p-4 border-b border-neutral-100">
+                            <h3 class="font-semibold text-neutral-800">{isOffboarding ? 'Offboarding Checklist' : 'Onboarding Checklist'}</h3>
                         </div>
 
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        <div className="space-y-4">
                             {myTasks.length > 0 ? (
                                 myTasks.map(task => (
-                                    <div key={task.task_id} style={{
-                                        padding: '1rem',
-                                        borderRadius: '0.5rem',
-                                        border: '1px solid #e5e7eb',
-                                        background: task.status === 'completed' ? '#f9fafb' : 'white',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '1rem'
-                                    }}>
+                                    <div key={task.task_id} className={`p-4 rounded-lg border transition-all ${task.status === 'completed'
+                                            ? 'bg-neutral-50 border-neutral-100'
+                                            : 'bg-white border-neutral-200 hover:border-primary-200 hover:shadow-sm'
+                                        } flex items-center gap-4`}>
                                         <div
                                             onClick={() => handleTaskStatusUpdate(task.task_id, task.status === 'completed' ? 'in_progress' : 'completed')}
-                                            style={{
-                                                cursor: 'pointer',
-                                                color: task.status === 'completed' ? '#059669' : '#d1d5db',
-                                                fontSize: '1.5rem'
-                                            }}
+                                            className={`cursor-pointer text-2xl transition-colors ${task.status === 'completed' ? 'text-emerald-500' : 'text-neutral-300 hover:text-primary-500'
+                                                }`}
                                         >
                                             <FaCheckCircle />
                                         </div>
-                                        <div style={{ flex: 1 }}>
-                                            <h4 style={{
-                                                fontWeight: '600',
-                                                color: task.status === 'completed' ? '#9ca3af' : '#111827',
-                                                textDecoration: task.status === 'completed' ? 'line-through' : 'none'
-                                            }}>
+                                        <div className="flex-1">
+                                            <h4 className={`font-semibold ${task.status === 'completed' ? 'text-neutral-400 line-through' : 'text-neutral-800'
+                                                }`}>
                                                 {task.title}
                                             </h4>
-                                            <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>{task.description}</p>
+                                            <p className="text-sm text-neutral-500 mt-0.5">{task.description}</p>
                                         </div>
-                                        <div className={`badge ${task.priority === 'urgent' ? 'badge-error' :
-                                            task.priority === 'high' ? 'badge-warning' :
-                                                'badge-info'
+                                        <span className={`badge badge-${task.priority === 'urgent' ? 'danger' :
+                                                task.priority === 'high' ? 'warning' :
+                                                    'secondary'
                                             }`}>
                                             {task.priority}
-                                        </div>
+                                        </span>
                                     </div>
                                 ))
                             ) : (
-                                <div className="empty-state">
-                                    <div className="empty-state-icon">
-                                        <FaClipboardList />
+                                <div className="text-center py-12">
+                                    <div className="inline-flex p-4 rounded-full bg-neutral-50 text-neutral-300 mb-3">
+                                        <FaClipboardList size={32} />
                                     </div>
-                                    <h3 className="empty-state-title">All caught up!</h3>
-                                    <p className="empty-state-description">You have no pending {mode} tasks.</p>
+                                    <h3 className="text-lg font-semibold text-neutral-700">All caught up!</h3>
+                                    <p className="text-neutral-500 text-sm">You have no pending {mode} tasks.</p>
                                 </div>
                             )}
                         </div>
@@ -245,32 +234,29 @@ const Onboarding = () => {
                 <div>
                     {(user.role === 'admin' || user.role === 'manager') ? (
                         <div className="card">
-                            <h3 style={{ fontSize: '1.125rem', fontWeight: 'bold', color: '#111827', marginBottom: '1.5rem' }}>
-                                {isOffboarding ? 'Recent Exits' : 'Recent Hires'}
-                            </h3>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                            <div className="p-4 border-b border-neutral-100">
+                                <h3 className="font-semibold text-neutral-800">
+                                    {isOffboarding ? 'Recent Exits' : 'Recent Hires'}
+                                </h3>
+                            </div>
+                            <div className="space-y-4">
                                 {newHires.map(emp => (
-                                    <div key={emp.employee_id} style={{ display: 'flex', alignItems: 'center', gap: '1rem', paddingBottom: '1rem', borderBottom: '1px solid #f3f4f6' }}>
-                                        <div style={{
-                                            width: '2.5rem', height: '2.5rem', borderRadius: '50%',
-                                            background: isOffboarding ? '#fee2e2' : '#e0e7ff',
-                                            color: isOffboarding ? '#dc2626' : '#4f46e5',
-                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                            fontWeight: 'bold'
-                                        }}>
+                                    <div key={emp.employee_id} className="flex items-center gap-4 pb-4 border-b border-neutral-100 last:border-0 last:pb-0">
+                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${isOffboarding ? 'bg-red-50 text-red-600' : 'bg-indigo-50 text-indigo-600'
+                                            }`}>
                                             {emp.first_name.charAt(0)}
                                         </div>
-                                        <div style={{ flex: 1 }}>
-                                            <div style={{ fontWeight: '600', color: '#111827' }}>{emp.first_name} {emp.last_name}</div>
-                                            <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>{emp.position}</div>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="font-semibold text-neutral-900 truncate">{emp.first_name} {emp.last_name}</div>
+                                            <div className="text-xs text-neutral-500 truncate">{emp.position}</div>
                                         </div>
-                                        <button className="btn-icon" title="View Details">
-                                            <FaChevronRight />
+                                        <button className="text-neutral-400 hover:text-primary-600 transition-colors">
+                                            <FaChevronRight size={14} />
                                         </button>
                                     </div>
                                 ))}
                                 {newHires.length === 0 && (
-                                    <p style={{ color: '#6b7280', textAlign: 'center', padding: '1rem' }}>
+                                    <p className="text-center text-neutral-500 py-4 text-sm">
                                         {isOffboarding ? 'No exiting employees found.' : 'No recent hires found.'}
                                     </p>
                                 )}
@@ -278,23 +264,25 @@ const Onboarding = () => {
                         </div>
                     ) : (
                         <div className="card">
-                            <h3 style={{ fontSize: '1.125rem', fontWeight: 'bold', color: '#111827', marginBottom: '1.5rem' }}>Quick Resources</h3>
-                            <ul style={{ listStyle: 'none', padding: 0, display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                            <div className="p-4 border-b border-neutral-100">
+                                <h3 className="font-semibold text-neutral-800">Quick Resources</h3>
+                            </div>
+                            <ul className="space-y-2">
                                 <li>
-                                    <a href="#" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: '#4b5563', textDecoration: 'none', padding: '0.5rem', borderRadius: '0.375rem', transition: 'background 0.2s' }} className="hover:bg-gray-50">
-                                        <FaBriefcase style={{ color: '#9ca3af' }} />
+                                    <a href="#" className="flex items-center gap-3 p-2.5 rounded-lg text-neutral-600 hover:bg-neutral-50 hover:text-primary-600 transition-all font-medium text-sm group">
+                                        <FaBriefcase className="text-neutral-400 group-hover:text-primary-500" />
                                         <span>{isOffboarding ? 'Exit Policy' : 'Employee Handbook'}</span>
                                     </a>
                                 </li>
                                 <li>
-                                    <a href="#" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: '#4b5563', textDecoration: 'none', padding: '0.5rem', borderRadius: '0.375rem', transition: 'background 0.2s' }} className="hover:bg-gray-50">
-                                        <FaUserTie style={{ color: '#9ca3af' }} />
+                                    <a href="#" className="flex items-center gap-3 p-2.5 rounded-lg text-neutral-600 hover:bg-neutral-50 hover:text-primary-600 transition-all font-medium text-sm group">
+                                        <FaUserTie className="text-neutral-400 group-hover:text-primary-500" />
                                         <span>{isOffboarding ? 'Asset Return Guide' : 'IT Policy'}</span>
                                     </a>
                                 </li>
                                 <li>
-                                    <a href="#" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: '#4b5563', textDecoration: 'none', padding: '0.5rem', borderRadius: '0.375rem', transition: 'background 0.2s' }} className="hover:bg-gray-50">
-                                        <FaClock style={{ color: '#9ca3af' }} />
+                                    <a href="#" className="flex items-center gap-3 p-2.5 rounded-lg text-neutral-600 hover:bg-neutral-50 hover:text-primary-600 transition-all font-medium text-sm group">
+                                        <FaClock className="text-neutral-400 group-hover:text-primary-500" />
                                         <span>{isOffboarding ? 'Final Settlement' : 'Holiday Calendar'}</span>
                                     </a>
                                 </li>

@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import AdminDashboard from '../components/dashboard/AdminDashboard';
 import ManagerDashboard from '../components/dashboard/ManagerDashboard';
 import EmployeeDashboard from '../components/dashboard/EmployeeDashboard';
+import '../styles/Dashboard.css';
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -24,5 +25,4 @@ const Dashboard = () => {
       return <EmployeeDashboard />;
   }
 };
-
 export default Dashboard;

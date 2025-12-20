@@ -3,7 +3,8 @@ import { recruitmentService, departmentService } from '../services';
 import { useAuth } from '../context/AuthContext';
 import { useSettings } from '../hooks/useSettings.jsx';
 import { formatDate } from '../utils/settingsHelper';
-
+import { FaBriefcase, FaUsers, FaPlus, FaSearch, FaTimes, FaFilter, FaCheckCircle, FaExclamationCircle, FaCloudUploadAlt } from 'react-icons/fa';
+import { FiEdit2, FiTrash2, FiExternalLink } from 'react-icons/fi';
 const Recruitment = () => {
   const { user } = useAuth();
   const { getSetting } = useSettings();
@@ -286,76 +287,141 @@ const Recruitment = () => {
   const appStatuses = ['pending', 'reviewed', 'interview', 'offered', 'rejected'];
 
   return (
-    <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-        <h1>Recruitment</h1>
-        <button className="btn btn-primary" onClick={() => setShowJobModal(true)}>+ New Job</button>
-      </div>
-
-      {error && <div className="error" style={{ marginBottom: '1rem', padding: '1rem', backgroundColor: '#fee2e2', borderRadius: '0.375rem' }}>{error}</div>}
-      {success && <div style={{ marginBottom: '1rem', padding: '1rem', backgroundColor: '#d1fae5', color: '#065f46', borderRadius: '0.375rem' }}>{success}</div>}
-
-      {/* Tab Navigation */}
-      <div style={{ marginBottom: '2rem' }}>
-        <div style={{ display: 'flex', borderBottom: '1px solid #e5e7eb', marginBottom: '1rem' }}>
+    <div className="page-container">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+        <div>
+          <h1 className="text-2xl font-bold text-neutral-900">Recruitment & Hiring</h1>
+          <p className="text-neutral-500">Manage job postings, candidates, and hiring pipelines</p>
+        </div>
+        <div>
           <button
-            className={`btn ${activeTab === 'jobs' ? 'btn-primary' : 'btn-outline'}`}
-            onClick={() => setActiveTab('jobs')}
-            style={{
-              borderBottom: activeTab === 'jobs' ? '2px solid #3b82f6' : 'none',
-              borderRadius: '0.375rem 0.375rem 0 0',
-              marginRight: '0.5rem'
+            className="btn btn-primary"
+            onClick={() => {
+              setEditingJob(null);
+              setJobFormData({
+                title: '',
+                description: '',
+                department_id: '',
+                position_type: 'full-time',
+                experience_required: '',
+                salary_range: '',
+                location: '',
+                requirements: '',
+                responsibilities: '',
+                deadline: ''
+              });
+              setShowJobModal(true);
             }}
           >
-            Job Postings
-          </button>
-          <button
-            className={`btn ${activeTab === 'applications' ? 'btn-primary' : 'btn-outline'}`}
-            onClick={() => setActiveTab('applications')}
-            style={{
-              borderBottom: activeTab === 'applications' ? '2px solid #3b82f6' : 'none',
-              borderRadius: '0.375rem 0.375rem 0 0'
-            }}
-          >
-            Applications
+            <FaPlus className="mr-2" /> Post New Job
           </button>
         </div>
+      </div>
 
-        {/* Jobs Content */}
-        {activeTab === 'jobs' && (
-          <div>
-            <table className="table">
+      {error && (
+        <div className="badge badge-danger w-full justify-start p-4 mb-6 rounded-lg text-sm">
+          <FaExclamationCircle className="mr-2" /> {error}
+        </div>
+      )}
+
+      {success && (
+        <div className="badge badge-success w-full justify-start p-4 mb-6 rounded-lg text-sm">
+          <FaCheckCircle className="mr-2" /> {success}
+        </div>
+      )}
+
+      {/* Tabs */}
+      <div className="tabs mb-6 overflow-x-auto no-scrollbar">
+        <button
+          className={`tab-item ${activeTab === 'jobs' ? 'tab-item-active' : 'tab-item-inactive'}`}
+          onClick={() => setActiveTab('jobs')}
+        >
+          <FaBriefcase className="mr-2" /> Job Postings
+        </button>
+        <button
+          className={`tab-item ${activeTab === 'applications' ? 'tab-item-active' : 'tab-item-inactive'}`}
+          onClick={() => setActiveTab('applications')}
+        >
+          <FaUsers className="mr-2" /> Applications
+        </button>
+      </div>
+
+      {activeTab === 'jobs' && (
+        <div className="card p-0">
+          <div className="data-table-wrapper">
+            <table className="data-table">
               <thead>
                 <tr>
-                  <th>Title</th>
+                  <th>Job Title</th>
+                  <th>Department</th>
                   <th>Type</th>
                   <th>Location</th>
-                  <th>Experience</th>
-                  <th>Salary</th>
-                  <th>Deadline</th>
+                  <th>Applicants</th>
+                  <th>Posted / Deadline</th>
                   <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {jobs.length === 0 ? (
                   <tr>
-                    <td colSpan="7" style={{ textAlign: 'center', padding: '2rem', color: '#6b7280' }}>
-                      No job postings found.
+                    <td colSpan="7" className="text-center py-12 text-neutral-500">
+                      <div className="flex flex-col items-center">
+                        <FaBriefcase size={32} className="text-neutral-200 mb-2" />
+                        <p>No job postings found.</p>
+                      </div>
                     </td>
                   </tr>
                 ) : (
                   jobs.map((job) => (
                     <tr key={job.job_id}>
-                      <td><strong>{job.title}</strong></td>
-                      <td>{job.position_type}</td>
-                      <td>{job.location}</td>
-                      <td>{job.experience_required}</td>
-                      <td>{job.salary_range}</td>
-                      <td>{job.deadline ? new Date(job.deadline).toLocaleDateString() : 'N/A'}</td>
+                      <td className="font-semibold text-neutral-900">{job.title}</td>
+                      <td>{job.department_name || '-'}</td>
                       <td>
-                        <div style={{ display: 'flex', gap: '0.5rem' }}>
-                          <button className="btn btn-info" style={{ fontSize: '0.75rem' }} onClick={() => handleEditJob(job)}>Edit</button>
-                          <button className="btn btn-danger" style={{ fontSize: '0.75rem' }} onClick={() => handleDeleteJob(job.job_id)}>Delete</button>
+                        <span className="capitalize">{job.position_type?.replace('-', ' ')}</span>
+                      </td>
+                      <td>{job.location}</td>
+                      <td>
+                        <button
+                          className="text-primary-600 hover:underline text-sm font-medium"
+                          onClick={() => setActiveTab('applications')}
+                        >
+                          View Applicants
+                        </button>
+                      </td>
+                      <td>
+                        <div className="text-xs text-neutral-500">
+                          <div>Posted: {formatDate(job.posted_date || new Date(), getSetting('date_format'))}</div>
+                          {job.deadline && <div className="text-neutral-400 mt-0.5">Due: {formatDate(job.deadline, getSetting('date_format'))}</div>}
+                        </div>
+                      </td>
+                      <td>
+                        <div className="flex gap-1">
+                          <button
+                            className="p-1.5 text-neutral-400 hover:text-primary-600 hover:bg-primary-50 rounded transition-colors"
+                            onClick={() => handleEditJob(job)}
+                            title="Edit"
+                          >
+                            <FiEdit2 size={16} />
+                          </button>
+                          <button
+                            className="p-1.5 text-neutral-400 hover:text-danger hover:bg-danger-50 rounded transition-colors"
+                            onClick={() => handleDeleteJob(job.job_id)}
+                            title="Delete"
+                          >
+                            <FiTrash2 size={16} />
+                          </button>
+                          <button
+                            className="p-1.5 text-neutral-400 hover:text-info hover:bg-info-50 rounded transition-colors"
+                            onClick={() => {
+                              setSelectedJob(job);
+                              setAppFormData(prev => ({ ...prev, job_id: job.job_id }));
+                              setShowAppModal(true);
+                            }}
+                            title="Add Applicant"
+                          >
+                            <FaPlus size={16} />
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -363,212 +429,272 @@ const Recruitment = () => {
                 )}
               </tbody>
             </table>
+          </div>
 
-            {/* Job Pagination */}
-            {jobPagination.totalPages > 1 && (
-              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', marginTop: '2rem', gap: '0.5rem' }}>
+          {/* Job Pagination */}
+          {jobPagination.totalPages > 1 && (
+            <div className="flex justify-between items-center p-4 border-t border-neutral-100 bg-neutral-50">
+              <span className="text-xs text-neutral-500">
+                Showing page {jobPagination.currentPage} of {jobPagination.totalPages}
+              </span>
+              <div className="flex gap-2">
                 <button
-                  className="btn btn-secondary"
+                  className="btn btn-secondary btn-sm"
                   onClick={() => handleJobPageChange(jobPagination.currentPage - 1)}
                   disabled={!jobPagination.hasPrev}
                 >
                   Previous
                 </button>
-                <span style={{ margin: '0 1rem', color: '#6b7280' }}>
-                  Page {jobPagination.currentPage} of {jobPagination.totalPages}
-                </span>
                 <button
-                  className="btn btn-secondary"
+                  className="btn btn-secondary btn-sm"
                   onClick={() => handleJobPageChange(jobPagination.currentPage + 1)}
                   disabled={!jobPagination.hasNext}
                 >
                   Next
                 </button>
               </div>
-            )}
-          </div>
-        )}
+            </div>
+          )}
+        </div>
+      )}
 
-        {/* Applications Content */}
-        {activeTab === 'applications' && (
-          <div>
-            <table className="table">
+      {activeTab === 'applications' && (
+        <div className="card p-0">
+          <div className="data-table-wrapper">
+            <table className="data-table">
               <thead>
                 <tr>
-                  <th>Job Title</th>
-                  <th>Applicant</th>
-                  <th>Email</th>
-                  <th>Phone</th>
+                  <th>Candidate</th>
+                  <th>Job Applied For</th>
                   <th>Experience</th>
-                  <th>Expected Salary</th>
                   <th>Status</th>
+                  <th>Applied On</th>
+                  <th>Resume</th>
                   <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {applications.length === 0 ? (
                   <tr>
-                    <td colSpan="8" style={{ textAlign: 'center', padding: '2rem', color: '#6b7280' }}>
-                      No applications found.
+                    <td colSpan="7" className="text-center py-12 text-neutral-500">
+                      <div className="flex flex-col items-center">
+                        <FaUsers size={32} className="text-neutral-200 mb-2" />
+                        <p>No applications found.</p>
+                      </div>
                     </td>
                   </tr>
                 ) : (
                   applications.map((app) => (
                     <tr key={app.application_id}>
-                      <td><strong>{app.job_title}</strong></td>
-                      <td>{app.applicant_name}</td>
-                      <td>{app.email}</td>
-                      <td>{app.phone || 'N/A'}</td>
-                      <td>{app.experience_years || 'N/A'} years</td>
-                      <td>{app.expected_salary || 'N/A'}</td>
                       <td>
-                        <span className={`badge badge-${app.status === 'pending' ? 'secondary' : app.status === 'reviewed' ? 'info' : app.status === 'interview' ? 'warning' : app.status === 'offered' ? 'success' : 'danger'}`}>
-                          {app.status}
-                        </span>
+                        <div className="font-semibold text-neutral-900">{app.applicant_name}</div>
+                        <div className="text-xs text-neutral-500">{app.email}</div>
+                        <div className="text-xs text-neutral-500">{app.phone}</div>
                       </td>
                       <td>
-                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                          <select
-                            className="form-input"
-                            value={app.status}
-                            onChange={(e) => handleUpdateAppStatus(app.application_id, e.target.value)}
-                            style={{ fontSize: '0.75rem', padding: '0.25rem' }}
+                        <div className="font-medium text-neutral-700">{app.job_title || 'Unknown Job'}</div>
+                      </td>
+                      <td>{app.experience_years ? `${app.experience_years} years` : '-'}</td>
+                      <td>
+                        <select
+                          className={`badge badge-${app.status === 'offered' ? 'success' :
+                            app.status === 'rejected' ? 'danger' :
+                              app.status === 'interview' ? 'info' :
+                                app.status === 'reviewed' ? 'info' :
+                                  'neutral'
+                            } border-none font-semibold cursor-pointer outline-none`}
+                          value={app.status}
+                          onChange={(e) => handleUpdateAppStatus(app.application_id, e.target.value)}
+                        >
+                          {appStatuses.map(status => (
+                            <option key={status} value={status}>{status.charAt(0).toUpperCase() + status.slice(1)}</option>
+                          ))}
+                        </select>
+                      </td>
+                      <td className="text-neutral-600 text-sm">
+                        {formatDate(app.application_date, getSetting('date_format'))}
+                      </td>
+                      <td>
+                        {app.resume_url ? (
+                          <a
+                            href={app.resume_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-primary-600 hover:text-primary-800 flex items-center gap-1 text-sm font-semibold"
                           >
-                            {appStatuses.map(status => <option key={status} value={status}>{status}</option>)}
-                          </select>
-                          <a href={app.resume_url} target="_blank" rel="noopener noreferrer" className="btn btn-info" style={{ fontSize: '0.75rem' }}>
-                            Resume
+                            View <FiExternalLink size={12} />
                           </a>
-                          <button className="btn btn-danger" style={{ fontSize: '0.75rem' }} onClick={() => handleDeleteApp(app.application_id)}>Delete</button>
-                        </div>
+                        ) : <span className="text-neutral-400 text-sm">-</span>}
+                      </td>
+                      <td>
+                        <button
+                          className="p-1.5 text-neutral-400 hover:text-danger hover:bg-danger-50 rounded transition-colors"
+                          onClick={() => handleDeleteApp(app.application_id)}
+                          title="Delete"
+                        >
+                          <FiTrash2 size={16} />
+                        </button>
                       </td>
                     </tr>
                   ))
                 )}
               </tbody>
             </table>
+          </div>
 
-            {/* Application Pagination Controls */}
-            {appPagination.totalPages > 1 && (
-              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', marginTop: '2rem', gap: '0.5rem' }}>
+          {/* Application Pagination */}
+          {appPagination.totalPages > 1 && (
+            <div className="flex justify-between items-center p-4 border-t border-neutral-100 bg-neutral-50">
+              <span className="text-xs text-neutral-500">
+                Showing page {appPagination.currentPage} of {appPagination.totalPages}
+              </span>
+              <div className="flex gap-2">
                 <button
-                  className="btn btn-secondary"
+                  className="btn btn-secondary btn-sm"
                   onClick={() => handleAppPageChange(appPagination.currentPage - 1)}
                   disabled={!appPagination.hasPrev}
                 >
                   Previous
                 </button>
-
-                {/* Numbered page buttons */}
-                {Array.from({ length: Math.min(5, appPagination.totalPages) }, (_, i) => {
-                  let pageNum;
-                  if (appPagination.totalPages <= 5) {
-                    pageNum = i + 1;
-                  } else if (appPagination.currentPage <= 3) {
-                    pageNum = i + 1;
-                  } else if (appPagination.currentPage >= appPagination.totalPages - 2) {
-                    pageNum = appPagination.totalPages - 4 + i;
-                  } else {
-                    pageNum = appPagination.currentPage - 2 + i;
-                  }
-
-                  return (
-                    <button
-                      key={pageNum}
-                      className={`btn ${pageNum === appPagination.currentPage ? 'btn-primary' : 'btn-secondary'}`}
-                      onClick={() => handleAppPageChange(pageNum)}
-                      style={{ minWidth: '40px' }}
-                    >
-                      {pageNum}
-                    </button>
-                  );
-                })}
-
                 <button
-                  className="btn btn-secondary"
+                  className="btn btn-secondary btn-sm"
                   onClick={() => handleAppPageChange(appPagination.currentPage + 1)}
                   disabled={!appPagination.hasNext}
                 >
                   Next
                 </button>
-
-                <span style={{ marginLeft: '1rem', color: '#6b7280' }}>
-                  Page {appPagination.currentPage} of {appPagination.totalPages}
-                  {' '}({appPagination.totalItems} total applications)
-                </span>
               </div>
-            )}
-          </div>
-        )}
-      </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Job Posting Modal */}
       {showJobModal && (
         <div className="modal-overlay" onClick={handleCloseJobModal}>
-          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '800px' }}>
-            <h2>{editingJob ? 'Edit Job Posting' : 'New Job Posting'}</h2>
-            {error && <div className="error" style={{ marginBottom: '1rem' }}>{error}</div>}
+          <div className="modal modal-lg" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2 className="modal-title">{editingJob ? 'Edit Job Posting' : 'New Job Posting'}</h2>
+              <button onClick={handleCloseJobModal} className="modal-close">
+                <FaTimes />
+              </button>
+            </div>
+
             <form onSubmit={handleJobSubmit}>
-              <div className="form-group">
-                <label className="form-label">Job Title *</label>
-                <input type="text" className="form-input" value={jobFormData.title} onChange={(e) => setJobFormData({ ...jobFormData, title: e.target.value })} required />
+              <div className="modal-body space-y-4">
+                <div className="form-group">
+                  <label className="form-label">Job Title <span className="text-red-500">*</span></label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={jobFormData.title}
+                    onChange={(e) => setJobFormData({ ...jobFormData, title: e.target.value })}
+                    required
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Description</label>
+                  <textarea
+                    className="form-input"
+                    value={jobFormData.description}
+                    onChange={(e) => setJobFormData({ ...jobFormData, description: e.target.value })}
+                    rows="3"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="form-group">
+                    <label className="form-label">Department</label>
+                    <select
+                      className="form-input"
+                      value={jobFormData.department_id}
+                      onChange={(e) => setJobFormData({ ...jobFormData, department_id: e.target.value })}
+                    >
+                      <option value="">Select Department</option>
+                      {departments.map(dept => <option key={dept.department_id} value={dept.department_id}>{dept.department_name}</option>)}
+                    </select>
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">Position Type</label>
+                    <select
+                      className="form-input"
+                      value={jobFormData.position_type}
+                      onChange={(e) => setJobFormData({ ...jobFormData, position_type: e.target.value })}
+                    >
+                      {positionTypes.map(type => <option key={type} value={type}>{type.replace('-', ' ')}</option>)}
+                    </select>
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">Experience</label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      value={jobFormData.experience_required}
+                      onChange={(e) => setJobFormData({ ...jobFormData, experience_required: e.target.value })}
+                      placeholder="e.g. 2-5 years"
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">Salary Range</label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      value={jobFormData.salary_range}
+                      onChange={(e) => setJobFormData({ ...jobFormData, salary_range: e.target.value })}
+                      placeholder="e.g. $50k - $70k"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="form-group">
+                    <label className="form-label">Location</label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      value={jobFormData.location}
+                      onChange={(e) => setJobFormData({ ...jobFormData, location: e.target.value })}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Deadline</label>
+                    <input
+                      type="date"
+                      className="form-input"
+                      value={jobFormData.deadline}
+                      onChange={(e) => setJobFormData({ ...jobFormData, deadline: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Requirements</label>
+                  <textarea
+                    className="form-input"
+                    value={jobFormData.requirements}
+                    onChange={(e) => setJobFormData({ ...jobFormData, requirements: e.target.value })}
+                    rows="3"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Responsibilities</label>
+                  <textarea
+                    className="form-input"
+                    value={jobFormData.responsibilities}
+                    onChange={(e) => setJobFormData({ ...jobFormData, responsibilities: e.target.value })}
+                    rows="3"
+                  />
+                </div>
               </div>
 
-              <div className="form-group">
-                <label className="form-label">Description</label>
-                <textarea className="form-input" value={jobFormData.description} onChange={(e) => setJobFormData({ ...jobFormData, description: e.target.value })} rows="3" />
-              </div>
-
-              <div className="grid grid-cols-2" style={{ gap: '1rem' }}>
-                <div className="form-group">
-                  <label className="form-label">Department</label>
-                  <select className="form-input" value={jobFormData.department_id} onChange={(e) => setJobFormData({ ...jobFormData, department_id: e.target.value })}>
-                    <option value="">Select Department</option>
-                    {departments.map(dept => <option key={dept.department_id} value={dept.department_id}>{dept.department_name}</option>)}
-                  </select>
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">Position Type</label>
-                  <select className="form-input" value={jobFormData.position_type} onChange={(e) => setJobFormData({ ...jobFormData, position_type: e.target.value })}>
-                    {positionTypes.map(type => <option key={type} value={type}>{type.replace('-', ' ')}</option>)}
-                  </select>
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">Experience Required</label>
-                  <input type="text" className="form-input" value={jobFormData.experience_required} onChange={(e) => setJobFormData({ ...jobFormData, experience_required: e.target.value })} placeholder="e.g., 2-5 years" />
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">Salary Range</label>
-                  <input type="text" className="form-input" value={jobFormData.salary_range} onChange={(e) => setJobFormData({ ...jobFormData, salary_range: e.target.value })} placeholder="e.g., $50,000 - $70,000" />
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">Location</label>
-                  <input type="text" className="form-input" value={jobFormData.location} onChange={(e) => setJobFormData({ ...jobFormData, location: e.target.value })} />
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">Deadline</label>
-                  <input type="date" className="form-input" value={jobFormData.deadline} onChange={(e) => setJobFormData({ ...jobFormData, deadline: e.target.value })} />
-                </div>
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Requirements</label>
-                <textarea className="form-input" value={jobFormData.requirements} onChange={(e) => setJobFormData({ ...jobFormData, requirements: e.target.value })} rows="3" />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Responsibilities</label>
-                <textarea className="form-input" value={jobFormData.responsibilities} onChange={(e) => setJobFormData({ ...jobFormData, responsibilities: e.target.value })} rows="3" />
-              </div>
-
-              <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
-                <button type="submit" className="btn btn-primary">{editingJob ? 'Update' : 'Create'}</button>
+              <div className="modal-footer">
                 <button type="button" className="btn btn-secondary" onClick={handleCloseJobModal}>Cancel</button>
+                <button type="submit" className="btn btn-primary">{editingJob ? 'Update Posting' : 'Create Posting'}</button>
               </div>
             </form>
           </div>
@@ -578,87 +704,145 @@ const Recruitment = () => {
       {/* Application Modal */}
       {showAppModal && (
         <div className="modal-overlay" onClick={handleCloseAppModal}>
-          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '700px' }}>
-            <h2>Submit Application</h2>
-            {error && <div className="error" style={{ marginBottom: '1rem' }}>{error}</div>}
+          <div className="modal modal-lg" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2 className="modal-title">Submit Application</h2>
+              <button onClick={handleCloseAppModal} className="modal-close">
+                <FaTimes />
+              </button>
+            </div>
 
-            <div style={{ marginBottom: '1.5rem', padding: '1rem', background: '#f0f9ff', borderRadius: '0.5rem', border: '1px dashed #0ea5e9' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div className="modal-body space-y-6">
+              <div className="bg-primary-50 border border-primary-100 rounded-xl p-4 flex items-center justify-between">
                 <div>
-                  <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '0.875rem', fontWeight: 600, color: '#0369a1' }}>Auto-fill from Resume</h4>
-                  <p style={{ margin: 0, fontSize: '0.75rem', color: '#0c4a6e' }}>Upload a PDF resume to automatically fill available details.</p>
+                  <h4 className="text-sm font-bold text-primary-700 mb-1">Auto-fill from Resume</h4>
+                  <p className="text-xs text-primary-600">Upload a PDF resume to automatically fill available details.</p>
                 </div>
-                <div style={{ position: 'relative' }}>
+                <div className="relative">
                   <input
                     type="file"
                     accept=".pdf"
                     onChange={handleResumeParse}
-                    style={{ position: 'absolute', opacity: 0, width: '100%', height: '100%', cursor: 'pointer', zIndex: 10 }}
+                    className="absolute inset-0 opacity-0 cursor-pointer w-full z-10"
                     disabled={parsingLoading}
                   />
-                  <button className="btn btn-info" disabled={parsingLoading} style={{ pointerEvents: 'none' }}>
+                  <button className="btn btn-primary btn-sm flex items-center gap-2" disabled={parsingLoading}>
+                    {parsingLoading ? <FaExclamationCircle className="animate-spin" /> : <FaCloudUploadAlt />}
                     {parsingLoading ? 'Parsing...' : 'Upload PDF'}
                   </button>
                 </div>
               </div>
+
+              <form onSubmit={handleAppSubmit}>
+                <div className="space-y-4">
+                  <div className="form-group">
+                    <label className="form-label">Job *</label>
+                    <select
+                      className="form-input"
+                      value={appFormData.job_id}
+                      onChange={(e) => setAppFormData({ ...appFormData, job_id: e.target.value })}
+                      required
+                    >
+                      <option value="">Select Job</option>
+                      {jobs.map(job => <option key={job.job_id} value={job.job_id}>{job.title}</option>)}
+                    </select>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="form-group">
+                      <label className="form-label">Full Name *</label>
+                      <input
+                        type="text"
+                        className="form-input"
+                        value={appFormData.applicant_name}
+                        onChange={(e) => setAppFormData({ ...appFormData, applicant_name: e.target.value })}
+                        required
+                      />
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label">Email *</label>
+                      <input
+                        type="email"
+                        className="form-input"
+                        value={appFormData.email}
+                        onChange={(e) => setAppFormData({ ...appFormData, email: e.target.value })}
+                        required
+                      />
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label">Phone</label>
+                      <input
+                        type="tel"
+                        className="form-input"
+                        value={appFormData.phone}
+                        onChange={(e) => setAppFormData({ ...appFormData, phone: e.target.value })}
+                      />
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label">Experience (years)</label>
+                      <input
+                        type="number"
+                        className="form-input"
+                        value={appFormData.experience_years}
+                        onChange={(e) => setAppFormData({ ...appFormData, experience_years: e.target.value })}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="form-group">
+                      <label className="form-label">Current Salary</label>
+                      <input
+                        type="text"
+                        className="form-input"
+                        value={appFormData.current_salary}
+                        onChange={(e) => setAppFormData({ ...appFormData, current_salary: e.target.value })}
+                        placeholder="e.g. $45k"
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Expected Salary</label>
+                      <input
+                        type="text"
+                        className="form-input"
+                        value={appFormData.expected_salary}
+                        onChange={(e) => setAppFormData({ ...appFormData, expected_salary: e.target.value })}
+                        placeholder="e.g. $55k"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">Cover Letter / Notes</label>
+                    <textarea
+                      className="form-input"
+                      value={appFormData.cover_letter}
+                      onChange={(e) => setAppFormData({ ...appFormData, cover_letter: e.target.value })}
+                      rows="4"
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">Resume URL</label>
+                    <input
+                      type="url"
+                      className="form-input"
+                      value={appFormData.resume_url}
+                      onChange={(e) => setAppFormData({ ...appFormData, resume_url: e.target.value })}
+                      placeholder="https://..."
+                    />
+                  </div>
+                </div>
+
+                <div className="modal-footer px-0 pb-0 pt-6">
+                  <button type="button" className="btn btn-secondary" onClick={handleCloseAppModal}>Cancel</button>
+                  <button type="submit" className="btn btn-primary">Submit Application</button>
+                </div>
+              </form>
             </div>
-
-            <form onSubmit={handleAppSubmit}>
-              <div className="form-group">
-                <label className="form-label">Job *</label>
-                <select className="form-input" value={appFormData.job_id} onChange={(e) => setAppFormData({ ...appFormData, job_id: e.target.value })} required>
-                  <option value="">Select Job</option>
-                  {jobs.map(job => <option key={job.job_id} value={job.job_id}>{job.title}</option>)}
-                </select>
-              </div>
-
-              <div className="grid grid-cols-2" style={{ gap: '1rem' }}>
-                <div className="form-group">
-                  <label className="form-label">Full Name *</label>
-                  <input type="text" className="form-input" value={appFormData.applicant_name} onChange={(e) => setAppFormData({ ...appFormData, applicant_name: e.target.value })} required />
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">Email *</label>
-                  <input type="email" className="form-input" value={appFormData.email} onChange={(e) => setAppFormData({ ...appFormData, email: e.target.value })} required />
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">Phone</label>
-                  <input type="tel" className="form-input" value={appFormData.phone} onChange={(e) => setAppFormData({ ...appFormData, phone: e.target.value })} />
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">Experience (years)</label>
-                  <input type="number" className="form-input" value={appFormData.experience_years} onChange={(e) => setAppFormData({ ...appFormData, experience_years: e.target.value })} />
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">Current Salary</label>
-                  <input type="text" className="form-input" value={appFormData.current_salary} onChange={(e) => setAppFormData({ ...appFormData, current_salary: e.target.value })} />
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">Expected Salary</label>
-                  <input type="text" className="form-input" value={appFormData.expected_salary} onChange={(e) => setAppFormData({ ...appFormData, expected_salary: e.target.value })} />
-                </div>
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Resume URL *</label>
-                <input type="url" className="form-input" value={appFormData.resume_url} onChange={(e) => setAppFormData({ ...appFormData, resume_url: e.target.value })} required placeholder="https://example.com/resume.pdf" />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Cover Letter</label>
-                <textarea className="form-input" value={appFormData.cover_letter} onChange={(e) => setAppFormData({ ...appFormData, cover_letter: e.target.value })} rows="4" />
-              </div>
-
-              <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
-                <button type="submit" className="btn btn-primary">Submit Application</button>
-                <button type="button" className="btn btn-secondary" onClick={handleCloseAppModal}>Cancel</button>
-              </div>
-            </form>
           </div>
         </div>
       )}
@@ -667,3 +851,4 @@ const Recruitment = () => {
 };
 
 export default Recruitment;
+

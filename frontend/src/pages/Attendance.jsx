@@ -12,8 +12,10 @@ import {
   FaTimesCircle,
   FaPlus,
   FaFilter,
-  FaTrash
+  FaTrash,
+  FaEdit
 } from 'react-icons/fa';
+import AttendanceRegularizationModal from '../components/attendance/AttendanceRegularizationModal';
 
 const Attendance = () => {
   const { user } = useAuth();
@@ -22,8 +24,15 @@ const Attendance = () => {
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [showRegularizationModal, setShowRegularizationModal] = useState(false);
+  const [selectedDateForRegularization, setSelectedDateForRegularization] = useState(null);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+
+  // Regularization State
+  const [activeTab, setActiveTab] = useState('attendance'); // 'attendance' or 'regularization'
+  const [regularizationRequests, setRegularizationRequests] = useState([]);
+
   const [filters, setFilters] = useState({
     employee_id: '',
     start_date: '',
@@ -50,11 +59,16 @@ const Attendance = () => {
   });
 
   useEffect(() => {
-    loadAttendance();
+    if (activeTab === 'attendance') {
+      loadAttendance();
+    } else {
+      loadRegularizationRequests();
+    }
+
     if (user?.role === 'admin' || user?.role === 'manager') {
       loadEmployees();
     }
-  }, []);
+  }, [activeTab]);
 
   const loadAttendance = async (page = 1) => {
     try {
@@ -94,6 +108,50 @@ const Attendance = () => {
       setEmployees(response.data);
     } catch (error) {
       console.error('Failed to load employees:', error);
+    }
+  };
+
+  const loadRegularizationRequests = async () => {
+    try {
+      setLoading(true);
+      const params = {};
+      if (user?.role === 'employee') {
+        // If employee, backend might expect an employee_id filter or handle it via token.
+        // Usually backend handles "my requests" based on token for employees.
+        // But if we need explicit ID:
+        const employeeResponse = await employeeService.getByUserId(user.userId);
+        if (employeeResponse.data) {
+          params.employee_id = employeeResponse.data.employee_id;
+        }
+      }
+      const data = await attendanceService.getRegularizationRequests(params);
+      setRegularizationRequests(data.data || []); // Adjust based on actual API response structure
+    } catch (err) {
+      console.error("Failed to load regularization requests", err);
+      setError("Failed to load requests");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleApproveRegularization = async (id) => {
+    try {
+      await attendanceService.updateRegularizationStatus(id, 'approved');
+      setSuccess('Request approved successfully');
+      loadRegularizationRequests();
+    } catch (err) {
+      setError('Failed to approve request');
+    }
+  };
+
+  const handleRejectRegularization = async (id) => {
+    if (!window.confirm("Reject this request?")) return;
+    try {
+      await attendanceService.updateRegularizationStatus(id, 'rejected');
+      setSuccess('Request rejected');
+      loadRegularizationRequests();
+    } catch (err) {
+      setError('Failed to reject request');
     }
   };
 
@@ -231,6 +289,14 @@ const Attendance = () => {
     });
   };
 
+  const handleFilterChange = (e) => {
+    const { name, value } = e.target;
+    setFilters(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
   const handleFilter = () => {
     // Reset to first page when filters change
     loadAttendance(1);
@@ -244,312 +310,456 @@ const Attendance = () => {
   const absentCount = attendanceRecords.filter(r => r.status === 'absent').length;
 
   return (
-    <div className="container" style={{ paddingBottom: '2rem' }}>
+    <div className="w-full" style={{ paddingBottom: '2rem' }}>
       {/* Page Header */}
-      <div className="page-header" style={{ marginTop: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div className="page-header">
         <div>
           <h1 className="page-title">Attendance Management</h1>
-          <p className="page-description">Track employee attendance, work hours, and punctuality.</p>
+          <p className="page-subtitle">Track employee attendance, work hours, and punctuality.</p>
         </div>
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
+        <div className="flex gap-sm">
           <button className="btn btn-primary" onClick={handleClockIn}>
             <FaClock /> Clock In
           </button>
           <button className="btn btn-secondary" onClick={handleClockOut}>
             <FaUserClock /> Clock Out
           </button>
-          {(user?.role === 'admin' || user?.role === 'manager') && (
-            <button className="btn btn-primary" onClick={() => setShowModal(true)}>
-              <FaPlus /> Add Record
+          <button className="btn btn-primary" onClick={() => setShowModal(true)}>
+            <FaPlus /> Add Record
+          </button>
+
+          {user?.role === 'employee' && (
+            <button className="btn btn-secondary" onClick={() => {
+              setSelectedDateForRegularization(new Date().toISOString().split('T')[0]);
+              setShowRegularizationModal(true);
+            }}>
+              <FaEdit /> Regularize
             </button>
           )}
         </div>
       </div>
 
-      {error && <div className="alert alert-error">{error}</div>}
-      {success && <div className="alert alert-success">{success}</div>}
 
-      {/* Stats Overview (Visible to all) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6" style={{ marginBottom: '2rem' }}>
-        <div className="stat-card">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-            <div style={{ background: '#e0e7ff', padding: '0.75rem', borderRadius: '0.5rem', color: '#4f46e5' }}>
-              <FaCalendarCheck size={20} />
-            </div>
-            <span style={{ fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase', color: '#9ca3af' }}>Total Records</span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'flex-end', gap: '0.5rem' }}>
-            <h3 style={{ fontSize: '1.875rem', fontWeight: 'bold', color: '#111827', lineHeight: 1 }}>{pagination.totalItems}</h3>
-            <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>entries</span>
-          </div>
-        </div>
-        <div className="stat-card">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-            <div style={{ background: '#d1fae5', padding: '0.75rem', borderRadius: '0.5rem', color: '#059669' }}>
-              <FaCheckCircle size={20} />
-            </div>
-            <span style={{ fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase', color: '#9ca3af' }}>Present</span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'flex-end', gap: '0.5rem' }}>
-            <h3 style={{ fontSize: '1.875rem', fontWeight: 'bold', color: '#111827', lineHeight: 1 }}>{presentCount}</h3>
-            <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>on this page</span>
-          </div>
-        </div>
-        <div className="stat-card">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-            <div style={{ background: '#fef3c7', padding: '0.75rem', borderRadius: '0.5rem', color: '#d97706' }}>
-              <FaExclamationTriangle size={20} />
-            </div>
-            <span style={{ fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase', color: '#9ca3af' }}>Late</span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'flex-end', gap: '0.5rem' }}>
-            <h3 style={{ fontSize: '1.875rem', fontWeight: 'bold', color: '#111827', lineHeight: 1 }}>{lateCount}</h3>
-            <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>on this page</span>
-          </div>
-        </div>
-        <div className="stat-card">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-            <div style={{ background: '#fee2e2', padding: '0.75rem', borderRadius: '0.5rem', color: '#dc2626' }}>
-              <FaTimesCircle size={20} />
-            </div>
-            <span style={{ fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase', color: '#9ca3af' }}>Absent</span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'flex-end', gap: '0.5rem' }}>
-            <h3 style={{ fontSize: '1.875rem', fontWeight: 'bold', color: '#111827', lineHeight: 1 }}>{absentCount}</h3>
-            <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>on this page</span>
-          </div>
-        </div>
+      {/* Tabs */}
+      <div className="flex gap-xs mb-8 border-b border-neutral-200">
+        <button
+          className={`pb-3 px-5 text-sm font-semibold transition-colors border-b-2 ${activeTab === 'attendance' ? 'text-primary-600 border-primary-600' : 'text-neutral-500 border-transparent hover:text-neutral-700'}`}
+          onClick={() => setActiveTab('attendance')}
+        >
+          <FaCalendarCheck className="inline mr-2" /> Attendance Log
+        </button>
+        <button
+          className={`pb-3 px-5 text-sm font-semibold transition-colors border-b-2 ${activeTab === 'regularization' ? 'text-primary-600 border-primary-600' : 'text-neutral-500 border-transparent hover:text-neutral-700'}`}
+          onClick={() => setActiveTab('regularization')}
+        >
+          <FaExclamationTriangle className="inline mr-2" /> Regularization Requests
+        </button>
       </div>
 
-      {/* Quick Clock In/Out & Filters */}
-      <div className="grid grid-cols-1" style={{ marginBottom: '1.5rem' }}>
-        {(user?.role === 'admin' || user?.role === 'manager') && (
-          <div className="card">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-              <h3 style={{ fontSize: '1.125rem', fontWeight: '600' }}>Filters & Actions</h3>
-              <button className="btn btn-outline" onClick={handleFilter} style={{ fontSize: '0.875rem' }}>
-                <FaFilter /> Apply Filters
-              </button>
+      {activeTab === 'attendance' && (
+        <>
+          {error && <div className="p-4 mb-6 text-sm text-red-700 bg-red-50 rounded-lg border border-red-200 flex items-center gap-2"><FaTimesCircle /> {error}</div>}
+          {success && <div className="p-4 mb-6 text-sm text-green-700 bg-green-50 rounded-lg border border-green-200 flex items-center gap-2"><FaCheckCircle /> {success}</div>}
+
+
+          {/* Stats Overview */}
+          <div className="dashboard-main-grid mb-6">
+            <div className="card p-4">
+              <div className="flex justify-between items-start mb-4">
+                <div className="bg-primary-50 text-primary-600 rounded-lg border border-primary-50 p-2">
+                  <FaCalendarCheck size={16} />
+                </div>
+                <span className="text-xs font-bold uppercase tracking-wide text-neutral-400" style={{ fontSize: '10px' }}>Total Records</span>
+              </div>
+              <div className="mb-1">
+                <h3 className="text-2xl font-bold text-neutral-900 tracking-tight">{pagination.totalItems}</h3>
+              </div>
+              <span className="text-sm font-medium text-neutral-500">entries</span>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="form-group" style={{ marginBottom: 0 }}>
-                <label className="form-label">Employee</label>
-                <select className="form-input" value={filters.employee_id} onChange={(e) => setFilters({ ...filters, employee_id: e.target.value })}>
-                  <option value="">All Employees</option>
-                  {employees.map(emp => <option key={emp.employee_id} value={emp.employee_id}>{emp.first_name} {emp.last_name}</option>)}
-                </select>
+
+            <div className="card p-4">
+              <div className="flex justify-between items-start mb-4">
+                <div className="bg-success-50 text-success rounded-lg border border-success-50 p-2">
+                  <FaCheckCircle size={16} />
+                </div>
+                <span className="text-xs font-bold uppercase tracking-wide text-neutral-400" style={{ fontSize: '10px' }}>Present</span>
               </div>
-              <div className="form-group" style={{ marginBottom: 0 }}>
-                <label className="form-label">From Date</label>
-                <input type="date" className="form-input" value={filters.start_date} onChange={(e) => setFilters({ ...filters, start_date: e.target.value })} />
+              <div className="mb-1">
+                <h3 className="text-2xl font-bold text-neutral-900 tracking-tight">{presentCount}</h3>
               </div>
-              <div className="form-group" style={{ marginBottom: 0 }}>
-                <label className="form-label">To Date</label>
-                <input type="date" className="form-input" value={filters.end_date} onChange={(e) => setFilters({ ...filters, end_date: e.target.value })} />
+              <span className="text-sm font-medium text-neutral-500">on this page</span>
+            </div>
+
+            <div className="card p-4">
+              <div className="flex justify-between items-start mb-4">
+                <div className="bg-warning-50 text-warning rounded-lg border border-warning-50 p-2">
+                  <FaExclamationTriangle size={16} />
+                </div>
+                <span className="text-xs font-bold uppercase tracking-wide text-neutral-400" style={{ fontSize: '10px' }}>Late</span>
               </div>
-              <div className="form-group" style={{ marginBottom: 0 }}>
+              <div className="mb-1">
+                <h3 className="text-2xl font-bold text-neutral-900 tracking-tight">{lateCount}</h3>
+              </div>
+              <span className="text-sm font-medium text-neutral-500">on this page</span>
+            </div>
+
+            <div className="card p-4">
+              <div className="flex justify-between items-start mb-4">
+                <div className="bg-danger-50 text-danger rounded-lg border border-danger-50 p-2">
+                  <FaTimesCircle size={16} />
+                </div>
+                <span className="text-xs font-bold uppercase tracking-wide text-neutral-400" style={{ fontSize: '10px' }}>Absent</span>
+              </div>
+              <div className="mb-1">
+                <h3 className="text-2xl font-bold text-neutral-900 tracking-tight">{absentCount}</h3>
+              </div>
+              <span className="text-sm font-medium text-neutral-500">on this page</span>
+            </div>
+          </div>
+          {/* Filters */}
+          <div className="card mb-6">
+            <div className="card-header">
+              <h3 className="card-title flex items-center gap-2">
+                <FaFilter className="text-neutral-400 text-sm" /> Filter Records
+              </h3>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-md mb-6">
+              {/* Employee Filter (Admin/Manager only) */}
+              {(user?.role === 'admin' || user?.role === 'manager') && (
+                <div className="form-group mb-4">
+                  <label className="form-label">Employee</label>
+                  <select
+                    className="form-input"
+                    name="employee_id"
+                    value={filters.employee_id}
+                    onChange={handleFilterChange}
+                  >
+                    <option value="">All Employees</option>
+                    {employees.map(emp => (
+                      <option key={emp.employee_id} value={emp.employee_id}>
+                        {emp.first_name} {emp.last_name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              <div className="form-group mb-4">
+                <label className="form-label">Start Date</label>
+                <input
+                  type="date"
+                  className="form-input"
+                  name="start_date"
+                  value={filters.start_date}
+                  onChange={handleFilterChange}
+                />
+              </div>
+
+              <div className="form-group mb-4">
+                <label className="form-label">End Date</label>
+                <input
+                  type="date"
+                  className="form-input"
+                  name="end_date"
+                  value={filters.end_date}
+                  onChange={handleFilterChange}
+                />
+              </div>
+
+              <div className="form-group mb-4">
                 <label className="form-label">Status</label>
-                <select className="form-input" value={filters.status} onChange={(e) => setFilters({ ...filters, status: e.target.value })}>
-                  <option value="">All Status</option>
+                <select
+                  className="form-input"
+                  name="status"
+                  value={filters.status}
+                  onChange={handleFilterChange}
+                >
+                  <option value="">All Statuses</option>
                   <option value="present">Present</option>
                   <option value="absent">Absent</option>
-                  <option value="half-day">Half Day</option>
+                  <option value="leave">On Leave</option>
                   <option value="late">Late</option>
+                  <option value="half_day">Half Day</option>
                 </select>
               </div>
             </div>
-          </div>
-        )}
-      </div>
 
-      {/* Attendance Records Table */}
-      <div className="card" style={{ padding: 0, overflowX: 'auto' }}>
-        <table className="table">
-          <thead>
-            <tr>
-              <th>Employee</th>
-              <th>Date</th>
-              <th>Clock In</th>
-              <th>Clock Out</th>
-              <th>Hours</th>
-              <th>Status</th>
-              <th>Notes</th>
-              {(user?.role === 'admin' || user?.role === 'manager') && (
-                <th style={{ textAlign: 'right' }}>Actions</th>
-              )}
-            </tr>
-          </thead>
-          <tbody>
-            {attendanceRecords.length === 0 ? (
-              <tr>
-                <td colSpan={(user?.role === 'admin' || user?.role === 'manager') ? "8" : "7"} style={{ textAlign: 'center', padding: '3rem', color: '#6b7280' }}>
-                  <div className="empty-state">
-                    <div className="empty-state-icon">
-                      <FaCalendarCheck />
-                    </div>
-                    <h3 className="empty-state-title">No attendance records found</h3>
-                    <p className="empty-state-description">Try adjusting your filters or add a new record.</p>
-                  </div>
-                </td>
-              </tr>
-            ) : (
-              attendanceRecords.map((record) => (
-                <tr key={record.attendance_id}>
-                  <td>
-                    <div style={{ display: 'flex', alignItems: 'center' }}>
-                      <div style={{ height: '2rem', width: '2rem', borderRadius: '50%', background: '#e0e7ff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#4f46e5', fontWeight: 'bold', fontSize: '0.75rem', marginRight: '0.75rem' }}>
-                        {record.employee_name.charAt(0)}
-                      </div>
-                      <div style={{ fontWeight: '500', color: '#111827' }}>{record.employee_name}</div>
-                    </div>
-                  </td>
-                  <td>{formatDate(record.date, getSetting('date_format'))}</td>
-                  <td style={{ fontFamily: 'monospace' }}>{record.clock_in || '-'}</td>
-                  <td style={{ fontFamily: 'monospace' }}>{record.clock_out || '-'}</td>
-                  <td>
-                    {record.hours_worked ? (
-                      <span style={{ fontWeight: '500', color: '#111827' }}>{parseFloat(record.hours_worked).toFixed(2)} hrs</span>
-                    ) : '-'}
-                  </td>
-                  <td>
-                    <span className={`badge badge-${record.status === 'present' ? 'success' : record.status === 'absent' ? 'danger' : record.status === 'late' ? 'warning' : 'secondary'}`}>
-                      {record.status === 'present' && <FaCheckCircle size={10} style={{ marginRight: '4px' }} />}
-                      {record.status === 'absent' && <FaTimesCircle size={10} style={{ marginRight: '4px' }} />}
-                      {record.status === 'late' && <FaExclamationTriangle size={10} style={{ marginRight: '4px' }} />}
-                      {record.status.charAt(0).toUpperCase() + record.status.slice(1)}
-                    </span>
-                  </td>
-                  <td style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: '#6b7280' }}>
-                    {record.notes || '-'}
-                  </td>
-                  {(user?.role === 'admin' || user?.role === 'manager') && (
-                    <td style={{ textAlign: 'right' }}>
-                      <button className="btn btn-secondary" style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', marginRight: '0.5rem' }} onClick={() => handleEdit(record)}>
-                        Edit
-                      </button>
-                      <button className="btn btn-danger" style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }} onClick={() => handleDelete(record.attendance_id)}>
-                        <FaTrash />
-                      </button>
-                    </td>
-                  )}
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Pagination Controls */}
-      {pagination.totalPages > 1 && (
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', marginTop: '2rem', gap: '0.5rem' }}>
-          <button
-            className="btn btn-secondary"
-            onClick={() => handlePageChange(pagination.currentPage - 1)}
-            disabled={!pagination.hasPrev}
-          >
-            Previous
-          </button>
-
-          {/* Numbered page buttons */}
-          {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
-            let pageNum;
-            if (pagination.totalPages <= 5) {
-              pageNum = i + 1;
-            } else if (pagination.currentPage <= 3) {
-              pageNum = i + 1;
-            } else if (pagination.currentPage >= pagination.totalPages - 2) {
-              pageNum = pagination.totalPages - 4 + i;
-            } else {
-              pageNum = pagination.currentPage - 2 + i;
-            }
-
-            return (
-              <button
-                key={pageNum}
-                className={`btn ${pageNum === pagination.currentPage ? 'btn-primary' : 'btn-secondary'}`}
-                onClick={() => handlePageChange(pageNum)}
-                style={{ minWidth: '40px' }}
-              >
-                {pageNum}
+            <div className="flex justify-end gap-sm pt-2">
+              <button className="btn btn-secondary" onClick={handleFilter}>
+                Apply Filters
               </button>
-            );
-          })}
+            </div>
+          </div>
 
-          <button
-            className="btn btn-secondary"
-            onClick={() => handlePageChange(pagination.currentPage + 1)}
-            disabled={!pagination.hasNext}
-          >
-            Next
-          </button>
+          <div className="data-table-wrapper">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Employee</th>
+                  <th>Date</th>
+                  <th>Clock In</th>
+                  <th>Clock Out</th>
+                  <th>Hours</th>
+                  <th>Status</th>
+                  <th>Notes</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {attendanceRecords.length === 0 ? (
+                  <tr>
+                    <td colSpan="8" className="text-center py-12">
+                      <div className="flex flex-col items-center justify-center text-neutral-400">
+                        <div className="p-4 bg-neutral-50 rounded-full mb-3">
+                          <FaCalendarCheck size={32} />
+                        </div>
+                        <h3 className="text-lg font-semibold text-neutral-700 mb-1">No attendance records found</h3>
+                        <p className="text-sm">Adjust your filters or add a new record.</p>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  attendanceRecords.map((record) => (
+                    <tr key={record.attendance_id}>
+                      <td>
+                        <div className="flex items-center gap-3">
+                          <div className="avatar">
+                            {record.employee_name ? record.employee_name.charAt(0) : 'U'}
+                          </div>
+                          <div className="font-semibold text-neutral-800">{record.employee_name}</div>
+                        </div>
+                      </td>
+                      <td className="font-medium text-neutral-700">
+                        {new Date(record.date).toLocaleDateString()}
+                      </td>
+                      <td className="font-mono text-neutral-600">
+                        {record.clock_in || '-'}
+                      </td>
+                      <td className="font-mono text-neutral-600">
+                        {record.clock_out || '-'}
+                      </td>
+                      <td className="font-mono font-semibold text-neutral-800">
+                        {record.work_hours || '-'}
+                        {record.work_hours && <span className="text-xs text-neutral-400 ml-1">hrs</span>}
+                      </td>
+                      <td>
+                        <span className={`badge badge-${record.status === 'present' ? 'success' :
+                          record.status === 'absent' ? 'danger' :
+                            record.status === 'late' ? 'warning' : 'secondary'
+                          }`}>
+                          {record.status === 'present' && <FaCheckCircle size={10} className="mr-1.5" />}
+                          {record.status === 'absent' && <FaTimesCircle size={10} className="mr-1.5" />}
+                          {record.status === 'late' && <FaExclamationTriangle size={10} className="mr-1.5" />}
+                          <span className="capitalize">{record.status}</span>
+                        </span>
+                      </td>
+                      <td className="max-w-[200px] truncate text-neutral-500">
+                        {record.notes || '-'}
+                      </td>
+                      <td>
+                        {/* Actions */}
+                        <div className="flex gap-2">
+                          <button className="p-1.5 text-neutral-500 hover:text-primary-600 hover:bg-primary-50 rounded transition-colors" onClick={() => handleEdit(record)} title="Edit">
+                            <FaEdit size={14} />
+                          </button>
+                          {(user?.role === 'admin' || user?.role === 'manager') && (
+                            <button className="p-1.5 text-neutral-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors" onClick={() => handleDelete(record.attendance_id)} title="Delete">
+                              <FaTrash size={14} />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
 
-          <span style={{ marginLeft: '1rem', color: '#6b7280' }}>
-            Page {pagination.currentPage} of {pagination.totalPages}
-            {' '}({pagination.totalItems} total records)
-          </span>
+      {activeTab === 'regularization' && (
+        <div className="card p-0">
+          <div className="card-header">
+            <h3 className="card-title">Regularization Requests</h3>
+          </div>
+
+          <div className="data-table-wrapper">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Employee</th>
+                  <th>Date</th>
+                  <th>Original In/Out</th>
+                  <th>Requested In/Out</th>
+                  <th>Reason</th>
+                  <th>Status</th>
+                  {(user?.role === 'admin' || user?.role === 'manager') && <th>Actions</th>}
+                </tr>
+              </thead>
+              <tbody>
+                {regularizationRequests.length === 0 ? (
+                  <tr><td colSpan="7" className="text-center py-8 text-neutral-400">No regularization requests found.</td></tr>
+                ) : (
+                  regularizationRequests.map(req => (
+                    <tr key={req.regularization_id}>
+                      <td className="font-medium text-neutral-800">{req.employee_name}</td>
+                      <td className="text-neutral-600">{formatDate(req.date)}</td>
+                      <td className="font-mono text-xs text-neutral-500">
+                        {req.original_clock_in ? req.original_clock_in.substring(0, 5) : '--:--'} - {req.original_clock_out ? req.original_clock_out.substring(0, 5) : '--:--'}
+                      </td>
+                      <td className="font-mono text-xs font-semibold text-primary-600 bg-primary-50 px-2 py-1 rounded inline-block">
+                        {req.requested_clock_in?.substring(0, 5)} - {req.requested_clock_out?.substring(0, 5)}
+                      </td>
+                      <td className="text-neutral-600 max-w-[200px] truncate" title={req.reason}>{req.reason}</td>
+                      <td>
+                        <span className={`badge badge-${req.status === 'approved' ? 'success' : req.status === 'rejected' ? 'danger' : 'warning'}`}>
+                          {req.status}
+                        </span>
+                      </td>
+                      {(user?.role === 'admin' || user?.role === 'manager') && (
+                        <td>
+                          {req.status === 'pending' && (
+                            <div className="flex gap-sm">
+                              <button className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded transition-colors" onClick={() => handleApproveRegularization(req.regularization_id)} title="Approve">
+                                <FaCheckCircle size={16} />
+                              </button>
+                              <button className="p-1.5 text-rose-600 hover:bg-rose-50 rounded transition-colors" onClick={() => handleRejectRegularization(req.regularization_id)} title="Reject">
+                                <FaTimesCircle size={16} />
+                              </button>
+                            </div>
+                          )}
+                        </td>
+                      )}
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
+
+
+
+
 
       {/* Add/Edit Record Modal */}
       {showModal && (
         <div className="modal-overlay" onClick={handleCloseModal}>
-          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px', width: '100%' }}>
-            <div style={{ marginBottom: '1.5rem', borderBottom: '1px solid #e5e7eb', paddingBottom: '1rem' }}>
-              <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#111827' }}>{isEditing ? 'Edit Attendance Record' : 'Add Attendance Record'}</h2>
-              <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>{isEditing ? 'Update attendance details for an employee.' : 'Manually add an attendance entry for an employee.'}</p>
+          <div className="modal modal-lg" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <div>
+                <h3 className="modal-title">{isEditing ? 'Edit Attendance Record' : 'Add Attendance Record'}</h3>
+                <p className="text-sm text-neutral-500 mt-0.5">{isEditing ? 'Update attendance details for an employee.' : 'Manually add an attendance entry.'}</p>
+              </div>
+              <button onClick={handleCloseModal} className="modal-close">
+                <FaTimesCircle size={20} />
+              </button>
             </div>
 
-            {error && <div className="alert alert-error" style={{ marginBottom: '1rem' }}>{error}</div>}
+            <div className="modal-body">
+              {error && <div className="mb-4 p-3 bg-danger-50 text-danger text-sm rounded-lg border border-danger-50 flex items-center gap-2"><FaExclamationTriangle className="shrink-0" /> {error}</div>}
 
-            <form onSubmit={handleSubmit}>
-              <div className="form-group">
-                <label className="form-label">Employee *</label>
-                <select className="form-input" value={formData.employee_id} onChange={(e) => setFormData({ ...formData, employee_id: e.target.value })} required disabled={isEditing}>
-                  <option value="">Select Employee</option>
-                  {employees.map(emp => <option key={emp.employee_id} value={emp.employee_id}>{emp.first_name} {emp.last_name}</option>)}
-                </select>
-              </div>
+              <form onSubmit={handleSubmit} id="attendanceForm" className="space-y-4">
+                <div className="form-group mb-4">
+                  <label className="block text-sm font-medium text-neutral-700 mb-1">Employee <span className="text-danger">*</span></label>
+                  <select
+                    className="form-input"
+                    value={formData.employee_id}
+                    onChange={(e) => setFormData({ ...formData, employee_id: e.target.value })}
+                    required
+                    disabled={isEditing}
+                  >
+                    <option value="">Select Employee</option>
+                    {employees.map(emp => <option key={emp.employee_id} value={emp.employee_id}>{emp.first_name} {emp.last_name}</option>)}
+                  </select>
+                </div>
 
-              <div className="form-group">
-                <label className="form-label">Date *</label>
-                <input type="date" className="form-input" value={formData.date} onChange={(e) => setFormData({ ...formData, date: e.target.value })} required />
-              </div>
+                <div className="form-group mb-4">
+                  <label className="form-label">Date <span className="text-danger">*</span></label>
+                  <input
+                    type="date"
+                    className="form-input"
+                    value={formData.date}
+                    onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                    required
+                  />
+                </div>
 
-              <div className="grid grid-cols-2" style={{ gap: '1rem' }}>
-                <div className="form-group">
-                  <label className="form-label">Clock In</label>
-                  <input type="time" className="form-input" value={formData.clock_in} onChange={(e) => setFormData({ ...formData, clock_in: e.target.value })} />
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="form-group">
+                    <label className="form-label">Clock In</label>
+                    <input
+                      type="time"
+                      className="form-input"
+                      value={formData.clock_in}
+                      onChange={(e) => setFormData({ ...formData, clock_in: e.target.value })}
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">Clock Out</label>
+                    <input
+                      type="time"
+                      className="form-input"
+                      value={formData.clock_out}
+                      onChange={(e) => setFormData({ ...formData, clock_out: e.target.value })}
+                    />
+                  </div>
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label">Clock Out</label>
-                  <input type="time" className="form-input" value={formData.clock_out} onChange={(e) => setFormData({ ...formData, clock_out: e.target.value })} />
+                  <label className="form-label">Status</label>
+                  <select
+                    className="form-input"
+                    value={formData.status}
+                    onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                  >
+                    <option value="present">Present</option>
+                    <option value="absent">Absent</option>
+                    <option value="half-day">Half Day</option>
+                    <option value="late">Late</option>
+                  </select>
                 </div>
-              </div>
 
-              <div className="form-group">
-                <label className="form-label">Status</label>
-                <select className="form-input" value={formData.status} onChange={(e) => setFormData({ ...formData, status: e.target.value })}>
-                  <option value="present">Present</option>
-                  <option value="absent">Absent</option>
-                  <option value="half-day">Half Day</option>
-                  <option value="late">Late</option>
-                </select>
-              </div>
+                <div className="form-group">
+                  <label className="form-label">Notes</label>
+                  <textarea
+                    className="form-input"
+                    value={formData.notes}
+                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                    rows="3"
+                    placeholder="Optional notes..."
+                  />
+                </div>
+              </form>
+            </div>
 
-              <div className="form-group">
-                <label className="form-label">Notes</label>
-                <textarea className="form-input" value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} rows="3" placeholder="Optional notes..." />
-              </div>
-
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '2rem', paddingTop: '1rem', borderTop: '1px solid #e5e7eb' }}>
-                <button type="button" className="btn btn-secondary" onClick={handleCloseModal}>Cancel</button>
-                <button type="submit" className="btn btn-primary">{isEditing ? 'Update Record' : 'Save Record'}</button>
-              </div>
-            </form>
+            <div className="modal-footer">
+              <button type="button" className="btn btn-secondary" onClick={handleCloseModal}>Cancel</button>
+              <button type="submit" form="attendanceForm" className="btn btn-primary">{isEditing ? 'Update Record' : 'Save Record'}</button>
+            </div>
           </div>
         </div>
       )}
+
+      {/* Regularization Modal */}
+      <AttendanceRegularizationModal
+        isOpen={showRegularizationModal}
+        onClose={() => setShowRegularizationModal(false)}
+        date={selectedDateForRegularization}
+        employeeId={attendanceRecords.length > 0 ? attendanceRecords[0].employee_id : user?.employee_id}
+        onSuccess={() => {
+          setSuccess('Regularization request submitted!');
+          if (activeTab === 'regularization') {
+            loadRegularizationRequests();
+          } else {
+            setActiveTab('regularization');
+          }
+        }}
+      />
     </div>
   );
 };

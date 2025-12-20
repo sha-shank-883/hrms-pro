@@ -66,12 +66,12 @@ const getAllLeaveRequests = async (req, res) => {
     const { employee_id, status, start_date, end_date, page = 1, limit = 10 } = req.query;
     const userRole = req.user.role;
     const userId = req.user.userId;
-    
+
     // Validate pagination parameters
     const pageNum = Math.max(1, parseInt(page) || 1);
     const limitNum = Math.min(100, Math.max(1, parseInt(limit) || 10)); // Max 100 per page
     const offset = (pageNum - 1) * limitNum;
-    
+
     let queryText = `
       SELECT lr.*, 
              e.first_name || ' ' || e.last_name as employee_name,
@@ -131,7 +131,7 @@ const getAllLeaveRequests = async (req, res) => {
     }
 
     queryText += ' ORDER BY lr.created_at DESC';
-    
+
     // Add pagination to main query
     queryText += ` LIMIT $${paramCount} OFFSET $${paramCount + 1}`;
     const paginatedParams = [...params, limitNum, offset];
@@ -179,11 +179,11 @@ const createLeaveRequest = async (req, res) => {
     // Check leave balance based on settings
     const leaveApprovalRequired = await getSetting('leave_approval_required', 'true');
     const advanceNoticeDays = parseInt(await getSetting('advance_notice_days', '3'));
-    
+
     // Check if advance notice requirement is met
     const today = new Date();
     const daysUntilLeave = Math.ceil((start - today) / (1000 * 60 * 60 * 24));
-    
+
     if (daysUntilLeave < advanceNoticeDays) {
       return res.status(400).json({
         success: false,
@@ -197,6 +197,16 @@ const createLeaveRequest = async (req, res) => {
        RETURNING *`,
       [employee_id, leave_type, start_date, end_date, daysCount, reason]
     );
+
+    // Emit real-time notification to admins
+    if (req.io && req.tenant) {
+      req.io.to(req.tenant.tenant_id).emit('notification', {
+        type: 'LEAVE_APPLICATION',
+        message: `New leave request from employee ID ${employee_id}`,
+        data: result.rows[0]
+      });
+      req.io.to(req.tenant.tenant_id).emit('dashboard_update', { type: 'LEAVE' });
+    }
 
     res.status(201).json({
       success: true,
@@ -280,6 +290,12 @@ const approveLeaveRequest = async (req, res) => {
       message: 'Leave request approved successfully',
       data: result.rows[0],
     });
+
+    // Notify employee and update dashboard
+    if (req.io && req.tenant) {
+      // Ideally we would emit to specific user room, but for now broadcast to tenant to force update
+      req.io.to(req.tenant.tenant_id).emit('dashboard_update', { type: 'LEAVE' });
+    }
   } catch (error) {
     console.error('Approve leave request error:', error);
     res.status(500).json({
@@ -317,6 +333,11 @@ const rejectLeaveRequest = async (req, res) => {
       message: 'Leave request rejected',
       data: result.rows[0],
     });
+
+    // Notify employee and update dashboard
+    if (req.io && req.tenant) {
+      req.io.to(req.tenant.tenant_id).emit('dashboard_update', { type: 'LEAVE' });
+    }
   } catch (error) {
     console.error('Reject leave request error:', error);
     res.status(500).json({
@@ -348,6 +369,10 @@ const deleteLeaveRequest = async (req, res) => {
       success: true,
       message: 'Leave request deleted successfully',
     });
+
+    if (req.io && req.tenant) {
+      req.io.to(req.tenant.tenant_id).emit('dashboard_update', { type: 'LEAVE' });
+    }
   } catch (error) {
     console.error('Delete leave request error:', error);
     res.status(500).json({
@@ -372,7 +397,7 @@ const getLeaveBalance = async (req, res) => {
         'SELECT employee_id FROM employees WHERE user_id = $1',
         [userId]
       );
-      
+
       if (employeeResult.rows.length === 0 || employeeResult.rows[0].employee_id != employee_id) {
         return res.status(403).json({
           success: false,
@@ -402,7 +427,7 @@ const getLeaveBalance = async (req, res) => {
     // Get leave settings
     const leaveTypesSetting = await getSetting('leave_types', '["Sick Leave", "Casual Leave", "Vacation"]');
     const leaveTypes = JSON.parse(leaveTypesSetting);
-    
+
     // Get default leave allocations from settings
     const defaultAllocations = {
       'Sick Leave': parseInt(await getSetting('sick_leave_days', '10')),
@@ -411,16 +436,28 @@ const getLeaveBalance = async (req, res) => {
       'Maternity Leave': 90, // Standard maternity leave
       'Paternity Leave': 10, // Standard paternity leave
       'Bereavement Leave': 3, // Standard bereavement leave
-      'Unpaid Leave': 0 // No allocation for unpaid leave
+      'Unpaid Leave': 0, // No allocation for unpaid leave
+      'Comp-Off': 0 // Init as 0, will be summed from approved requests
     };
 
     // Calculate used leaves for each type
     const leaveBalance = {};
-    
+
     for (const leaveType of leaveTypes) {
       // Get total allocated leaves for this type
-      const allocated = defaultAllocations[leaveType] || 0;
-      
+      let allocated = defaultAllocations[leaveType] || 0;
+
+      // If Comp-Off, calculate allocated dynamically from approved requests
+      if (leaveType === 'Comp-Off') {
+        const compOffResult = await query(
+          `SELECT COUNT(*) as count FROM leave_comp_off_requests 
+              WHERE employee_id = $1 AND status = 'approved' AND expiry_date >= CURRENT_DATE`,
+          [employee_id]
+        );
+        // Assuming 1 approved request = 1 day of leave
+        allocated = parseInt(compOffResult.rows[0].count) || 0;
+      }
+
       // Get approved leaves for this type
       const usedResult = await query(
         `SELECT COALESCE(SUM(days_count), 0) as total_used 
@@ -428,10 +465,10 @@ const getLeaveBalance = async (req, res) => {
          WHERE employee_id = $1 AND leave_type = $2 AND status = 'approved'`,
         [employee_id, leaveType]
       );
-      
+
       const used = parseInt(usedResult.rows[0].total_used) || 0;
       const remaining = allocated - used;
-      
+
       leaveBalance[leaveType] = {
         allocated,
         used,
@@ -476,7 +513,7 @@ const getLeaveBalance = async (req, res) => {
 const getAllLeaveBalances = async (req, res) => {
   try {
     const userRole = req.user.role;
-    
+
     // Only admins and managers can view all leave balances
     if (userRole !== 'admin' && userRole !== 'manager') {
       return res.status(403).json({
@@ -497,7 +534,7 @@ const getAllLeaveBalances = async (req, res) => {
     // Get leave settings
     const leaveTypesSetting = await getSetting('leave_types', '["Sick Leave", "Casual Leave", "Vacation"]');
     const leaveTypes = JSON.parse(leaveTypesSetting);
-    
+
     const defaultAllocations = {
       'Sick Leave': parseInt(await getSetting('sick_leave_days', '10')),
       'Casual Leave': parseInt(await getSetting('casual_leave_days', '12')),
@@ -513,20 +550,20 @@ const getAllLeaveBalances = async (req, res) => {
     // Calculate leave balance for each employee
     for (const employee of employeesResult.rows) {
       const leaveBalance = {};
-      
+
       for (const leaveType of leaveTypes) {
         const allocated = defaultAllocations[leaveType] || 0;
-        
+
         const usedResult = await query(
           `SELECT COALESCE(SUM(days_count), 0) as total_used 
            FROM leave_requests 
            WHERE employee_id = $1 AND leave_type = $2 AND status = 'approved'`,
           [employee.employee_id, leaveType]
         );
-        
+
         const used = parseInt(usedResult.rows[0].total_used) || 0;
         const remaining = allocated - used;
-        
+
         leaveBalance[leaveType] = {
           allocated,
           used,
@@ -576,7 +613,7 @@ const getLeaveStatistics = async (req, res) => {
     const { employee_id, status, start_date, end_date } = req.query;
     const userRole = req.user.role;
     const userId = req.user.userId;
-    
+
     let queryText = `
       SELECT 
         COUNT(*) as total_requests,
@@ -587,7 +624,7 @@ const getLeaveStatistics = async (req, res) => {
       JOIN employees e ON lr.employee_id = e.employee_id
       WHERE 1=1
     `;
-    
+
     const params = [];
     let paramCount = 1;
 
@@ -638,6 +675,100 @@ const getLeaveStatistics = async (req, res) => {
   }
 };
 
+// Request Comp-off
+const requestCompOff = async (req, res) => {
+  try {
+    const { employee_id, worked_date, reason } = req.body;
+
+    // Check if a request already exists/pending for this date
+    const existing = await query(
+      'SELECT * FROM leave_comp_off_requests WHERE employee_id = $1 AND worked_date = $2 AND status = \'pending\'',
+      [employee_id, worked_date]
+    );
+
+    if (existing.rows.length > 0) {
+      return res.status(400).json({ success: false, message: 'A pending requests already exists for this date.' });
+    }
+
+    // Default expiry date logic (e.g., 60 days from worked date)
+    const workedDateObj = new Date(worked_date);
+    const expiryDate = new Date(workedDateObj.setDate(workedDateObj.getDate() + 60)).toISOString().split('T')[0];
+
+    const result = await query(
+      `INSERT INTO leave_comp_off_requests 
+            (employee_id, worked_date, reason, expiry_date)
+            VALUES ($1, $2, $3, $4) RETURNING *`,
+      [employee_id, worked_date, reason, expiryDate]
+    );
+
+    res.status(201).json({ success: true, message: 'Comp-off requested successfully', data: result.rows[0] });
+
+  } catch (error) {
+    console.error('Request comp-off error:', error);
+    res.status(500).json({ success: false, message: 'Failed to request comp-off', error: error.message });
+  }
+};
+
+// Approve/Reject Comp-off
+const updateCompOffStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body; // 'approved' or 'rejected'
+    const approved_by = req.user.userId;
+
+    const result = await query(
+      `UPDATE leave_comp_off_requests 
+            SET status = $1, approved_by = $2, approved_at = CURRENT_TIMESTAMP 
+            WHERE request_id = $3 RETURNING *`,
+      [status, approved_by, id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Request not found' });
+    }
+
+    res.json({ success: true, message: `Request ${status} successfully`, data: result.rows[0] });
+
+  } catch (error) {
+    console.error('Update comp-off error:', error);
+    res.status(500).json({ success: false, message: 'Failed to update request', error: error.message });
+  }
+};
+
+// Get Comp-off Requests
+const getCompOffRequests = async (req, res) => {
+  try {
+    const { employee_id, status } = req.query;
+    let queryText = `
+            SELECT r.*, e.first_name || ' ' || e.last_name as employee_name 
+            FROM leave_comp_off_requests r
+            JOIN employees e ON r.employee_id = e.employee_id
+            WHERE 1=1
+        `;
+    const params = [];
+    let paramIndex = 1;
+
+    if (employee_id) {
+      queryText += ` AND r.employee_id = $${paramIndex}`;
+      params.push(employee_id);
+      paramIndex++;
+    }
+    if (status) {
+      queryText += ` AND r.status = $${paramIndex}`;
+      params.push(status);
+      paramIndex++;
+    }
+
+    queryText += ' ORDER BY r.created_at DESC';
+
+    const result = await query(queryText, params);
+    res.json({ success: true, data: result.rows });
+  } catch (error) {
+    console.error('Get comp-off requests error:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch requests', error: error.message });
+  }
+};
+
 module.exports = {
   getLeaveRequestById,
   getAllLeaveRequests,
@@ -648,5 +779,8 @@ module.exports = {
   deleteLeaveRequest,
   getLeaveBalance,
   getAllLeaveBalances,
-  getLeaveStatistics
+  getLeaveStatistics,
+  requestCompOff,
+  updateCompOffStatus,
+  getCompOffRequests
 };

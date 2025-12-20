@@ -242,6 +242,18 @@ CREATE TABLE settings (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Email Templates table
+CREATE TABLE email_templates (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(255) NOT NULL UNIQUE,
+  subject TEXT NOT NULL,
+  body_html TEXT,
+  body_text TEXT,
+  variables JSONB DEFAULT '{}',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Create indexes for better performance
 CREATE INDEX idx_employees_department ON employees(department_id);
 CREATE INDEX idx_employees_user ON employees(user_id);
@@ -258,6 +270,7 @@ CREATE INDEX idx_applications_job ON job_applications(job_id);
 CREATE INDEX idx_documents_employee ON documents(employee_id);
 CREATE INDEX idx_chat_sender ON chat_messages(sender_id);
 CREATE INDEX idx_chat_receiver ON chat_messages(receiver_id);
+CREATE INDEX idx_email_templates_name ON email_templates(name);
 
 -- Insert default settings
 INSERT INTO settings (setting_key, setting_value, category, description) VALUES
@@ -272,6 +285,96 @@ INSERT INTO settings (setting_key, setting_value, category, description) VALUES
 ('date_format', 'MM/DD/YYYY', 'general', 'Date format'),
 ('language', 'en', 'general', 'Default language'),
 
+-- Design System Settings
+('design_primary_color', '#8cc63f', 'design', 'Primary brand color for buttons and highlights'),
+('design_secondary_color', '#2c3e50', 'design', 'Secondary brand color for headers and sidebars'),
+('design_success_color', '#10b981', 'design', 'Success color for positive actions and status'),
+('design_warning_color', '#f59e0b', 'design', 'Warning color for cautionary actions and status'),
+('design_danger_color', '#ef4444', 'design', 'Danger color for destructive actions and errors'),
+('design_info_color', '#3b82f6', 'design', 'Info color for informational elements'),
+('design_font_family', 'Inter', 'design', 'Font family for the application'),
+('design_font_size_base', '14px', 'design', 'Base font size for the application'),
+('design_font_size_sm', '12px', 'design', 'Small font size for the application'),
+('design_font_size_lg', '16px', 'design', 'Large font size for the application'),
+('design_border_radius', '6px', 'design', 'Border radius for UI elements'),
+('design_border_radius_sm', '4px', 'design', 'Small border radius for UI elements'),
+('design_border_radius_lg', '8px', 'design', 'Large border radius for UI elements'),
+('design_spacing_unit', '4px', 'design', 'Base spacing unit for the design system'),
+('design_card_shadow', '0 1px 3px 0 rgba(0, 0, 0, 0.1)', 'design', 'Shadow for card components'),
+('design_button_shadow', '0 1px 2px 0 rgba(0, 0, 0, 0.05)', 'design', 'Shadow for button components'),
+('design_sidebar_width', '280px', 'design', 'Width of the sidebar'),
+('design_header_height', '64px', 'design', 'Height of the header'),
+('design_button_padding_x', '12px', 'design', 'Horizontal padding for buttons'),
+('design_button_padding_y', '6px', 'design', 'Vertical padding for buttons'),
+('design_card_padding', '16px', 'design', 'Padding for card components'),
+('design_input_height', '36px', 'design', 'Height for input elements'),
+
+-- Module-specific Design Settings
+('design_dashboard_widget_bg', '#ffffff', 'design', 'Background color for dashboard widgets'),
+('design_dashboard_widget_border', '#e5e7eb', 'design', 'Border color for dashboard widgets'),
+('design_dashboard_widget_radius', '8px', 'design', 'Border radius for dashboard widgets'),
+('design_dashboard_widget_shadow', '0 4px 6px -1px rgba(0, 0, 0, 0.1)', 'design', 'Shadow for dashboard widgets'),
+('design_employee_card_bg', '#ffffff', 'design', 'Background color for employee cards'),
+('design_employee_card_border', '#e5e7eb', 'design', 'Border color for employee cards'),
+('design_employee_card_radius', '8px', 'design', 'Border radius for employee cards'),
+('design_employee_card_shadow', '0 1px 3px 0 rgba(0, 0, 0, 0.1)', 'design', 'Shadow for employee cards'),
+('design_table_row_hover', '#f9fafb', 'design', 'Background color for table row hover'),
+('design_table_border', '#e5e7eb', 'design', 'Border color for tables'),
+('design_nav_active_bg', '#8cc63f20', 'design', 'Background color for active navigation items'),
+('design_nav_active_border', '#8cc63f', 'design', 'Border color for active navigation items'),
+('design_badge_radius', '12px', 'design', 'Border radius for badges'),
+('design_form_group_spacing', '16px', 'design', 'Spacing between form groups'),
+('design_modal_backdrop', 'rgba(0, 0, 0, 0.5)', 'design', 'Backdrop color for modals'),
+('design_chart_primary', '#8cc63f', 'design', 'Primary color for charts'),
+('design_chart_secondary', '#2c3e50', 'design', 'Secondary color for charts'),
+('design_chart_success', '#10b981', 'design', 'Success color for charts'),
+('design_chart_warning', '#f59e0b', 'design', 'Warning color for charts'),
+('design_chart_danger', '#ef4444', 'design', 'Danger color for charts'),
+('design_progress_bar_height', '8px', 'design', 'Height of progress bars'),
+('design_progress_bar_radius', '4px', 'design', 'Border radius for progress bars'),
+('design_avatar_size_sm', '24px', 'design', 'Small avatar size'),
+('design_avatar_size_md', '32px', 'design', 'Medium avatar size'),
+('design_avatar_size_lg', '48px', 'design', 'Large avatar size'),
+('design_tooltip_bg', '#1f2937', 'design', 'Background color for tooltips'),
+('design_tooltip_text', '#ffffff', 'design', 'Text color for tooltips'),
+('design_pagination_active', '#8cc63f', 'design', 'Active pagination item color'),
+
+-- Additional Module-specific Design Settings
+-- Recruitment Module
+('design_recruitment_card_bg', '#ffffff', 'design', 'Background color for recruitment cards'),
+('design_recruitment_card_border', '#e5e7eb', 'design', 'Border color for recruitment cards'),
+('design_recruitment_status_badge_radius', '12px', 'design', 'Border radius for recruitment status badges'),
+
+-- Performance Module
+('design_performance_chart_height', '300px', 'design', 'Height of performance charts'),
+('design_performance_review_card_bg', '#ffffff', 'design', 'Background color for performance review cards'),
+('design_performance_rating_star_color', '#f59e0b', 'design', 'Color for performance rating stars'),
+
+-- Payroll Module
+('design_payroll_summary_card_bg', '#ffffff', 'design', 'Background color for payroll summary cards'),
+('design_payroll_item_border', '#e5e7eb', 'design', 'Border color for payroll items'),
+
+-- Leave Module
+('design_leave_request_card_bg', '#ffffff', 'design', 'Background color for leave request cards'),
+('design_leave_calendar_cell_height', '100px', 'design', 'Height of leave calendar cells'),
+('design_leave_status_approved_color', '#10b981', 'design', 'Color for approved leave status'),
+('design_leave_status_pending_color', '#f59e0b', 'design', 'Color for pending leave status'),
+('design_leave_status_rejected_color', '#ef4444', 'design', 'Color for rejected leave status'),
+
+-- Attendance Module
+('design_attendance_chart_height', '300px', 'design', 'Height of attendance charts'),
+('design_attendance_status_present_color', '#10b981', 'design', 'Color for present attendance status'),
+('design_attendance_status_absent_color', '#ef4444', 'design', 'Color for absent attendance status'),
+('design_attendance_status_late_color', '#f59e0b', 'design', 'Color for late attendance status'),
+
+-- Task Module
+('design_task_card_bg', '#ffffff', 'design', 'Background color for task cards'),
+('design_task_priority_high_color', '#ef4444', 'design', 'Color for high priority tasks'),
+('design_task_priority_medium_color', '#f59e0b', 'design', 'Color for medium priority tasks'),
+('design_task_priority_low_color', '#10b981', 'design', 'Color for low priority tasks'),
+('design_task_status_todo_color', '#f59e0b', 'design', 'Color for todo task status'),
+('design_task_status_inprogress_color', '#3b82f6', 'design', 'Color for in-progress task status'),
+('design_task_status_completed_color', '#10b981', 'design', 'Color for completed task status'),
 -- Attendance Settings
 ('working_hours', '8', 'attendance', 'Standard working hours per day'),
 ('working_days', '5', 'attendance', 'Working days per week'),
@@ -357,6 +460,121 @@ INSERT INTO settings (setting_key, setting_value, category, description) VALUES
 ('data_retention_days', '365', 'system', 'Data retention period in days'),
 ('audit_logging', 'true', 'system', 'Enable audit logging'),
 ('api_rate_limit', '1000', 'system', 'API requests per hour per user');
+
+-- Insert default email templates
+INSERT INTO email_templates (name, subject, body_html, body_text, variables) VALUES
+('welcome_employee', 'Welcome to {{company_name}} - Your Account Details', '
+<h2>Welcome to {{company_name}}, {{first_name}}!</h2>
+<p>We''re excited to have you join our team.</p>
+<p>Your account has been created with the following details:</p>
+<ul>
+    <li>Email: {{email}}</li>
+    <li>Position: {{position}}</li>
+    <li>Department: {{department}}</li>
+    <li>Start Date: {{start_date}}</li>
+</ul>
+<p>You can login to our HR portal using your email and the temporary password: <strong>{{temp_password}}</strong></p>
+<p>Please change your password after your first login.</p>
+<br>
+<p>Best regards,<br>The HR Team</p>
+', '
+Welcome to {{company_name}}, {{first_name}}!
+
+We''re excited to have you join our team.
+
+Your account has been created with the following details:
+- Email: {{email}}
+- Position: {{position}}
+- Department: {{department}}
+- Start Date: {{start_date}}
+
+You can login to our HR portal using your email and the temporary password: {{temp_password}}
+
+Please change your password after your first login.
+
+Best regards,
+The HR Team
+', '{"company_name": {"required": true, "type": "string", "description": "Company name"}, "first_name": {"required": true, "type": "string", "description": "Employee first name"}, "email": {"required": true, "type": "string", "description": "Employee email"}, "position": {"required": true, "type": "string", "description": "Employee position"}, "department": {"required": true, "type": "string", "description": "Employee department"}, "start_date": {"required": true, "type": "string", "description": "Employee start date"}, "temp_password": {"required": true, "type": "string", "description": "Temporary password"}}'),
+('leave_request_submitted', 'Leave Request Submitted - {{employee_name}}', '
+<h2>Leave Request Submitted</h2>
+<p>{{employee_name}} has submitted a leave request with the following details:</p>
+<ul>
+    <li>Type: {{leave_type}}</li>
+    <li>Dates: {{start_date}} to {{end_date}}</li>
+    <li>Reason: {{reason}}</li>
+</ul>
+<p>Please review this request in the HR portal.</p>
+<br>
+<p>Best regards,<br>The HR System</p>
+', '
+Leave Request Submitted
+
+{{employee_name}} has submitted a leave request with the following details:
+- Type: {{leave_type}}
+- Dates: {{start_date}} to {{end_date}}
+- Reason: {{reason}}
+
+Please review this request in the HR portal.
+
+Best regards,
+The HR System
+', '{"employee_name": {"required": true, "type": "string", "description": "Employee name"}, "leave_type": {"required": true, "type": "string", "description": "Type of leave"}, "start_date": {"required": true, "type": "string", "description": "Leave start date"}, "end_date": {"required": true, "type": "string", "description": "Leave end date"}, "reason": {"required": true, "type": "string", "description": "Reason for leave"}}'),
+('leave_request_approved', 'Your Leave Request Has Been Approved', '
+<h2>Leave Request Approved</h2>
+<p>Hello {{employee_name}},</p>
+<p>Your leave request has been approved.</p>
+<ul>
+    <li>Type: {{leave_type}}</li>
+    <li>Dates: {{start_date}} to {{end_date}}</li>
+</ul>
+<p>If you have any questions, please contact your manager.</p>
+<br>
+<p>Best regards,<br>The HR Team</p>
+', '
+Leave Request Approved
+
+Hello {{employee_name}},
+
+Your leave request has been approved.
+
+- Type: {{leave_type}}
+- Dates: {{start_date}} to {{end_date}}
+
+If you have any questions, please contact your manager.
+
+Best regards,
+The HR Team
+', '{"employee_name": {"required": true, "type": "string", "description": "Employee name"}, "leave_type": {"required": true, "type": "string", "description": "Type of leave"}, "start_date": {"required": true, "type": "string", "description": "Leave start date"}, "end_date": {"required": true, "type": "string", "description": "Leave end date"}}'),
+('payroll_generated', 'Payroll Processed for {{month_year}}', '
+<h2>Payroll Processed</h2>
+<p>Hello {{employee_name}},</p>
+<p>Your payroll for {{month_year}} has been processed.</p>
+<ul>
+    <li>Gross Salary: {{gross_salary}}</li>
+    <li>Deductions: {{deductions}}</li>
+    <li>Net Pay: {{net_pay}}</li>
+    <li>Payment Date: {{payment_date}}</li>
+</ul>
+<p>Payslip is attached to this email.</p>
+<br>
+<p>Best regards,<br>The Finance Team</p>
+', '
+Payroll Processed
+
+Hello {{employee_name}},
+
+Your payroll for {{month_year}} has been processed.
+
+- Gross Salary: {{gross_salary}}
+- Deductions: {{deductions}}
+- Net Pay: {{net_pay}}
+- Payment Date: {{payment_date}}
+
+Payslip is attached to this email.
+
+Best regards,
+The Finance Team
+', '{"employee_name": {"required": true, "type": "string", "description": "Employee name"}, "month_year": {"required": true, "type": "string", "description": "Month and year of payroll"}, "gross_salary": {"required": true, "type": "string", "description": "Gross salary amount"}, "deductions": {"required": true, "type": "string", "description": "Total deductions"}, "net_pay": {"required": true, "type": "string", "description": "Net pay amount"}, "payment_date": {"required": true, "type": "string", "description": "Payment date"}}');
 
 -- Create default admin user (password: admin123)
 INSERT INTO users (email, password_hash, role) VALUES

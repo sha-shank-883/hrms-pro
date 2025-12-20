@@ -14,7 +14,8 @@ import {
   FaDownload,
   FaBuilding,
   FaUser,
-  FaBriefcase
+  FaBriefcase,
+  FaTimes
 } from 'react-icons/fa';
 
 const MyPayslips = () => {
@@ -455,29 +456,34 @@ const MyPayslips = () => {
     return months[month - 1] || month;
   };
 
-  if (loading) return <div className="loading">Loading...</div>;
+  if (loading) return (
+    <div className="flex justify-center items-center h-64">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+    </div>
+  );
 
   return (
-    <div className="container" style={{ paddingBottom: '2rem' }}>
+
+    <div className="w-full pb-8">
       {/* Page Header */}
-      <div className="page-header" style={{ marginTop: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div className="page-header">
         <div>
           <h1 className="page-title">My Payslips</h1>
-          <p className="page-description">View and download your monthly salary slips.</p>
+          <p className="mt-1 text-neutral-600">View and download your monthly salary slips.</p>
         </div>
       </div>
 
-      {error && <div className="alert alert-error">{error}</div>}
+      {error && <div className="mb-6 bg-red-50 border border-red-200 text-red-600 rounded-lg p-4 flex items-center"><FaExclamationTriangle className="mr-2" /> {error}</div>}
 
-      <div className="card" style={{ padding: '1.5rem' }}>
+      <div className="card p-6">
         {payslips.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '4rem', color: '#6b7280' }}>
-            <div className="empty-state">
-              <div className="empty-state-icon">
-                <FaFileInvoiceDollar />
+          <div className="text-center py-16 text-neutral-500">
+            <div className="flex flex-col items-center justify-center">
+              <div className="p-4 bg-neutral-50 rounded-full mb-4 text-neutral-400">
+                <FaFileInvoiceDollar size={32} />
               </div>
-              <h3 className="empty-state-title">No Payslips Available</h3>
-              <p className="empty-state-description">You don't have any payslips yet. They will appear here once processed by HR.</p>
+              <h3 className="text-lg font-semibold text-neutral-700 mb-1">No Payslips Available</h3>
+              <p className="text-sm">You don't have any payslips yet. They will appear here once processed by HR.</p>
             </div>
           </div>
         ) : (
@@ -485,74 +491,54 @@ const MyPayslips = () => {
             {payslips.map((payslip) => (
               <div
                 key={payslip.payroll_id}
-                className="card"
-                style={{
-                  padding: '1.5rem',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                  border: '1px solid #e5e7eb',
-                  position: 'relative',
-                  overflow: 'hidden'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = '#4f46e5';
-                  e.currentTarget.style.transform = 'translateY(-4px)';
-                  e.currentTarget.style.boxShadow = '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.borderColor = '#e5e7eb';
-                  e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = 'none';
-                }}
+                className="group relative bg-white rounded-xl border border-neutral-200 p-6 hover:shadow-lg hover:border-primary-500 transition-all duration-200 cursor-pointer"
+                onClick={() => viewPayslip(payslip)}
               >
-                <div style={{ position: 'absolute', top: 0, right: 0, width: '4px', height: '100%', background: payslip.payment_status === 'paid' ? '#10b981' : '#f59e0b' }}></div>
+                <div className={`absolute top-0 right-0 w-1 h-full rounded-r-xl ${payslip.payment_status === 'paid' ? 'bg-emerald-500' : 'bg-amber-500'}`}></div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
-                  <div style={{ width: '3rem', height: '3rem', borderRadius: '0.75rem', background: '#e0e7ff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#4f46e5', fontSize: '1.25rem' }}>
+                <div className="flex items-center gap-4 mb-6">
+                  <div className="w-12 h-12 rounded-xl bg-primary-50 flex items-center justify-center text-primary-600 text-xl">
                     <FaCalendarAlt />
                   </div>
                   <div>
-                    <div style={{ fontWeight: '700', fontSize: '1.125rem', color: '#111827' }}>
+                    <div className="font-bold text-lg text-neutral-900 leading-tight">
                       {getMonthName(payslip.month)} {payslip.year}
                     </div>
-                    <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+                    <div className="text-sm text-neutral-500 mt-1">
                       {payslip.position || 'Employee'}
                     </div>
                   </div>
                 </div>
 
-                <div style={{ marginBottom: '1.5rem', padding: '1rem', background: '#f9fafb', borderRadius: '0.5rem' }}>
-                  <div style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: '0.25rem', textTransform: 'uppercase', fontWeight: '600' }}>Net Salary</div>
-                  <div style={{ fontSize: '1.5rem', fontWeight: '800', color: '#111827' }}>
+                <div className="mb-6 p-4 bg-neutral-50 rounded-lg border border-neutral-100">
+                  <div className="text-xs font-bold text-neutral-500 uppercase tracking-wider mb-1">Net Salary</div>
+                  <div className="text-2xl font-bold text-neutral-900">
                     {getSetting('currency_symbol', '$')}{parseFloat(payslip.net_salary).toLocaleString()}
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                  <span className={`badge badge-${payslip.payment_status === 'paid' ? 'success' : 'warning'}`}>
-                    {payslip.payment_status === 'paid' && <FaCheckCircle size={10} style={{ marginRight: '4px' }} />}
-                    {payslip.payment_status !== 'paid' && <FaExclamationTriangle size={10} style={{ marginRight: '4px' }} />}
-                    {payslip.payment_status.charAt(0).toUpperCase() + payslip.payment_status.slice(1)}
+                <div className="flex justify-between items-center mb-6">
+                  <span className={`badge ${payslip.payment_status === 'paid' ? 'badge-success' : 'badge-warning'}`}>
+                    {payslip.payment_status === 'paid' ? <FaCheckCircle className="mr-1.5" size={10} /> : <FaExclamationTriangle className="mr-1.5" size={10} />}
+                    <span className="capitalize">{payslip.payment_status}</span>
                   </span>
-                  <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>
+                  <span className="text-xs font-medium text-neutral-500">
                     {payslip.payment_date ? formatDate(payslip.payment_date, getSetting('date_format')) : 'Pending'}
                   </span>
                 </div>
 
-                <div style={{ display: 'flex', gap: '0.75rem' }}>
+                <div className="flex gap-3">
                   <button
-                    className="btn btn-primary"
-                    style={{ flex: 1, fontSize: '0.875rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
-                    onClick={() => viewPayslip(payslip)}
+                    className="btn btn-primary flex-1 justify-center"
+                    onClick={(e) => { e.stopPropagation(); viewPayslip(payslip); }}
                   >
-                    <FaEye /> View
+                    <FaEye className="mr-2" /> View
                   </button>
                   <button
-                    className="btn btn-outline"
-                    style={{ flex: 1, fontSize: '0.875rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
-                    onClick={() => downloadPayslip(payslip)}
+                    className="btn btn-secondary flex-1 justify-center"
+                    onClick={(e) => { e.stopPropagation(); downloadPayslip(payslip); }}
                   >
-                    <FaDownload /> PDF
+                    <FaDownload className="mr-2" /> PDF
                   </button>
                 </div>
               </div>
@@ -563,120 +549,131 @@ const MyPayslips = () => {
 
       {/* Payslip Detail Modal */}
       {showModal && selectedPayslip && (
-        <div className="modal-overlay" onClick={() => setShowModal(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '800px', width: '90%' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid #e5e7eb', paddingBottom: '1rem' }}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setShowModal(false)}>
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in duration-200" onClick={(e) => e.stopPropagation()}>
+            <div className="px-6 py-4 border-b border-neutral-100 flex justify-between items-center bg-neutral-50/50 sticky top-0 backdrop-blur-md">
               <div>
-                <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#111827' }}>Payslip Details</h2>
-                <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>{getMonthName(selectedPayslip.month)} {selectedPayslip.year}</p>
+                <h2 className="text-xl font-bold text-neutral-900">Payslip Details</h2>
+                <p className="text-sm text-neutral-500">{getMonthName(selectedPayslip.month)} {selectedPayslip.year}</p>
               </div>
-              <button onClick={() => setShowModal(false)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#9ca3af' }}>×</button>
+              <button
+                onClick={() => setShowModal(false)}
+                className="w-8 h-8 flex items-center justify-center rounded-full text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 transition-colors"
+                aria-label="Close"
+              >
+                <FaTimes size={20} />
+              </button>
             </div>
 
-            <div style={{ background: '#f9fafb', padding: '1.5rem', borderRadius: '0.75rem', marginBottom: '2rem', border: '1px solid #e5e7eb' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '1.5rem' }}>
-                <div>
-                  <div style={{ fontSize: '0.75rem', color: '#6b7280', textTransform: 'uppercase', fontWeight: '600', marginBottom: '0.25rem' }}>Period</div>
-                  <div style={{ fontWeight: '600', color: '#111827' }}>{getMonthName(selectedPayslip.month)} {selectedPayslip.year}</div>
-                </div>
-                <div>
-                  <div style={{ fontSize: '0.75rem', color: '#6b7280', textTransform: 'uppercase', fontWeight: '600', marginBottom: '0.25rem' }}>Status</div>
-                  <span className={`badge badge-${selectedPayslip.payment_status === 'paid' ? 'success' : 'warning'}`}>
-                    {selectedPayslip.payment_status}
-                  </span>
-                </div>
-                <div>
-                  <div style={{ fontSize: '0.75rem', color: '#6b7280', textTransform: 'uppercase', fontWeight: '600', marginBottom: '0.25rem' }}>Payment Date</div>
-                  <div style={{ fontWeight: '600', color: '#111827' }}>
-                    {selectedPayslip.payment_date ? formatDate(selectedPayslip.payment_date, getSetting('date_format')) : 'Pending'}
+            <div className="p-8">
+              <div className="bg-neutral-50 rounded-xl p-6 border border-neutral-200 mb-8">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                  <div>
+                    <div className="text-xs font-bold text-neutral-500 uppercase tracking-wider mb-1">Period</div>
+                    <div className="font-semibold text-neutral-900">{getMonthName(selectedPayslip.month)} {selectedPayslip.year}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-neutral-500 uppercase tracking-wider mb-1">Status</div>
+                    <span className={`badge ${selectedPayslip.payment_status === 'paid' ? 'badge-success' : 'badge-warning'}`}>
+                      {selectedPayslip.payment_status}
+                    </span>
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-neutral-500 uppercase tracking-wider mb-1">Payment Date</div>
+                    <div className="font-semibold text-neutral-900">
+                      {selectedPayslip.payment_date ? formatDate(selectedPayslip.payment_date, getSetting('date_format')) : 'Pending'}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-neutral-500 uppercase tracking-wider mb-1">Method</div>
+                    <div className="font-semibold text-neutral-900 capitalize">{(selectedPayslip.payment_method || 'N/A').replace('_', ' ')}</div>
                   </div>
                 </div>
-                <div>
-                  <div style={{ fontSize: '0.75rem', color: '#6b7280', textTransform: 'uppercase', fontWeight: '600', marginBottom: '0.25rem' }}>Method</div>
-                  <div style={{ fontWeight: '600', color: '#111827', textTransform: 'capitalize' }}>{(selectedPayslip.payment_method || 'N/A').replace('_', ' ')}</div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+                <div className="card p-0 overflow-hidden h-full">
+                  <div className="px-4 py-3 bg-neutral-50 border-b border-neutral-200">
+                    <h3 className="font-bold text-neutral-800">Earnings</h3>
+                  </div>
+                  <table className="w-full text-sm">
+                    <tbody className="divide-y divide-neutral-100">
+                      <tr>
+                        <td className="px-4 py-3 text-neutral-600">Basic Salary</td>
+                        <td className="px-4 py-3 text-right font-mono font-medium text-neutral-900">{getSetting('currency_symbol', '$')}{parseFloat(selectedPayslip.basic_salary).toLocaleString()}</td>
+                      </tr>
+                      <tr>
+                        <td className="px-4 py-3 text-neutral-600">Allowances</td>
+                        <td className="px-4 py-3 text-right font-mono font-medium text-neutral-900">{getSetting('currency_symbol', '$')}{parseFloat(selectedPayslip.allowances || 0).toLocaleString()}</td>
+                      </tr>
+                      <tr>
+                        <td className="px-4 py-3 text-neutral-600">Overtime Pay</td>
+                        <td className="px-4 py-3 text-right font-mono font-medium text-neutral-900">{getSetting('currency_symbol', '$')}{parseFloat(selectedPayslip.overtime_pay || 0).toLocaleString()}</td>
+                      </tr>
+                      <tr>
+                        <td className="px-4 py-3 text-neutral-600">Bonus</td>
+                        <td className="px-4 py-3 text-right font-mono font-medium text-neutral-900">{getSetting('currency_symbol', '$')}{parseFloat(selectedPayslip.bonus || 0).toLocaleString()}</td>
+                      </tr>
+                      <tr className="bg-neutral-50 font-bold">
+                        <td className="px-4 py-3 text-neutral-800">Total Earnings</td>
+                        <td className="px-4 py-3 text-right text-neutral-900">
+                          {getSetting('currency_symbol', '$')}{(parseFloat(selectedPayslip.basic_salary || 0) + parseFloat(selectedPayslip.allowances || 0) + parseFloat(selectedPayslip.overtime_pay || 0) + parseFloat(selectedPayslip.bonus || 0)).toLocaleString()}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="card p-0 overflow-hidden h-full">
+                  <div className="px-4 py-3 bg-neutral-50 border-b border-neutral-200">
+                    <h3 className="font-bold text-neutral-800">Deductions</h3>
+                  </div>
+                  <table className="w-full text-sm">
+                    <tbody className="divide-y divide-neutral-100">
+                      <tr>
+                        <td className="px-4 py-3 text-neutral-600">Income Tax</td>
+                        <td className="px-4 py-3 text-right font-mono font-medium text-red-600">{getSetting('currency_symbol', '$')}{parseFloat(selectedPayslip.tax || 0).toLocaleString()}</td>
+                      </tr>
+                      <tr>
+                        <td className="px-4 py-3 text-neutral-600">Other Deductions</td>
+                        <td className="px-4 py-3 text-right font-mono font-medium text-red-600">{getSetting('currency_symbol', '$')}{parseFloat(selectedPayslip.deductions || 0).toLocaleString()}</td>
+                      </tr>
+                      <tr className="bg-neutral-50 font-bold">
+                        <td className="px-4 py-3 text-neutral-800">Total Deductions</td>
+                        <td className="px-4 py-3 text-right text-red-600">
+                          {getSetting('currency_symbol', '$')}{(parseFloat(selectedPayslip.tax || 0) + parseFloat(selectedPayslip.deductions || 0)).toLocaleString()}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
                 </div>
               </div>
+
+              <div className="bg-indigo-600 text-white p-6 rounded-xl flex justify-between items-center shadow-lg shadow-indigo-200">
+                <div>
+                  <div className="text-indigo-200 text-xs font-bold uppercase tracking-wider mb-1">Net Salary (Take Home)</div>
+                  <div className="text-sm opacity-90">Transferred via {(selectedPayslip.payment_method || 'bank transfer').replace('_', ' ')}</div>
+                </div>
+                <div className="text-3xl font-bold tracking-tight">{getSetting('currency_symbol', '$')}{parseFloat(selectedPayslip.net_salary).toLocaleString()}</div>
+              </div>
+
+              {selectedPayslip.notes && (
+                <div className="mt-6 p-4 bg-amber-50 rounded-lg border border-amber-200 text-amber-900 border-l-4 border-l-amber-500">
+                  <div className="font-bold text-xs uppercase tracking-wider text-amber-900/70 mb-1">Notes / Remarks</div>
+                  <div className="text-sm">{selectedPayslip.notes}</div>
+                </div>
+              )}
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem', marginBottom: '2rem' }}>
-              <div>
-                <h3 style={{ fontSize: '1rem', fontWeight: '600', color: '#374151', marginBottom: '1rem', borderBottom: '2px solid #e5e7eb', paddingBottom: '0.5rem' }}>Earnings</h3>
-                <table className="table" style={{ marginTop: 0 }}>
-                  <tbody>
-                    <tr>
-                      <td style={{ padding: '0.75rem 0' }}>Basic Salary</td>
-                      <td style={{ textAlign: 'right', padding: '0.75rem 0', fontWeight: '600' }}>{getSetting('currency_symbol', '$')}{parseFloat(selectedPayslip.basic_salary).toLocaleString()}</td>
-                    </tr>
-                    <tr>
-                      <td style={{ padding: '0.75rem 0' }}>Allowances</td>
-                      <td style={{ textAlign: 'right', padding: '0.75rem 0', fontWeight: '600' }}>{getSetting('currency_symbol', '$')}{parseFloat(selectedPayslip.allowances || 0).toLocaleString()}</td>
-                    </tr>
-                    <tr>
-                      <td style={{ padding: '0.75rem 0' }}>Overtime Pay</td>
-                      <td style={{ textAlign: 'right', padding: '0.75rem 0', fontWeight: '600' }}>{getSetting('currency_symbol', '$')}{parseFloat(selectedPayslip.overtime_pay || 0).toLocaleString()}</td>
-                    </tr>
-                    <tr>
-                      <td style={{ padding: '0.75rem 0' }}>Bonus</td>
-                      <td style={{ textAlign: 'right', padding: '0.75rem 0', fontWeight: '600' }}>{getSetting('currency_symbol', '$')}{parseFloat(selectedPayslip.bonus || 0).toLocaleString()}</td>
-                    </tr>
-                    <tr style={{ background: '#f9fafb', borderTop: '2px solid #e5e7eb' }}>
-                      <td style={{ padding: '0.75rem 0.5rem', fontWeight: 'bold' }}>Total Earnings</td>
-                      <td style={{ textAlign: 'right', padding: '0.75rem 0.5rem', fontWeight: 'bold' }}>
-                        {getSetting('currency_symbol', '$')}{(parseFloat(selectedPayslip.basic_salary || 0) + parseFloat(selectedPayslip.allowances || 0) + parseFloat(selectedPayslip.overtime_pay || 0) + parseFloat(selectedPayslip.bonus || 0)).toLocaleString()}
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-
-              <div>
-                <h3 style={{ fontSize: '1rem', fontWeight: '600', color: '#374151', marginBottom: '1rem', borderBottom: '2px solid #e5e7eb', paddingBottom: '0.5rem' }}>Deductions</h3>
-                <table className="table" style={{ marginTop: 0 }}>
-                  <tbody>
-                    <tr>
-                      <td style={{ padding: '0.75rem 0' }}>Income Tax</td>
-                      <td style={{ textAlign: 'right', padding: '0.75rem 0', fontWeight: '600', color: '#dc2626' }}>{getSetting('currency_symbol', '$')}{parseFloat(selectedPayslip.tax || 0).toLocaleString()}</td>
-                    </tr>
-                    <tr>
-                      <td style={{ padding: '0.75rem 0' }}>Other Deductions</td>
-                      <td style={{ textAlign: 'right', padding: '0.75rem 0', fontWeight: '600', color: '#dc2626' }}>{getSetting('currency_symbol', '$')}{parseFloat(selectedPayslip.deductions || 0).toLocaleString()}</td>
-                    </tr>
-                    <tr style={{ background: '#f9fafb', borderTop: '2px solid #e5e7eb' }}>
-                      <td style={{ padding: '0.75rem 0.5rem', fontWeight: 'bold' }}>Total Deductions</td>
-                      <td style={{ textAlign: 'right', padding: '0.75rem 0.5rem', fontWeight: 'bold', color: '#dc2626' }}>
-                        {getSetting('currency_symbol', '$')}{(parseFloat(selectedPayslip.tax || 0) + parseFloat(selectedPayslip.deductions || 0)).toLocaleString()}
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            <div style={{ background: '#4f46e5', color: 'white', padding: '1.5rem', borderRadius: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)' }}>
-              <div>
-                <div style={{ fontSize: '0.875rem', opacity: 0.9, textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '600' }}>Net Salary (Take Home)</div>
-              </div>
-              <strong style={{ fontSize: '2rem' }}>{getSetting('currency_symbol', '$')}{parseFloat(selectedPayslip.net_salary).toLocaleString()}</strong>
-            </div>
-
-            {selectedPayslip.notes && (
-              <div style={{ marginTop: '2rem', padding: '1rem', background: '#fffbeb', borderRadius: '0.5rem', borderLeft: '4px solid #f59e0b' }}>
-                <div style={{ fontWeight: '700', marginBottom: '0.5rem', color: '#92400e', fontSize: '0.875rem', textTransform: 'uppercase' }}>Notes / Remarks</div>
-                <div style={{ fontSize: '0.875rem', color: '#b45309' }}>{selectedPayslip.notes}</div>
-              </div>
-            )}
-
-            <div style={{ marginTop: '2rem', display: 'flex', gap: '1rem', paddingTop: '1.5rem', borderTop: '1px solid #e5e7eb' }}>
+            <div className="px-6 py-4 border-t border-neutral-100 flex gap-4 bg-neutral-50 rounded-b-xl">
               <button
-                className="btn btn-primary"
-                style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
+                className="btn btn-primary flex-1 justify-center"
                 onClick={() => downloadPayslip(selectedPayslip)}
               >
-                <FaPrint /> Print / Download PDF
+                <FaPrint className="mr-2" /> Print / Download PDF
               </button>
               <button
-                className="btn btn-secondary"
-                style={{ flex: 1 }}
+                className="btn btn-secondary flex-1 justify-center"
                 onClick={() => setShowModal(false)}
               >
                 Close

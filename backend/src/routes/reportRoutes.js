@@ -11,6 +11,8 @@ router.get('/payroll', authenticateToken, authorizeRole('admin', 'manager'), rep
 router.get('/employee', authenticateToken, authorizeRole('admin', 'manager'), reportController.getEmployeeReport);
 router.get('/demographics', authenticateToken, authorizeRole('admin', 'manager'), reportController.getEmployeeDemographics);
 router.get('/recruitment', authenticateToken, authorizeRole('admin', 'manager'), reportController.getRecruitmentReport);
+router.get('/attendance-trends', authenticateToken, authorizeRole('admin', 'manager'), reportController.getAttendanceTrends);
+router.get('/employee-demographics', authenticateToken, authorizeRole('admin', 'manager'), reportController.getEmployeeDemographics);
 
 // Advanced Analytics Routes
 router.get('/turnover-prediction', authenticateToken, authorizeRole('admin', 'manager'), reportController.getTurnoverPrediction);

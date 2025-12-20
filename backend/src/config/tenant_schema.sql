@@ -49,6 +49,11 @@ CREATE TABLE IF NOT EXISTS employees (
   employment_type VARCHAR(50),
   status VARCHAR(50) DEFAULT 'active',
   profile_image VARCHAR(500),
+  reporting_manager_id INTEGER REFERENCES employees(employee_id),
+  social_links JSONB DEFAULT '{}',
+  education JSONB DEFAULT '[]',
+  experience JSONB DEFAULT '[]',
+  about_me TEXT,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

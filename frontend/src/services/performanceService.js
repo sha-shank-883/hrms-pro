@@ -18,6 +18,10 @@ const performanceService = {
         const response = await api.delete(`/performance/goals/${id}`);
         return response.data;
     },
+    updateKeyResult: async (id, data) => {
+        const response = await api.put(`/performance/key-results/${id}`, data);
+        return response.data;
+    },
 
     // Cycles
     getCycles: async (params) => {

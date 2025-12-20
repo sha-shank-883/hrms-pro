@@ -24,5 +24,8 @@ router.post('/clock-out', authenticateToken, clockValidation, validate, logActio
 router.post('/', authenticateToken, authorizeRole('admin', 'manager'), attendanceValidation, validate, logAction('CREATE_ATTENDANCE', 'ATTENDANCE'), attendanceController.createAttendance);
 router.put('/:id', authenticateToken, authorizeRole('admin', 'manager'), logAction('UPDATE_ATTENDANCE', 'ATTENDANCE'), attendanceController.updateAttendance);
 router.delete('/:id', authenticateToken, authorizeRole('admin'), logAction('DELETE_ATTENDANCE', 'ATTENDANCE'), attendanceController.deleteAttendance);
+router.post('/regularize', authenticateToken, attendanceController.requestRegularization);
+router.put('/regularize/:id', authenticateToken, authorizeRole('admin', 'manager'), attendanceController.updateRegularizationStatus);
+router.get('/regularize', authenticateToken, attendanceController.getRegularizationRequests);
 
 module.exports = router;

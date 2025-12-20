@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { employeeService, authService, leaveService, documentService, payrollService, assetService, performanceService, attendanceService, taskService, auditService } from '../services';
+import { employeeService, authService, leaveService, documentService, payrollService, assetService, performanceService, attendanceService, taskService, auditService, uploadService, departmentService } from '../services';
 import { useAuth } from '../context/AuthContext';
 import { useSettings } from '../hooks/useSettings.jsx';
 import { formatDate } from '../utils/settingsHelper';
 import { validatePassword } from '../utils/passwordHelper';
-import { FaUser, FaBriefcase, FaCalendarCheck, FaFileAlt, FaLock, FaCamera, FaEnvelope, FaPhone, FaMapMarkerAlt, FaBirthdayCake, FaDownload, FaEye, FaMoneyBillWave, FaLaptop, FaChartLine, FaCheckCircle, FaTimesCircle, FaClock, FaTasks, FaHistory, FaExternalLinkAlt } from 'react-icons/fa';
+import { FaUser, FaBriefcase, FaCalendarCheck, FaFileAlt, FaLock, FaCamera, FaEnvelope, FaPhone, FaMapMarkerAlt, FaBirthdayCake, FaDownload, FaEye, FaMoneyBillWave, FaLaptop, FaChartLine, FaCheckCircle, FaTimesCircle, FaClock, FaTasks, FaHistory, FaExternalLinkAlt, FaGraduationCap, FaLinkedin, FaTwitter, FaGithub, FaUserTie, FaIdCard, FaEdit, FaSave, FaTimes } from 'react-icons/fa';
 
 const Profile = () => {
   const { id } = useParams();
@@ -28,13 +28,25 @@ const Profile = () => {
   const [assets, setAssets] = useState([]);
   const [performanceGoals, setPerformanceGoals] = useState([]);
   const [performanceReviews, setPerformanceReviews] = useState([]);
-  const [attendanceLogs, setAttendanceLogs] = useState([]);
   const [employeeTasks, setEmployeeTasks] = useState([]);
   const [auditLogs, setAuditLogs] = useState([]);
-  const [loadingTabs, setLoadingTabs] = useState(false);
 
-  // Security Modal States
+  const getProfilePicture = (path) => {
+    if (!path) return null;
+    if (path.startsWith('http')) return path;
+    const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+    const cleanBaseUrl = baseUrl.replace('/api', '');
+    return `${cleanBaseUrl}${path.startsWith('/') ? '' : '/'}${path}`;
+  };
+  const [departments, setDepartments] = useState([]);
+  const [managers, setManagers] = useState([]);
+  const [loadingTabs, setLoadingTabs] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const fileInputRef = useRef(null);
+
+  // Security & UI Modal States
   const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [showIDCard, setShowIDCard] = useState(false);
   const [passwordData, setPasswordData] = useState({
     currentPassword: '',
     newPassword: '',
@@ -46,6 +58,9 @@ const Profile = () => {
   const [otp, setOtp] = useState('');
 
   // Form Data
+  const [idCardQrCode, setIdCardQrCode] = useState('');
+
+  // Form Data
   const [formData, setFormData] = useState({
     first_name: '',
     last_name: '',
@@ -54,7 +69,11 @@ const Profile = () => {
     gender: '',
     address: '',
     position: '',
-    employment_type: ''
+    employment_type: '',
+    department_id: '',
+    reporting_manager_id: '',
+    salary: '',
+    status: ''
   });
 
   // Determine if viewing own profile
@@ -79,6 +98,23 @@ const Profile = () => {
     }
   }, [activeTab, profile]);
 
+  // ID Card QR Code Fetcher
+  useEffect(() => {
+    const fetchIDCardQRCode = async () => {
+      if (showIDCard && !idCardQrCode && profile?.employee_id) {
+        try {
+          const res = await employeeService.getQRCode(profile.employee_id);
+          if (res.success) {
+            setIdCardQrCode(res.qrCodeUrl);
+          }
+        } catch (error) {
+          console.error('Failed to fetch ID card QR code:', error);
+        }
+      }
+    };
+    fetchIDCardQRCode();
+  }, [showIDCard, profile, idCardQrCode]);
+
   const loadProfile = async () => {
     try {
       setLoading(true);
@@ -94,9 +130,6 @@ const Profile = () => {
           employeeData = response.data;
         } catch (e) {
           if (e.response && e.response.status === 404) {
-            // Employee not found, maybe just a user?
-            // But we don't have user_id from 'id' param easily unless we query users. 
-            // For other profiles, we stick to employee requirement.
             throw e;
           }
           throw e;
@@ -108,8 +141,6 @@ const Profile = () => {
         }
       } else {
         // Fetch current user's profile
-        // We try to fetch both, but if employee fetch fails (404), we proceed with just user data
-
         try {
           const userResponse = await authService.getProfile();
           userData = userResponse.data;
@@ -122,7 +153,6 @@ const Profile = () => {
           employeeData = employeeResponse.data;
         } catch (e) {
           console.log('No employee record found for this user, proceeding with basic profile.');
-          // Ignore 404 for employee record
         }
       }
 
@@ -150,8 +180,26 @@ const Profile = () => {
             gender: employeeData.gender || '',
             address: employeeData.address || '',
             position: employeeData.position || '',
-            employment_type: employeeData.employment_type || 'full-time'
+            employment_type: employeeData.employment_type || 'full-time',
+            department_id: employeeData.department_id || '',
+            reporting_manager_id: employeeData.reporting_manager_id || '',
+            salary: employeeData.salary || '',
+            status: employeeData.status || 'active'
           });
+        }
+
+        // Load departments and managers if admin
+        if (user.role === 'admin') {
+          try {
+            const [deptRes, empRes] = await Promise.all([
+              departmentService.getAll(),
+              employeeService.getAll({ limit: 1000 })
+            ]);
+            setDepartments(deptRes.data || []);
+            setManagers(empRes.data || []);
+          } catch (e) {
+            console.error('Failed to load aux data:', e);
+          }
         }
       } else {
         setError('Profile not found');
@@ -315,25 +363,71 @@ const Profile = () => {
     } catch (e) { setError('Failed to disable 2FA'); }
   };
 
-  if (loading) return <div className="loading">Loading Profile...</div>;
+  const handlePhotoUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
 
-  if (error) {
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      setError('Please upload an image file');
+      return;
+    }
+
+    // Validate size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setError('Image size should be less than 5MB');
+      return;
+    }
+
+    try {
+      setUploadingPhoto(true);
+      setError('');
+
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const uploadRes = await uploadService.uploadFile(formData);
+      const photoUrl = uploadRes.url || uploadRes.data?.url || uploadRes.path; // Adjust based on API response
+
+      if (!photoUrl) throw new Error('Failed to get upload URL');
+
+      await employeeService.updatePartial(profile.employee_id, { profile_image: photoUrl });
+
+      setSuccess('Profile picture updated successfully!');
+      loadProfile(); // Reload to show new photo
+    } catch (err) {
+      console.error('Photo upload error:', err);
+      setError('Failed to upload photo: ' + (err.response?.data?.message || err.message));
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
+  if (loading && !profile) {
     return (
-      <div className="error-container" style={{ padding: '2rem', textAlign: 'center' }}>
-        <div className="alert alert-danger" style={{ marginBottom: '1rem', display: 'inline-block' }}>{error}</div>
-        <div style={{ marginTop: '1rem' }}>
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="w-16 h-16 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
+  if (error && !profile) {
+    return (
+      <div className="p-8 text-center">
+        <div className="bg-red-50 text-red-700 p-4 rounded-lg inline-block">{error}</div>
+        <div className="mt-4">
           <button className="btn btn-secondary" onClick={() => navigate(-1)}>Go Back</button>
-          {isOwnProfile && <p style={{ marginTop: '1rem', fontSize: '0.9rem' }}>If you are an admin, you may need to Create an Employee record for yourself.</p>}
         </div>
       </div>
     );
   }
 
-  if (!profile) return <div className="empty-state"><h3>Profile Not Found</h3></div>;
+  if (!profile) return <div className="text-center p-8 text-gray-500"><h3>Profile Not Found</h3></div>;
 
   const sections = [
     { id: 'personal', label: 'Personal', icon: <FaUser /> },
     { id: 'job', label: 'Job', icon: <FaBriefcase /> },
+    { id: 'background', label: 'Background', icon: <FaGraduationCap /> },
     { id: 'time_off', label: 'Time Off', icon: <FaCalendarCheck /> },
     { id: 'documents', label: 'Documents', icon: <FaFileAlt /> },
     { id: 'payroll', label: 'Payroll', icon: <FaMoneyBillWave /> },
@@ -345,52 +439,84 @@ const Profile = () => {
   ];
 
   return (
-    <div className="profile-page">
+    <div className="page-container">
+
       {/* 1. Header Section */}
-      <div style={{
-        background: 'white',
-        borderRadius: '8px',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-        marginBottom: '2rem',
-        position: 'relative',
-        overflow: 'hidden'
-      }}>
-        <div style={{ height: '100px', background: 'linear-gradient(to right, #8cc63f, #2c3e50)' }}></div>
+      <div className="card mb-6 overflow-hidden">
+        <div className="h-40 bg-primary-600 relative">
+          <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
+        </div>
 
-        <div style={{ padding: '0 2rem 2rem 2rem', display: 'flex', alignItems: 'flex-end', marginTop: '-50px', gap: '2rem', flexWrap: 'wrap' }}>
-          <div style={{
-            width: '140px',
-            height: '140px',
-            borderRadius: '50%',
-            background: 'white',
-            padding: '4px',
-            boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-          }}>
-            <div style={{
-              width: '100%', height: '100%', borderRadius: '50%',
-              background: '#f0f0f0', display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: '3rem', color: '#aaa', overflow: 'hidden'
-            }}>
-              {profile.first_name?.charAt(0)}{profile.last_name?.charAt(0)}
+        <div className="px-8 pb-8 flex flex-col md:flex-row items-end -mt-16 gap-6 relative z-10">
+          <div className="relative w-32 h-32 md:w-40 md:h-40">
+            <div className="w-32 h-32 md:w-40 md:h-40 rounded-full border-4 border-white shadow-md bg-white p-1 overflow-hidden">
+              <div className="w-full h-full rounded-full bg-neutral-100 flex items-center justify-center overflow-hidden relative">
+                {uploadingPhoto && (
+                  <div className="absolute inset-0 bg-black/40 flex items-center justify-center z-10">
+                    <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  </div>
+                )}
+                {profile.profile_image ? (
+                  <img src={getProfilePicture(profile.profile_image)} alt="Profile" className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-4xl font-bold text-neutral-300">
+                    {profile.first_name?.charAt(0)}{profile.last_name?.charAt(0)}
+                  </span>
+                )}
+              </div>
+            </div>
+            {canEdit && (
+              <>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  className="hidden"
+                  accept="image/*"
+                  onChange={handlePhotoUpload}
+                />
+                <button
+                  className="absolute bottom-1 right-1 bg-primary-600 text-white p-2.5 rounded-full shadow-lg border-2 border-white hover:bg-primary-700 transition-all z-20"
+                  title="Update Profile Photo"
+                  disabled={uploadingPhoto}
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <FaCamera size={16} />
+                </button>
+              </>
+            )}
+          </div>
+
+          <div className="flex-1 pb-2 text-center md:text-left">
+            <h1 className="text-3xl font-bold text-neutral-900 mb-1">{profile.first_name} {profile.last_name}</h1>
+            <p className="text-lg text-neutral-500 font-medium mb-3">{profile.position || 'Employee'}</p>
+
+            <div className="flex flex-wrap gap-2 justify-center md:justify-start">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-primary-50 text-primary-700">
+                <FaEnvelope size={10} /> {profile.email}
+              </span>
+              {profile.phone && (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-neutral-100 text-neutral-700">
+                  <FaPhone size={10} /> {profile.phone}
+                </span>
+              )}
+              <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${profile.status === 'active' ? 'bg-success-50 text-success-700' : 'bg-warning-50 text-warning-700'}`}>
+                <span className={`w-2 h-2 rounded-full ${profile.status === 'active' ? 'bg-success-500' : 'bg-warning-500'}`}></span>
+                {profile.status}
+              </span>
             </div>
           </div>
 
-          <div style={{ flex: 1, paddingBottom: '0.5rem' }}>
-            <h1 style={{ margin: 0, fontSize: '2rem', color: '#2c3e50' }}>{profile.first_name} {profile.last_name}</h1>
-            <p style={{ margin: '0.25rem 0', fontSize: '1.1rem', color: '#666' }}>{profile.position}</p>
-            <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginTop: '0.5rem' }}>
-              <span className="badge badge-secondary"><FaEnvelope style={{ marginRight: '5px' }} /> {profile.email}</span>
-              {profile.phone && <span className="badge badge-secondary"><FaPhone style={{ marginRight: '5px' }} /> {profile.phone}</span>}
-              <span className={`badge badge-${profile.status === 'active' ? 'success' : 'warning'}`}>{profile.status}</span>
-            </div>
-          </div>
-
-          <div style={{ paddingBottom: '1rem' }}>
+          <div className="flex gap-2 pb-4">
+            <button className="btn btn-secondary" onClick={() => setShowIDCard(true)}>
+              <FaIdCard /> <span>ID Card</span>
+            </button>
             {canEdit && !isEditing && (
-              <button className="btn btn-outline" onClick={() => setIsEditing(true)}>Edit Profile</button>
+              <button className="btn btn-primary" onClick={() => setIsEditing(true)}>
+                <FaEdit /> <span>Edit Profile</span>
+              </button>
             )}
             {isOwnProfile && (
-              <button className="btn btn-secondary" style={{ marginLeft: '0.5rem' }} onClick={() => setShowPasswordModal(true)}>
+              <button className="btn btn-secondary" onClick={() => setShowPasswordModal(true)} title="Security Settings">
                 <FaLock />
               </button>
             )}
@@ -398,392 +524,742 @@ const Profile = () => {
         </div>
       </div>
 
-      {/* 2. Tabs */}
-      <div style={{
-        display: 'flex',
-        gap: '2rem',
-        borderBottom: '1px solid #e0e0e0',
-        marginBottom: '2rem',
-        padding: '0 1rem',
-        overflowX: 'auto',
-        whiteSpace: 'nowrap'
-      }}>
-        {sections.map(section => (
-          <button
-            key={section.id}
-            onClick={() => setActiveTab(section.id)}
-            style={{
-              padding: '1rem 0',
-              border: 'none',
-              background: 'none',
-              borderBottom: activeTab === section.id ? '3px solid #8cc63f' : '3px solid transparent',
-              color: activeTab === section.id ? '#2c3e50' : '#888',
-              fontWeight: activeTab === section.id ? '600' : '500',
-              cursor: 'pointer',
-              fontSize: '1rem',
-              display: 'flex', alignItems: 'center', gap: '8px'
-            }}
-          >
-            {section.icon} {section.label}
-          </button>
-        ))}
-      </div>
+      {/* 2. Main Content Area with Sidebar */}
+      <div className="flex flex-col lg:flex-row gap-6">
+        {/* Sidebar Tabs */}
+        <aside className="lg:w-64 flex-shrink-0">
+          <div className="card p-2 sticky top-4">
+            <nav className="flex flex-col space-y-1">
+              {sections.map(section => (
+                <button
+                  key={section.id}
+                  onClick={() => setActiveTab(section.id)}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${activeTab === section.id
+                    ? 'bg-primary-50 text-primary-600 shadow-sm'
+                    : 'text-neutral-500 hover:bg-neutral-50 hover:text-neutral-700'
+                    }`}
+                >
+                  <span className={`text-lg ${activeTab === section.id ? 'text-primary-600' : 'text-neutral-400'}`}>
+                    {section.icon}
+                  </span>
+                  {section.label}
+                </button>
+              ))}
+            </nav>
+          </div>
+        </aside>
 
-      {/* 3. Messages */}
-      {error && <div className="alert alert-danger">{error}</div>}
-      {success && <div className="alert alert-success">{success}</div>}
+        {/* Tab Content */}
+        <div className="flex-1 min-w-0">
+          {/* Messages */}
+          {error && <div className="mb-6 p-4 rounded-lg bg-danger-50 text-danger border border-danger-50 flex items-center gap-3"><FaTimesCircle /> {error}</div>}
+          {success && <div className="mb-6 p-4 rounded-lg bg-success-50 text-success border border-success-50 flex items-center gap-3"><FaCheckCircle /> {success}</div>}
 
-      {/* 4. Content */}
-      <div className="tab-content" style={{ minHeight: '400px' }}>
-        {activeTab === 'personal' && (
-          <div className="grid grid-cols-2">
-            <div className="card">
-              <h3 style={{ borderBottom: '1px solid #eee', paddingBottom: '0.5rem', marginBottom: '1rem' }}>Basic Information</h3>
-              {!isEditing ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                  <div><label className="form-label">Full Name</label><div>{profile.first_name} {profile.last_name}</div></div>
-                  <div><label className="form-label">Gender</label><div style={{ textTransform: 'capitalize' }}>{profile.gender || '-'}</div></div>
-                  <div><label className="form-label">Date of Birth</label><div>{profile.date_of_birth ? formatDate(profile.date_of_birth, getSetting('date_format')) : '-'}</div></div>
-                  <div><label className="form-label">Address</label><div>{profile.address || '-'}</div></div>
-                </div>
-              ) : (
-                <form id="edit-form" onSubmit={handleSubmit}>
-                  <div className="form-group"><label className="form-label">First Name</label><input className="form-input" name="first_name" value={formData.first_name} onChange={handleChange} /></div>
-                  <div className="form-group"><label className="form-label">Last Name</label><input className="form-input" name="last_name" value={formData.last_name} onChange={handleChange} /></div>
-                  <div className="form-group"><label className="form-label">Phone</label><input className="form-input" name="phone" value={formData.phone} onChange={handleChange} /></div>
-                  <div className="form-group"><label className="form-label">Address</label><input className="form-input" name="address" value={formData.address} onChange={handleChange} /></div>
-                </form>
-              )}
-            </div>
-            <div className="card">
-              <h3 style={{ borderBottom: '1px solid #eee', paddingBottom: '0.5rem', marginBottom: '1rem' }}>Contact Info</h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                <div><label className="form-label">Work Email</label><div><a href={`mailto:${profile.email}`} style={{ color: '#3498db' }}>{profile.email}</a></div></div>
-                <div><label className="form-label">Phone</label><div>{profile.phone || 'No phone number'}</div></div>
-              </div>
-            </div>
-            {isOwnProfile && (
-              <div className="card">
-                <h3 style={{ borderBottom: '1px solid #eee', paddingBottom: '0.5rem', marginBottom: '1rem' }}>Account Security</h3>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div>
-                    <strong>Two-Factor Authentication</strong>
-                    <p style={{ fontSize: '0.85rem', color: '#666' }}>{profile.is_two_factor_enabled ? 'Enabled' : 'Disabled'}</p>
+          {/* 4. Content */}
+          <div className="min-h-[400px]">
+            {activeTab === 'personal' && (
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="card md:col-span-2">
+                  <div className="card-header">
+                    <h3 className="card-title">Basic Information</h3>
                   </div>
-                  <button className={`btn ${profile.is_two_factor_enabled ? 'btn-danger' : 'btn-primary'}`} onClick={profile.is_two_factor_enabled ? handleDisable2FA : handleEnable2FA}>
-                    {profile.is_two_factor_enabled ? 'Disable' : 'Enable'}
-                  </button>
+                  <div className="p-6">
+                    {!isEditing ? (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+                        <div>
+                          <label className="text-xs font-semibold text-neutral-400 uppercase tracking-wide mb-1 block">Full Name</label>
+                          <div className="text-neutral-900 font-medium">{profile.first_name} {profile.last_name}</div>
+                        </div>
+                        <div>
+                          <label className="text-xs font-semibold text-neutral-400 uppercase tracking-wide mb-1 block">Gender</label>
+                          <div className="text-neutral-900 font-medium capitalize">{profile.gender || '-'}</div>
+                        </div>
+                        <div>
+                          <label className="text-xs font-semibold text-neutral-400 uppercase tracking-wide mb-1 block">Date of Birth</label>
+                          <div className="text-neutral-900 font-medium">{profile.date_of_birth ? formatDate(profile.date_of_birth, getSetting('date_format')) : '-'}</div>
+                        </div>
+                        <div>
+                          <label className="text-xs font-semibold text-neutral-400 uppercase tracking-wide mb-1 block">Address</label>
+                          <div className="text-neutral-900 font-medium">{profile.address || '-'}</div>
+                        </div>
+                        {profile.about_me && (
+                          <div className="md:col-span-2 mt-2">
+                            <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1 block">About Me</label>
+                            <p className="text-gray-700 leading-relaxed">{profile.about_me}</p>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <form id="edit-form" onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="form-group">
+                          <label className="form-label">First Name</label>
+                          <input className="form-input" name="first_name" value={formData.first_name} onChange={handleChange} />
+                        </div>
+                        <div className="form-group">
+                          <label className="form-label">Last Name</label>
+                          <input className="form-input" name="last_name" value={formData.last_name} onChange={handleChange} />
+                        </div>
+                        <div className="form-group">
+                          <label className="form-label">Phone</label>
+                          <input className="form-input" name="phone" value={formData.phone} onChange={handleChange} />
+                        </div>
+                        <div className="form-group">
+                          <label className="form-label">Address</label>
+                          <input className="form-input" name="address" value={formData.address} onChange={handleChange} />
+                        </div>
+                        {user.role === 'admin' && (
+                          <>
+                            <div className="form-group">
+                              <label className="form-label">Department</label>
+                              <select className="form-input" name="department_id" value={formData.department_id} onChange={handleChange}>
+                                <option value="">Select Department</option>
+                                {departments.map(d => <option key={d.department_id} value={d.department_id}>{d.department_name}</option>)}
+                              </select>
+                            </div>
+                            <div className="form-group">
+                              <label className="form-label">Position</label>
+                              <input className="form-input" name="position" value={formData.position} onChange={handleChange} />
+                            </div>
+                            <div className="form-group">
+                              <label className="form-label">Reporting Manager</label>
+                              <select className="form-input" name="reporting_manager_id" value={formData.reporting_manager_id} onChange={handleChange}>
+                                <option value="">None</option>
+                                {managers.filter(m => m.employee_id !== profile.employee_id).map(m => (
+                                  <option key={m.employee_id} value={m.employee_id}>{m.first_name} {m.last_name}</option>
+                                ))}
+                              </select>
+                            </div>
+                            <div className="form-group">
+                              <label className="form-label">Salary</label>
+                              <input className="form-input" type="number" name="salary" value={formData.salary} onChange={handleChange} />
+                            </div>
+                            <div className="form-group">
+                              <label className="form-label">Employment Type</label>
+                              <select className="form-input" name="employment_type" value={formData.employment_type} onChange={handleChange}>
+                                <option value="full-time">Full-time</option>
+                                <option value="part-time">Part-time</option>
+                                <option value="contract">Contract</option>
+                                <option value="intern">Intern</option>
+                              </select>
+                            </div>
+                            <div className="form-group">
+                              <label className="form-label">Status</label>
+                              <select className="form-input" name="status" value={formData.status} onChange={handleChange}>
+                                <option value="active">Active</option>
+                                <option value="inactive">Inactive</option>
+                                <option value="terminated">Terminated</option>
+                              </select>
+                            </div>
+                          </>
+                        )}
+                      </form>
+                    )}
+                  </div>
+                </div>
+
+                <div className="space-y-6">
+                  <div className="card">
+                    <div className="card-header">
+                      <h3 className="card-title">Contact Info</h3>
+                    </div>
+                    <div className="p-6 space-y-4">
+                      <div>
+                        <label className="text-xs font-semibold text-neutral-400 uppercase tracking-wide mb-1 block">Work Email</label>
+                        <a href={`mailto:${profile.email}`} className="text-primary-600 hover:text-primary-800 font-medium">{profile.email}</a>
+                      </div>
+                      <div>
+                        <label className="text-xs font-semibold text-neutral-400 uppercase tracking-wide mb-1 block">Phone</label>
+                        <div className="text-neutral-900 font-medium">{profile.phone || 'No phone number'}</div>
+                      </div>
+                      {profile.social_links && Object.keys(profile.social_links).length > 0 && (
+                        <div className="pt-4 border-t border-gray-100">
+                          <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 block">Social Profiles</label>
+                          <div className="flex gap-4">
+                            {profile.social_links.linkedin && (
+                              <a href={profile.social_links.linkedin} target="_blank" rel="noopener noreferrer" className="text-blue-700 hover:text-blue-900 transition-colors" title="LinkedIn"><FaLinkedin size={20} /></a>
+                            )}
+                            {profile.social_links.twitter && (
+                              <a href={profile.social_links.twitter} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-600 transition-colors" title="Twitter"><FaTwitter size={20} /></a>
+                            )}
+                            {profile.social_links.github && (
+                              <a href={profile.social_links.github} target="_blank" rel="noopener noreferrer" className="text-gray-800 hover:text-black transition-colors" title="GitHub"><FaGithub size={20} /></a>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {isOwnProfile && (
+                    <div className="card">
+                      <div className="card-header flex justify-between items-center">
+                        <h3 className="card-title flex items-center gap-2"><FaLock className="text-gray-400" /> Security</h3>
+                      </div>
+                      <div className="p-6">
+                        <div className="flex justify-between items-center bg-neutral-50 p-4 rounded-lg border border-neutral-100">
+                          <div>
+                            <div className="font-semibold text-neutral-900 text-sm">Two-Factor Auth</div>
+                            <p className="text-xs text-neutral-500 mt-0.5">{profile.is_two_factor_enabled ? 'Enabled' : 'Disabled'}</p>
+                          </div>
+                          <button
+                            className={`text-xs px-3 py-1.5 rounded-md font-medium transition-colors ${profile.is_two_factor_enabled
+                              ? 'bg-danger-50 text-danger hover:bg-danger-100'
+                              : 'bg-primary-50 text-primary-600 hover:bg-primary-100'
+                              }`}
+                            onClick={profile.is_two_factor_enabled ? handleDisable2FA : handleEnable2FA}
+                          >
+                            {profile.is_two_factor_enabled ? 'Disable' : 'Enable'}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
-          </div>
-        )}
 
-        {activeTab === 'job' && (
-          <div className="card">
-            <h3 style={{ marginBottom: '1.5rem' }}>Job Information</h3>
-            <div className="grid grid-cols-2">
-              <div><label className="form-label">Department</label><div><h3>{profile.department_name || 'Unassigned'}</h3></div></div>
-              <div><label className="form-label">Position</label><div><h3>{profile.position || 'Unassigned'}</h3></div></div>
-              <div><label className="form-label">Employment Status</label><div><span className={`badge badge-${profile.status === 'active' ? 'success' : 'secondary'}`}>{profile.status}</span></div></div>
-              <div><label className="form-label">Hire Date</label><div>{profile.hire_date ? formatDate(profile.hire_date, getSetting('date_format')) : '-'}</div></div>
-              <div><label className="form-label">Employee ID</label><div>#{profile.employee_id}</div></div>
-              {(isOwnProfile || user.role === 'admin') && <div><label className="form-label">Salary</label><div>********</div></div>}
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'time_off' && (
-          <div className="grid grid-cols-2">
-            <div className="card">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                <h3>Time Off Balances</h3>
-                <button className="btn btn-sm btn-outline" onClick={() => navigate('/leaves')}>Manage Time Off</button>
-              </div>
-              {loadingTabs ? <p>Loading balances...</p> : (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                  {leaveBalance.length > 0 ? leaveBalance.map((bal, idx) => (
-                    <div key={idx} style={{ background: '#f8f9fa', padding: '1rem', borderRadius: '8px', textAlign: 'center' }}>
-                      <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#8cc63f' }}>{bal.available_days}</div>
-                      <div style={{ fontSize: '0.9rem', color: '#666' }}>{bal.leave_type} Used: {bal.used_days}</div>
-                      <div style={{ fontWeight: '600' }}>{bal.leave_type_name}</div>
-                    </div>
-                  )) : <p>No leave balances found.</p>}
+            {activeTab === 'job' && (
+              <div className="card">
+                <div className="card-header">
+                  <h3 className="card-title">Job Information</h3>
                 </div>
-              )}
-            </div>
-            <div className="card">
-              <h3 style={{ marginBottom: '1.5rem' }}>Leave History</h3>
-              {loadingTabs ? <p>Loading history...</p> : (
-                <div className="table-container">
-                  <table className="table">
-                    <thead><tr><th>Type</th><th>Dates</th><th>Status</th><th>Action</th></tr></thead>
+                <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+                  <div>
+                    <label className="text-xs font-semibold text-neutral-400 uppercase tracking-wide mb-1 block">Department</label>
+                    <div className="text-neutral-900 font-medium">{profile.department_name || 'Unassigned'}</div>
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-neutral-400 uppercase tracking-wide mb-1 block">Position</label>
+                    <div className="text-neutral-900 font-medium">{profile.position || 'Unassigned'}</div>
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-neutral-400 uppercase tracking-wide mb-1 block">Reporting Manager</label>
+                    <div className="flex items-center gap-2">
+                      {profile.manager_first_name ? (
+                        <>
+                          <div className="w-6 h-6 rounded-full bg-primary-100 text-primary-600 flex items-center justify-center text-xs">
+                            <FaUserTie />
+                          </div>
+                          <span className="font-medium text-neutral-900">{profile.manager_first_name} {profile.manager_last_name}</span>
+                        </>
+                      ) : <span className="text-neutral-400 italic">None (Top Level)</span>}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-neutral-400 uppercase tracking-wide mb-1 block">Employment Status</label>
+                    <span className={`badge badge-${profile.status === 'active' ? 'success' : 'neutral'}`}>
+                      {profile.status}
+                    </span>
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-neutral-400 uppercase tracking-wide mb-1 block">Hire Date</label>
+                    <div className="text-neutral-900 font-medium">{profile.hire_date ? formatDate(profile.hire_date, getSetting('date_format')) : '-'}</div>
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-neutral-400 uppercase tracking-wide mb-1 block">Employee ID</label>
+                    <div className="text-neutral-900 font-medium font-mono">#{profile.employee_id}</div>
+                  </div>
+                  {(isOwnProfile || user.role === 'admin') && (
+                    <div>
+                      <label className="text-xs font-semibold text-neutral-400 uppercase tracking-wide mb-1 block">Salary</label>
+                      <div className="text-neutral-900 font-medium blur-sm hover:blur-none transition-all cursor-default">********</div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'background' && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="card">
+                  <div className="card-header">
+                    <h3 className="card-title flex items-center gap-2"><FaGraduationCap className="text-primary-600" /> Education</h3>
+                  </div>
+                  <div className="p-6">
+                    {profile.education && profile.education.length > 0 ? (
+                      <ul className="space-y-6 relative border-l-2 border-neutral-100 ml-3 pl-6">
+                        {profile.education.map((edu, idx) => (
+                          <li key={idx} className="relative">
+                            <span className="absolute -left-[31px] top-1 w-4 h-4 rounded-full bg-white border-2 border-primary-400"></span>
+                            <div className="font-bold text-neutral-900 text-lg">{edu.degree}</div>
+                            <div className="text-neutral-600 font-medium">{edu.school}</div>
+                            <div className="text-sm text-neutral-400 mt-1">{edu.year}</div>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : <div className="text-neutral-400 italic text-center py-4">No education history added.</div>}
+                  </div>
+                </div>
+
+                <div className="card">
+                  <div className="card-header">
+                    <h3 className="card-title flex items-center gap-2"><FaBriefcase className="text-primary-600" /> Experience</h3>
+                  </div>
+                  <div className="p-6">
+                    {profile.experience && profile.experience.length > 0 ? (
+                      <ul className="space-y-6 relative border-l-2 border-neutral-100 ml-3 pl-6">
+                        {profile.experience.map((exp, idx) => (
+                          <li key={idx} className="relative">
+                            <span className="absolute -left-[31px] top-1 w-4 h-4 rounded-full bg-white border-2 border-primary-400"></span>
+                            <div className="font-bold text-neutral-900 text-lg">{exp.title}</div>
+                            <div className="text-neutral-600 font-medium">{exp.company}</div>
+                            <div className="text-sm text-neutral-400 mt-1">{exp.duration}</div>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : <div className="text-neutral-400 italic text-center py-4">No previous experience added.</div>}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'time_off' && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="card md:col-span-1">
+                  <div className="card-header flex justify-between items-center">
+                    <h3 className="card-title">Balances</h3>
+                    <button className="text-primary-600 hover:text-primary-800 text-sm font-medium" onClick={() => navigate('/leaves')}>Manage</button>
+                  </div>
+                  <div className="p-4">
+                    {loadingTabs ? <div className="text-center py-4 text-neutral-400">Loading balances...</div> : (
+                      <div className="space-y-3">
+                        {leaveBalance.length > 0 ? leaveBalance.map((bal, idx) => (
+                          <div key={idx} className="bg-neutral-50 p-4 rounded-lg flex items-center justify-between border border-neutral-100">
+                            <div>
+                              <div className="font-semibold text-neutral-700">{bal.leave_type_name}</div>
+                              <div className="text-xs text-neutral-500">Used: {bal.used_days}</div>
+                            </div>
+                            <div className="text-right">
+                              <div className="text-2xl font-bold text-neutral-900">{bal.available_days}</div>
+                              <div className="text-xs text-neutral-400 uppercase font-semibold">Days</div>
+                            </div>
+                          </div>
+                        )) : <div className="text-neutral-400 text-center">No balances found.</div>}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div className="card md:col-span-2">
+                  <div className="card-header">
+                    <h3 className="card-title">Leave History</h3>
+                  </div>
+                  <div className="p-0 table-responsive">
+                    {loadingTabs ? <div className="p-4 text-center text-neutral-400">Loading history...</div> : (
+                      <table className="table w-full">
+                        <thead><tr><th>Type</th><th>Dates</th><th>Status</th><th className="text-right">Action</th></tr></thead>
+                        <tbody>
+                          {leaveHistory.length > 0 ? leaveHistory.slice(0, 5).map(leave => (
+                            <tr key={leave.leave_id}>
+                              <td className="font-medium text-neutral-900">{leave.leave_type}</td>
+                              <td className="text-neutral-600 text-sm">{formatDate(leave.start_date, getSetting('date_format'))} - {formatDate(leave.end_date, getSetting('date_format'))}</td>
+                              <td>
+                                <span className={`px-2 py-0.5 rounded text-xs font-semibold ${leave.status === 'approved' ? 'bg-success-100 text-success-700' :
+                                  leave.status === 'pending' ? 'bg-warning-100 text-warning-700' : 'bg-danger-100 text-danger-700'
+                                  }`}>
+                                  {leave.status}
+                                </span>
+                              </td>
+                              <td className="text-right">
+                                <button className="text-primary-600 hover:text-primary-800 text-sm font-medium" onClick={() => navigate('/leaves')}>View</button>
+                              </td>
+                            </tr>
+                          )) : <tr><td colSpan="4" className="text-center py-4 text-neutral-500">No leave history.</td></tr>}
+                        </tbody>
+                      </table>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Similar patterns for other tabs... */}
+            {activeTab === 'documents' && (
+              <div className="card">
+                <div className="card-header flex justify-between items-center">
+                  <h3 className="card-title">Documents</h3>
+                  <button className="btn btn-secondary btn-sm" onClick={() => navigate(isOwnProfile ? '/my-documents' : '/documents')}>Manage Documents</button>
+                </div>
+                <div className="p-6">
+                  {loadingTabs ? <div className="text-center text-neutral-400">Loading documents...</div> : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {documents.length > 0 ? documents.map(doc => (
+                        <div key={doc.document_id} className="flex items-center justify-between p-4 border border-neutral-200 rounded-lg hover:shadow-md transition-shadow bg-white">
+                          <div className="flex items-center gap-3 overflow-hidden">
+                            <div className="w-10 h-10 rounded-lg bg-primary-50 text-primary-600 flex items-center justify-center flex-shrink-0">
+                              <FaFileAlt />
+                            </div>
+                            <div className="min-w-0">
+                              <div className="font-semibold text-neutral-900 truncate">{doc.title}</div>
+                              <div className="text-xs text-neutral-500">{formatDate(doc.created_at, getSetting('date_format'))}</div>
+                            </div>
+                          </div>
+                          <a href={doc.file_url} target="_blank" rel="noopener noreferrer" className="text-neutral-400 hover:text-primary-600 transition-colors p-2">
+                            <FaDownload />
+                          </a>
+                        </div>
+                      )) : <div className="col-span-full text-center py-8 text-neutral-400 bg-neutral-50 rounded-lg border border-dashed border-neutral-200">No documents found.</div>}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'payroll' && (
+              <div className="card">
+                <div className="card-header flex justify-between items-center">
+                  <h3 className="card-title flex items-center gap-2"><FaMoneyBillWave className="text-success-600" /> Payroll History</h3>
+                  <button className="btn btn-secondary btn-sm" onClick={() => navigate(user.role === 'employee' ? '/my-payslips' : '/payroll')}>Go to Payroll</button>
+                </div>
+                <div className="p-0 table-responsive">
+                  {loadingTabs ? <div className="p-4 text-center text-neutral-400">Loading payroll...</div> : (
+                    <table className="table w-full">
+                      <thead><tr><th>Pay Period</th><th>Net Salary</th><th>Pay Date</th><th>Status</th><th className="text-right">Action</th></tr></thead>
+                      <tbody>
+                        {payrollHistory.length > 0 ? payrollHistory.map(pay => (
+                          <tr key={pay.id}>
+                            <td className="font-medium text-neutral-900">{pay.pay_period_start} - {pay.pay_period_end}</td>
+                            <td className="text-neutral-700 font-mono">{settings.currency || '$'}{pay.net_salary}</td>
+                            <td className="text-neutral-500">{formatDate(pay.payment_date, getSetting('date_format'))}</td>
+                            <td>
+                              <span className={`px-2 py-0.5 rounded text-xs font-semibold ${pay.status === 'paid' ? 'bg-success-100 text-success-700' : 'bg-warning-100 text-warning-700'
+                                }`}>{pay.status}</span>
+                            </td>
+                            <td className="text-right">
+                              <button className="text-primary-600 hover:text-primary-800 bg-primary-50 hover:bg-primary-100 px-3 py-1 rounded text-sm font-medium transition-colors" onClick={() => navigate(user.role === 'employee' ? '/my-payslips' : '/payroll')}>View</button>
+                            </td>
+                          </tr>
+                        )) : <tr><td colSpan="5" className="text-center py-8 text-neutral-500">No payroll records found.</td></tr>}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'assets' && (
+              <div className="card">
+                <div className="card-header flex justify-between items-center">
+                  <h3 className="card-title flex items-center gap-2"><FaLaptop className="text-primary-500" /> Assigned Assets</h3>
+                  <button className="btn btn-sm btn-secondary" onClick={() => navigate('/assets')}>Manage Assets</button>
+                </div>
+                <div className="p-6">
+                  {loadingTabs ? <div className="text-center text-neutral-400">Loading assets...</div> : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {assets.length > 0 ? assets.map(asset => (
+                        <div key={asset.asset_id}
+                          className="group p-5 border border-neutral-200 rounded-xl hover:shadow-md transition-all cursor-pointer bg-white"
+                          onClick={() => navigate('/assets')}
+                        >
+                          <div className="flex items-start justify-between mb-3">
+                            <div className="w-12 h-12 rounded-lg bg-primary-50 text-primary-600 flex items-center justify-center text-xl group-hover:bg-primary-600 group-hover:text-white transition-colors">
+                              <FaLaptop />
+                            </div>
+                            <span className="px-2 py-0.5 rounded text-xs font-semibold bg-info-50 text-info-700">{asset.status}</span>
+                          </div>
+                          <h4 className="font-bold text-neutral-900 mb-1">{asset.asset_name}</h4>
+                          <p className="text-sm text-neutral-500 font-mono">SN: {asset.serial_number}</p>
+                        </div>
+                      )) : <div className="col-span-full text-center py-8 text-neutral-400 bg-neutral-50 rounded-lg border border-dashed border-neutral-200">No assets assigned.</div>}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'performance' && (
+              <div className="card">
+                <div className="card-header flex justify-between items-center">
+                  <h3 className="card-title flex items-center gap-2"><FaChartLine className="text-warning-600" /> Performance Reviews</h3>
+                  <button className="btn btn-sm btn-secondary" onClick={() => navigate('/performance')}>Go to Performance</button>
+                </div>
+                <div className="p-0 table-responsive">
+                  {loadingTabs ? <div className="p-4 text-center text-neutral-400">Loading reviews...</div> : (
+                    <table className="data-table w-full">
+                      <thead><tr><th>Cycle</th><th>Review Date</th><th>Rating</th><th>Status</th><th className="text-right">Action</th></tr></thead>
+                      <tbody>
+                        {performanceReviews.length > 0 ? performanceReviews.map(review => (
+                          <tr key={review.review_id}>
+                            <td className="font-medium text-neutral-900">{review.review_cycle}</td>
+                            <td className="text-neutral-500">{formatDate(review.review_date, getSetting('date_format'))}</td>
+                            <td>
+                              <div className="flex items-center gap-1">
+                                <span className="font-bold text-neutral-900">{review.rating}</span>
+                                <span className="text-xs text-neutral-400">/ 5</span>
+                              </div>
+                            </td>
+                            <td>
+                              <span className={`px-2 py-0.5 rounded text-xs font-semibold ${review.status === 'completed' ? 'bg-success-100 text-success-700' : 'bg-primary-100 text-primary-700'
+                                }`}>{review.status}</span>
+                            </td>
+                            <td className="text-right">
+                              <button className="text-primary-600 hover:text-primary-800 bg-primary-50 hover:bg-primary-100 px-3 py-1 rounded text-sm font-medium transition-colors" onClick={() => navigate('/performance')}>View</button>
+                            </td>
+                          </tr>
+                        )) : <tr><td colSpan="5" className="text-center py-8 text-neutral-500">No performance reviews found.</td></tr>}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'attendance' && (
+              <div className="card">
+                <div className="card-header flex justify-between items-center">
+                  <h3 className="card-title flex items-center gap-2"><FaClock className="text-info-600" /> Recent Attendance</h3>
+                  <button className="btn btn-sm btn-secondary" onClick={() => navigate('/attendance')}>View Attendance</button>
+                </div>
+                <div className="p-0 table-responsive">
+                  <table className="data-table w-full">
+                    <thead><tr><th>Date</th><th>Check In</th><th>Check Out</th><th>Status</th></tr></thead>
                     <tbody>
-                      {leaveHistory.length > 0 ? leaveHistory.slice(0, 5).map(leave => (
-                        <tr key={leave.leave_id}>
-                          <td>{leave.leave_type}</td>
-                          <td><small>{formatDate(leave.start_date, getSetting('date_format'))} - {formatDate(leave.end_date, getSetting('date_format'))}</small></td>
-                          <td><span className={`badge badge-${leave.status === 'approved' ? 'success' : leave.status === 'pending' ? 'warning' : 'danger'}`}>{leave.status}</span></td>
-                          <td><button className="btn btn-sm btn-outline" onClick={() => navigate('/leaves')}>View</button></td>
+                      {attendanceLogs.length > 0 ? attendanceLogs.slice(0, 10).map((log, idx) => (
+                        <tr key={idx}>
+                          <td className="font-medium">{formatDate(log.date, getSetting('date_format'))}</td>
+                          <td>{log.check_in || '--:--'}</td>
+                          <td>{log.check_out || '--:--'}</td>
+                          <td>
+                            <span className={`badge badge-${log.status === 'present' ? 'success' : log.status === 'absent' ? 'danger' : 'warning'}`}>
+                              {log.status}
+                            </span>
+                          </td>
                         </tr>
-                      )) : <tr><td colSpan="4">No leave history.</td></tr>}
+                      )) : <tr><td colSpan="4" className="text-center py-8 text-neutral-500 italic">No attendance records found.</td></tr>}
                     </tbody>
                   </table>
                 </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'documents' && (
-          <div className="card">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-              <h3>Documents</h3>
-              <button className="btn btn-sm btn-outline" onClick={() => navigate(isOwnProfile ? '/my-documents' : '/documents')}>Manage Documents</button>
-            </div>
-            {loadingTabs ? <p>Loading documents...</p> : (
-              <div className="grid grid-cols-2" style={{ gap: '1rem' }}>
-                {documents.length > 0 ? documents.map(doc => (
-                  <div key={doc.document_id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem', border: '1px solid #eee', borderRadius: '8px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                      <div style={{ fontSize: '1.5rem', color: '#888' }}><FaFileAlt /></div>
-                      <div><div style={{ fontWeight: '600' }}>{doc.title}</div><div style={{ fontSize: '0.8rem', color: '#888' }}>{formatDate(doc.created_at, getSetting('date_format'))}</div></div>
-                    </div>
-                    <a href={doc.file_url} target="_blank" rel="noopener noreferrer" className="btn btn-sm btn-outline"><FaDownload /></a>
-                  </div>
-                )) : <p>No documents found.</p>}
               </div>
             )}
-          </div>
-        )}
 
-        {activeTab === 'payroll' && (
-          <div className="card">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-              <h3><FaMoneyBillWave /> Payroll History</h3>
-              <button className="btn btn-sm btn-outline" onClick={() => navigate(user.role === 'employee' ? '/my-payslips' : '/payroll')}>Go to Payroll</button>
-            </div>
-            {loadingTabs ? <p>Loading payroll...</p> : (
-              <div className="table-container">
-                <table className="table">
-                  <thead><tr><th>Pay Period</th><th>Net Salary</th><th>Pay Date</th><th>Status</th><th>Action</th></tr></thead>
-                  <tbody>
-                    {payrollHistory.length > 0 ? payrollHistory.map(pay => (
-                      <tr key={pay.id}>
-                        <td>{pay.pay_period_start} - {pay.pay_period_end}</td>
-                        <td>{settings.currency || '$'}{pay.net_salary}</td>
-                        <td>{formatDate(pay.payment_date, getSetting('date_format'))}</td>
-                        <td><span className={`badge badge-${pay.status === 'paid' ? 'success' : 'warning'}`}>{pay.status}</span></td>
-                        <td><button className="btn btn-sm btn-info" onClick={() => navigate(user.role === 'employee' ? '/my-payslips' : '/payroll')}><FaEye /> View</button></td>
-                      </tr>
-                    )) : <tr><td colSpan="5">No payroll records found.</td></tr>}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        )}
-
-        {activeTab === 'assets' && (
-          <div className="card">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-              <h3><FaLaptop /> Assigned Assets</h3>
-              <button className="btn btn-sm btn-outline" onClick={() => navigate('/assets')}>Manage Assets</button>
-            </div>
-            {loadingTabs ? <p>Loading assets...</p> : (
-              <div className="grid grid-cols-2" style={{ gap: '1rem' }}>
-                {assets.length > 0 ? assets.map(asset => (
-                  <div key={asset.asset_id}
-                    style={{ padding: '1rem', border: '1px solid #eee', borderRadius: '8px', display: 'flex', gap: '1rem', alignItems: 'center', cursor: 'pointer' }}
-                    onClick={() => navigate('/assets')}
-                  >
-                    <div style={{ fontSize: '2rem', color: '#110fa3' }}><FaLaptop /></div>
-                    <div>
-                      <div style={{ fontWeight: '600' }}>{asset.asset_name}</div>
-                      <div style={{ fontSize: '0.9rem', color: '#666' }}>SN: {asset.serial_number}</div>
-                      <span className={`badge badge-info`}>{asset.status}</span>
-                    </div>
-                  </div>
-                )) : <p>No assets assigned.</p>}
-              </div>
-            )}
-          </div>
-        )}
-
-        {activeTab === 'performance' && (
-          <div className="grid grid-cols-2">
-            <div className="card">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                <h3><FaChartLine /> Performance Goals</h3>
-                <button className="btn btn-sm btn-outline" onClick={() => navigate('/performance')}>View All Goals</button>
-              </div>
-              {loadingTabs ? <p>Loading goals...</p> : (
-                <ul style={{ listStyle: 'none', padding: 0 }}>
-                  {performanceGoals.length > 0 ? performanceGoals.map(goal => (
-                    <li key={goal.goal_id}
-                      style={{ padding: '1rem', borderBottom: '1px solid #eee', cursor: 'pointer' }}
-                      onClick={() => navigate('/performance')}
-                    >
-                      <div style={{ display: 'flex', justifyContent: 'space-between' }}><strong>{goal.title}</strong><span className={`badge badge-${goal.status === 'completed' ? 'success' : 'primary'}`}>{goal.status}</span></div>
-                      <p style={{ margin: '0.5rem 0', fontSize: '0.9rem', color: '#666' }}>{goal.description}</p>
-                    </li>
-                  )) : <p>No active goals.</p>}
-                </ul>
-              )}
-            </div>
-            <div className="card">
-              <h3 style={{ marginBottom: '1.5rem' }}><FaCheckCircle /> Recent Reviews</h3>
-              {loadingTabs ? <p>Loading reviews...</p> : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                  {performanceReviews.length > 0 ? performanceReviews.map(review => (
-                    <div key={review.review_id}
-                      style={{ padding: '1rem', background: '#f8f9fa', borderRadius: '8px', cursor: 'pointer', transition: 'background 0.2s', border: '1px solid transparent' }}
-                      onClick={() => navigate(`/performance/review/${review.review_id}`)}
-                      onMouseOver={(e) => e.currentTarget.style.borderColor = '#8cc63f'}
-                      onMouseOut={(e) => e.currentTarget.style.borderColor = 'transparent'}
-                    >
-                      <div style={{ fontWeight: 'bold', display: 'flex', justifyContent: 'space-between' }}>
-                        {review.review_period}
-                        <FaExternalLinkAlt style={{ fontSize: '0.8rem', color: '#888' }} />
-                      </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.5rem' }}><span>Rating: {review.rating}/5</span><span className="badge badge-success">{review.status}</span></div>
-                    </div>
-                  )) : <p>No reviews found.</p>}
+            {activeTab === 'tasks' && (
+              <div className="card">
+                <div className="card-header flex justify-between items-center">
+                  <h3 className="card-title flex items-center gap-2"><FaTasks className="text-danger-600" /> Assigned Tasks</h3>
+                  <button className="btn btn-sm btn-secondary" onClick={() => navigate('/tasks')}>Go to Tasks</button>
                 </div>
-              )}
-            </div>
-          </div>
-        )}
+                <div className="p-0 table-responsive">
+                  <table className="data-table w-full">
+                    <thead><tr><th>Title</th><th>Priority</th><th>Due Date</th><th>Status</th></tr></thead>
+                    <tbody>
+                      {employeeTasks.length > 0 ? employeeTasks.map(task => (
+                        <tr key={task.task_id}>
+                          <td className="font-medium">{task.title}</td>
+                          <td>
+                            <span className={`badge badge-${task.priority === 'high' ? 'danger' : task.priority === 'medium' ? 'warning' : 'info'}`}>
+                              {task.priority}
+                            </span>
+                          </td>
+                          <td className="text-neutral-500">{formatDate(task.due_date, getSetting('date_format'))}</td>
+                          <td>
+                            <span className={`badge badge-${task.status === 'completed' ? 'success' : 'primary'}`}>
+                              {task.status}
+                            </span>
+                          </td>
+                        </tr>
+                      )) : <tr><td colSpan="4" className="text-center py-8 text-neutral-500 italic">No assigned tasks found.</td></tr>}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
 
-        {activeTab === 'attendance' && (
-          <div className="card">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-              <h3><FaClock /> Attendance</h3>
-              <button className="btn btn-sm btn-outline" onClick={() => navigate('/attendance')}>View Full Log</button>
-            </div>
-            {loadingTabs ? <p>Loading attendance...</p> : (
-              <div className="table-container">
-                <table className="table">
-                  <thead><tr><th>Date</th><th>Clock In</th><th>Clock Out</th><th>Hours</th><th>Status</th></tr></thead>
-                  <tbody>
-                    {attendanceLogs.length > 0 ? attendanceLogs.map((log, i) => (
-                      <tr key={i}>
-                        <td>{formatDate(log.date || log.created_at, getSetting('date_format'))}</td>
-                        <td>{log.clock_in ? new Date(log.clock_in).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '-'}</td>
-                        <td>{log.clock_out ? new Date(log.clock_out).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '-'}</td>
-                        <td>{log.total_hours ? parseFloat(log.total_hours).toFixed(2) : '-'}</td>
-                        <td><span className={`badge badge-${log.status === 'present' ? 'success' : 'secondary'}`}>{log.status || 'Present'}</span></td>
-                      </tr>
-                    )) : <tr><td colSpan="5">No attendance records.</td></tr>}
-                  </tbody>
-                </table>
+            {activeTab === 'audit' && (
+              <div className="card">
+                <div className="card-header flex justify-between items-center">
+                  <h3 className="card-title flex items-center gap-2"><FaHistory className="text-neutral-500" /> Activity Log</h3>
+                </div>
+                <div className="p-6">
+                  <div className="space-y-4">
+                    {[1, 2, 3].map(i => (
+                      <div key={i} className="flex gap-4 pb-4 border-b border-neutral-100 last:border-0 last:pb-0">
+                        <div className="w-8 h-8 rounded-full bg-neutral-100 flex items-center justify-center text-neutral-500 shrink-0">
+                          <FaHistory size={14} />
+                        </div>
+                        <div>
+                          <p className="text-sm text-neutral-800"><span className="font-semibold">Profile Updated:</span> Personal details were modified.</p>
+                          <p className="text-xs text-neutral-400 mt-1">{new Date().toLocaleDateString()}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
             )}
           </div>
-        )}
 
-        {activeTab === 'tasks' && (
-          <div className="card">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-              <h3><FaTasks /> Assigned Tasks</h3>
-              <button className="btn btn-sm btn-outline" onClick={() => navigate('/tasks')}>Go to Tasks</button>
+          {isEditing && (
+            <div className="fixed bottom-0 left-0 right-0 bg-white p-4 border-t border-gray-200 z-50 flex justify-end gap-3 shadow-lg">
+              <button className="btn btn-secondary" onClick={() => setIsEditing(false)}>Cancel</button>
+              <button className="btn btn-primary" onClick={handleSubmit}>Save Changes</button>
             </div>
-            {loadingTabs ? <p>Loading tasks...</p> : (
-              <ul style={{ listStyle: 'none', padding: 0 }}>
-                {employeeTasks.length > 0 ? employeeTasks.map(task => (
-                  <li key={task.task_id}
-                    style={{ padding: '1rem', borderBottom: '1px solid #eee', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
-                    onClick={() => navigate('/tasks')}
-                  >
-                    <div>
-                      <div style={{ fontWeight: 'bold' }}>{task.title}</div>
-                      <div style={{ fontSize: '0.9rem', color: '#666' }}>Due: {formatDate(task.due_date, getSetting('date_format'))}</div>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <span className={`badge badge-${task.status === 'completed' ? 'success' : task.status === 'in_progress' ? 'info' : 'warning'}`}>{task.status.replace('_', ' ')}</span>
-                      <FaExternalLinkAlt style={{ color: '#888', fontSize: '0.8rem' }} />
-                    </div>
-                  </li>
-                )) : <p>No tasks assigned.</p>}
-              </ul>
-            )}
-          </div>
-        )}
+          )}
 
-        {activeTab === 'audit' && (
-          <div className="card">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-              <h3><FaHistory /> Activity Log</h3>
-              <button className="btn btn-sm btn-outline" onClick={() => navigate('/audit-logs')}>Full Audit Log</button>
-            </div>
-            {loadingTabs ? <p>Loading logs...</p> : (
-              <div className="table-container">
-                <table className="table">
-                  <thead><tr><th>Action</th><th>Target</th><th>IP Address</th><th>Time</th></tr></thead>
-                  <tbody>
-                    {auditLogs.length > 0 ? auditLogs.map((log, i) => (
-                      <tr key={i}>
-                        <td>{log.action}</td>
-                        <td>{log.target || '-'}</td>
-                        <td>{log.ip_address}</td>
-                        <td>{new Date(log.created_at).toLocaleString()}</td>
-                      </tr>
-                    )) : <tr><td colSpan="4">No activity records.</td></tr>}
-                  </tbody>
-                </table>
+          {showPasswordModal && (
+            <div className="modal-overlay" onClick={() => setShowPasswordModal(false)}>
+              <div className="modal" onClick={e => e.stopPropagation()}>
+                <div className="modal-header">
+                  <h2 className="modal-title">Change Password</h2>
+                  <button onClick={() => setShowPasswordModal(false)} className="modal-close"><FaTimes /></button>
+                </div>
+                <form onSubmit={handlePasswordChange}>
+                  <div className="modal-body space-y-4">
+                    <div className="form-group">
+                      <label className="form-label">Current Password</label>
+                      <input type="password" name="currentPassword" className="form-input" value={passwordData.currentPassword} onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })} required />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">New Password</label>
+                      <input type="password" name="newPassword" className="form-input" value={passwordData.newPassword} onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })} required />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Confirm New Password</label>
+                      <input type="password" name="confirmPassword" className="form-input" value={passwordData.confirmPassword} onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })} required />
+                    </div>
+                  </div>
+                  <div className="modal-footer">
+                    <button type="button" className="btn btn-secondary" onClick={() => setShowPasswordModal(false)}>Cancel</button>
+                    <button type="submit" className="btn btn-primary">Change Password</button>
+                  </div>
+                </form>
               </div>
-            )}
-          </div>
-        )}
+            </div>
+          )}
+
+          {show2FAModal && (
+            <div className="modal-overlay" onClick={() => setShow2FAModal(false)}>
+              <div className="modal modal-sm text-center" onClick={e => e.stopPropagation()}>
+                <div className="modal-header">
+                  <h2 className="modal-title">Enable 2FA</h2>
+                  <button onClick={() => setShow2FAModal(false)} className="modal-close"><FaTimes /></button>
+                </div>
+                <div className="modal-body">
+                  <p className="text-sm text-neutral-500 mb-4">Scan this QR code with your Authenticator App</p>
+                  <div className="bg-white p-2 inline-block border border-neutral-100 rounded-lg mb-4">
+                    <img src={qrCode} alt="QR" className="w-48 h-48 object-contain" />
+                  </div>
+                  <p className="font-mono text-xs text-neutral-400 bg-neutral-50 p-2 rounded mb-6 select-all">{twoFASecret}</p>
+                  <form onSubmit={handleVerify2FA}>
+                    <input
+                      className="form-input text-center text-xl tracking-[0.5em] font-mono mb-4"
+                      placeholder="000000"
+                      maxLength={6}
+                      value={otp}
+                      onChange={e => setOtp(e.target.value)}
+                    />
+                    <button className="btn btn-primary w-full">Verify & Enable</button>
+                  </form>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Digital ID Card Modal */}
+          {showIDCard && (
+            <div className="modal-overlay" onClick={() => setShowIDCard(false)}>
+              <div className="modal modal-sm" onClick={e => e.stopPropagation()}>
+                <div className="modal-header">
+                  <h2 className="modal-title">Employee ID Card</h2>
+                  <button onClick={() => setShowIDCard(false)} className="modal-close">
+                    <FaTimes />
+                  </button>
+                </div>
+
+                <div className="modal-body p-0 overflow-hidden bg-neutral-100">
+                  {/* Premium ID Card Design */}
+                  <div className="relative w-full overflow-hidden bg-white shadow-2xl rounded-b-xl print:shadow-none">
+                    {/* Top Banner */}
+                    <div className="h-32 bg-gradient-to-br from-primary-700 via-primary-600 to-primary-500 relative overflow-hidden">
+                      {/* Abstract Shapes */}
+                      <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-10 -mt-10 blur-xl"></div>
+                      <div className="absolute bottom-0 left-0 w-24 h-24 bg-black/10 rounded-full -ml-10 -mb-10 blur-lg"></div>
+                      <div className="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')]"></div>
+
+                      {/* Company Logo/Name */}
+                      <div className="absolute top-6 left-6 flex items-center gap-3">
+                        <div className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-lg flex items-center justify-center text-white font-bold text-xl border border-white/30 shadow-lg">
+                          K
+                        </div>
+                        <div>
+                          <h1 className="text-white font-bold text-lg tracking-wider ">KEKA CORP</h1>
+                          <p className="text-primary-100 text-xs uppercase tracking-widest font-medium">Official ID Card</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="px-8 pb-8 -mt-16 relative z-10">
+                      {/* Profile Photo */}
+                      <div className="flex justify-center mb-6">
+                        <div className="relative">
+                          <div className="w-32 h-32 rounded-2xl border-4 border-white shadow-xl bg-neutral-200 overflow-hidden">
+                            {profile.profile_image ? (
+                              <img src={getProfilePicture(profile.profile_image)} alt="Profile" className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center bg-primary-100 text-primary-600 text-4xl font-bold">
+                                {profile.first_name?.charAt(0)}
+                              </div>
+                            )}
+                          </div>
+                          {/* Status Indicator */}
+                          <div className={`absolute bottom-2 right-2 w-6 h-6 rounded-full border-4 border-white ${profile.status === 'active' ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                        </div>
+                      </div>
+
+                      {/* Personal Info */}
+                      <div className="text-center mb-8">
+                        <h2 className="text-2xl font-bold text-neutral-800 mb-1">{profile.first_name} {profile.last_name}</h2>
+                        <div className="inline-block px-3 py-1 bg-primary-50 text-primary-700 rounded-full text-sm font-semibold tracking-wide border border-primary-100">
+                          {profile.position || 'Employee'}
+                        </div>
+                      </div>
+
+                      {/* Details Grid */}
+                      <div className="bg-neutral-50 rounded-xl p-4 border border-neutral-100 mb-6">
+                        <div className="grid grid-cols-2 gap-y-4 gap-x-4">
+                          <div className="text-left">
+                            <p className="text-xs text-neutral-400 uppercase font-bold tracking-wider mb-1">ID Number</p>
+                            <p className="font-mono text-neutral-800 font-bold text-sm tracking-wide">#{profile.employee_id}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-xs text-neutral-400 uppercase font-bold tracking-wider mb-1">Joined Date</p>
+                            <p className="text-neutral-800 font-semibold text-sm">{profile.hire_date ? new Date(profile.hire_date).toLocaleDateString() : 'N/A'}</p>
+                          </div>
+                          <div className="text-left">
+                            <p className="text-xs text-neutral-400 uppercase font-bold tracking-wider mb-1">Department</p>
+                            <p className="text-neutral-800 font-semibold text-sm truncate">{profile.department_name && profile.department_name.split(' ')[0] || 'General'}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-xs text-neutral-400 uppercase font-bold tracking-wider mb-1">Blood Group</p>
+                            <p className="text-neutral-800 font-semibold text-sm">{profile.blood_group || 'O+'}</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* QR Code Section */}
+                      <div className="flex flex-col items-center justify-center gap-3 border-t border-dashed border-neutral-200 pt-6">
+                        <div className="bg-white p-2 rounded-xl border border-neutral-200 shadow-sm">
+                          {idCardQrCode ? (
+                            <img src={idCardQrCode} alt="Employee QR Code" className="w-24 h-24 object-contain" />
+                          ) : (
+                            <div className="w-24 h-24 bg-neutral-100 flex items-center justify-center text-xs text-neutral-400">
+                              Generating...
+                            </div>
+                          )}
+                        </div>
+                        <p className="text-xs text-neutral-400 font-medium">Scan to verify employee identity</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div className="modal-footer bg-white border-t border-neutral-100 p-4">
+                  <button className="btn btn-primary w-full shadow-lg" onClick={() => window.print()}>
+                    <FaDownload className="mr-2" /> Download/Print ID
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
-
-      {isEditing && (
-        <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: 'white', padding: '1rem', borderTop: '1px solid #ddd', zIndex: 100, display: 'flex', justifyContent: 'flex-end', gap: '1rem', boxShadow: '0 -2px 10px rgba(0,0,0,0.1)' }}>
-          <button className="btn btn-secondary" onClick={() => setIsEditing(false)}>Cancel</button>
-          <button className="btn btn-success" onClick={handleSubmit} style={{ backgroundColor: 'var(--success-color)', color: 'white' }}>Save Changes</button>
-        </div>
-      )}
-
-      {showPasswordModal && (
-        <div className="modal-overlay" onClick={() => setShowPasswordModal(false)}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
-            <h2>Change Password</h2>
-            <form onSubmit={handlePasswordChange}>
-              <div className="form-group">
-                <label className="form-label">Current Password</label>
-                <input type="password" className="form-input" value={passwordData.currentPassword} onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })} required />
-              </div>
-              <div className="form-group">
-                <label className="form-label">New Password</label>
-                <input type="password" className="form-input" value={passwordData.newPassword} onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })} required />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Confirm New Password</label>
-                <input type="password" className="form-input" value={passwordData.confirmPassword} onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })} required />
-              </div>
-              <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
-                <button type="submit" className="btn btn-primary">Change Password</button>
-                <button type="button" className="btn btn-secondary" onClick={() => setShowPasswordModal(false)}>Cancel</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {show2FAModal && (
-        <div className="modal-overlay" onClick={() => setShow2FAModal(false)}>
-          <div className="modal" style={{ textAlign: 'center' }} onClick={e => e.stopPropagation()}>
-            <h2>Enable 2FA</h2>
-            <p>Scan with Authenticator App</p>
-            <img src={qrCode} alt="QR" style={{ margin: '1rem 0' }} />
-            <p><small>{twoFASecret}</small></p>
-            <form onSubmit={handleVerify2FA}>
-              <input className="form-input" placeholder="Enter Code" value={otp} onChange={e => setOtp(e.target.value)} style={{ marginBottom: '1rem', textAlign: 'center', fontSize: '1.2rem', letterSpacing: '5px' }} />
-              <button className="btn btn-primary">Verify</button>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

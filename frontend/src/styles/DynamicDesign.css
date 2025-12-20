@@ -1,0 +1,104 @@
+/* Dynamic Design System - Variables meant for dynamic override via JS */
+:root {
+  /* Colors - Initial defaults, overridden by JS Settings */
+  --primary-color: #8cc63f;
+  --secondary-color: #2c3e50;
+  --success-color: #10b981;
+  --warning-color: #f59e0b;
+  --danger-color: #ef4444;
+  --info-color: #3b82f6;
+
+  /* Typography */
+  --font-family: 'Inter', sans-serif;
+  --font-size-base: 14px;
+  --font-size-sm: 12px;
+  --font-size-lg: 16px;
+
+  /* Spacing */
+  --spacing-unit: 4px;
+
+  /* Borders */
+  --border-radius: 6px;
+  --border-radius-sm: 4px;
+  --border-radius-lg: 8px;
+
+  /* Shadows */
+  --card-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+  --button-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+
+  /* Layout */
+  --sidebar-width: 280px;
+  --header-height: 64px;
+
+  /* Component Sizes */
+  --button-padding-x: 12px;
+  --button-padding-y: 6px;
+  --card-padding: 16px;
+  --input-height: 36px;
+
+  /* Module-specific Design Variables */
+  --dashboard-widget-bg: #ffffff;
+  --dashboard-widget-border: #e2e8f0;
+  --dashboard-widget-radius: 8px;
+  --dashboard-widget-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  --employee-card-bg: #ffffff;
+  --employee-card-border: #e2e8f0;
+  --employee-card-radius: 8px;
+  --employee-card-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+  --table-row-hover: var(--neutral-50);
+  --table-border: var(--neutral-100);
+  --nav-active-bg: rgba(140, 198, 63, 0.1);
+  --nav-active-border: #8cc63f;
+  --badge-radius: 12px;
+  --form-group-spacing: 16px;
+  --modal-backdrop: rgba(15, 23, 42, 0.5);
+  --chart-primary: #8cc63f;
+  --chart-secondary: #2c3e50;
+  --chart-success: #10b981;
+  --chart-warning: #f59e0b;
+  --chart-danger: #ef4444;
+  --progress-bar-height: 8px;
+  --progress-bar-radius: 4px;
+  --avatar-size-sm: 24px;
+  --avatar-size-md: 32px;
+  --avatar-size-lg: 48px;
+  --tooltip-bg: #1f2937;
+  --tooltip-text: #ffffff;
+  --pagination-active: #8cc63f;
+
+  /* Recruitment Module Variables */
+  --recruitment-card-bg: #ffffff;
+  --recruitment-card-border: var(--neutral-200);
+  --recruitment-status-badge-radius: 12px;
+
+  /* Performance Module Variables */
+  --performance-chart-height: 300px;
+  --performance-review-card-bg: #ffffff;
+  --performance-rating-star-color: #f59e0b;
+
+  /* Payroll Module Variables */
+  --payroll-summary-card-bg: #ffffff;
+  --payroll-item-border: var(--neutral-200);
+
+  /* Leave Module Variables */
+  --leave-request-card-bg: #ffffff;
+  --leave-calendar-cell-height: 100px;
+  --leave-status-approved-color: #10b981;
+  --leave-status-pending-color: #f59e0b;
+  --leave-status-rejected-color: #ef4444;
+
+  /* Attendance Module Variables */
+  --attendance-chart-height: 300px;
+  --attendance-status-present-color: #10b981;
+  --attendance-status-absent-color: #ef4444;
+  --attendance-status-late-color: #f59e0b;
+
+  /* Task Module Variables */
+  --task-card-bg: #ffffff;
+  --task-priority-high-color: #ef4444;
+  --task-priority-medium-color: #f59e0b;
+  --task-priority-low-color: #10b981;
+  --task-status-todo-color: #f59e0b;
+  --task-status-inprogress-color: #3b82f6;
+  --task-status-completed-color: #10b981;
+}

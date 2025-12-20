@@ -164,6 +164,16 @@ export const employeeService = {
     return response.data;
   },
 
+  updatePartial: async (id, data) => {
+    const response = await api.patch(`/employees/${id}`, data);
+    return response.data;
+  },
+
+  getQRCode: async (id) => {
+    const response = await api.get(`/employees/${id}/qrcode`);
+    return response.data;
+  },
+
   delete: async (id) => {
     const response = await api.delete(`/employees/${id}`);
     return response.data;
@@ -171,6 +181,11 @@ export const employeeService = {
 
   getForChat: async (params) => {
     const response = await api.get('/employees/chat', { params });
+    return response.data;
+  },
+
+  getOrgChart: async () => {
+    const response = await api.get('/employees/org-chart');
     return response.data;
   }
 };
@@ -234,6 +249,31 @@ export const attendanceService = {
     const response = await api.put(`/attendance/${id}`, data);
     return response.data;
   },
+
+  create: async (data) => {
+    const response = await api.post('/attendance', data);
+    return response.data;
+  },
+
+  delete: async (id) => {
+    const response = await api.delete(`/attendance/${id}`);
+    return response.data;
+  },
+
+  requestRegularization: async (data) => {
+    const response = await api.post('/attendance/regularize', data);
+    return response.data;
+  },
+
+  getRegularizationRequests: async (params) => {
+    const response = await api.get('/attendance/regularize', { params });
+    return response.data;
+  },
+
+  updateRegularizationStatus: async (id, status) => {
+    const response = await api.put(`/attendance/regularize/${id}`, { status });
+    return response.data;
+  },
 };
 
 // Leave services
@@ -243,8 +283,8 @@ export const leaveService = {
     return response.data;
   },
 
-  getStatistics: async () => {
-    const response = await api.get('/leaves/statistics');
+  getStatistics: async (params) => {
+    const response = await api.get('/leaves/statistics', { params });
     return response.data;
   },
 
@@ -260,6 +300,21 @@ export const leaveService = {
 
   getBalance: async (employeeId) => {
     const response = await api.get(`/leaves/balance/${employeeId}`);
+    return response.data;
+  },
+
+  getAllBalances: async () => {
+    const response = await api.get('/leaves/balance');
+    return response.data;
+  },
+
+  requestCompOff: async (data) => {
+    const response = await api.post('/leaves/comp-off', data);
+    return response.data;
+  },
+
+  getCompOffRequests: async (params) => {
+    const response = await api.get('/leaves/comp-off', { params });
     return response.data;
   }
 };
@@ -309,8 +364,8 @@ export const payrollService = {
     return response.data;
   },
 
-  process: async (id) => {
-    const response = await api.post(`/payroll/${id}/process`);
+  processPayment: async (id, paymentMethod) => {
+    const response = await api.put(`/payroll/${id}/process`, { payment_method: paymentMethod });
     return response.data;
   },
 
@@ -321,6 +376,21 @@ export const payrollService = {
 
   getMyPayslips: async () => {
     const response = await api.get('/payroll/my-payslips');
+    return response.data;
+  },
+
+  submitTaxDeclaration: async (data) => {
+    const response = await api.post('/payroll/tax-declarations', data);
+    return response.data;
+  },
+
+  getTaxDeclarations: async (params) => {
+    const response = await api.get('/payroll/tax-declarations', { params });
+    return response.data;
+  },
+
+  updateTaxDeclarationStatus: async (id, data) => {
+    const response = await api.put(`/payroll/tax-declarations/${id}`, data);
     return response.data;
   }
 };
@@ -464,12 +534,37 @@ export const chatService = {
 // Report services
 export const reportService = {
   getDashboardStats: async () => {
-    const response = await api.get('/reports/dashboard');
+    const response = await api.get(`/reports/dashboard?_t=${new Date().getTime()}`);
     return response.data;
   },
 
   getChurnRiskAnalysis: async (params) => {
     const response = await api.get('/reports/churn-risk', { params });
+    return response.data;
+  },
+
+  getTurnoverPrediction: async () => {
+    const response = await api.get('/reports/turnover-prediction');
+    return response.data;
+  },
+
+  getPerformanceAnalytics: async () => {
+    const response = await api.get('/reports/performance-analytics');
+    return response.data;
+  },
+
+  getPayrollTrends: async () => {
+    const response = await api.get('/reports/payroll-trends');
+    return response.data;
+  },
+
+  getAttendanceTrends: async () => {
+    const response = await api.get('/reports/attendance-trends');
+    return response.data;
+  },
+
+  getEmployeeDemographics: async (params) => {
+    const response = await api.get('/reports/employee-demographics', { params });
     return response.data;
   },
 };
@@ -542,6 +637,24 @@ export const tenantService = {
       },
       data: { twoFactorToken } // Keep body for backward compatibility if needed, but headers is primary fix
     });
+    return response.data;
+  }
+};
+
+// Holiday Services
+export const holidayService = {
+  getAll: async (year) => {
+    const response = await api.get('/holidays', { params: { year } });
+    return response.data;
+  },
+
+  getMyRestricted: async (year, employeeId) => {
+    const response = await api.get('/holidays/my-restricted', { params: { year, employee_id: employeeId } });
+    return response.data;
+  },
+
+  optIn: async (employeeId, holidayId) => {
+    const response = await api.post('/holidays/opt-in', { employee_id: employeeId, holiday_id: holidayId });
     return response.data;
   }
 };

@@ -1,443 +1,633 @@
-import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { createPortal } from 'react-dom';
+import { useSettings } from '../../hooks/useSettings';
 import { reportService } from '../../services';
-import { useSettings } from '../../hooks/useSettings.jsx';
-import { formatDate } from '../../utils/settingsHelper';
 import {
-    FaUsers,
-    FaBuilding,
-    FaClock,
-    FaCalendarAlt,
-    FaTasks,
-    FaMoneyBillWave,
-    FaUserPlus,
-    FaBullhorn,
-    FaChartBar
-} from 'react-icons/fa';
+    DndContext,
+    closestCenter,
+    KeyboardSensor,
+    PointerSensor,
+    useSensor,
+    useSensors,
+    DragOverlay
+} from '@dnd-kit/core';
+import {
+    arrayMove,
+    SortableContext,
+    sortableKeyboardCoordinates,
+    rectSortingStrategy,
+    horizontalListSortingStrategy,
+    useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { FaSync, FaCalendarAlt } from 'react-icons/fa';
+import { useNavigate } from 'react-router-dom';
+// Import Widgets and Config
+import AttendanceWidget from './widgets/AttendanceWidget';
+import PayrollWidget from './widgets/PayrollWidget';
+import LeaveWidget from './widgets/LeaveWidget';
+import DepartmentWidget from './widgets/DepartmentWidget';
+import StatCard from './widgets/StatCard';
+import TaskWidget from './widgets/TaskWidget';
+import RequestNotificationsWidget from './widgets/RequestNotificationsWidget';
+import ActivityWidget from './widgets/ActivityWidget';
+import DashboardSkeleton from './DashboardSkeleton';
+import { useAuth } from '../../context/AuthContext';
+import { QUICK_ACTIONS_CONFIG, STATS_CONFIG } from './dashboardConstants.jsx';
 
-const AdminDashboard = () => {
-    const navigate = useNavigate();
-    const { getSetting } = useSettings();
-    const [stats, setStats] = useState(null);
-    const [analytics, setAnalytics] = useState(null);
-    const [loading, setLoading] = useState(true);
-    const [currentTime, setCurrentTime] = useState(new Date());
+// Sortable Item Wrapper
+const SortableItem = ({ id, children, className, style: propStyle }) => {
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+    } = useSortable({ id });
 
-    useEffect(() => {
-        loadDashboardStats();
-        loadAdvancedAnalytics();
-
-        // Update time every second
-        const timer = setInterval(() => setCurrentTime(new Date()), 1000);
-        return () => clearInterval(timer);
-    }, []);
-
-    const loadDashboardStats = async () => {
-        try {
-            const response = await reportService.getDashboardStats();
-            setStats(response.data);
-        } catch (error) {
-            console.error('Failed to load dashboard stats:', error);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const loadAdvancedAnalytics = async () => {
-        try {
-            // Load predictive analytics
-            const [turnoverData, performanceData, payrollTrends] = await Promise.all([
-                reportService.getTurnoverPrediction(),
-                reportService.getPerformanceAnalytics(),
-                reportService.getPayrollTrends()
-            ]);
-
-            setAnalytics({
-                turnover: turnoverData.data,
-                performance: performanceData.data,
-                payroll: payrollTrends.data
-            });
-        } catch (error) {
-            console.error('Failed to load advanced analytics:', error);
-        }
-    };
-
-    if (loading) return <div className="loading">Loading dashboard...</div>;
-
-    const formatTime = (date) => {
-        return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    };
-
-    // Render a simple bar chart for turnover prediction
-    const renderTurnoverChart = () => {
-        if (!analytics?.turnover?.turnover_history || analytics.turnover.turnover_history.length === 0) return null;
-
-        const maxTerminations = Math.max(...analytics.turnover.turnover_history.map(item => item.terminations));
-
-        return (
-            <div className="card" style={{ marginTop: '1.5rem' }}>
-                <h3 style={{ marginBottom: '1rem' }}>Turnover Trend (Last 12 Months)</h3>
-                <div style={{ display: 'flex', alignItems: 'flex-end', height: '100px', gap: '4px', padding: '10px 0' }}>
-                    {analytics.turnover.turnover_history.map((item, index) => (
-                        <div key={index} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                            <div
-                                style={{
-                                    width: '100%',
-                                    height: `${(item.terminations / maxTerminations) * 80 || 0}px`,
-                                    backgroundColor: '#ef4444',
-                                    borderRadius: '2px'
-                                }}
-                            />
-                            <span style={{ fontSize: '0.7rem', marginTop: '4px' }}>{item.month}</span>
-                        </div>
-                    ))}
-                </div>
-            </div>
-        );
-    };
-
-    // Render performance metrics
-    const renderPerformanceMetrics = () => {
-        if (!analytics?.performance) return null;
-
-        return (
-            <div className="card" style={{ marginTop: '1.5rem' }}>
-                <h3 style={{ marginBottom: '1rem' }}>Performance Insights</h3>
-                <div className="grid grid-cols-3" style={{ gap: '1rem' }}>
-                    <div style={{ textAlign: 'center', padding: '1rem', backgroundColor: '#f0f9ff', borderRadius: '0.5rem' }}>
-                        <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#0ea5e9' }}>
-                            {analytics.performance.overall_productivity}%
-                        </div>
-                        <div style={{ fontSize: '0.875rem', color: '#64748b' }}>Avg Productivity</div>
-                    </div>
-                    <div style={{ textAlign: 'center', padding: '1rem', backgroundColor: '#f0fdf4', borderRadius: '0.5rem' }}>
-                        <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#16a34a' }}>
-                            {analytics.performance.high_performers_count}
-                        </div>
-                        <div style={{ fontSize: '0.875rem', color: '#64748b' }}>High Performers</div>
-                    </div>
-                    <div style={{ textAlign: 'center', padding: '1rem', backgroundColor: '#fffbeb', borderRadius: '0.5rem' }}>
-                        <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#f59e0b' }}>
-                            {analytics.performance.top_performers?.length || 0}
-                        </div>
-                        <div style={{ fontSize: '0.875rem', color: '#64748b' }}>Top Performers</div>
-                    </div>
-                </div>
-
-                {analytics.performance.top_performers && analytics.performance.top_performers.length > 0 && (
-                    <div style={{ marginTop: '1rem' }}>
-                        <h4 style={{ marginBottom: '0.5rem' }}>Top Performers</h4>
-                        <div style={{ maxHeight: '150px', overflowY: 'auto' }}>
-                            {analytics.performance.top_performers.slice(0, 5).map((employee, index) => (
-                                <div key={index} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem 0', borderBottom: '1px solid #e5e7eb' }}>
-                                    <span>{employee.employee_name}</span>
-                                    <span style={{ fontWeight: 'bold', color: '#10b981' }}>{employee.productivity_score}%</span>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                )}
-            </div>
-        );
-    };
-
-    // Render payroll trends
-    const renderPayrollTrends = () => {
-        if (!analytics?.payroll) return null;
-
-        return (
-            <div className="card" style={{ marginTop: '1.5rem' }}>
-                <h3 style={{ marginBottom: '1rem' }}>Payroll Insights</h3>
-                <div className="grid grid-cols-2" style={{ gap: '1rem', marginBottom: '1rem' }}>
-                    <div style={{ padding: '1rem', backgroundColor: '#f0f9ff', borderRadius: '0.5rem' }}>
-                        <div style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#0ea5e9' }}>
-                            {getSetting('currency_symbol', '$')}{analytics.payroll.salary_growth?.current_month_avg?.toLocaleString() || 0}
-                        </div>
-                        <div style={{ fontSize: '0.875rem', color: '#64748b' }}>Current Avg Salary</div>
-                        <div style={{ fontSize: '0.75rem', color: analytics.payroll.salary_growth?.growth_rate?.includes('-') ? '#ef4444' : '#10b981', marginTop: '0.25rem' }}>
-                            {analytics.payroll.salary_growth?.growth_rate || '0%'} from last month
-                        </div>
-                    </div>
-                    <div style={{ padding: '1rem', backgroundColor: '#f0fdf4', borderRadius: '0.5rem' }}>
-                        <div style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#16a34a' }}>
-                            {analytics.payroll.department_salary_distribution?.length || 0}
-                        </div>
-                        <div style={{ fontSize: '0.875rem', color: '#64748b' }}>Departments Analyzed</div>
-                    </div>
-                </div>
-
-                {analytics.payroll.department_salary_distribution && analytics.payroll.department_salary_distribution.length > 0 && (
-                    <div>
-                        <h4 style={{ marginBottom: '0.5rem' }}>Department Salary Distribution</h4>
-                        <div style={{ maxHeight: '150px', overflowY: 'auto' }}>
-                            {analytics.payroll.department_salary_distribution.map((dept, index) => (
-                                <div key={index} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem 0', borderBottom: '1px solid #e5e7eb' }}>
-                                    <span>{dept.department_name}</span>
-                                    <span style={{ fontWeight: 'bold' }}>
-                                        {getSetting('currency_symbol', '$')}{parseFloat(dept.avg_salary).toLocaleString()}
-                                    </span>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                )}
-            </div>
-        );
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        ...propStyle
     };
 
     return (
-        <div className="container">
-            {/* Header with Time */}
-            <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1.5rem' }}>
+        <div ref={setNodeRef} style={style} {...attributes} {...listeners} className={className}>
+            {children}
+        </div>
+    );
+};
+
+// Widget Settings Menu Component (Extracted)
+const WidgetSettingsMenu = ({ id, config, onClose, updateWidgetConfig, menuPos }) => {
+    const sizes = [
+        { label: 'Standard (1/3)', value: 1 },
+        { label: 'Medium (1/2)', value: 2 },
+        { label: 'Full Width', value: 4 }
+    ];
+
+    const heights = [
+        { label: 'Compact', value: '256px' },
+        { label: 'Standard', value: '384px' },
+        { label: 'Tall', value: '512px' }
+    ];
+
+    const chartTypes = ['bar', 'line', 'area', 'pie', 'donut'];
+
+    return createPortal(
+        <div
+            className="widget-settings-menu"
+            style={{
+                top: Math.max(10, menuPos.y),
+                left: Math.min(window.innerWidth - 270, menuPos.x)
+            }}
+        >
+            <div className="settings-header">
+                <span className="settings-title">Widget Settings</span>
+                <button onClick={onClose} className="settings-close-btn">&times;</button>
+            </div>
+
+            <div className="settings-body">
+                {/* Width Control */}
+                <div className="settings-section">
+                    <label className="settings-label">Width</label>
+                    <div className="settings-grid-3">
+                        {sizes.map(s => (
+                            <button
+                                key={s.value}
+                                onClick={() => updateWidgetConfig(id, 'colSpan', s.value)}
+                                className={`settings-option-btn ${config.colSpan === s.value ? 'active' : ''}`}
+                            >
+                                {s.label.split(' ')[0]}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Height Control */}
+                <div className="settings-section">
+                    <label className="settings-label">Height</label>
+                    <div className="settings-grid-2">
+                        {heights.map(h => (
+                            <button
+                                key={h.value}
+                                onClick={() => updateWidgetConfig(id, 'height', h.value)}
+                                className={`settings-option-btn ${config.height === h.value ? 'active' : ''}`}
+                            >
+                                {h.label}
+                            </button>
+                        ))}
+                        <button
+                            onClick={() => updateWidgetConfig(id, 'height', 'auto')}
+                            className={`settings-option-btn ${config.height === 'auto' ? 'active' : ''}`}
+                        >
+                            Auto Fit
+                        </button>
+                    </div>
+                </div>
+
+                {/* Chart Type Control */}
+                <div className="settings-section">
+                    <label className="settings-label">Chart Type</label>
+                    <div className="settings-grid-3">
+                        {chartTypes.map(t => (
+                            <button
+                                key={t}
+                                onClick={() => updateWidgetConfig(id, 'chartType', t)}
+                                className={`settings-option-btn ${config.chartType === t ? 'active' : ''}`}
+                            >
+                                {t}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            </div>
+        </div>,
+        document.body
+    );
+};
+
+// Extracted WidgetWrapper Component
+const WidgetWrapper = ({ id, config, children, activeSettings, setActiveSettings, updateWidgetConfig, onResizeStart, onSettingsClick }) => {
+    // Local menu position state - we could lift this if we want strict single-open behavior, but keeping it local per widget (lazy init) is fine
+    // Actually, to make Portal work, we need position content.
+    // If 'activeSettings' comes from parent, we need to know WHERE to render.
+    // So 'menuPos' should be stored where 'activeSettings' is stored or passed down.
+    // AdminDashboard is simplified to store menuPos as global state if we want only one.
+    // But wait, the original broken code defined menuPos inside renderChart loop.
+
+    // Let's use the parent's menuPos if passed, or local if needed.
+    // Based on previous refactor attempt in AdminDashboard component, we had global menuPos.
+    return (
+        <React.Fragment>
+            {children}
+        </React.Fragment>
+    );
+};
+// Wait, the wrapper logic needs SortableItem and the div.
+
+const AdminDashboard = () => {
+    const { settings } = useSettings();
+    const { user } = useAuth();
+    const navigate = useNavigate();
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const [stats, setStats] = useState(null);
+
+    // Persistence Helpers
+    const getStorageKey = useCallback(() => {
+        if (!user) return null;
+        return `hrms_dashboard_${user.tenant_id}_${user.id}_config`;
+    }, [user]);
+
+    // Initial State Helpers
+    const getInitialChartOrder = () => {
+        try {
+            const key = user ? `hrms_dashboard_${user.tenant_id}_${user.id}_config` : null;
+            if (key) {
+                const saved = localStorage.getItem(key);
+                if (saved) {
+                    const parsed = JSON.parse(saved);
+                    if (parsed.chartOrder) return parsed.chartOrder;
+                }
+            }
+        } catch (e) {
+            console.error("Failed to load chart order", e);
+        }
+        return [
+            'chart-attendance',
+            'widget-notifications',
+            'chart-payroll',
+            'chart-leave',
+            'chart-department',
+            'chart-task',
+            'widget-activity'
+        ];    };
+
+    const getInitialLayoutConfig = () => {
+        const defaults = {
+            'chart-attendance': { colSpan: 2, height: '256px', chartType: 'area', label: 'Attendance' },
+            'widget-notifications': { colSpan: 1, height: '256px', chartType: 'list', label: 'Recent Requests' },
+            'chart-payroll': { colSpan: 1, height: '256px', chartType: 'bar', label: 'Payroll' },
+            'chart-leave': { colSpan: 1, height: '256px', chartType: 'pie', label: 'Leave' },
+            'chart-department': { colSpan: 2, height: '256px', chartType: 'bar', label: 'Department' },
+            'chart-task': { colSpan: 2, height: '256px', chartType: 'bar', label: 'Task' },
+            'widget-activity': { colSpan: 2, height: '256px', chartType: 'list', label: 'Live Activity' },
+        };        try {
+            const key = user ? `hrms_dashboard_${user.tenant_id}_${user.id}_config` : null;
+            if (key) {
+                const saved = localStorage.getItem(key);
+                if (saved) {
+                    const parsed = JSON.parse(saved);
+                    if (parsed.layoutConfig) {
+                        // Merge with defaults to ensure new widgets appear if added later
+                        return { ...defaults, ...parsed.layoutConfig };
+                    }
+                }
+            }
+        } catch (e) {
+            console.error("Failed to load layout config", e);
+        }
+        return defaults;
+    };
+
+
+    // Drag Orders
+    const [actionOrder, setActionOrder] = useState(QUICK_ACTIONS_CONFIG.map(a => a.id));
+    const [statOrder, setStatOrder] = useState(STATS_CONFIG.map(s => s.id));
+    const [chartOrder, setChartOrder] = useState(getInitialChartOrder);
+
+    // Layout Config State
+    const [layoutConfig, setLayoutConfig] = useState(getInitialLayoutConfig);
+
+    // Auto-Save Effect
+    useEffect(() => {
+        const key = getStorageKey();
+        if (key) {
+            const dataToSave = {
+                chartOrder,
+                layoutConfig
+            };
+            localStorage.setItem(key, JSON.stringify(dataToSave));
+        }
+    }, [chartOrder, layoutConfig, getStorageKey]);
+
+    // Resize State
+    const [isResizing, setIsResizing] = useState(false);
+    const resizeRef = useRef(null);
+
+    // UI State for Settings Menu
+    const [activeSettings, setActiveSettings] = useState(null);
+    const [menuPos, setMenuPos] = useState({ x: 0, y: 0 });
+
+    const sensors = useSensors(
+        useSensor(PointerSensor, {
+            activationConstraint: {
+                distance: 8,
+            },
+        }),
+        useSensor(KeyboardSensor, {
+            coordinateGetter: sortableKeyboardCoordinates,
+        })
+    );
+
+    // Ref to track the ghost element
+    const ghostRef = useRef(null);
+    const [resizeGhostState, setResizeGhostState] = useState(null); // { id, width, height, top, left }
+
+    const updateWidgetConfig = useCallback((id, key, value) => {
+        setLayoutConfig(prev => ({
+            ...prev,
+            [id]: {
+                ...prev[id],
+                [key]: value
+            }
+        }));
+    }, []);
+
+    // Resize Handle Logic
+    const handleResizeStart = (e, id) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const startX = e.clientX;
+        const startY = e.clientY;
+        const startConfig = layoutConfig[id];
+        const cardElement = e.target.closest('.widget-wrapper');
+        const startRect = cardElement.getBoundingClientRect();
+
+        // Initial dimensions
+        const startWidth = startRect.width;
+        const startHeight = startRect.height;
+
+        setIsResizing(true);
+        resizeRef.current = { id, startX, startY, startConfig, startWidth, startHeight, startRect };
+
+        // Initialize ghost state
+        setResizeGhostState({
+            width: startWidth,
+            height: startHeight,
+            top: startRect.top + window.scrollY,
+            left: startRect.left + window.scrollX
+        });
+
+        const handleMouseMove = (moveEvent) => {
+            if (!resizeRef.current) return;
+
+            // Use requestAnimationFrame for smooth UI updates without React render cycle for every pixel
+            requestAnimationFrame(() => {
+                const dx = moveEvent.clientX - startX;
+                const dy = moveEvent.clientY - startY;
+
+                const newHeight = Math.max(200, startHeight + dy);
+
+                // Visual feedback only via ghost
+                if (ghostRef.current) {
+                    ghostRef.current.style.height = `${newHeight}px`;
+                    ghostRef.current.style.width = `${startWidth + dx}px`; // Show width change intent
+                }
+            });
+        };
+
+        const handleMouseUp = (upEvent) => {
+            if (!resizeRef.current) return;
+
+            const dx = upEvent.clientX - startX;
+            const dy = upEvent.clientY - startY;
+            const { startHeight, startConfig: initialConfig } = resizeRef.current;
+
+            const finalHeight = Math.max(200, startHeight + dy) + 'px';
+
+            // Snap width logic
+            let newColSpan = initialConfig.colSpan;
+            if (dx > 150) newColSpan = Math.min(4, initialConfig.colSpan + 1);
+            if (dx < -150) newColSpan = Math.max(1, initialConfig.colSpan - 1);
+
+            setLayoutConfig(prev => ({
+                ...prev,
+                [id]: {
+                    ...prev[id],
+                    height: finalHeight,
+                    colSpan: newColSpan === 3 ? 2 : newColSpan
+                }
+            }));
+
+            // Cleanup
+            setIsResizing(false);
+            setResizeGhostState(null);
+            resizeRef.current = null;
+            window.removeEventListener('mousemove', handleMouseMove);
+            window.removeEventListener('mouseup', handleMouseUp);
+        };
+
+        window.addEventListener('mousemove', handleMouseMove);
+        window.addEventListener('mouseup', handleMouseUp);
+    };
+
+    const fetchDashboardData = useCallback(async () => {
+        try {
+            const statsRes = await reportService.getDashboardStats();
+
+            if (statsRes.data) {
+                setStats(statsRes.data);
+            }
+        } catch (err) {
+            console.error('Dashboard Data Error:', err);
+            setError('Failed to load dashboard data');
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        fetchDashboardData();
+    }, [fetchDashboardData]);
+
+    const handleDragEnd = useCallback((event) => {
+        const { active, over } = event;
+        if (!over || active.id === over.id) return;
+
+        if (actionOrder.includes(active.id)) {
+            setActionOrder((items) => {
+                const oldIndex = items.indexOf(active.id);
+                const newIndex = items.indexOf(over.id);
+                return arrayMove(items, oldIndex, newIndex);
+            });
+        } else if (statOrder.includes(active.id)) {
+            setStatOrder((items) => {
+                const oldIndex = items.indexOf(active.id);
+                const newIndex = items.indexOf(over.id);
+                return arrayMove(items, oldIndex, newIndex);
+            });
+        } else if (chartOrder.includes(active.id)) {
+            setChartOrder((items) => {
+                const oldIndex = items.indexOf(active.id);
+                const newIndex = items.indexOf(over.id);
+                return arrayMove(items, oldIndex, newIndex);
+            });
+        }
+    }, [actionOrder, statOrder, chartOrder]);
+
+    const renderChart = useCallback((id) => {
+        const config = layoutConfig[id] || { colSpan: 1, height: 'h-96', chartType: 'bar' };
+
+        // Dynamic class based on colSpan
+        let colClass = "col-span-1";
+        if (config.colSpan === 2) colClass = "col-span-2";
+        if (config.colSpan === 4) colClass = "col-span-4";
+
+        const commonProps = {
+            chartType: config.chartType,
+            onToggle: (type) => updateWidgetConfig(id, 'chartType', type),
+            onSettingsClick: (e) => {
+                const rect = e.currentTarget.getBoundingClientRect();
+                setMenuPos({ x: rect.right - 270, y: rect.bottom + 5 });
+                setActiveSettings(activeSettings === id ? null : id);
+            },
+            isSettingsOpen: activeSettings === id
+        };
+
+        let WidgetComponent = null;
+
+        switch (id) {
+            case 'chart-attendance':
+                WidgetComponent = <AttendanceWidget {...commonProps} />;
+                break;
+            case 'chart-payroll':
+                WidgetComponent = <PayrollWidget {...commonProps} currencySymbol={settings?.currency_symbol || '$'} />;
+                break;
+            case 'chart-leave':
+                WidgetComponent = <LeaveWidget {...commonProps} />;
+                break;
+            case 'chart-department':
+                WidgetComponent = <DepartmentWidget {...commonProps} />;
+                break;
+            case 'chart-task':
+                WidgetComponent = <TaskWidget {...commonProps} />;
+                break;
+            case 'widget-notifications':
+                WidgetComponent = <RequestNotificationsWidget {...commonProps} />;
+                break;
+            case 'widget-activity':
+                WidgetComponent = <ActivityWidget {...commonProps} />;
+                break;
+            default:
+                return null;
+        }
+        return (
+            <SortableItem key={id} id={id} className={`${colClass} relative group`}>
+                <div
+                    className="widget-wrapper relative transition-all duration-75"
+                    style={{ height: config.height }}
+                >
+                    {WidgetComponent}
+
+                    {/* Settings Menu (Portal) */}
+                    {activeSettings === id && (
+                        <WidgetSettingsMenu
+                            id={id}
+                            config={config}
+                            onClose={() => setActiveSettings(null)}
+                            updateWidgetConfig={updateWidgetConfig}
+                            menuPos={menuPos}
+                        />
+                    )}
+
+                    {/* Resize Handle */}
+                    <div
+                        onMouseDown={(e) => handleResizeStart(e, id)}
+                        className="absolute bottom-0 right-0 w-6 h-6 cursor-se-resize z-20 flex items-center justify-center opacity-0 group-hover:opacity-100 text-gray-400 hover:text-indigo-600 transition-opacity"
+                        title="Drag to resize"
+                    >
+                        <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor">
+                            <path d="M10 0L10 10L0 10L10 0Z" />
+                        </svg>
+                    </div>
+                </div>
+            </SortableItem>
+        );
+
+    }, [layoutConfig, activeSettings, settings, menuPos, updateWidgetConfig]);
+
+    // Helpers
+    const getActionConfig = (id) => QUICK_ACTIONS_CONFIG.find(a => a.id === id);
+    const getStatConfig = (id) => STATS_CONFIG.find(s => s.id === id);
+
+    const visibleActions = actionOrder.filter(id => {
+        const config = getActionConfig(id);
+        return config && config.roles.includes(user?.role || 'employee');
+    });
+
+    if (loading) return <DashboardSkeleton />;
+    if (error) {
+        return (
+            <div className="p-6 text-center bg-danger-50 rounded-xl border border-danger-200 m-6">
+                <p className="text-danger mb-4">{error}</p>
+                <button onClick={fetchDashboardData} className="px-4 py-2 bg-white text-danger border border-danger-200 rounded-lg hover:bg-red-50 transition-colors">Retry</button>
+            </div>
+        );
+    }
+
+    return (
+        <div className="page-container max-w-none mx-0 px-0 md:px-4 lg:px-6">
+            {/* Header - More Compact */}
+            <div className="page-header pb-3">
                 <div>
-                    <h1 className="page-title">Admin Dashboard</h1>
-                    <p className="page-description">Overview of organization performance and stats</p>
+                    <h1 className="page-title text-xl">Dashboard Overview</h1>
+                    <p className="page-subtitle text-xs">Welcome back, {user?.first_name || 'User'}</p>
                 </div>
-                <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '1.125rem', fontWeight: '600', color: '#1f2937' }}>{formatTime(currentTime)}</div>
-                    <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>{formatDate(currentTime, getSetting('date_format'))}</div>
-                </div>
-            </div>
-
-            {/* Stats Cards */}
-            <div className="grid grid-cols-4" style={{ marginBottom: '1.5rem', gap: '1rem' }}>
-                <div
-                    className="card"
-                    style={{
-                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                        color: 'white',
-                        cursor: 'pointer',
-                        transition: 'transform 0.2s, box-shadow 0.2s',
-                        position: 'relative',
-                        overflow: 'hidden',
-                        padding: '1.25rem'
-                    }}
-                    onClick={() => navigate('/employees')}
-                    onMouseEnter={(e) => {
-                        e.currentTarget.style.transform = 'translateY(-2px)';
-                        e.currentTarget.style.boxShadow = '0 8px 16px rgba(102, 126, 234, 0.3)';
-                    }}
-                    onMouseLeave={(e) => {
-                        e.currentTarget.style.transform = 'translateY(0)';
-                        e.currentTarget.style.boxShadow = '';
-                    }}
-                >
-                    <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}><FaUsers /></div>
-                    <h3 style={{ fontSize: '1.875rem', marginBottom: '0.25rem', fontWeight: '700' }}>{stats?.employees?.total || 0}</h3>
-                    <p style={{ fontSize: '0.9375rem', fontWeight: '500', opacity: 0.95 }}>Total Employees</p>
-                    <p style={{ fontSize: '0.75rem', opacity: 0.85, marginTop: '0.5rem' }}>Active: {stats?.employees?.active || 0}</p>
-                </div>
-
-                <div
-                    className="card"
-                    style={{
-                        background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
-                        color: 'white',
-                        cursor: 'pointer',
-                        transition: 'transform 0.2s, box-shadow 0.2s',
-                        padding: '1.25rem'
-                    }}
-                    onClick={() => navigate('/departments')}
-                    onMouseEnter={(e) => {
-                        e.currentTarget.style.transform = 'translateY(-2px)';
-                        e.currentTarget.style.boxShadow = '0 8px 16px rgba(240, 147, 251, 0.3)';
-                    }}
-                    onMouseLeave={(e) => {
-                        e.currentTarget.style.transform = 'translateY(0)';
-                        e.currentTarget.style.boxShadow = '';
-                    }}
-                >
-                    <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}><FaBuilding /></div>
-                    <h3 style={{ fontSize: '1.875rem', marginBottom: '0.25rem', fontWeight: '700' }}>{stats?.departments?.total || 0}</h3>
-                    <p style={{ fontSize: '0.9375rem', fontWeight: '500', opacity: 0.95 }}>Departments</p>
-                </div>
-
-                <div
-                    className="card"
-                    style={{
-                        background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
-                        color: 'white',
-                        cursor: 'pointer',
-                        transition: 'transform 0.2s, box-shadow 0.2s',
-                        padding: '1.25rem'
-                    }}
-                    onClick={() => navigate('/attendance')}
-                    onMouseEnter={(e) => {
-                        e.currentTarget.style.transform = 'translateY(-2px)';
-                        e.currentTarget.style.boxShadow = '0 8px 16px rgba(79, 172, 254, 0.3)';
-                    }}
-                    onMouseLeave={(e) => {
-                        e.currentTarget.style.transform = 'translateY(0)';
-                        e.currentTarget.style.boxShadow = '';
-                    }}
-                >
-                    <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}><FaClock /></div>
-                    <h3 style={{ fontSize: '1.875rem', marginBottom: '0.25rem', fontWeight: '700' }}>{stats?.attendance?.present || 0}</h3>
-                    <p style={{ fontSize: '0.9375rem', fontWeight: '500', opacity: 0.95 }}>Present Today</p>
-                    <p style={{ fontSize: '0.75rem', opacity: 0.85, marginTop: '0.5rem' }}>Absent: {stats?.attendance?.absent || 0}</p>
-                </div>
-
-                <div
-                    className="card"
-                    style={{
-                        background: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)',
-                        color: 'white',
-                        cursor: 'pointer',
-                        transition: 'transform 0.2s, box-shadow 0.2s',
-                        padding: '1.25rem'
-                    }}
-                    onClick={() => navigate('/leaves')}
-                    onMouseEnter={(e) => {
-                        e.currentTarget.style.transform = 'translateY(-2px)';
-                        e.currentTarget.style.boxShadow = '0 8px 16px rgba(67, 233, 123, 0.3)';
-                    }}
-                    onMouseLeave={(e) => {
-                        e.currentTarget.style.transform = 'translateY(0)';
-                        e.currentTarget.style.boxShadow = '';
-                    }}
-                >
-                    <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}><FaCalendarAlt /></div>
-                    <h3 style={{ fontSize: '1.875rem', marginBottom: '0.25rem', fontWeight: '700' }}>{stats?.leaves?.pending || 0}</h3>
-                    <p style={{ fontSize: '0.9375rem', fontWeight: '500', opacity: 0.95 }}>Pending Leaves</p>
-                    <p style={{ fontSize: '0.75rem', opacity: 0.85, marginTop: '0.5rem' }}>Approved: {stats?.leaves?.approved || 0}</p>
-                </div>
-            </div>
-
-            {/* Predictive Analytics Section */}
-            <div className="grid grid-cols-2" style={{ gap: '1rem', marginBottom: '1.5rem' }}>
-                <div className="card" style={{ background: 'linear-gradient(135deg, #8B5CF6 0%, #EC4899 100%)', color: 'white' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
-                        <h2 style={{ margin: 0, fontSize: '1.125rem' }}>Turnover Prediction</h2>
+                <div className="flex gap-1.5">
+                    <div className="hidden md:flex px-2.5 py-1 bg-white rounded-lg border border-neutral-200 shadow-sm text-xs text-neutral-600 font-medium items-center">
+                        <FaCalendarAlt className="mr-1 text-neutral-400 text-xs" />
+                        <span>{new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</span>
                     </div>
-                    {analytics?.turnover?.predictions ? (
-                        <div>
-                            <div style={{ fontSize: '2rem', fontWeight: 'bold', marginBottom: '0.5rem' }}>
-                                {analytics.turnover.predictions.predicted_next_quarter_turnover}
-                            </div>
-                            <p style={{ margin: 0, fontSize: '0.875rem', opacity: 0.9 }}>
-                                Predicted turnover next quarter
-                            </p>
-                            <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.75rem', opacity: 0.8 }}>
-                                Rate: {analytics.turnover.predictions.predicted_turnover_rate}
-                            </p>
+                    <button onClick={fetchDashboardData} className="btn btn-secondary btn-xs" title="Refresh Data" disabled={loading}>
+                        <FaSync className={loading ? "animate-spin text-xs" : "text-xs"} />
+                        <span className="hidden sm:inline text-xs">Refresh</span>
+                    </button>
+                    <button
+                        onClick={() => {
+                            if (window.confirm('Reset dashboard layout to default?')) {
+                                localStorage.removeItem(getStorageKey());
+                                window.location.reload();
+                            }
+                        }}
+                        className="btn btn-secondary btn-xs"
+                        title="Reset Layout"
+                    >
+                        Reset
+                    </button>
+                </div>
+            </div>
+
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+
+                {/* 1. Quick Actions Zone - More Compact */}
+                <SortableContext items={visibleActions} strategy={horizontalListSortingStrategy}>
+                    <div className="mb-4">
+                        <h3 className="section-title text-xs uppercase tracking-wider text-neutral-500 font-bold mb-2">Quick Actions</h3>
+                        <div className="flex gap-1.5 overflow-x-auto pb-2 custom-scrollbar">
+                            {visibleActions.map((id) => {
+                                const action = getActionConfig(id);
+                                return (
+                                    <SortableItem key={id} id={id}>
+                                        <button
+                                            onClick={() => navigate(action.path)}
+                                            className="card hover:shadow-sm transition-all flex items-center px-3 py-2.5 whitespace-nowrap group min-w-[120px] bg-white text-xs"
+                                            style={{ cursor: 'grab' }}
+                                        >
+                                            <div className={`p-1 rounded mr-2 ${action.theme === 'success' ? 'bg-green-50 text-green-600' :
+                                                action.theme === 'info' ? 'bg-blue-50 text-blue-600' :
+                                                    action.theme === 'warning' ? 'bg-yellow-50 text-yellow-600' :
+                                                        action.theme === 'danger' ? 'bg-red-50 text-red-600' : 'bg-neutral-50 text-neutral-600'
+                                                }`}>
+                                                {action.icon}
+                                            </div>
+                                            <span className="font-medium text-neutral-700 group-hover:text-green-600 transition-colors">
+                                                {action.label}
+                                            </span>
+                                        </button>
+                                    </SortableItem>
+                                );
+                            })}
                         </div>
-                    ) : (
-                        <p style={{ margin: '1rem 0', opacity: 0.8 }}>Loading predictions...</p>
-                    )}
-                </div>
+                    </div>
+                </SortableContext>
 
-                <div className="card" style={{ background: 'linear-gradient(135deg, #06B6D4 0%, #3B82F6 100%)', color: 'white' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
-                        <h2 style={{ margin: 0, fontSize: '1.125rem' }}>Performance Score</h2>
+                {/* 2. Stats Zone - Adjustable Grid */}
+                <SortableContext items={statOrder} strategy={rectSortingStrategy}>
+                    <div className="grid grid-cols-4 gap-4 mb-6">
+                        {statOrder.map((id) => {
+                            const stat = getStatConfig(id);
+                            return (
+                                <SortableItem key={id} id={id}>
+                                    <StatCard
+                                        title={stat.title}
+                                        value={stat.getValue(stats)}
+                                        icon={stat.icon}
+                                        subtext={stat.getSubtext ? stat.getSubtext(stats) : null}
+                                        colorClass={stat.colorClass}
+                                        onClick={() => navigate(stat.path)}
+                                    />
+                                </SortableItem>
+                            );
+                        })}
                     </div>
-                    {analytics?.performance ? (
-                        <div>
-                            <div style={{ fontSize: '2rem', fontWeight: 'bold', marginBottom: '0.5rem' }}>
-                                {analytics.performance.overall_productivity}%
-                            </div>
-                            <p style={{ margin: 0, fontSize: '0.875rem', opacity: 0.9 }}>
-                                Overall team productivity
-                            </p>
-                            <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.75rem', opacity: 0.8 }}>
-                                {analytics.performance.high_performers_count} high performers
-                            </p>
-                        </div>
-                    ) : (
-                        <p style={{ margin: '1rem 0', opacity: 0.8 }}>Loading performance data...</p>
-                    )}
-                </div>
-            </div>
+                </SortableContext>
 
-            {/* Turnover Chart */}
-            {renderTurnoverChart()}
+                {/* 3. Charts Zone - Adjustable Grid */}
+                <SortableContext items={chartOrder} strategy={rectSortingStrategy}>
+                    <div className="grid grid-cols-4 gap-4">
+                        {chartOrder.map((id) => (
+                            <React.Fragment key={id}>
+                                {renderChart(id)}
+                            </React.Fragment>
+                        ))}
+                    </div>
+                </SortableContext>
 
-            {/* Performance Metrics */}
-            {renderPerformanceMetrics()}
+            </DndContext>
 
-            {/* Payroll Trends */}
-            {renderPayrollTrends()}
-
-            {/* Stats Overview */}
-            <div className="grid grid-cols-2" style={{ gap: '1rem', marginTop: '1.5rem' }}>
-                <div className="card" style={{ cursor: 'pointer' }} onClick={() => navigate('/tasks')}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
-                        <h2 style={{ margin: 0, fontSize: '1.125rem' }}>Tasks Overview</h2>
-                        <span style={{ fontSize: '1.25rem' }}><FaTasks /></span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
-                        <span>Total Tasks:</span>
-                        <strong>{stats?.tasks?.total || 0}</strong>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
-                        <span>To Do:</span>
-                        <span className="badge badge-warning">{stats?.tasks?.todo || 0}</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
-                        <span>In Progress:</span>
-                        <span className="badge badge-info">{stats?.tasks?.in_progress || 0}</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <span>Completed:</span>
-                        <span className="badge badge-success">{stats?.tasks?.completed || 0}</span>
-                    </div>
-                </div>
-
-                <div className="card" style={{ cursor: 'pointer' }} onClick={() => navigate('/payroll')}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
-                        <h2 style={{ margin: 0, fontSize: '1.125rem' }}>Payroll Summary (This Month)</h2>
-                        <span style={{ fontSize: '1.25rem' }}><FaMoneyBillWave /></span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
-                        <span>Total Amount:</span>
-                        <strong>{getSetting('currency_symbol', '$')}{stats?.payroll?.total_amount?.toLocaleString() || 0}</strong>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
-                        <span>Paid:</span>
-                        <span className="badge badge-success">{stats?.payroll?.paid || 0}</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
-                        <span>Pending:</span>
-                        <span className="badge badge-warning">{stats?.payroll?.pending || 0}</span>
-                    </div>
-                </div>
-            </div>
-
-            {/* Quick Actions */}
-            <div className="card" style={{ marginTop: '1.5rem' }}>
-                <h3 style={{ marginBottom: '1rem' }}>Quick Actions</h3>
-                <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-                    <button
-                        className="btn btn-primary"
-                        onClick={() => navigate('/employees')}
-                    >
-                        <FaUserPlus /> Add Employee
-                    </button>
-                    <button
-                        className="btn btn-primary"
-                        onClick={() => navigate('/tasks')}
-                    >
-                        <FaTasks /> Create Task
-                    </button>
-                    <button
-                        className="btn btn-primary"
-                        onClick={() => navigate('/payroll')}
-                    >
-                        <FaMoneyBillWave /> Process Payroll
-                    </button>
-                    <button
-                        className="btn btn-primary"
-                        onClick={() => navigate('/recruitment')}
-                    >
-                        <FaBullhorn /> Post Job
-                    </button>
-                    <button
-                        className="btn btn-primary"
-                        onClick={() => navigate('/reports')}
-                    >
-                        <FaChartBar /> Generate Report
-                    </button>
-                </div>
-            </div>
+            {/* Resize Ghost Overlay */}
+            {resizeGhostState && createPortal(
+                <div
+                    ref={ghostRef}
+                    style={{
+                        position: 'absolute',
+                        top: resizeGhostState.top,
+                        left: resizeGhostState.left,
+                        width: resizeGhostState.width,
+                        height: resizeGhostState.height,
+                        border: '2px dashed #6366f1',
+                        borderRadius: '0.75rem',
+                        pointerEvents: 'none',
+                        zIndex: 9999,
+                        backgroundColor: 'rgba(99, 102, 241, 0.05)',
+                        transition: 'none'
+                    }}
+                />,
+                document.body
+            )}
         </div>
     );
 };

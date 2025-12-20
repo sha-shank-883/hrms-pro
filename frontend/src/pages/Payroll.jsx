@@ -14,10 +14,15 @@ import {
   FaHourglassHalf,
   FaEdit,
   FaTrash,
-  FaPlay
+  FaPlay,
+  FaFileContract
 } from 'react-icons/fa';
+import TaxDeclarationModal from '../components/payroll/TaxDeclarationModal';
+
+import { useAuth } from '../context/AuthContext';
 
 const Payroll = () => {
+  const { user } = useAuth();
   const { getSetting, getSettingNumber, getSettingBoolean } = useSettings();
   const [payrollRecords, setPayrollRecords] = useState([]);
   const [employees, setEmployees] = useState([]);
@@ -38,6 +43,10 @@ const Payroll = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [autoGenerateLoading, setAutoGenerateLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState('payroll'); // 'payroll' or 'tax'
+  const [taxDeclarations, setTaxDeclarations] = useState([]);
+  const [showTaxModal, setShowTaxModal] = useState(false);
+  const [editingDeclaration, setEditingDeclaration] = useState(null);
   const [filters, setFilters] = useState({
     employee_id: '',
     month: '',
@@ -72,10 +81,57 @@ const Payroll = () => {
   });
 
   useEffect(() => {
-    loadPayroll();
-    loadEmployees();
-    fetchPayrollStatistics();
-  }, []);
+    if (activeTab === 'payroll') {
+      loadPayroll();
+      loadEmployees();
+      fetchPayrollStatistics();
+    } else if (activeTab === 'tax') {
+      loadEmployees(); // Admin might need list of employees for something, or just good to have
+      loadTaxDeclarations();
+    }
+  }, [activeTab]);
+
+  const loadTaxDeclarations = async () => {
+    try {
+      const params = {};
+      if (user?.role === 'employee') params.employee_id = user.employee_id; // assuming user object has employee_id or we need to fetch it
+      // Actually, let's look at `user` from auth context. I need to add useAuth hook.
+      const response = await payrollService.getTaxDeclarations(params);
+      setTaxDeclarations(response.data);
+    } catch (error) {
+      console.error("Failed to load tax declarations", error);
+    }
+  };
+
+  const handleTaxSubmit = async (data) => {
+    try {
+      // If employee, use their ID. If admin editing, use selected employee (not implemented yet for admin to create for others easily, assume employee self-service for now or user context)
+      // We need employee_id. 
+      // Let's get current user's employee_id if not present.
+      let employeeId = data.employee_id;
+      if (!employeeId) {
+        const empRes = await employeeService.getByUserId(user.userId);
+        employeeId = empRes.data.employee_id;
+      }
+
+      await payrollService.submitTaxDeclaration({ ...data, employee_id: employeeId });
+      setSuccess('Tax declaration submitted successfully');
+      setShowTaxModal(false);
+      loadTaxDeclarations();
+    } catch (error) {
+      setError('Failed to submit declaration: ' + error.message);
+    }
+  };
+
+  const handleTaxStatusUpdate = async (id, status) => {
+    try {
+      await payrollService.updateTaxDeclarationStatus(id, { status });
+      setSuccess('Status updated successfully');
+      loadTaxDeclarations();
+    } catch (error) {
+      setError("Failed to update status");
+    }
+  };
 
   const fetchPayrollStatistics = async () => {
     try {
@@ -300,15 +356,15 @@ const Payroll = () => {
   };
 
   return (
-    <div className="container" style={{ paddingBottom: '2rem' }}>
+    <div className="w-full pb-8">
       {/* Page Header */}
-      <div className="page-header" style={{ marginTop: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div className="page-header">
         <div>
           <h1 className="page-title">Payroll Management</h1>
-          <p className="page-description">Manage employee salaries, payments, and payroll records.</p>
+          <p className="text-neutral-600">Manage employee salaries, payments, and compliance.</p>
         </div>
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
-          <button className="btn btn-primary" onClick={handleOpenAutoGenerateModal}>
+        <div className="flex gap-sm">
+          <button className="btn btn-secondary" onClick={handleOpenAutoGenerateModal}>
             <FaRobot /> Auto Generate
           </button>
           <button className="btn btn-primary" onClick={() => setShowModal(true)}>
@@ -317,427 +373,664 @@ const Payroll = () => {
         </div>
       </div>
 
-      {error && <div className="alert alert-error">{error}</div>}
-      {success && <div className="alert alert-success">{success}</div>}
-
-      {/* Statistics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6" style={{ marginBottom: '2rem' }}>
-        <div className="stat-card">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-            <div style={{ background: '#e0e7ff', padding: '0.75rem', borderRadius: '0.5rem', color: '#4f46e5' }}>
-              <FaHourglassHalf size={20} />
-            </div>
-            <span style={{ fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase', color: '#9ca3af' }}>Pending</span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'flex-end', gap: '0.5rem' }}>
-            <h3 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#111827', lineHeight: 1 }}>{currencySymbol}{parseFloat(payrollStatistics.total_pending_amount).toFixed(2)}</h3>
-          </div>
-          <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>{payrollStatistics.pending_records} records</span>
-        </div>
-        <div className="stat-card">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-            <div style={{ background: '#d1fae5', padding: '0.75rem', borderRadius: '0.5rem', color: '#059669' }}>
-              <FaCheckCircle size={20} />
-            </div>
-            <span style={{ fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase', color: '#9ca3af' }}>Paid</span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'flex-end', gap: '0.5rem' }}>
-            <h3 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#111827', lineHeight: 1 }}>{currencySymbol}{parseFloat(payrollStatistics.total_paid_amount).toFixed(2)}</h3>
-          </div>
-          <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>{payrollStatistics.paid_records} records</span>
-        </div>
-        <div className="stat-card">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-            <div style={{ background: '#fee2e2', padding: '0.75rem', borderRadius: '0.5rem', color: '#dc2626' }}>
-              <FaTimesCircle size={20} />
-            </div>
-            <span style={{ fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase', color: '#9ca3af' }}>Cancelled</span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'flex-end', gap: '0.5rem' }}>
-            <h3 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#111827', lineHeight: 1 }}>{currencySymbol}{parseFloat(payrollStatistics.total_cancelled_amount).toFixed(2)}</h3>
-          </div>
-          <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>{payrollStatistics.cancelled_records} records</span>
-        </div>
-        <div className="stat-card">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-            <div style={{ background: '#f3f4f6', padding: '0.75rem', borderRadius: '0.5rem', color: '#4b5563' }}>
-              <FaMoneyBillWave size={20} />
-            </div>
-            <span style={{ fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase', color: '#9ca3af' }}>Total</span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'flex-end', gap: '0.5rem' }}>
-            <h3 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#111827', lineHeight: 1 }}>{currencySymbol}{parseFloat(payrollStatistics.total_amount).toFixed(2)}</h3>
-          </div>
-          <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>{payrollStatistics.total_records} records</span>
-        </div>
+      {/* Tabs */}
+      <div className="flex gap-xs mb-8 border-b border-neutral-200">
+        <button
+          className={`pb-3 px-5 text-sm font-semibold transition-colors border-b-2 ${activeTab === 'payroll' ? 'text-primary-600 border-primary-600' : 'text-neutral-500 border-transparent hover:text-neutral-700'}`}
+          onClick={() => setActiveTab('payroll')}
+        >
+          <FaMoneyBillWave className="inline mr-2" /> Payroll
+        </button>
+        <button
+          className={`pb-3 px-5 text-sm font-semibold transition-colors border-b-2 ${activeTab === 'tax' ? 'text-primary-600 border-primary-600' : 'text-neutral-500 border-transparent hover:text-neutral-700'}`}
+          onClick={() => setActiveTab('tax')}
+        >
+          <FaFileContract className="inline mr-2" /> Tax Declarations
+        </button>
       </div>
 
-      {/* Filter Section */}
-      <div className="card" style={{ marginBottom: '2rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', borderBottom: '1px solid #e5e7eb', paddingBottom: '0.75rem' }}>
-          <FaFilter className="text-gray-400" />
-          <h3 style={{ fontSize: '1rem', fontWeight: '600', color: '#374151', margin: 0 }}>Filter Records</h3>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4" style={{ marginBottom: '1rem' }}>
-          <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="form-label">Employee</label>
-            <select
-              className="form-input"
-              name="employee_id"
-              value={filters.employee_id}
-              onChange={handleFilterChange}
-            >
-              <option value="">All Employees</option>
-              {employees.map(emp => (
-                <option key={emp.employee_id} value={emp.employee_id}>
-                  {emp.first_name} {emp.last_name}
-                </option>
-              ))}
-            </select>
+      {activeTab === 'payroll' && (
+        <>
+          {error && <div className="mb-6 p-4 rounded-lg bg-danger-50 text-danger border border-danger-50 flex items-center gap-2"><FaTimesCircle /> {error}</div>}
+          {success && <div className="mb-6 p-4 rounded-lg bg-success-50 text-success border border-success-50 flex items-center gap-2"><FaCheckCircle /> {success}</div>}
+
+          {/* Statistics - Enterprise Grade Cards */}
+          {/* Statistics - Enterprise Grade Cards */}
+          <div className="dashboard-main-grid mb-6">
+            <div className="card p-4">
+              <div className="flex justify-between items-start mb-4">
+                <div className="bg-primary-50 text-primary-600 rounded-lg border border-primary-50 p-2">
+                  <FaHourglassHalf size={16} />
+                </div>
+                <span className="text-xs font-bold uppercase tracking-wide text-neutral-400" style={{ fontSize: '10px' }}>Pending</span>
+              </div>
+              <div className="mb-1">
+                <h3 className="text-2xl font-bold text-neutral-900 tracking-tight">{currencySymbol}{parseFloat(payrollStatistics.total_pending_amount).toFixed(2)}</h3>
+              </div>
+              <span className="text-sm font-medium text-neutral-500">{payrollStatistics.pending_records} records</span>
+            </div>
+
+            <div className="card p-4">
+              <div className="flex justify-between items-start mb-4">
+                <div className="bg-success-50 text-success rounded-lg border border-success-50 p-2">
+                  <FaCheckCircle size={16} />
+                </div>
+                <span className="text-xs font-bold uppercase tracking-wide text-neutral-400" style={{ fontSize: '10px' }}>Paid</span>
+              </div>
+              <div className="mb-1">
+                <h3 className="text-2xl font-bold text-neutral-900 tracking-tight">{currencySymbol}{parseFloat(payrollStatistics.total_paid_amount).toFixed(2)}</h3>
+              </div>
+              <span className="text-sm font-medium text-neutral-500">{payrollStatistics.paid_records} records</span>
+            </div>
+
+            <div className="card p-4">
+              <div className="flex justify-between items-start mb-4">
+                <div className="bg-danger-50 text-danger rounded-lg border border-danger-50 p-2">
+                  <FaTimesCircle size={16} />
+                </div>
+                <span className="text-xs font-bold uppercase tracking-wide text-neutral-400" style={{ fontSize: '10px' }}>Cancelled</span>
+              </div>
+              <div className="mb-1">
+                <h3 className="text-2xl font-bold text-neutral-900 tracking-tight">{currencySymbol}{parseFloat(payrollStatistics.total_cancelled_amount).toFixed(2)}</h3>
+              </div>
+              <span className="text-sm font-medium text-neutral-500">{payrollStatistics.cancelled_records} records</span>
+            </div>
+
+            <div className="card p-4 bg-neutral-900 border-neutral-800">
+              <div className="flex justify-between items-start mb-4">
+                <div className="p-2 bg-neutral-800 text-neutral-200 rounded-lg border border-neutral-700">
+                  <FaMoneyBillWave size={16} />
+                </div>
+                <span className="text-xs font-bold uppercase tracking-wide text-neutral-400" style={{ fontSize: '10px' }}>Total Outflow</span>
+              </div>
+              <div className="mb-1">
+                <h3 className="text-2xl font-bold text-white tracking-tight">{currencySymbol}{parseFloat(payrollStatistics.total_amount).toFixed(2)}</h3>
+              </div>
+              <span className="text-sm font-medium text-neutral-400">{payrollStatistics.total_records} records processed</span>
+            </div>
           </div>
 
-          <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="form-label">Month</label>
-            <select
-              className="form-input"
-              name="month"
-              value={filters.month}
-              onChange={handleFilterChange}
-            >
-              <option value="">All Months</option>
-              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(m => (
-                <option key={m} value={m}>
-                  {new Date(2020, m - 1, 1).toLocaleString('default', { month: 'long' })}
-                </option>
-              ))}
-            </select>
+          {/* Filter Section */}
+          <div className="card mb-6">
+            <div className="p-4 border-b border-neutral-100">
+              <h3 className="font-semibold text-neutral-800 flex items-center gap-2">
+                <FaFilter className="text-neutral-400 text-sm" /> Filter Records
+              </h3>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-md mb-6">
+              <div className="form-group">
+                <label className="text-xs font-semibold text-neutral-500 uppercase tracking-wide mb-1.5 block">Employee</label>
+                <select
+                  className="w-full p-2.5 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-100 focus:border-primary-500 outline-none transition-all"
+                  name="employee_id"
+                  value={filters.employee_id}
+                  onChange={handleFilterChange}
+                >
+                  <option value="">All Employees</option>
+                  {employees.map(emp => (
+                    <option key={emp.employee_id} value={emp.employee_id}>
+                      {emp.first_name} {emp.last_name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label className="text-xs font-semibold text-neutral-500 uppercase tracking-wide mb-1.5 block">Month</label>
+                <select
+                  className="w-full p-2.5 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-100 focus:border-primary-500 outline-none transition-all"
+                  name="month"
+                  value={filters.month}
+                  onChange={handleFilterChange}
+                >
+                  <option value="">All Months</option>
+                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(m => (
+                    <option key={m} value={m}>
+                      {new Date(2020, m - 1, 1).toLocaleString('default', { month: 'long' })}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label className="text-xs font-semibold text-neutral-500 uppercase tracking-wide mb-1.5 block">Year</label>
+                <input
+                  type="number"
+                  className="w-full p-2.5 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-100 focus:border-primary-500 outline-none transition-all"
+                  name="year"
+                  value={filters.year}
+                  onChange={handleFilterChange}
+                  min="2020"
+                  max="2030"
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="text-xs font-semibold text-neutral-500 uppercase tracking-wide mb-1.5 block">Status</label>
+                <select
+                  className="w-full p-2.5 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-100 focus:border-primary-500 outline-none transition-all"
+                  name="payment_status"
+                  value={filters.payment_status}
+                  onChange={handleFilterChange}
+                >
+                  <option value="">All Statuses</option>
+                  <option value="pending">Pending</option>
+                  <option value="paid">Paid</option>
+                  <option value="cancelled">Cancelled</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-sm pt-2">
+              <button className="btn btn-ghost" onClick={clearFilters}>
+                <FaTimes /> Clear
+              </button>
+              <button className="btn btn-secondary" onClick={applyFilters}>
+                <FaSearch /> Apply Filters
+              </button>
+            </div>
           </div>
 
-          <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="form-label">Year</label>
-            <input
-              type="number"
-              className="form-input"
-              name="year"
-              value={filters.year}
-              onChange={handleFilterChange}
-              min="2020"
-              max="2030"
-            />
-          </div>
-
-          <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="form-label">Status</label>
-            <select
-              className="form-input"
-              name="payment_status"
-              value={filters.payment_status}
-              onChange={handleFilterChange}
-            >
-              <option value="">All Statuses</option>
-              <option value="pending">Pending</option>
-              <option value="paid">Paid</option>
-              <option value="cancelled">Cancelled</option>
-            </select>
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-          <button className="btn btn-secondary" onClick={clearFilters}>
-            <FaTimes /> Clear
-          </button>
-          <button className="btn btn-primary" onClick={applyFilters}>
-            <FaSearch /> Apply Filters
-          </button>
-        </div>
-      </div>
-
-      <div className="card" style={{ padding: 0, overflowX: 'auto' }}>
-        <table className="table">
-          <thead>
-            <tr>
-              <th>Employee</th>
-              <th>Period</th>
-              <th>Basic Salary</th>
-              <th>Allowances</th>
-              <th>Deductions</th>
-              <th>Net Salary</th>
-              <th>Status</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {payrollRecords.length === 0 ? (
-              <tr>
-                <td colSpan="8" style={{ textAlign: 'center', padding: '3rem', color: '#6b7280' }}>
-                  <div className="empty-state">
-                    <div className="empty-state-icon">
-                      <FaFileInvoiceDollar />
-                    </div>
-                    <h3 className="empty-state-title">No payroll records found</h3>
-                    <p className="empty-state-description">Adjust filters or create a new record.</p>
-                  </div>
-                </td>
-              </tr>
-            ) : (
-              payrollRecords.map((record) => (
-                <tr key={record.payroll_id}>
-                  <td>
-                    <div style={{ display: 'flex', alignItems: 'center' }}>
-                      <div style={{ height: '2rem', width: '2rem', borderRadius: '50%', background: '#e0e7ff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#4f46e5', fontWeight: 'bold', fontSize: '0.75rem', marginRight: '0.75rem' }}>
-                        {record.employee_name.charAt(0)}
-                      </div>
-                      <div style={{ fontWeight: '500', color: '#111827' }}>{record.employee_name}</div>
-                    </div>
-                  </td>
-                  <td>{new Date(2020, record.month - 1, 1).toLocaleString('default', { month: 'short' })} {record.year}</td>
-                  <td>{currencySymbol}{parseFloat(record.basic_salary || 0).toFixed(2)}</td>
-                  <td>{currencySymbol}{(parseFloat(record.allowances || 0) + parseFloat(record.overtime_pay || 0) + parseFloat(record.bonus || 0)).toFixed(2)}</td>
-                  <td>{currencySymbol}{(parseFloat(record.deductions || 0) + parseFloat(record.tax || 0)).toFixed(2)}</td>
-                  <td><strong>{currencySymbol}{parseFloat(record.net_salary || 0).toFixed(2)}</strong></td>
-                  <td>
-                    <span className={`badge badge-${statusColors[record.payment_status]}`}>
-                      {record.payment_status === 'paid' && <FaCheckCircle size={10} style={{ marginRight: '4px' }} />}
-                      {record.payment_status === 'pending' && <FaHourglassHalf size={10} style={{ marginRight: '4px' }} />}
-                      {record.payment_status === 'cancelled' && <FaTimesCircle size={10} style={{ marginRight: '4px' }} />}
-                      {record.payment_status.charAt(0).toUpperCase() + record.payment_status.slice(1)}
-                    </span>
-                  </td>
-                  <td>
-                    <div style={{ display: 'flex', gap: '0.5rem' }}>
-                      {record.payment_status === 'pending' && (
-                        <button className="btn btn-success" style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }} onClick={() => handleProcessPayment(record.payroll_id)} title="Process Payment">
-                          <FaPlay />
-                        </button>
-                      )}
-                      <button className="btn btn-secondary" style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }} onClick={() => handleEdit(record)} title="Edit">
-                        <FaEdit />
-                      </button>
-                      <button className="btn btn-danger" style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }} onClick={() => handleDelete(record.payroll_id)} title="Delete">
-                        <FaTrash />
-                      </button>
-                    </div>
-                  </td>
+          <div className="card p-0">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Employee</th>
+                  <th>Period</th>
+                  <th>Basic Salary</th>
+                  <th>Allowances</th>
+                  <th>Deductions</th>
+                  <th>Net Salary</th>
+                  <th>Status</th>
+                  <th>Actions</th>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+              </thead>
+              <tbody>
+                {payrollRecords.length === 0 ? (
+                  <tr>
+                    <td colSpan="8" className="text-center py-12">
+                      <div className="flex flex-col items-center justify-center text-neutral-400">
+                        <div className="p-4 bg-neutral-50 rounded-full mb-3">
+                          <FaFileInvoiceDollar size={32} />
+                        </div>
+                        <h3 className="text-lg font-semibold text-neutral-700 mb-1">No payroll records found</h3>
+                        <p className="text-sm">Adjust your filters or create a new record.</p>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  payrollRecords.map((record) => (
+                    <tr key={record.payroll_id}>
+                      <td>
+                        <div className="flex items-center gap-3">
+                          <div class="w-8 h-8 rounded-full bg-primary-100 text-primary-800 flex items-center justify-center font-semibold text-sm">
+                            {record.employee_name.charAt(0)}
+                          </div>
+                          <div className="font-semibold text-neutral-800">{record.employee_name}</div>
+                        </div>
+                      </td>
+                      <td>
+                        <div className="flex flex-col">
+                          <span className="font-medium text-neutral-700">{new Date(2020, record.month - 1, 1).toLocaleString('default', { month: 'short' })} {record.year}</span>
+                        </div>
+                      </td>
+                      <td className="font-mono text-neutral-600">{currencySymbol}{parseFloat(record.basic_salary || 0).toFixed(2)}</td>
+                      <td className="font-mono text-neutral-600">{currencySymbol}{(parseFloat(record.allowances || 0) + parseFloat(record.overtime_pay || 0) + parseFloat(record.bonus || 0)).toFixed(2)}</td>
+                      <td className="font-mono text-red-600">-{currencySymbol}{(parseFloat(record.deductions || 0) + parseFloat(record.tax || 0)).toFixed(2)}</td>
+                      <td><span className="font-bold font-mono text-neutral-900 bg-neutral-50 px-2 py-1 rounded">{currencySymbol}{parseFloat(record.net_salary || 0).toFixed(2)}</span></td>
+                      <td>
+                        <span className={`badge badge-${statusColors[record.payment_status]}`}>
+                          {record.payment_status === 'paid' && <FaCheckCircle size={10} className="mr-1.5" />}
+                          {record.payment_status === 'pending' && <FaHourglassHalf size={10} className="mr-1.5" />}
+                          {record.payment_status === 'cancelled' && <FaTimesCircle size={10} className="mr-1.5" />}
+                          <span className="capitalize">{record.payment_status}</span>
+                        </span>
+                      </td>
+                      <td>
+                        <div className="flex gap-2">
+                          {record.payment_status === 'pending' && (
+                            <button className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded transition-colors" onClick={() => handleProcessPayment(record.payroll_id)} title="Process Payment">
+                              <FaPlay size={14} />
+                            </button>
+                          )}
+                          <button className="p-1.5 text-neutral-500 hover:text-primary-600 hover:bg-primary-50 rounded transition-colors" onClick={() => handleEdit(record)} title="Edit">
+                            <FaEdit size={14} />
+                          </button>
+                          <button className="p-1.5 text-neutral-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors" onClick={() => handleDelete(record.payroll_id)} title="Delete">
+                            <FaTrash size={14} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+
+      {
+        activeTab === 'tax' && (
+          <div>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-neutral-800">IT Declarations</h3>
+              {user.role === 'employee' && (
+                <button className="btn btn-primary" onClick={() => { setEditingDeclaration(null); setShowTaxModal(true); }}>
+                  <FaPlus /> Submit Declaration
+                </button>
+              )}
+            </div>
+
+            <div className="card p-0">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Employee</th>
+                    <th>Financial Year</th>
+                    <th>Regime</th>
+                    <th>Total Deductions</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {taxDeclarations.map(decl => (
+                    <tr key={decl.declaration_id}>
+                      <td>{decl.first_name} {decl.last_name}</td>
+                      <td>{decl.financial_year}</td>
+                      <td><span className="uppercase badge badge-secondary">{decl.regime}</span></td>
+                      <td>
+                        {decl.regime === 'old'
+                          ? (parseFloat(decl.section_80c) + parseFloat(decl.section_80d) + parseFloat(decl.hra) + parseFloat(decl.lta) + parseFloat(decl.other_deductions)).toFixed(2)
+                          : '-'}
+                      </td>
+                      <td>
+                        <span className={`badge badge-${decl.status === 'approved' ? 'success' : decl.status === 'rejected' ? 'danger' : 'warning'}`}>
+                          {decl.status}
+                        </span>
+                      </td>
+                      <td>
+                        {user.role !== 'employee' && decl.status === 'pending' && (
+                          <div className="flex gap-2">
+                            <button onClick={() => handleTaxStatusUpdate(decl.declaration_id, 'approved')} className="btn btn-success p-1.5" title="Approve"><FaCheckCircle /></button>
+                            <button onClick={() => handleTaxStatusUpdate(decl.declaration_id, 'rejected')} className="btn btn-danger p-1.5" title="Reject"><FaTimesCircle /></button>
+                          </div>
+                        )}
+                        {user.role === 'employee' && decl.status === 'pending' && (
+                          <button onClick={() => { setEditingDeclaration(decl); setShowTaxModal(true); }} className="btn btn-secondary p-1.5"><FaEdit /></button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                  {taxDeclarations.length === 0 && (
+                    <tr><td colSpan="6" className="text-center py-4 text-gray-500">No declarations found.</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )
+      }
 
       {/* Pagination Controls */}
-      {pagination.totalPages > 1 && (
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', marginTop: '2rem', gap: '0.5rem' }}>
-          <button
-            className="btn btn-secondary"
-            onClick={() => handlePageChange(pagination.currentPage - 1)}
-            disabled={!pagination.hasPrev}
-          >
-            Previous
-          </button>
+      {
+        pagination.totalPages > 1 && (
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', marginTop: '2rem', gap: '0.5rem' }}>
+            <button
+              className="btn btn-secondary"
+              onClick={() => handlePageChange(pagination.currentPage - 1)}
+              disabled={!pagination.hasPrev}
+            >
+              Previous
+            </button>
 
-          {/* Numbered page buttons */}
-          {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
-            let pageNum;
-            if (pagination.totalPages <= 5) {
-              pageNum = i + 1;
-            } else if (pagination.currentPage <= 3) {
-              pageNum = i + 1;
-            } else if (pagination.currentPage >= pagination.totalPages - 2) {
-              pageNum = pagination.totalPages - 4 + i;
-            } else {
-              pageNum = pagination.currentPage - 2 + i;
-            }
+            {/* Numbered page buttons */}
+            {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
+              let pageNum;
+              if (pagination.totalPages <= 5) {
+                pageNum = i + 1;
+              } else if (pagination.currentPage <= 3) {
+                pageNum = i + 1;
+              } else if (pagination.currentPage >= pagination.totalPages - 2) {
+                pageNum = pagination.totalPages - 4 + i;
+              } else {
+                pageNum = pagination.currentPage - 2 + i;
+              }
 
-            return (
-              <button
-                key={pageNum}
-                className={`btn ${pageNum === pagination.currentPage ? 'btn-primary' : 'btn-secondary'}`}
-                onClick={() => handlePageChange(pageNum)}
-                style={{ minWidth: '40px' }}
-              >
-                {pageNum}
-              </button>
-            );
-          })}
+              return (
+                <button
+                  key={pageNum}
+                  className={`btn ${pageNum === pagination.currentPage ? 'btn-primary' : 'btn-secondary'}`}
+                  onClick={() => handlePageChange(pageNum)}
+                  style={{ minWidth: '40px' }}
+                >
+                  {pageNum}
+                </button>
+              );
+            })}
 
-          <button
-            className="btn btn-secondary"
-            onClick={() => handlePageChange(pagination.currentPage + 1)}
-            disabled={!pagination.hasNext}
-          >
-            Next
-          </button>
+            <button
+              className="btn btn-secondary"
+              onClick={() => handlePageChange(pagination.currentPage + 1)}
+              disabled={!pagination.hasNext}
+            >
+              Next
+            </button>
 
-          <span style={{ marginLeft: '1rem', color: '#6b7280' }}>
-            Page {pagination.currentPage} of {pagination.totalPages}
-            {' '}({pagination.totalItems} total records)
-          </span>
-        </div>
-      )}
+            <span style={{ marginLeft: '1rem', color: '#6b7280' }}>
+              Page {pagination.currentPage} of {pagination.totalPages}
+              {' '}({pagination.totalItems} total records)
+            </span>
+          </div>
+        )
+      }
 
       {/* Add/Edit Payroll Modal */}
-      {showModal && (
-        <div className="modal-overlay" onClick={handleCloseModal}>
-          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '700px', width: '100%' }}>
-            <div style={{ marginBottom: '1.5rem', borderBottom: '1px solid #e5e7eb', paddingBottom: '1rem' }}>
-              <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#111827' }}>{editingPayroll ? 'Edit Payroll Record' : 'New Payroll Record'}</h2>
-              <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>Enter payroll details for the employee.</p>
+      {
+        showModal && (
+          <div style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 50,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '1rem',
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            backdropFilter: 'blur(4px)'
+          }} onClick={handleCloseModal}>
+            <div style={{
+              backgroundColor: 'white',
+              borderRadius: '0.75rem',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+              width: '100%',
+              maxWidth: '32rem',
+              overflow: 'hidden',
+              animation: 'fade-in 0.2s ease-out'
+            }} onClick={(e) => e.stopPropagation()}>
+              <div style={{
+                padding: '1.5rem',
+                borderBottom: '1px solid var(--neutral-100)',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                backgroundColor: 'var(--neutral-50)'
+              }}>
+                <div>
+                  <h2 className="text-lg font-bold text-neutral-800">{editingPayroll ? 'Edit Payroll Record' : 'New Payroll Record'}</h2>
+                  <p className="text-sm text-neutral-500 mt-0.5">Enter payroll details for the employee.</p>
+                </div>
+                <button onClick={handleCloseModal} style={{ color: 'var(--neutral-400)', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.25rem' }}>
+                  <FaTimes />
+                </button>
+              </div>
+
+              <div className="p-6 max-h-[80vh] overflow-y-auto">
+                {error && <div className="mb-4 p-3 bg-rose-50 text-rose-700 text-sm rounded-lg border border-rose-200 flex items-center gap-2"><FaTimesCircle className="shrink-0" /> {error}</div>}
+
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div className="form-group mb-4">
+                    <label class="form-label mb-1 block">Employee <span className="text-danger">*</span></label>
+                    <select
+                      className="form-input"
+                      value={formData.employee_id}
+                      onChange={(e) => setFormData({ ...formData, employee_id: e.target.value })}
+                      required
+                    >
+                      <option value="">Select Employee</option>
+                      {employees.map(emp => <option key={emp.employee_id} value={emp.employee_id}>{emp.first_name} {emp.last_name}</option>)}
+                    </select>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="form-group mb-4">
+                      <label className="form-label mb-1 block">Month <span className="text-danger">*</span></label>
+                      <select
+                        className="form-input"
+                        value={formData.month}
+                        onChange={(e) => setFormData({ ...formData, month: parseInt(e.target.value) })}
+                        required
+                      >
+                        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(m => <option key={m} value={m}>{new Date(2020, m - 1, 1).toLocaleString('default', { month: 'long' })}</option>)}
+                      </select>
+                    </div>
+
+
+
+                    <div className="form-group mb-4">
+                      <label className="form-label mb-1 block">Year <span className="text-danger">*</span></label>
+                      <input
+                        type="number"
+                        className="form-input"
+                        value={formData.year}
+                        onChange={(e) => setFormData({ ...formData, year: parseInt(e.target.value) })}
+                        min="2020"
+                        max="2030"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="form-group mb-4">
+                    <label class="form-label mb-1 block">Basic Salary <span className="text-danger">*</span></label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400">{currencySymbol}</span>
+                      <input
+                        type="number"
+                        className="form-input pl-8"
+                        value={formData.basic_salary}
+                        onChange={(e) => setFormData({ ...formData, basic_salary: e.target.value })}
+                        step="0.01"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="form-group">
+                      <label class="form-label">Allowances</label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400">{currencySymbol}</span>
+                        <input
+                          type="number"
+                          className="form-input pl-8"
+                          value={formData.allowances}
+                          onChange={(e) => setFormData({ ...formData, allowances: e.target.value })}
+                          step="0.01"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="form-group">
+                      <label class="form-label">Deductions</label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400">{currencySymbol}</span>
+                        <input
+                          type="number"
+                          className="form-input pl-8"
+                          value={formData.deductions}
+                          onChange={(e) => setFormData({ ...formData, deductions: e.target.value })}
+                          step="0.01"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="form-group">
+                      <label className="block text-sm font-medium text-neutral-700 mb-1">Overtime Pay</label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400">{currencySymbol}</span>
+                        <input
+                          type="number"
+                          className="w-full pl-8 p-2.5 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-100 focus:border-primary-500 outline-none transition-all"
+                          value={formData.overtime_pay}
+                          onChange={(e) => setFormData({ ...formData, overtime_pay: e.target.value })}
+                          step="0.01"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="form-group">
+                      <label className="block text-sm font-medium text-neutral-700 mb-1">Bonus</label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400">{currencySymbol}</span>
+                        <input
+                          type="number"
+                          className="w-full pl-8 p-2.5 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-100 focus:border-primary-500 outline-none transition-all"
+                          value={formData.bonus}
+                          onChange={(e) => setFormData({ ...formData, bonus: e.target.value })}
+                          step="0.01"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="form-group">
+                    <label className="block text-sm font-medium text-neutral-700 mb-1">Tax</label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400">{currencySymbol}</span>
+                      <input
+                        type="number"
+                        className="w-full pl-8 p-2.5 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-100 focus:border-primary-500 outline-none transition-all"
+                        value={formData.tax}
+                        onChange={(e) => setFormData({ ...formData, tax: e.target.value })}
+                        step="0.01"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="p-4 bg-neutral-50 rounded-lg flex justify-between items-center border border-neutral-200">
+                    <label className="text-sm font-semibold text-neutral-700 m-0">Net Salary:</label>
+                    <strong className="text-xl text-primary-600 font-bold font-mono">{currencySymbol}{calculateNetSalary()}</strong>
+                  </div>
+
+                  <div className="form-group">
+                    <label class="form-label">Payment Method</label>
+                    <select
+                      className="form-input"
+                      value={formData.payment_method}
+                      onChange={(e) => setFormData({ ...formData, payment_method: e.target.value })}
+                    >
+                      <option value="bank_transfer">Bank Transfer</option>
+                      <option value="cash">Cash</option>
+                      <option value="check">Check</option>
+                    </select>
+                  </div>
+
+                  <div className="form-group mb-4">
+                    <label class="form-label mb-1 block">Notes</label>
+                    <textarea
+                      className="form-input"
+                      value={formData.notes}
+                      onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                      rows="3"
+                      placeholder="Additional notes..."
+                    />
+                  </div>
+
+                  <div className="flex justify-end gap-sm mt-6">
+                    <button
+                      type="button"
+                      onClick={handleCloseModal}
+                      className="btn btn-secondary"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="btn btn-primary"
+                    >
+                      <FaSave /> {editingPayroll ? 'Update Record' : 'Create Record'}
+                    </button>
+                  </div>
+                </form>
+              </div>
             </div>
-
-            {error && <div className="alert alert-error" style={{ marginBottom: '1rem' }}>{error}</div>}
-
-            <form onSubmit={handleSubmit}>
-              <div className="form-group">
-                <label className="form-label">Employee *</label>
-                <select className="form-input" value={formData.employee_id} onChange={(e) => setFormData({ ...formData, employee_id: e.target.value })} required>
-                  <option value="">Select Employee</option>
-                  {employees.map(emp => <option key={emp.employee_id} value={emp.employee_id}>{emp.first_name} {emp.last_name}</option>)}
-                </select>
-              </div>
-
-              <div className="grid grid-cols-2" style={{ gap: '1rem' }}>
-                <div className="form-group">
-                  <label className="form-label">Month *</label>
-                  <select className="form-input" value={formData.month} onChange={(e) => setFormData({ ...formData, month: parseInt(e.target.value) })} required>
-                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(m => <option key={m} value={m}>{new Date(2020, m - 1, 1).toLocaleString('default', { month: 'long' })}</option>)}
-                  </select>
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">Year *</label>
-                  <input type="number" className="form-input" value={formData.year} onChange={(e) => setFormData({ ...formData, year: parseInt(e.target.value) })} min="2020" max="2030" required />
-                </div>
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Basic Salary *</label>
-                <div style={{ position: 'relative' }}>
-                  <span style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#6b7280' }}>{currencySymbol}</span>
-                  <input type="number" className="form-input" style={{ paddingLeft: '25px' }} value={formData.basic_salary} onChange={(e) => setFormData({ ...formData, basic_salary: e.target.value })} step="0.01" required />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2" style={{ gap: '1rem' }}>
-                <div className="form-group">
-                  <label className="form-label">Allowances</label>
-                  <div style={{ position: 'relative' }}>
-                    <span style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#6b7280' }}>{currencySymbol}</span>
-                    <input type="number" className="form-input" style={{ paddingLeft: '25px' }} value={formData.allowances} onChange={(e) => setFormData({ ...formData, allowances: e.target.value })} step="0.01" />
-                  </div>
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">Deductions</label>
-                  <div style={{ position: 'relative' }}>
-                    <span style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#6b7280' }}>{currencySymbol}</span>
-                    <input type="number" className="form-input" style={{ paddingLeft: '25px' }} value={formData.deductions} onChange={(e) => setFormData({ ...formData, deductions: e.target.value })} step="0.01" />
-                  </div>
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">Overtime Pay</label>
-                  <div style={{ position: 'relative' }}>
-                    <span style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#6b7280' }}>{currencySymbol}</span>
-                    <input type="number" className="form-input" style={{ paddingLeft: '25px' }} value={formData.overtime_pay} onChange={(e) => setFormData({ ...formData, overtime_pay: e.target.value })} step="0.01" />
-                  </div>
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">Bonus</label>
-                  <div style={{ position: 'relative' }}>
-                    <span style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#6b7280' }}>{currencySymbol}</span>
-                    <input type="number" className="form-input" style={{ paddingLeft: '25px' }} value={formData.bonus} onChange={(e) => setFormData({ ...formData, bonus: e.target.value })} step="0.01" />
-                  </div>
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">Tax</label>
-                  <div style={{ position: 'relative' }}>
-                    <span style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#6b7280' }}>{currencySymbol}</span>
-                    <input type="number" className="form-input" style={{ paddingLeft: '25px' }} value={formData.tax} onChange={(e) => setFormData({ ...formData, tax: e.target.value })} step="0.01" />
-                  </div>
-                </div>
-              </div>
-
-              <div className="form-group" style={{ background: '#f3f4f6', padding: '1rem', borderRadius: '0.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <label className="form-label" style={{ margin: 0 }}>Net Salary:</label>
-                <strong style={{ fontSize: '1.25rem', color: '#4f46e5' }}>{currencySymbol}{calculateNetSalary()}</strong>
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Payment Method</label>
-                <select className="form-input" value={formData.payment_method} onChange={(e) => setFormData({ ...formData, payment_method: e.target.value })}>
-                  <option value="bank_transfer">Bank Transfer</option>
-                  <option value="cash">Cash</option>
-                  <option value="check">Check</option>
-                </select>
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Notes</label>
-                <textarea className="form-input" value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} rows="3" placeholder="Additional notes..." />
-              </div>
-
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '2rem', paddingTop: '1rem', borderTop: '1px solid #e5e7eb' }}>
-                <button type="button" className="btn btn-secondary" onClick={handleCloseModal}>Cancel</button>
-                <button type="submit" className="btn btn-primary">{editingPayroll ? 'Update Record' : 'Create Record'}</button>
-              </div>
-            </form>
           </div>
-        </div>
-      )}
+        )
+      }
 
-      {/* Auto Generate Modal */}
-      {showAutoGenerateModal && (
-        <div className="modal-overlay" onClick={handleCloseAutoGenerateModal}>
-          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px', width: '100%' }}>
-            <div style={{ marginBottom: '1.5rem', borderBottom: '1px solid #e5e7eb', paddingBottom: '1rem' }}>
-              <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#111827' }}>Auto Generate Payroll</h2>
-              <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>Automatically calculate payroll based on employee salary settings.</p>
+      {
+        showAutoGenerateModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={handleCloseAutoGenerateModal}>
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-fade-in" onClick={(e) => e.stopPropagation()}>
+              <div className="px-6 py-4 border-b border-neutral-100 flex justify-between items-center bg-neutral-50">
+                <h2 className="text-lg font-bold text-neutral-800 flex items-center gap-2"><FaRobot className="text-primary-600" /> Auto Generate Payroll</h2>
+                <button onClick={handleCloseAutoGenerateModal} className="text-neutral-400 hover:text-neutral-600 transition-colors">
+                  <FaTimes size={20} />
+                </button>
+              </div>
+
+              <div className="p-6">
+                {error && <div className="mb-4 p-3 bg-rose-50 text-rose-700 text-sm rounded-lg border border-rose-200 flex items-center gap-2"><FaTimesCircle className="shrink-0" /> {error}</div>}
+
+                <form onSubmit={handleAutoGenerate} className="space-y-4">
+                  <div className="form-group mb-4">
+                    <label class="form-label mb-1 block">Employee</label>
+                    <select
+                      className="form-input"
+                      value={autoGenerateData.employee_id}
+                      onChange={(e) => setAutoGenerateData({ ...autoGenerateData, employee_id: e.target.value })}
+                    >
+                      <option value="">All Employees</option>
+                      {employees.map(emp => <option key={emp.employee_id} value={emp.employee_id}>{emp.first_name} {emp.last_name}</option>)}
+                    </select>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="form-group mb-4">
+                      <label className="form-label mb-1 block">Month <span className="text-danger">*</span></label>
+                      <select
+                        className="form-input"
+                        value={autoGenerateData.month}
+                        onChange={(e) => setAutoGenerateData({ ...autoGenerateData, month: parseInt(e.target.value) })}
+                        required
+                      >
+                        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(m => <option key={m} value={m}>{new Date(2020, m - 1, 1).toLocaleString('default', { month: 'long' })}</option>)}
+                      </select>
+                    </div>
+
+                    <div className="form-group mb-4">
+                      <label className="form-label mb-1 block">Year <span className="text-danger">*</span></label>
+                      <input
+                        type="number"
+                        className="form-input"
+                        value={autoGenerateData.year}
+                        onChange={(e) => setAutoGenerateData({ ...autoGenerateData, year: parseInt(e.target.value) })}
+                        min="2020"
+                        max="2030"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-3 mt-6 pt-4 border-t border-neutral-100">
+                    <button type="submit" className="btn btn-primary w-full" disabled={autoGenerateLoading}>
+                      {autoGenerateLoading ? 'Generating...' : 'Generate for Selected Employee(s)'}
+                    </button>
+                    <button type="button" className="btn btn-secondary w-full" onClick={handleBulkGenerate} disabled={autoGenerateLoading}>
+                      {autoGenerateLoading ? 'Generating...' : 'Generate for All Employees'}
+                    </button>
+                    <button type="button" className="btn btn-ghost w-full" onClick={handleCloseAutoGenerateModal} disabled={autoGenerateLoading}>
+                      Cancel
+                    </button>
+                  </div>
+                </form>
+              </div>
             </div>
-
-            {error && <div className="alert alert-error" style={{ marginBottom: '1rem' }}>{error}</div>}
-
-            <form onSubmit={handleAutoGenerate}>
-              <div className="form-group">
-                <label className="form-label">Employee</label>
-                <select className="form-input" value={autoGenerateData.employee_id} onChange={(e) => setAutoGenerateData({ ...autoGenerateData, employee_id: e.target.value })}>
-                  <option value="">All Employees</option>
-                  {employees.map(emp => <option key={emp.employee_id} value={emp.employee_id}>{emp.first_name} {emp.last_name}</option>)}
-                </select>
-              </div>
-
-              <div className="grid grid-cols-2" style={{ gap: '1rem' }}>
-                <div className="form-group">
-                  <label className="form-label">Month *</label>
-                  <select className="form-input" value={autoGenerateData.month} onChange={(e) => setAutoGenerateData({ ...autoGenerateData, month: parseInt(e.target.value) })} required>
-                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(m => <option key={m} value={m}>{new Date(2020, m - 1, 1).toLocaleString('default', { month: 'long' })}</option>)}
-                  </select>
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">Year *</label>
-                  <input type="number" className="form-input" value={autoGenerateData.year} onChange={(e) => setAutoGenerateData({ ...autoGenerateData, year: parseInt(e.target.value) })} min="2020" max="2030" required />
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1.5rem' }}>
-                <button type="submit" className="btn btn-primary" disabled={autoGenerateLoading} style={{ width: '100%' }}>
-                  {autoGenerateLoading ? 'Generating...' : 'Generate for Selected Employee(s)'}
-                </button>
-                <button type="button" className="btn btn-outline" onClick={handleBulkGenerate} disabled={autoGenerateLoading} style={{ width: '100%' }}>
-                  {autoGenerateLoading ? 'Generating...' : 'Generate for All Employees'}
-                </button>
-                <button type="button" className="btn btn-secondary" onClick={handleCloseAutoGenerateModal} disabled={autoGenerateLoading} style={{ width: '100%' }}>
-                  Cancel
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-    </div>
+          </div >
+        )
+      }
+      {/* Tax Modal */}
+      <TaxDeclarationModal
+        isOpen={showTaxModal}
+        onClose={() => setShowTaxModal(false)}
+        onSubmit={handleTaxSubmit}
+        initialData={editingDeclaration}
+      />
+    </div >
   );
 };
 

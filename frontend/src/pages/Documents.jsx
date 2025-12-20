@@ -3,6 +3,7 @@ import { documentService, employeeService, departmentService } from '../services
 import { useAuth } from '../context/AuthContext';
 import { useSettings } from '../hooks/useSettings.jsx';
 import { formatDate } from '../utils/settingsHelper';
+import { FaPlus, FaSearch, FaFilter, FaEdit, FaTrash, FaFileAlt, FaLink, FaExternalLinkAlt, FaExclamationCircle, FaCheckCircle } from 'react-icons/fa';
 
 const Documents = () => {
   const { user } = useAuth();
@@ -171,14 +172,21 @@ const Documents = () => {
     loadDocuments(1);
   };
 
-  if (loading) return <div className="loading">Loading...</div>;
+  if (loading) return (
+    <div className="flex justify-center items-center h-64">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+    </div>
+  );
 
   const documentTypes = ['contract', 'certificate', 'policy', 'id_proof', 'resume', 'offer_letter', 'other'];
 
   return (
-    <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-        <h1>Documents</h1>
+    <div className="w-full pb-8">
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">Documents</h1>
+          <p className="mt-1 text-neutral-600">Manage employee documents and contracts.</p>
+        </div>
         <div>
           <button className="btn btn-primary" onClick={() => {
             if (user?.role === 'employee') {
@@ -190,66 +198,82 @@ const Documents = () => {
               });
             }
             setShowModal(true);
-          }}>+ Upload Document</button>
+          }}>
+            <FaPlus className="mr-2" /> Upload Document
+          </button>
         </div>
       </div>
 
-      {error && <div className="error" style={{ marginBottom: '1rem', padding: '1rem', backgroundColor: '#fee2e2', borderRadius: '0.375rem' }}>{error}</div>}
-      {success && <div style={{ marginBottom: '1rem', padding: '1rem', backgroundColor: '#d1fae5', color: '#065f46', borderRadius: '0.375rem' }}>{success}</div>}
+      {error && <div className="mb-6 bg-red-50 border border-red-200 text-red-600 rounded-lg p-4 flex items-center"><FaExclamationCircle className="mr-2" /> {error}</div>}
+      {success && <div className="mb-6 bg-green-50 border border-green-200 text-green-600 rounded-lg p-4 flex items-center"><FaCheckCircle className="mr-2" /> {success}</div>}
 
       {/* Statistics */}
-      <div className="grid grid-cols-4" style={{ marginBottom: '2rem' }}>
-        <div className="card" style={{ background: '#667eea', color: 'white' }}>
-          <h3 style={{ fontSize: '2rem' }}>{documents.length}</h3>
-          <p>Total Documents</p>
+      <div className="grid sm:grid-cols-2 grid-cols-4 gap-4 mb-6">
+        <div className="card bg-gradient-to-br from-indigo-500 to-indigo-600 text-white border-none">
+          <div className="p-3">
+            <h3 className="text-2xl font-bold mb-1">{documents.length}</h3>
+            <p className="text-indigo-100 text-xs font-medium opacity-90">Total Documents</p>
+          </div>
         </div>
-        <div className="card" style={{ background: '#43e97b', color: 'white' }}>
-          <h3 style={{ fontSize: '2rem' }}>{documents.filter(d => d.document_type === 'contract').length}</h3>
-          <p>Contracts</p>
+        <div className="card bg-gradient-to-br from-emerald-500 to-emerald-600 text-white border-none">
+          <div className="p-3">
+            <h3 className="text-2xl font-bold mb-1">{documents.filter(d => d.document_type === 'contract').length}</h3>
+            <p className="text-emerald-100 text-xs font-medium opacity-90">Contracts</p>
+          </div>
         </div>
-        <div className="card" style={{ background: '#fa709a', color: 'white' }}>
-          <h3 style={{ fontSize: '2rem' }}>{documents.filter(d => d.document_type === 'certificate').length}</h3>
-          <p>Certificates</p>
+        <div className="card bg-gradient-to-br from-pink-500 to-rose-500 text-white border-none">
+          <div className="p-3">
+            <h3 className="text-2xl font-bold mb-1">{documents.filter(d => d.document_type === 'certificate').length}</h3>
+            <p className="text-pink-100 text-xs font-medium opacity-90">Certificates</p>
+          </div>
         </div>
-        <div className="card" style={{ background: '#4facfe', color: 'white' }}>
-          <h3 style={{ fontSize: '2rem' }}>{documents.filter(d => d.expiry_date && new Date(d.expiry_date) < new Date()).length}</h3>
-          <p>Expired</p>
+        <div className="card bg-gradient-to-br from-cyan-500 to-blue-500 text-white border-none">
+          <div className="p-3">
+            <h3 className="text-2xl font-bold mb-1">{documents.filter(d => d.expiry_date && new Date(d.expiry_date) < new Date()).length}</h3>
+            <p className="text-cyan-100 text-xs font-medium opacity-90">Expired</p>
+          </div>
         </div>
       </div>
 
       {/* Filters */}
-      <div className="card" style={{ marginBottom: '1.5rem' }}>
-        <h3 style={{ marginBottom: '1rem' }}>Filters</h3>
-        <div className="grid grid-cols-3" style={{ gap: '1rem' }}>
-          <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="form-label">Employee</label>
-            <select className="form-input" value={filters.employee_id} onChange={(e) => setFilters({ ...filters, employee_id: e.target.value })}>
-              <option value="">All Employees</option>
-              {employees.map(emp => <option key={emp.employee_id} value={emp.employee_id}>{emp.first_name} {emp.last_name}</option>)}
-            </select>
-          </div>
+      <div className="card mb-6">
+        <div className="p-4 border-b border-neutral-100">
+          <h3 className="font-semibold text-neutral-800">Filters</h3>
+        </div>
+        <div className="p-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="form-group mb-0">
+              <label className="block text-xs font-bold text-neutral-500 uppercase tracking-wider mb-1">Employee</label>
+              <select className="form-input" value={filters.employee_id} onChange={(e) => setFilters({ ...filters, employee_id: e.target.value })}>
+                <option value="">All Employees</option>
+                {employees.map(emp => <option key={emp.employee_id} value={emp.employee_id}>{emp.first_name} {emp.last_name}</option>)}
+              </select>
+            </div>
 
-          <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="form-label">Department</label>
-            <select className="form-input" value={filters.department_id} onChange={(e) => setFilters({ ...filters, department_id: e.target.value })}>
-              <option value="">All Departments</option>
-              {departments.map(dept => <option key={dept.department_id} value={dept.department_id}>{dept.department_name}</option>)}
-            </select>
-          </div>
+            <div className="form-group mb-0">
+              <label className="block text-xs font-bold text-neutral-500 uppercase tracking-wider mb-1">Department</label>
+              <select className="form-input" value={filters.department_id} onChange={(e) => setFilters({ ...filters, department_id: e.target.value })}>
+                <option value="">All Departments</option>
+                {departments.map(dept => <option key={dept.department_id} value={dept.department_id}>{dept.department_name}</option>)}
+              </select>
+            </div>
 
-          <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="form-label">Document Type</label>
-            <select className="form-input" value={filters.document_type} onChange={(e) => setFilters({ ...filters, document_type: e.target.value })}>
-              <option value="">All Types</option>
-              {documentTypes.map(type => <option key={type} value={type}>{type.replace('_', ' ')}</option>)}
-            </select>
+            <div className="form-group mb-0">
+              <label className="block text-xs font-bold text-neutral-500 uppercase tracking-wider mb-1">Document Type</label>
+              <select className="form-input" value={filters.document_type} onChange={(e) => setFilters({ ...filters, document_type: e.target.value })}>
+                <option value="">All Types</option>
+                {documentTypes.map(type => <option key={type} value={type}>{type.replace('_', ' ')}</option>)}
+              </select>
+            </div>
+            <div className="flex items-end">
+              <button className="btn btn-secondary w-full" onClick={handleFilter}>Apply Filters</button>
+            </div>
           </div>
         </div>
-        <button className="btn btn-primary" style={{ marginTop: '1rem' }} onClick={handleFilter}>Apply Filters</button>
       </div>
 
-      <div className="card">
-        <table className="table">
+      <div className="card p-0">
+        <table className="data-table">
           <thead>
             <tr>
               <th>Title</th>
@@ -258,29 +282,34 @@ const Documents = () => {
               <th>Type</th>
               <th>Confidential</th>
               <th>Expiry Date</th>
-              <th>Actions</th>
+              <th className="text-right">Actions</th>
             </tr>
           </thead>
           <tbody>
             {documents.length === 0 ? (
               <tr>
-                <td colSpan="7" style={{ textAlign: 'center', padding: '2rem', color: '#6b7280' }}>
-                  No documents found.
+                <td colSpan="7" className="text-center py-12 text-neutral-500">
+                  <div className="flex flex-col items-center">
+                    <div className="p-4 bg-neutral-50 rounded-full mb-3">
+                      <FaFileAlt size={24} className="text-neutral-400" />
+                    </div>
+                    <h3 className="text-lg font-semibold text-neutral-700">No documents found</h3>
+                  </div>
                 </td>
               </tr>
             ) : (
               documents.map((doc) => (
                 <tr key={doc.document_id}>
                   <td>
-                    <strong>{doc.document_name || doc.title}</strong>
-                    <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: '0.25rem' }}>
-                      {doc.description?.substring(0, 50)}{doc.description?.length > 50 ? '...' : ''}
+                    <div className="font-semibold text-neutral-900">{doc.document_name || doc.title}</div>
+                    <div className="text-xs text-neutral-500 mt-1 max-w-xs truncate">
+                      {doc.description}
                     </div>
                   </td>
                   <td>{doc.employee_name || 'All Employees'}</td>
                   <td>{doc.department_name || 'All Departments'}</td>
                   <td>
-                    <span className="badge badge-secondary">
+                    <span className="badge badge-secondary capitalize">
                       {doc.document_type.replace('_', ' ')}
                     </span>
                   </td>
@@ -293,20 +322,24 @@ const Documents = () => {
                   </td>
                   <td>
                     {doc.expiry_date ? (
-                      <span className={new Date(doc.expiry_date) < new Date() ? 'text-danger' : ''}>
+                      <span className={new Date(doc.expiry_date) < new Date() ? 'text-red-600 font-medium' : ''}>
                         {formatDate(doc.expiry_date, getSetting('date_format'))}
                       </span>
                     ) : (
-                      'N/A'
+                      <span className="text-neutral-400">N/A</span>
                     )}
                   </td>
-                  <td>
-                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                      <a href={doc.file_url} target="_blank" rel="noopener noreferrer" className="btn btn-info" style={{ fontSize: '0.75rem' }}>
-                        View
+                  <td className="text-right">
+                    <div className="flex justify-end gap-1">
+                      <a href={doc.file_url} target="_blank" rel="noopener noreferrer" className="p-1.5 text-neutral-500 hover:text-primary-600 hover:bg-primary-50 rounded transition-colors" title="View">
+                        <FaExternalLinkAlt size={14} />
                       </a>
-                      <button className="btn btn-secondary" style={{ fontSize: '0.75rem' }} onClick={() => handleEdit(doc)}>Edit</button>
-                      <button className="btn btn-danger" style={{ fontSize: '0.75rem' }} onClick={() => handleDelete(doc.document_id)}>Delete</button>
+                      <button className="p-1.5 text-neutral-500 hover:text-primary-600 hover:bg-primary-50 rounded transition-colors" onClick={() => handleEdit(doc)} title="Edit">
+                        <FaEdit size={14} />
+                      </button>
+                      <button className="p-1.5 text-neutral-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors" onClick={() => handleDelete(doc.document_id)} title="Delete">
+                        <FaTrash size={14} />
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -318,7 +351,7 @@ const Documents = () => {
 
       {/* Pagination Controls */}
       {pagination.totalPages > 1 && (
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', marginTop: '2rem', gap: '0.5rem' }}>
+        <div className="flex justify-center items-center gap-2 mt-8">
           <button
             className="btn btn-secondary"
             onClick={() => handlePageChange(pagination.currentPage - 1)}
@@ -327,7 +360,6 @@ const Documents = () => {
             Previous
           </button>
 
-          {/* Numbered page buttons */}
           {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
             let pageNum;
             if (pagination.totalPages <= 5) {
@@ -343,9 +375,8 @@ const Documents = () => {
             return (
               <button
                 key={pageNum}
-                className={`btn ${pageNum === pagination.currentPage ? 'btn-primary' : 'btn-secondary'}`}
+                className={`btn ${pageNum === pagination.currentPage ? 'btn-primary' : 'btn-secondary'} min-w-[40px] px-3`}
                 onClick={() => handlePageChange(pageNum)}
-                style={{ minWidth: '40px' }}
               >
                 {pageNum}
               </button>
@@ -360,85 +391,97 @@ const Documents = () => {
             Next
           </button>
 
-          <span style={{ marginLeft: '1rem', color: '#6b7280' }}>
-            Page {pagination.currentPage} of {pagination.totalPages}
-            {' '}({pagination.totalItems} total documents)
+          <span className="text-sm text-neutral-500 ml-4">
+            Page {pagination.currentPage} of {pagination.totalPages} ({pagination.totalItems} total)
           </span>
         </div>
       )}
 
       {/* Upload Document Modal */}
       {showModal && (
-        <div className="modal-overlay" onClick={handleCloseModal}>
-          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '700px' }}>
-            <h2>{editingDoc ? 'Edit Document' : 'Upload Document'}</h2>
-            {error && <div className="error" style={{ marginBottom: '1rem' }}>{error}</div>}
-            <form onSubmit={handleSubmit}>
-              {(user?.role === 'admin' || user?.role === 'manager') && (
-                <>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={handleCloseModal}>
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in duration-200" onClick={(e) => e.stopPropagation()}>
+            <div className="px-6 py-4 border-b border-neutral-100 flex justify-between items-center bg-neutral-50/50">
+              <h3 className="text-lg font-bold text-neutral-800">{editingDoc ? 'Edit Document' : 'Upload Document'}</h3>
+              <button className="text-neutral-400 hover:text-neutral-600 transition-colors" onClick={handleCloseModal}>&times;</button>
+            </div>
+
+            <div className="p-6">
+              {error && <div className="mb-4 bg-red-50 border border-red-200 text-red-600 rounded-lg p-3 text-sm">{error}</div>}
+              <form onSubmit={handleSubmit}>
+                {(user?.role === 'admin' || user?.role === 'manager') && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div className="form-group">
+                      <label className="block text-sm font-medium text-neutral-700 mb-1">Employee</label>
+                      <select className="form-input w-full" value={formData.employee_id} onChange={(e) => setFormData({ ...formData, employee_id: e.target.value })}>
+                        <option value="">All Employees</option>
+                        {employees.map(emp => <option key={emp.employee_id} value={emp.employee_id}>{emp.first_name} {emp.last_name}</option>)}
+                      </select>
+                    </div>
+
+                    <div className="form-group">
+                      <label className="block text-sm font-medium text-neutral-700 mb-1">Department</label>
+                      <select className="form-input w-full" value={formData.department_id} onChange={(e) => setFormData({ ...formData, department_id: e.target.value })}>
+                        <option value="">All Departments</option>
+                        {departments.map(dept => <option key={dept.department_id} value={dept.department_id}>{dept.department_name}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                   <div className="form-group">
-                    <label className="form-label">Employee</label>
-                    <select className="form-input" value={formData.employee_id} onChange={(e) => setFormData({ ...formData, employee_id: e.target.value })}>
-                      <option value="">All Employees</option>
-                      {employees.map(emp => <option key={emp.employee_id} value={emp.employee_id}>{emp.first_name} {emp.last_name}</option>)}
+                    <label className="block text-sm font-medium text-neutral-700 mb-1">Document Type *</label>
+                    <select className="form-input w-full" value={formData.document_type} onChange={(e) => setFormData({ ...formData, document_type: e.target.value })} required>
+                      {documentTypes.map(type => <option key={type} value={type}>{type.replace('_', ' ')}</option>)}
                     </select>
                   </div>
 
                   <div className="form-group">
-                    <label className="form-label">Department</label>
-                    <select className="form-input" value={formData.department_id} onChange={(e) => setFormData({ ...formData, department_id: e.target.value })}>
-                      <option value="">All Departments</option>
-                      {departments.map(dept => <option key={dept.department_id} value={dept.department_id}>{dept.department_name}</option>)}
-                    </select>
+                    <label className="block text-sm font-medium text-neutral-700 mb-1">Expiry Date</label>
+                    <input type="date" className="form-input w-full" value={formData.expiry_date} onChange={(e) => setFormData({ ...formData, expiry_date: e.target.value })} />
                   </div>
-                </>
-              )}
+                </div>
 
-              <div className="form-group">
-                <label className="form-label">Document Type *</label>
-                <select className="form-input" value={formData.document_type} onChange={(e) => setFormData({ ...formData, document_type: e.target.value })} required>
-                  {documentTypes.map(type => <option key={type} value={type}>{type.replace('_', ' ')}</option>)}
-                </select>
-              </div>
+                <div className="form-group mb-4">
+                  <label className="block text-sm font-medium text-neutral-700 mb-1">Title *</label>
+                  <input type="text" className="form-input w-full" value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} required />
+                </div>
 
-              <div className="form-group">
-                <label className="form-label">Title *</label>
-                <input type="text" className="form-input" value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} required />
-              </div>
+                <div className="form-group mb-4">
+                  <label className="block text-sm font-medium text-neutral-700 mb-1">Description</label>
+                  <textarea className="form-input w-full" value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} rows="3" />
+                </div>
 
-              <div className="form-group">
-                <label className="form-label">Description</label>
-                <textarea className="form-input" value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} rows="3" />
-              </div>
+                <div className="form-group mb-4">
+                  <label className="block text-sm font-medium text-neutral-700 mb-1">File URL *</label>
+                  <div className="flex">
+                    <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-neutral-300 bg-neutral-50 text-neutral-500 text-sm">
+                      <FaLink />
+                    </span>
+                    <input type="url" className="form-input w-full rounded-l-none" value={formData.file_url} onChange={(e) => setFormData({ ...formData, file_url: e.target.value })} required placeholder="https://example.com/document.pdf" />
+                  </div>
+                  <p className="mt-1 text-xs text-neutral-500">Enter the full URL to the document (e.g., from Google Drive, Dropbox, or S3).</p>
+                </div>
 
-              <div className="form-group">
-                <label className="form-label">File URL *</label>
-                <input type="url" className="form-input" value={formData.file_url} onChange={(e) => setFormData({ ...formData, file_url: e.target.value })} required placeholder="https://example.com/document.pdf" />
-                <small className="form-text">Enter the full URL to the document</small>
-              </div>
+                <div className="form-group mb-4">
+                  <label className="flex items-center">
+                    <input
+                      type="checkbox"
+                      className="w-4 h-4 text-primary-600 rounded border-gray-300 focus:ring-primary-500"
+                      checked={formData.is_confidential === 'true'}
+                      onChange={(e) => setFormData({ ...formData, is_confidential: e.target.checked ? 'true' : 'false' })}
+                    />
+                    <span className="ml-2 text-sm text-neutral-700">Confidential Document</span>
+                  </label>
+                </div>
 
-              <div className="form-group">
-                <label className="form-label">Expiry Date</label>
-                <input type="date" className="form-input" value={formData.expiry_date} onChange={(e) => setFormData({ ...formData, expiry_date: e.target.value })} />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">
-                  <input
-                    type="checkbox"
-                    checked={formData.is_confidential === 'true'}
-                    onChange={(e) => setFormData({ ...formData, is_confidential: e.target.checked ? 'true' : 'false' })}
-                    style={{ marginRight: '0.5rem' }}
-                  />
-                  Confidential Document
-                </label>
-              </div>
-
-              <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
-                <button type="submit" className="btn btn-primary">{editingDoc ? 'Update' : 'Upload'}</button>
-                <button type="button" className="btn btn-secondary" onClick={handleCloseModal}>Cancel</button>
-              </div>
-            </form>
+                <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-neutral-100">
+                  <button type="button" className="btn btn-secondary" onClick={handleCloseModal}>Cancel</button>
+                  <button type="submit" className="btn btn-primary">{editingDoc ? 'Update' : 'Upload'}</button>
+                </div>
+              </form>
+            </div>
           </div>
         </div>
       )}

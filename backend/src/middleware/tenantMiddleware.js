@@ -32,6 +32,18 @@ const tenantMiddleware = async (req, res, next) => {
         });
     } catch (error) {
         console.error('Tenant middleware error:', error);
+
+        // Write to error log file for debugging
+        try {
+            const fs = require('fs');
+            const path = require('path');
+            const logPath = path.join(__dirname, '../../middleware_error.log');
+            const logMessage = `[${new Date().toISOString()}] ${error.message}\n${error.stack}\n\n`;
+            fs.appendFileSync(logPath, logMessage);
+        } catch (e) {
+            console.error('Failed to write log:', e);
+        }
+
         res.status(500).json({ error: 'Internal server error during tenant resolution' });
     }
 };

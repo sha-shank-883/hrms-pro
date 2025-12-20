@@ -12,7 +12,13 @@ import {
     FaCheck,
     FaCalendarAlt,
     FaUserTie,
-    FaSearch
+    FaSearch,
+    FaList,
+    FaBullseye,
+    FaArrowRight,
+    FaWeightHanging,
+    FaFlag,
+    FaTimes
 } from 'react-icons/fa';
 
 const Performance = () => {
@@ -25,7 +31,16 @@ const Performance = () => {
     const [loading, setLoading] = useState(true);
     const [showGoalModal, setShowGoalModal] = useState(false);
     const [editingGoal, setEditingGoal] = useState(null);
-    const [newGoal, setNewGoal] = useState({ title: '', description: '', due_date: '' });
+    const [newGoal, setNewGoal] = useState({
+        title: '',
+        description: '',
+        due_date: '',
+        category: 'General',
+        priority: 'medium',
+        weightage: 0,
+        key_results: []
+    });
+    const [newKR, setNewKR] = useState({ title: '', metric_type: 'percentage', target_value: 100 });
 
     const fetchData = async () => {
         try {
@@ -59,7 +74,15 @@ const Performance = () => {
             }
             setShowGoalModal(false);
             setEditingGoal(null);
-            setNewGoal({ title: '', description: '', due_date: '' });
+            setNewGoal({
+                title: '',
+                description: '',
+                due_date: '',
+                category: 'General',
+                priority: 'medium',
+                weightage: 0,
+                key_results: []
+            });
             fetchData();
         } catch (error) {
             console.error('Error saving goal:', error);
@@ -71,7 +94,11 @@ const Performance = () => {
         setNewGoal({
             title: goal.title,
             description: goal.description,
-            due_date: goal.due_date ? goal.due_date.split('T')[0] : ''
+            due_date: goal.due_date ? goal.due_date.split('T')[0] : '',
+            category: goal.category || 'General',
+            priority: goal.priority || 'medium',
+            weightage: goal.weightage || 0,
+            key_results: goal.key_results || []
         });
         setShowGoalModal(true);
     };
@@ -95,20 +122,44 @@ const Performance = () => {
         }
     };
 
-    if (loading) return <div className="loading">Loading...</div>;
+    const handleAddKR = () => {
+        if (!newKR.title) return;
+        setNewGoal(prev => ({
+            ...prev,
+            key_results: [...prev.key_results, { ...newKR, current_value: 0 }]
+        }));
+        setNewKR({ title: '', metric_type: 'percentage', target_value: 100 });
+    };
+
+    const handleRemoveKR = (index) => {
+        setNewGoal(prev => ({
+            ...prev,
+            key_results: prev.key_results.filter((_, i) => i !== index)
+        }));
+    };
+
+    if (loading) return <div className="flex justify-center items-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div></div>;
 
     return (
-        <div className="container" style={{ paddingBottom: '2rem' }}>
+        <div className="w-full pb-8">
             {/* Header */}
-            <div className="page-header" style={{ marginTop: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div className="page-header">
                 <div>
                     <h1 className="page-title">Performance Center</h1>
-                    <p className="page-description">Track your professional growth and achievements</p>
+                    <p className="text-neutral-600 mt-1">Track your professional growth and achievements</p>
                 </div>
                 <button
                     onClick={() => {
                         setEditingGoal(null);
-                        setNewGoal({ title: '', description: '', due_date: '' });
+                        setNewGoal({
+                            title: '',
+                            description: '',
+                            due_date: '',
+                            category: 'General',
+                            priority: 'medium',
+                            weightage: 0,
+                            key_results: []
+                        });
                         setShowGoalModal(true);
                     }}
                     className="btn btn-primary"
@@ -118,162 +169,182 @@ const Performance = () => {
             </div>
 
             {/* Stats Overview Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3" style={{ marginBottom: '2rem' }}>
-                <div className="stat-card">
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                        <div style={{ background: '#e0e7ff', padding: '0.75rem', borderRadius: '0.5rem', color: '#4f46e5' }}>
+            <div className="grid grid-cols-4 gap-6 mb-8">
+                <div className="card">
+                    <div className="flex justify-between items-center mb-4">
+                        <div className="p-3 rounded-lg bg-indigo-50 text-indigo-600">
                             <FaTrophy size={20} />
                         </div>
-                        <span style={{ fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase', color: '#9ca3af' }}>Total Goals</span>
+                        <span className="text-xs font-bold uppercase text-neutral-400 tracking-wider">Total Goals</span>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'flex-end', gap: '0.5rem' }}>
-                        <h3 style={{ fontSize: '1.875rem', fontWeight: 'bold', color: '#111827', lineHeight: 1 }}>{goals.length}</h3>
-                        <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>active goals</span>
+                    <div className="flex items-end gap-2">
+                        <h3 className="text-3xl font-bold text-neutral-900 leading-none">{goals.length}</h3>
+                        <span className="text-sm text-neutral-500 mb-1">active goals</span>
                     </div>
                 </div>
-                <div className="stat-card">
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                        <div style={{ background: '#f3e8ff', padding: '0.75rem', borderRadius: '0.5rem', color: '#9333ea' }}>
+                <div className="card">
+                    <div className="flex justify-between items-center mb-4">
+                        <div className="p-3 rounded-lg bg-purple-50 text-purple-600">
                             <FaChartLine size={20} />
                         </div>
-                        <span style={{ fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase', color: '#9ca3af' }}>Avg. Progress</span>
+                        <span className="text-xs font-bold uppercase text-neutral-400 tracking-wider">Avg. Progress</span>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'flex-end', gap: '0.5rem' }}>
-                        <h3 style={{ fontSize: '1.875rem', fontWeight: 'bold', color: '#111827', lineHeight: 1 }}>
+                    <div className="flex items-end gap-2">
+                        <h3 className="text-3xl font-bold text-neutral-900 leading-none">
                             {goals.length > 0 ? Math.round(goals.reduce((acc, g) => acc + g.progress, 0) / goals.length) : 0}%
                         </h3>
-                        <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>completion rate</span>
+                        <span className="text-sm text-neutral-500 mb-1">completion rate</span>
                     </div>
                 </div>
-                <div className="stat-card">
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                        <div style={{ background: '#d1fae5', padding: '0.75rem', borderRadius: '0.5rem', color: '#059669' }}>
+                <div className="card">
+                    <div className="flex justify-between items-center mb-4">
+                        <div className="p-3 rounded-lg bg-emerald-50 text-emerald-600">
                             <FaClipboardList size={20} />
                         </div>
-                        <span style={{ fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase', color: '#9ca3af' }}>Reviews</span>
+                        <span className="text-xs font-bold uppercase text-neutral-400 tracking-wider">Reviews</span>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'flex-end', gap: '0.5rem' }}>
-                        <h3 style={{ fontSize: '1.875rem', fontWeight: 'bold', color: '#111827', lineHeight: 1 }}>{reviews.length}</h3>
-                        <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>completed cycles</span>
+                    <div className="flex items-end gap-2">
+                        <h3 className="text-3xl font-bold text-neutral-900 leading-none">{reviews.length}</h3>
+                        <span className="text-sm text-neutral-500 mb-1">completed cycles</span>
                     </div>
                 </div>
             </div>
 
             {/* Tabs */}
-            <div style={{ borderBottom: '1px solid #e5e7eb', marginBottom: '1.5rem' }}>
-                <div style={{ display: 'flex', gap: '2rem' }}>
-                    <button
-                        onClick={() => setActiveTab('goals')}
-                        style={{
-                            paddingBottom: '1rem',
-                            fontSize: '0.875rem',
-                            fontWeight: 'bold',
-                            color: activeTab === 'goals' ? '#4f46e5' : '#9ca3af',
-                            borderBottom: activeTab === 'goals' ? '2px solid #4f46e5' : 'none',
-                            background: 'none',
-                            border: 'none',
-                            borderBottom: activeTab === 'goals' ? '2px solid #4f46e5' : '2px solid transparent',
-                            cursor: 'pointer',
-                            transition: 'all 0.2s'
-                        }}
-                    >
-                        My Goals
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('reviews')}
-                        style={{
-                            paddingBottom: '1rem',
-                            fontSize: '0.875rem',
-                            fontWeight: 'bold',
-                            color: activeTab === 'reviews' ? '#4f46e5' : '#9ca3af',
-                            borderBottom: activeTab === 'reviews' ? '2px solid #4f46e5' : 'none',
-                            background: 'none',
-                            border: 'none',
-                            borderBottom: activeTab === 'reviews' ? '2px solid #4f46e5' : '2px solid transparent',
-                            cursor: 'pointer',
-                            transition: 'all 0.2s'
-                        }}
-                    >
-                        Performance Reviews
-                    </button>
-                </div>
+            <div className="flex border-b border-neutral-200 mb-6">
+                <button
+                    className={`px-4 py-2 font-medium text-sm transition-colors relative ${activeTab === 'goals' ? 'text-primary-600' : 'text-neutral-500 hover:text-neutral-700'}`}
+                    onClick={() => setActiveTab('goals')}
+                >
+                    <div className="flex items-center gap-2">
+                        <FaBullseye /> My Goals
+                    </div>
+                    {activeTab === 'goals' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-primary-600"></div>}
+                </button>
+                <button
+                    className={`px-4 py-2 font-medium text-sm transition-colors relative ${activeTab === 'reviews' ? 'text-primary-600' : 'text-neutral-500 hover:text-neutral-700'}`}
+                    onClick={() => setActiveTab('reviews')}
+                >
+                    <div className="flex items-center gap-2">
+                        <FaClipboardList /> Performance Reviews
+                    </div>
+                    {activeTab === 'reviews' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-primary-600"></div>}
+                </button>
             </div>
 
             {/* Content Area */}
             <div>
                 {/* Goals Content */}
                 {activeTab === 'goals' && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-                        {goals.map((goal) => (
-                            <div key={goal.goal_id} className="card" style={{ position: 'relative' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
-                                    <div style={{ flex: 1, paddingRight: '1rem' }}>
-                                        <h3 style={{ fontSize: '1.125rem', fontWeight: 'bold', color: '#111827', marginBottom: '0.5rem' }}>{goal.title}</h3>
-                                        <span className={`badge ${goal.status === 'completed' ? 'badge-success' : 'badge-warning'}`}>
-                                            {goal.status === 'completed' && <FaCheck size={10} style={{ marginRight: '4px' }} />}
-                                            {goal.status.charAt(0).toUpperCase() + goal.status.slice(1)}
-                                        </span>
-                                    </div>
-                                    <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                        <button onClick={() => handleEditGoal(goal)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af' }}>
-                                            <FaEdit />
-                                        </button>
-                                        <button onClick={() => handleDeleteGoal(goal.goal_id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af' }}>
-                                            <FaTrash />
-                                        </button>
-                                    </div>
+                    <div className="grid sm:grid-cols-1 grid-cols-4 gap-6">
+                        {goals.length === 0 ? (
+                            <div className="col-span-full card p-12 flex flex-col items-center justify-center text-center border-dashed border-2 border-neutral-200 shadow-none">
+                                <div className="w-16 h-16 bg-neutral-50 rounded-full flex items-center justify-center mb-4 text-neutral-300">
+                                    <FaTrophy size={32} />
                                 </div>
-
-                                <p style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: '1.5rem', height: '2.5rem', overflow: 'hidden', textOverflow: 'ellipsis' }}>{goal.description}</p>
-
-                                <div>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', marginBottom: '0.5rem' }}>
-                                        <span>Progress</span>
-                                        <span style={{ color: '#4f46e5' }}>{goal.progress}%</span>
-                                    </div>
-                                    <div style={{ width: '100%', background: '#f3f4f6', borderRadius: '9999px', height: '0.5rem', overflow: 'hidden', marginBottom: '1rem' }}>
-                                        <div
-                                            style={{ width: `${goal.progress}%`, background: 'linear-gradient(to right, #6366f1, #a855f7)', height: '100%', borderRadius: '9999px', transition: 'width 1s ease-out' }}
-                                        ></div>
-                                    </div>
-
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '1rem', borderTop: '1px solid #f3f4f6' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', fontSize: '0.75rem', color: '#9ca3af', fontWeight: '500' }}>
-                                            <FaCalendarAlt style={{ marginRight: '0.375rem' }} />
-                                            {new Date(goal.due_date).toLocaleDateString()}
-                                        </div>
-                                        <button
-                                            onClick={() => handleUpdateProgress(goal.goal_id, Math.min(100, goal.progress + 10))}
-                                            style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#4f46e5', background: '#e0e7ff', padding: '0.375rem 0.75rem', borderRadius: '0.5rem', border: 'none', cursor: 'pointer' }}
-                                        >
-                                            +10%
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
-                        {goals.length === 0 && (
-                            <div className="empty-state" style={{ gridColumn: '1 / -1', background: 'white', borderRadius: '1rem', border: '2px dashed #e5e7eb' }}>
-                                <div className="empty-state-icon">
-                                    <FaTrophy />
-                                </div>
-                                <h3 className="empty-state-title">No goals set yet</h3>
-                                <p className="empty-state-description">Set clear goals to track your professional development and achieve new milestones.</p>
+                                <h3 className="text-lg font-bold text-neutral-800 mb-2">No goals set yet</h3>
+                                <p className="text-neutral-500 max-w-md mb-6">Set clear goals to track your professional development and achieve new milestones.</p>
                                 <button
                                     onClick={() => setShowGoalModal(true)}
                                     className="btn btn-primary"
                                 >
-                                    Create Your First Goal
+                                    <FaPlus /> Create Your First Goal
                                 </button>
                             </div>
+                        ) : (
+                            goals.map((goal) => (
+                                <div key={goal.goal_id} className="card flex flex-col h-full hover:shadow-md transition-shadow">
+                                    <div className="flex justify-between items-start mb-4">
+                                        <div className="flex-1 pr-4">
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <span className={`text-xs px-2 py-0.5 rounded font-bold uppercase tracking-wider border
+                                                    ${goal.priority === 'critical' ? 'bg-red-50 text-red-700 border-red-100' :
+                                                        goal.priority === 'high' ? 'bg-orange-50 text-orange-700 border-orange-100' :
+                                                            goal.priority === 'low' ? 'bg-neutral-50 text-neutral-600 border-neutral-200' :
+                                                                'bg-blue-50 text-blue-700 border-blue-100'}`}>
+                                                    {goal.priority || 'Medium'}
+                                                </span>
+                                                <span className="text-xs text-neutral-500 font-medium px-2 py-0.5 bg-neutral-50 rounded border border-neutral-100">
+                                                    {goal.category || 'General'}
+                                                </span>
+                                            </div>
+                                            <h3 className="text-lg font-bold text-neutral-900 mb-1 leading-tight">{goal.title}</h3>
+                                            {/* Status Badge */}
+                                            <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full ${goal.status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
+                                                }`}>
+                                                {goal.status === 'completed' && <FaCheck size={10} />}
+                                                <span className="capitalize">{goal.status}</span>
+                                            </span>
+                                        </div>
+                                        <div className="flex gap-1">
+                                            <button onClick={() => handleEditGoal(goal)} className="p-1.5 text-neutral-400 hover:text-primary-600 transition-colors rounded hover:bg-neutral-50">
+                                                <FaEdit size={14} />
+                                            </button>
+                                            <button onClick={() => handleDeleteGoal(goal.goal_id)} className="p-1.5 text-neutral-400 hover:text-danger transition-colors rounded hover:bg-neutral-50">
+                                                <FaTrash size={14} />
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <p className="text-sm text-neutral-600 mb-4 line-clamp-2 min-h-[2.5rem] flex-grow">{goal.description}</p>
+
+                                    {/* Key Results Section (Mini) */}
+                                    {goal.key_results && goal.key_results.length > 0 && (
+                                        <div className="mb-4 bg-neutral-50 p-3 rounded-lg border border-neutral-100">
+                                            <h4 className="text-xs font-bold text-neutral-500 uppercase mb-2 flex items-center gap-1">
+                                                <FaBullseye size={10} /> Key Results
+                                            </h4>
+                                            <div className="space-y-2">
+                                                {goal.key_results.slice(0, 3).map((kr, idx) => (
+                                                    <div key={idx} className="flex justify-between items-center text-sm">
+                                                        <span className="truncate flex-1 pr-2 text-neutral-700 text-xs" title={kr.title}>• {kr.title}</span>
+                                                        <span className="text-primary-600 font-bold text-xs whitespace-nowrap bg-white px-1.5 py-0.5 rounded border border-neutral-200">
+                                                            {kr.current_value} / {kr.target_value} {kr.metric_type === 'percentage' ? '%' : ''}
+                                                        </span>
+                                                    </div>
+                                                ))}
+                                                {goal.key_results.length > 3 && (
+                                                    <div className="text-xs text-center text-neutral-400 italic">
+                                                        + {goal.key_results.length - 3} more...
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    <div className="mt-auto pt-4 border-t border-neutral-100">
+                                        <div className="flex justify-between text-xs font-semibold text-neutral-500 mb-2">
+                                            <span>Overall Progress</span>
+                                            <span className="text-primary-600">{goal.progress}%</span>
+                                        </div>
+                                        <div className="w-full bg-neutral-100 rounded-full h-2 mb-4 overflow-hidden">
+                                            <div
+                                                className="h-full rounded-full transition-all duration-500 bg-gradient-to-r from-primary-500 to-primary-600"
+                                                style={{ width: `${goal.progress}%` }}
+                                            ></div>
+                                        </div>
+
+                                        <div className="flex justify-between items-center">
+                                            <div className="flex items-center text-xs text-neutral-400 font-medium">
+                                                <FaCalendarAlt className="mr-1.5" />
+                                                {new Date(goal.due_date).toLocaleDateString()}
+                                            </div>
+                                            <div className="flex items-center text-xs text-neutral-400 font-medium" title="Weightage">
+                                                <FaWeightHanging className="mr-1.5" />
+                                                {goal.weightage || 0}%
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))
                         )}
                     </div>
                 )}
 
                 {/* Reviews Content */}
                 {activeTab === 'reviews' && (
-                    <div className="card" style={{ padding: 0, overflowX: 'auto' }}>
-                        <table className="table">
+                    <div className="card p-0">
+                        <table className="data-table">
                             <thead>
                                 <tr>
                                     <th>Cycle</th>
@@ -281,59 +352,55 @@ const Performance = () => {
                                     <th>Reviewer</th>
                                     <th>Status</th>
                                     <th>Rating</th>
-                                    <th style={{ textAlign: 'right' }}>Action</th>
+                                    <th className="text-right">Action</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {reviews.map((review) => (
-                                    <tr key={review.review_id}>
-                                        <td>
-                                            <div style={{ fontWeight: 'bold', color: '#111827' }}>{review.cycle_title}</div>
-                                        </td>
-                                        <td>
-                                            <div style={{ display: 'flex', alignItems: 'center' }}>
-                                                <div style={{ height: '2rem', width: '2rem', borderRadius: '50%', background: '#e0e7ff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#4f46e5', fontWeight: 'bold', fontSize: '0.75rem', marginRight: '0.75rem' }}>
-                                                    {review.employee_name.charAt(0)}
-                                                </div>
-                                                <div style={{ fontSize: '0.875rem', fontWeight: '500', color: '#111827' }}>{review.employee_name}</div>
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>{review.reviewer_name || 'Pending Assignment'}</div>
-                                        </td>
-                                        <td>
-                                            <span className={`badge ${review.status === 'completed' ? 'badge-success' :
-                                                review.status === 'scheduled' ? 'badge-info' : 'badge-secondary'
-                                                }`}>
-                                                {review.status.replace(/_/g, ' ')}
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <div style={{ fontSize: '0.875rem', fontWeight: 'bold', color: '#111827' }}>{review.final_rating || '-'}</div>
-                                        </td>
-                                        <td style={{ textAlign: 'right' }}>
-                                            <button
-                                                onClick={() => navigate(`/performance/review/${review.review_id}`)}
-                                                className="btn btn-outline"
-                                                style={{ padding: '0.25rem 0.75rem', fontSize: '0.75rem' }}
-                                            >
-                                                View Details
-                                            </button>
-                                        </td>
-                                    </tr>
-                                ))}
-                                {reviews.length === 0 && (
+                                {reviews.length === 0 ? (
                                     <tr>
-                                        <td colSpan="6" style={{ padding: '6rem 1.5rem', textAlign: 'center' }}>
-                                            <div className="empty-state">
-                                                <div className="empty-state-icon">
-                                                    <FaClipboardList />
-                                                </div>
-                                                <h3 className="empty-state-title">No reviews found</h3>
-                                                <p className="empty-state-description">Performance reviews will appear here once scheduled.</p>
+                                        <td colSpan="6" className="text-center py-12 text-neutral-500">
+                                            <div className="flex flex-col items-center">
+                                                <FaClipboardList size={32} className="text-neutral-300 mb-2" />
+                                                <p>No performance reviews found.</p>
                                             </div>
                                         </td>
                                     </tr>
+                                ) : (
+                                    reviews.map((review) => (
+                                        <tr key={review.review_id} className="group hover:bg-neutral-50">
+                                            <td className="font-semibold text-neutral-900">{review.cycle_title}</td>
+                                            <td>
+                                                <div className="flex items-center">
+                                                    <div className="h-8 w-8 rounded-full bg-primary-50 flex items-center justify-center text-primary-700 font-bold text-xs mr-3">
+                                                        {review.employee_name.charAt(0)}
+                                                    </div>
+                                                    <span className="text-sm font-medium text-neutral-900">{review.employee_name}</span>
+                                                </div>
+                                            </td>
+                                            <td className="text-neutral-500 text-sm">
+                                                {review.reviewer_name || <span className="italic text-neutral-400">Pending Assignment</span>}
+                                            </td>
+                                            <td>
+                                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${review.status === 'completed' ? 'bg-green-100 text-green-800' :
+                                                    review.status === 'scheduled' ? 'bg-blue-100 text-blue-800' :
+                                                        'bg-neutral-100 text-neutral-800'
+                                                    }`}>
+                                                    {review.status.replace(/_/g, ' ')}
+                                                </span>
+                                            </td>
+                                            <td className="font-bold text-neutral-900">
+                                                {review.final_rating || '-'}
+                                            </td>
+                                            <td className="text-right">
+                                                <button
+                                                    onClick={() => navigate(`/performance/review/${review.review_id}`)}
+                                                    className="btn btn-secondary text-xs py-1.5"
+                                                >
+                                                    View Details
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))
                                 )}
                             </tbody>
                         </table>
@@ -342,69 +409,159 @@ const Performance = () => {
             </div>
 
             {/* Create/Edit Goal Modal */}
-            {showGoalModal && (
-                <div className="modal-overlay">
-                    <div className="modal" style={{ maxWidth: '500px', width: '100%' }}>
-                        <div style={{ marginBottom: '1.5rem' }}>
-                            <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#111827' }}>{editingGoal ? 'Edit Goal' : 'Set New Goal'}</h2>
-                            <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>Define your objectives and success criteria</p>
+            {
+                showGoalModal && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-neutral-900/50 backdrop-blur-sm" onClick={() => setShowGoalModal(false)}>
+                        <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in duration-200" onClick={(e) => e.stopPropagation()}>
+                            <div className="px-6 py-4 border-b border-neutral-100 flex justify-between items-center bg-neutral-50/50">
+                                <div>
+                                    <h2 className="text-lg font-bold text-neutral-800">{editingGoal ? 'Edit Goal' : 'Set New Goal'}</h2>
+                                    <p className="text-sm text-neutral-500">Define your objectives and success criteria</p>
+                                </div>
+                                <button onClick={() => setShowGoalModal(false)} className="text-neutral-400 hover:text-neutral-600 transition-colors">
+                                    <FaTimes size={18} />
+                                </button>
+                            </div>
+
+                            <form onSubmit={handleCreateOrUpdateGoal} className="p-6">
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-neutral-700 mb-1">Goal Title</label>
+                                        <input
+                                            type="text"
+                                            required
+                                            className="w-full p-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-100 focus:border-primary-500 outline-none transition-all"
+                                            placeholder="e.g., Complete Advanced React Course"
+                                            value={newGoal.title}
+                                            onChange={(e) => setNewGoal({ ...newGoal, title: e.target.value })}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-neutral-700 mb-1">Description</label>
+                                        <textarea
+                                            className="w-full p-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-100 focus:border-primary-500 outline-none transition-all"
+                                            rows="3"
+                                            placeholder="Describe the details and success criteria..."
+                                            value={newGoal.description}
+                                            onChange={(e) => setNewGoal({ ...newGoal, description: e.target.value })}
+                                        ></textarea>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-neutral-700 mb-1">Due Date</label>
+                                            <input
+                                                type="date"
+                                                required
+                                                className="w-full p-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-100 focus:border-primary-500 outline-none"
+                                                value={newGoal.due_date}
+                                                onChange={(e) => setNewGoal({ ...newGoal, due_date: e.target.value })}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-neutral-700 mb-1">Category</label>
+                                            <select
+                                                className="w-full p-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-100 focus:border-primary-500 outline-none bg-white"
+                                                value={newGoal.category}
+                                                onChange={e => setNewGoal({ ...newGoal, category: e.target.value })}
+                                            >
+                                                <option value="General">General</option>
+                                                <option value="Development">Development</option>
+                                                <option value="Project">Project</option>
+                                                <option value="Process">Process</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-neutral-700 mb-1">Priority</label>
+                                            <select
+                                                className="w-full p-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-100 focus:border-primary-500 outline-none bg-white"
+                                                value={newGoal.priority}
+                                                onChange={e => setNewGoal({ ...newGoal, priority: e.target.value })}
+                                            >
+                                                <option value="low">Low</option>
+                                                <option value="medium">Medium</option>
+                                                <option value="high">High</option>
+                                                <option value="critical">Critical</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-neutral-700 mb-1">Weightage (%)</label>
+                                            <input
+                                                type="number"
+                                                className="w-full p-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-100 focus:border-primary-500 outline-none"
+                                                value={newGoal.weightage}
+                                                onChange={e => setNewGoal({ ...newGoal, weightage: e.target.value })}
+                                                min="0" max="100"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Key Results Input */}
+                                    <div className="mt-4 p-4 bg-neutral-50 rounded-lg border border-neutral-100">
+                                        <h4 className="text-sm font-bold text-neutral-700 mb-3 flex items-center gap-2">
+                                            <FaBullseye className="text-primary-600" /> Key Results
+                                        </h4>
+
+                                        <div className="flex gap-2 mb-3 items-end">
+                                            <div className="flex-1">
+                                                <input
+                                                    type="text"
+                                                    className="w-full p-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-100 focus:border-primary-500 outline-none"
+                                                    placeholder="Key result title..."
+                                                    value={newKR.title}
+                                                    onChange={e => setNewKR({ ...newKR, title: e.target.value })}
+                                                />
+                                            </div>
+                                            <div className="w-24">
+                                                <input
+                                                    type="number"
+                                                    className="w-full p-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-100 focus:border-primary-500 outline-none"
+                                                    placeholder="Target"
+                                                    value={newKR.target_value}
+                                                    onChange={e => setNewKR({ ...newKR, target_value: e.target.value })}
+                                                />
+                                            </div>
+                                            <button type="button" onClick={handleAddKR} className="px-3 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors">
+                                                <FaPlus />
+                                            </button>
+                                        </div>
+
+                                        <div className="space-y-2 max-h-40 overflow-y-auto pr-1 custom-scrollbar">
+                                            {newGoal.key_results && newGoal.key_results.map((kr, idx) => (
+                                                <div key={idx} className="flex justify-between items-center bg-white p-2 rounded border border-neutral-200 text-sm">
+                                                    <span className="font-medium text-neutral-700">{kr.title}</span>
+                                                    <div className="flex items-center gap-3">
+                                                        <span className="text-xs text-neutral-500 font-mono bg-neutral-50 px-2 py-0.5 rounded">Target: {kr.target_value}</span>
+                                                        <button type="button" onClick={() => handleRemoveKR(idx)} className="text-neutral-400 hover:text-red-500 transition-colors">
+                                                            <FaTimes />
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="flex justify-end gap-3 pt-6 border-t border-neutral-100 mt-6">
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowGoalModal(false)}
+                                        className="btn btn-ghost"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        className="btn btn-primary"
+                                    >
+                                        {editingGoal ? 'Update Goal' : 'Create Goal'}
+                                    </button>
+                                </div>
+                            </form>
                         </div>
-
-                        <form onSubmit={handleCreateOrUpdateGoal}>
-                            <div className="form-group">
-                                <label className="form-label">Goal Title</label>
-                                <input
-                                    type="text"
-                                    required
-                                    className="form-input"
-                                    placeholder="e.g., Complete Advanced React Course"
-                                    value={newGoal.title}
-                                    onChange={(e) => setNewGoal({ ...newGoal, title: e.target.value })}
-                                />
-                            </div>
-                            <div className="form-group">
-                                <label className="form-label">Description</label>
-                                <textarea
-                                    className="form-input"
-                                    rows="4"
-                                    placeholder="Describe the details and success criteria..."
-                                    value={newGoal.description}
-                                    onChange={(e) => setNewGoal({ ...newGoal, description: e.target.value })}
-                                    style={{ resize: 'none' }}
-                                ></textarea>
-                            </div>
-                            <div className="form-group">
-                                <label className="form-label">Due Date</label>
-                                <input
-                                    type="date"
-                                    required
-                                    className="form-input"
-                                    value={newGoal.due_date}
-                                    onChange={(e) => setNewGoal({ ...newGoal, due_date: e.target.value })}
-                                />
-                            </div>
-
-                            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '2rem', paddingTop: '1.5rem', borderTop: '1px solid #e5e7eb' }}>
-                                <button
-                                    type="button"
-                                    onClick={() => setShowGoalModal(false)}
-                                    className="btn btn-secondary"
-                                    style={{ background: 'white', border: '1px solid #e5e7eb', color: '#374151' }}
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    type="submit"
-                                    className="btn btn-primary"
-                                >
-                                    {editingGoal ? 'Update Goal' : 'Create Goal'}
-                                </button>
-                            </div>
-                        </form>
                     </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+        </div >
     );
 };
 

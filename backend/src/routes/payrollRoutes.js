@@ -28,4 +28,9 @@ router.delete('/:id', authenticateToken, authorizeRole('admin'), payrollControll
 router.post('/generate', authenticateToken, authorizeRole('admin', 'manager'), payrollController.generateAutomaticPayroll);
 router.post('/generate-bulk', authenticateToken, authorizeRole('admin', 'manager'), payrollController.generateBulkPayroll);
 
+// Tax Declaration Routes
+router.post('/tax-declarations', authenticateToken, payrollController.submitTaxDeclaration);
+router.get('/tax-declarations', authenticateToken, payrollController.getTaxDeclarations);
+router.put('/tax-declarations/:id', authenticateToken, authorizeRole('admin', 'manager'), payrollController.updateTaxDeclarationStatus);
+
 module.exports = router;

@@ -28,6 +28,7 @@ const chatRoutes = require('./routes/chatRoutes');
 const reportRoutes = require('./routes/reportRoutes');
 const settingsRoutes = require('./routes/settingsRoutes');
 const uploadRoutes = require('./routes/uploadRoutes');
+const emailTemplateRoutes = require('./routes/emailTemplateRoutes');
 const performanceRoutes = require('./routes/performanceRoutes');
 const tenantRoutes = require('./routes/tenantRoutes');
 
@@ -65,8 +66,17 @@ const limiter = rateLimit({
   }
 });
 
+// Middleware to attach io to req
+app.use((req, res, next) => {
+  req.io = io;
+  next();
+});
+
 // Middleware
-app.use(helmet()); // Security headers
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+  crossOriginEmbedderPolicy: false
+})); // Security headers
 app.use(compression()); // Compress responses
 app.use(cors({
   origin: function (origin, callback) {
@@ -200,6 +210,8 @@ app.use('/api/performance', performanceRoutes);
 app.use('/api/assets', require('./routes/assetRoutes'));
 app.use('/api/audit-logs', require('./routes/auditRoutes'));
 app.use('/api/tenants', tenantRoutes);
+app.use('/api/holidays', require('./routes/holidayRoutes'));
+app.use('/api/email-templates', emailTemplateRoutes);
 
 const connectedUsers = new Map();
 
@@ -212,6 +224,7 @@ io.on('connection', (socket) => {
   // Get tenant ID from handshake
   const tenantId = socket.handshake.query.tenantId || 'tenant_default';
   socket.tenantId = tenantId;
+  socket.join(tenantId); // Join tenant-specific room
   console.log(`New client connected: ${socket.id} (Tenant: ${tenantId})`);
 
   // User joins with their user ID

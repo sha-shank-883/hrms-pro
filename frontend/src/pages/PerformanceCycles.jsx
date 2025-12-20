@@ -54,7 +54,7 @@ const PerformanceCycles = () => {
                 </button>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid grid-cols-4 gap-4">
                 {cycles.map((cycle) => (
                     <div key={cycle.cycle_id} className="bg-white p-4 rounded-lg shadow border border-gray-100">
                         <div className="flex justify-between items-start mb-2">
@@ -101,7 +101,7 @@ const PerformanceCycles = () => {
                                     onChange={(e) => setNewCycle({ ...newCycle, title: e.target.value })}
                                 />
                             </div>
-                            <div className="grid grid-cols-2 gap-4 mb-6">
+                            <div className="grid grid-cols-4 gap-4 mb-6">
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
                                     <input

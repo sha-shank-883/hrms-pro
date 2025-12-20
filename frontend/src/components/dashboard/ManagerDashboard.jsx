@@ -45,44 +45,44 @@ const ManagerDashboard = () => {
     };
 
     return (
-        <div className="container">
-            {/* Header */}
-            <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1.5rem' }}>
+        <div className="page-container max-w-none mx-0 px-0 md:px-4 lg:px-6">
+            {/* Header - More Compact */}
+            <div className="page-header pb-3" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
-                    <h1 className="page-title">Manager Dashboard</h1>
-                    <p className="page-description">Team overview and management</p>
+                    <h1 className="page-title text-xl">Manager Dashboard</h1>
+                    <p className="page-subtitle text-xs">Team overview and management</p>
                 </div>
                 <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '1.125rem', fontWeight: '600', color: '#1f2937' }}>{formatTime(currentTime)}</div>
+                    <div style={{ fontSize: '0.875rem', fontWeight: '600', color: '#1f2937' }}>{formatTime(currentTime)}</div>
                     <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>{formatDate(currentTime, getSetting('date_format'))}</div>
                 </div>
             </div>
 
-            {/* Team Stats */}
-            <div className="grid grid-cols-3" style={{ marginBottom: '1.5rem', gap: '1rem' }}>
+            {/* Team Stats - More Compact */}
+            <div className="grid grid-cols-4 gap-4 mb-4">
                 <div className="card" style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white' }}>
-                    <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}><FaUsers /></div>
-                    <h3 style={{ fontSize: '1.875rem', marginBottom: '0.25rem', fontWeight: '700' }}>{stats?.employees?.active || 0}</h3>
+                    <div style={{ fontSize: '1.5rem', marginBottom: '0.25rem' }}><FaUsers /></div>
+                    <h3 style={{ fontSize: '1.5rem', marginBottom: '0.1rem', fontWeight: '700' }}>{stats?.employees?.active || 0}</h3>
                     <p style={{ fontSize: '0.9375rem', fontWeight: '500', opacity: 0.95 }}>Team Members</p>
                 </div>
 
                 <div className="card" style={{ background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)', color: 'white' }}>
-                    <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}><FaClock /></div>
-                    <h3 style={{ fontSize: '1.875rem', marginBottom: '0.25rem', fontWeight: '700' }}>{stats?.attendance?.present || 0}</h3>
+                    <div style={{ fontSize: '1.5rem', marginBottom: '0.25rem' }}><FaClock /></div>
+                    <h3 style={{ fontSize: '1.5rem', marginBottom: '0.1rem', fontWeight: '700' }}>{stats?.attendance?.present || 0}</h3>
                     <p style={{ fontSize: '0.9375rem', fontWeight: '500', opacity: 0.95 }}>Present Today</p>
                 </div>
 
                 <div className="card" style={{ background: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)', color: 'white' }}>
-                    <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}><FaCalendarAlt /></div>
-                    <h3 style={{ fontSize: '1.875rem', marginBottom: '0.25rem', fontWeight: '700' }}>{stats?.leaves?.pending || 0}</h3>
+                    <div style={{ fontSize: '1.5rem', marginBottom: '0.25rem' }}><FaCalendarAlt /></div>
+                    <h3 style={{ fontSize: '1.5rem', marginBottom: '0.1rem', fontWeight: '700' }}>{stats?.leaves?.pending || 0}</h3>
                     <p style={{ fontSize: '0.9375rem', fontWeight: '500', opacity: 0.95 }}>Pending Leave Requests</p>
                 </div>
             </div>
 
-            {/* Quick Actions */}
-            <div className="card">
-                <h3 style={{ marginBottom: '1rem' }}>Team Management</h3>
-                <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+            {/* Quick Actions - More Compact */}
+            <div className="card p-4">
+                <h3 className="section-title mb-3 text-sm">Team Management</h3>
+                <div className="flex gap-3 flex-wrap">
                     <button className="btn btn-primary" onClick={() => navigate('/leaves')}>
                         <FaUserCheck /> Approve Leaves
                     </button>

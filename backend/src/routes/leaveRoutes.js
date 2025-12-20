@@ -20,6 +20,11 @@ const leaveValidation = [
 router.get('/balance/:employee_id', authenticateToken, authorizeRole('admin', 'manager', 'employee'), leaveController.getLeaveBalance);
 router.get('/balance', authenticateToken, authorizeRole('admin', 'manager'), leaveController.getAllLeaveBalances);
 
+// Comp-off routes (must be before :id routes)
+router.post('/comp-off', authenticateToken, leaveController.requestCompOff);
+router.put('/comp-off/:id', authenticateToken, authorizeRole('admin', 'manager'), leaveController.updateCompOffStatus);
+router.get('/comp-off', authenticateToken, leaveController.getCompOffRequests);
+
 // Routes
 router.get('/', authenticateToken, authorizeRole('admin', 'manager', 'employee'), leaveController.getAllLeaveRequests);
 router.get('/statistics', authenticateToken, authorizeRole('admin', 'manager', 'employee'), leaveController.getLeaveStatistics);

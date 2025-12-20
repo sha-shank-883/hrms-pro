@@ -13,6 +13,7 @@ router.get('/goals', performanceController.getGoals);
 router.post('/goals', performanceController.createGoal);
 router.put('/goals/:id', performanceController.updateGoal);
 router.delete('/goals/:id', performanceController.deleteGoal);
+router.put('/key-results/:id', performanceController.updateKeyResult);
 
 // --- Cycle Routes ---
 router.get('/cycles', performanceController.getCycles);

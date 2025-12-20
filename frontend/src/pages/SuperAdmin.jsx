@@ -6,7 +6,9 @@ import {
     PlusIcon,
     MagnifyingGlassIcon,
     CheckCircleIcon,
-    XCircleIcon
+    XCircleIcon,
+    ShieldCheckIcon,
+    ExclamationTriangleIcon
 } from '@heroicons/react/24/outline';
 
 const SuperAdmin = () => {
@@ -131,116 +133,119 @@ const SuperAdmin = () => {
     };
 
     return (
-        <div>
-            <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div className="w-full pb-8">
+            <div className="page-header">
                 <div>
                     <h1 className="page-title">SaaS Super Admin</h1>
-                    <p className="page-description">Manage tenants and subscriptions</p>
+                    <p className="mt-1 text-neutral-600">Manage tenants and subscriptions</p>
                 </div>
                 <button
                     onClick={() => setShowModal(true)}
                     className="btn btn-primary"
                 >
-                    <PlusIcon className="w-5 h-5" style={{ width: '1.25rem', height: '1.25rem' }} />
+                    <PlusIcon className="w-5 h-5 mr-2" />
                     Create Tenant
                 </button>
             </div>
 
             {/* Stats Cards */}
-            <div className="grid grid-cols-3" style={{ marginBottom: '2rem' }}>
-                <div className="stat-card">
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div className="card p-4">
+                    <div className="flex items-center justify-between">
                         <div>
-                            <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', fontWeight: '500' }}>Total Tenants</p>
-                            <p style={{ fontSize: '1.5rem', fontWeight: '700', color: 'var(--text-primary)', marginTop: '0.25rem' }}>{tenants.length}</p>
+                            <p className="text-sm font-medium text-neutral-500">Total Tenants</p>
+                            <p className="text-2xl font-bold text-neutral-900 mt-1">{tenants.length}</p>
                         </div>
-                        <div style={{ padding: '0.75rem', background: 'var(--info-bg)', borderRadius: '0.5rem' }}>
-                            <BuildingOffice2Icon style={{ width: '1.5rem', height: '1.5rem', color: 'var(--info-text)' }} />
+                        <div className="p-3 bg-indigo-50 rounded-lg">
+                            <BuildingOffice2Icon className="w-6 h-6 text-indigo-600" />
                         </div>
                     </div>
                 </div>
-                <div className="stat-card">
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div className="card p-4">
+                    <div className="flex items-center justify-between">
                         <div>
-                            <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', fontWeight: '500' }}>Active Tenants</p>
-                            <p style={{ fontSize: '1.5rem', fontWeight: '700', color: 'var(--text-primary)', marginTop: '0.25rem' }}>
+                            <p className="text-sm font-medium text-neutral-500">Active Tenants</p>
+                            <p className="text-2xl font-bold text-neutral-900 mt-1">
                                 {tenants.filter(t => t.status === 'active').length}
                             </p>
                         </div>
-                        <div style={{ padding: '0.75rem', background: 'var(--success-bg)', borderRadius: '0.5rem' }}>
-                            <CheckCircleIcon style={{ width: '1.5rem', height: '1.5rem', color: 'var(--success-text)' }} />
+                        <div className="p-3 bg-emerald-50 rounded-lg">
+                            <CheckCircleIcon className="w-6 h-6 text-emerald-600" />
                         </div>
                     </div>
                 </div>
-                <div className="stat-card">
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div className="card p-4">
+                    <div className="flex items-center justify-between">
                         <div>
-                            <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', fontWeight: '500' }}>Inactive Tenants</p>
-                            <p style={{ fontSize: '1.5rem', fontWeight: '700', color: 'var(--text-primary)', marginTop: '0.25rem' }}>
+                            <p className="text-sm font-medium text-neutral-500">Inactive Tenants</p>
+                            <p className="text-2xl font-bold text-neutral-900 mt-1">
                                 {tenants.filter(t => t.status !== 'active').length}
                             </p>
                         </div>
-                        <div style={{ padding: '0.75rem', background: 'var(--danger-bg)', borderRadius: '0.5rem' }}>
-                            <XCircleIcon style={{ width: '1.5rem', height: '1.5rem', color: 'var(--danger-text)' }} />
+                        <div className="p-3 bg-red-50 rounded-lg">
+                            <XCircleIcon className="w-6 h-6 text-red-600" />
                         </div>
                     </div>
                 </div>
             </div>
 
             {/* Tenants List */}
-            <div className="card">
-                <div style={{ paddingBottom: '1.5rem', borderBottom: '1px solid var(--border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                    <h2 style={{ fontSize: '1.125rem', fontWeight: '600' }}>All Tenants</h2>
-                    <div style={{ position: 'relative' }}>
-                        <MagnifyingGlassIcon style={{ width: '1.25rem', height: '1.25rem', color: 'var(--text-tertiary)', position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)' }} />
+            <div className="card p-0">
+                <div className="p-4 border-b border-neutral-100 flex justify-between items-center">
+                    <h2 className="text-lg font-bold text-neutral-800">All Tenants</h2>
+                    <div className="relative">
+                        <MagnifyingGlassIcon className="w-5 h-5 text-neutral-400 absolute left-3 top-1/2 -translate-y-1/2" />
                         <input
                             type="text"
                             placeholder="Search tenants..."
-                            className="form-input"
-                            style={{ paddingLeft: '2.5rem' }}
+                            className="form-input pl-10 py-2 text-sm w-64"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
                     </div>
                 </div>
 
-                <div style={{ overflowX: 'auto' }}>
-                    <table className="table">
+                <div className="data-table-wrapper">
+                    <table className="data-table">
                         <thead>
                             <tr>
                                 <th>Company Name</th>
                                 <th>Tenant ID</th>
                                 <th>Status</th>
                                 <th>Created At</th>
-                                <th>Actions</th>
+                                <th className="text-right">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             {loading ? (
                                 <tr>
-                                    <td colSpan="5" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>Loading tenants...</td>
+                                    <td colSpan="5" className="text-center py-8 text-neutral-500">Loading tenants...</td>
                                 </tr>
                             ) : filteredTenants.length === 0 ? (
                                 <tr>
-                                    <td colSpan="5" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>No tenants found</td>
+                                    <td colSpan="5" className="text-center py-8 text-neutral-500">
+                                        <div className="flex flex-col items-center">
+                                            <BuildingOffice2Icon className="w-12 h-12 text-neutral-300 mb-2" />
+                                            <p>No tenants found</p>
+                                        </div>
+                                    </td>
                                 </tr>
                             ) : (
                                 filteredTenants.map((tenant) => (
                                     <tr key={tenant.tenant_id}>
-                                        <td style={{ fontWeight: '500', color: 'var(--text-primary)' }}>{tenant.name}</td>
-                                        <td style={{ fontFamily: 'monospace', color: 'var(--text-secondary)' }}>{tenant.tenant_id}</td>
+                                        <td className="font-medium text-neutral-900">{tenant.name}</td>
+                                        <td className="font-mono text-sm text-neutral-500">{tenant.tenant_id}</td>
                                         <td>
                                             <span className={`badge badge-${tenant.status === 'active' ? 'success' : 'secondary'}`}>
                                                 {tenant.status}
                                             </span>
                                         </td>
-                                        <td style={{ color: 'var(--text-secondary)' }}>
+                                        <td className="text-neutral-500">
                                             {new Date(tenant.created_at).toLocaleDateString()}
                                         </td>
-                                        <td>
+                                        <td className="text-right">
                                             <button
-                                                className="btn btn-outline"
-                                                style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
+                                                className="btn btn-secondary text-xs px-3 py-1.5"
                                                 onClick={() => openManageModal(tenant)}
                                             >
                                                 Manage
@@ -256,83 +261,83 @@ const SuperAdmin = () => {
 
             {/* Create Tenant Modal */}
             {showModal && (
-                <div className="modal-overlay" onClick={() => setShowModal(false)}>
-                    <div className="modal" onClick={e => e.stopPropagation()}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                            <h3 style={{ fontSize: '1.25rem', fontWeight: '600' }}>Create New Tenant</h3>
-                            <button onClick={() => setShowModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)' }}>
-                                <XCircleIcon style={{ width: '1.5rem', height: '1.5rem' }} />
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setShowModal(false)}>
+                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in duration-200" onClick={e => e.stopPropagation()}>
+                        <div className="px-6 py-4 border-b border-neutral-100 flex justify-between items-center bg-neutral-50/50">
+                            <h3 className="text-lg font-bold text-neutral-800">Create New Tenant</h3>
+                            <button onClick={() => setShowModal(false)} className="text-neutral-400 hover:text-neutral-600 transition-colors">
+                                <XCircleIcon className="w-6 h-6" />
                             </button>
                         </div>
 
-                        <form onSubmit={handleSubmit}>
+                        <form onSubmit={handleSubmit} className="p-6">
                             {error && (
-                                <div className="alert alert-error">
+                                <div className="mb-4 bg-red-50 border border-red-200 text-red-600 rounded-lg p-3 text-sm flex items-center">
+                                    <ExclamationTriangleIcon className="w-5 h-5 mr-2" />
                                     {error}
                                 </div>
                             )}
 
-                            <div className="form-group">
-                                <label className="form-label">Company Name</label>
+                            <div className="form-group mb-4">
+                                <label className="form-label block text-sm font-medium text-neutral-700 mb-1">Company Name</label>
                                 <input
                                     type="text"
                                     name="name"
                                     required
-                                    className="form-input"
+                                    className="form-input w-full"
                                     value={formData.name}
                                     onChange={handleInputChange}
                                     placeholder="e.g. Acme Corp"
                                 />
                             </div>
 
-                            <div className="form-group">
-                                <label className="form-label">Tenant ID (Slug)</label>
+                            <div className="form-group mb-4">
+                                <label className="form-label block text-sm font-medium text-neutral-700 mb-1">Tenant ID (Slug)</label>
                                 <input
                                     type="text"
                                     name="tenantId"
                                     required
                                     pattern="[a-z0-9_]+"
                                     title="Lowercase letters, numbers, and underscores only"
-                                    className="form-input"
+                                    className="form-input w-full"
                                     value={formData.tenantId}
                                     onChange={handleInputChange}
                                     placeholder="e.g. acme_corp"
                                 />
-                                <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>Used for database schema. Lowercase, numbers, _ only.</p>
+                                <p className="text-xs text-neutral-500 mt-1">Used for database schema. Lowercase, numbers, _ only.</p>
                             </div>
 
-                            <div className="form-group">
-                                <label className="form-label">Admin Email</label>
+                            <div className="form-group mb-4">
+                                <label className="form-label block text-sm font-medium text-neutral-700 mb-1">Admin Email</label>
                                 <input
                                     type="email"
                                     name="adminEmail"
                                     required
-                                    className="form-input"
+                                    className="form-input w-full"
                                     value={formData.adminEmail}
                                     onChange={handleInputChange}
                                     placeholder="admin@acme.com"
                                 />
                             </div>
 
-                            <div className="form-group">
-                                <label className="form-label">Admin Password</label>
+                            <div className="form-group mb-6">
+                                <label className="form-label block text-sm font-medium text-neutral-700 mb-1">Admin Password</label>
                                 <input
                                     type="password"
                                     name="adminPassword"
                                     required
-                                    className="form-input"
+                                    className="form-input w-full"
                                     value={formData.adminPassword}
                                     onChange={handleInputChange}
                                     placeholder="••••••••"
                                 />
                             </div>
 
-                            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '2rem' }}>
+                            <div className="flex justify-end gap-3 pt-4 border-t border-neutral-100">
                                 <button
                                     type="button"
                                     onClick={() => setShowModal(false)}
-                                    className="btn btn-secondary"
-                                    style={{ background: 'transparent', color: 'var(--text-secondary)', border: '1px solid var(--border-color)' }}
+                                    className="btn btn-ghost"
                                 >
                                     Cancel
                                 </button>
@@ -350,151 +355,164 @@ const SuperAdmin = () => {
 
             {/* Manage Tenant Modal */}
             {manageModal.show && manageModal.tenant && (
-                <div className="modal-overlay" onClick={() => setManageModal({ ...manageModal, show: false })}>
-                    <div className="modal" style={{ maxWidth: '600px' }} onClick={e => e.stopPropagation()}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setManageModal({ ...manageModal, show: false })}>
+                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in duration-200" onClick={e => e.stopPropagation()}>
+                        <div className="px-6 py-4 border-b border-neutral-100 flex justify-between items-center bg-neutral-50/50">
                             <div>
-                                <h3 style={{ fontSize: '1.25rem', fontWeight: '600' }}>Manage Tenant</h3>
-                                <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>{manageModal.tenant.name} ({manageModal.tenant.tenant_id})</p>
+                                <h3 className="text-lg font-bold text-neutral-800">Manage Tenant</h3>
+                                <p className="text-sm text-neutral-500">{manageModal.tenant.name} <span className="font-mono text-xs bg-neutral-100 px-1.5 py-0.5 rounded ml-1">{manageModal.tenant.tenant_id}</span></p>
                             </div>
-                            <button onClick={() => setManageModal({ ...manageModal, show: false })} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)' }}>
-                                <XCircleIcon style={{ width: '1.5rem', height: '1.5rem' }} />
+                            <button onClick={() => setManageModal({ ...manageModal, show: false })} className="text-neutral-400 hover:text-neutral-600 transition-colors">
+                                <XCircleIcon className="w-6 h-6" />
                             </button>
                         </div>
 
                         {/* Tabs */}
-                        <div style={{ display: 'flex', borderBottom: '1px solid var(--border-light)', marginBottom: '1.5rem' }}>
+                        <div className="flex border-b border-neutral-200 px-6">
                             <button
-                                className={`btn ${manageModal.tab === 'overview' ? 'btn-primary' : 'btn-outline'}`}
-                                style={{ borderBottomLeftRadius: 0, borderBottomRightRadius: 0, borderBottom: 'none', marginRight: '0.5rem' }}
+                                className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${manageModal.tab === 'overview' ? 'border-primary-600 text-primary-600' : 'border-transparent text-neutral-500 hover:text-neutral-700 hover:border-neutral-300'}`}
                                 onClick={() => setManageModal({ ...manageModal, tab: 'overview' })}
                             >
                                 Overview
                             </button>
                             <button
-                                className={`btn ${manageModal.tab === 'security' ? 'btn-primary' : 'btn-outline'}`}
-                                style={{ borderBottomLeftRadius: 0, borderBottomRightRadius: 0, borderBottom: 'none', marginRight: '0.5rem' }}
+                                className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${manageModal.tab === 'security' ? 'border-primary-600 text-primary-600' : 'border-transparent text-neutral-500 hover:text-neutral-700 hover:border-neutral-300'}`}
                                 onClick={() => setManageModal({ ...manageModal, tab: 'security' })}
                             >
                                 Security
                             </button>
                             <button
-                                className={`btn ${manageModal.tab === 'danger' ? 'btn-danger' : 'btn-outline'}`}
-                                style={{ borderBottomLeftRadius: 0, borderBottomRightRadius: 0, borderBottom: 'none', color: manageModal.tab === 'danger' ? 'white' : 'var(--danger-text)', borderColor: manageModal.tab === 'danger' ? 'var(--danger-bg)' : 'var(--border-color)' }}
+                                className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${manageModal.tab === 'danger' ? 'border-red-600 text-red-600' : 'border-transparent text-neutral-500 hover:text-red-500 hover:border-red-300'}`}
                                 onClick={() => setManageModal({ ...manageModal, tab: 'danger' })}
                             >
                                 Danger Zone
                             </button>
                         </div>
 
-                        {error && <div className="alert alert-error">{error}</div>}
-                        {success && <div className="alert alert-success">{success}</div>}
+                        <div className="p-6">
+                            {error && <div className="mb-4 bg-red-50 border border-red-200 text-red-600 rounded-lg p-3 text-sm flex items-center"><ExclamationTriangleIcon className="w-5 h-5 mr-2" />{error}</div>}
+                            {success && <div className="mb-4 bg-green-50 border border-green-200 text-green-600 rounded-lg p-3 text-sm flex items-center"><CheckCircleIcon className="w-5 h-5 mr-2" />{success}</div>}
 
-                        {manageModal.tab === 'overview' && (
-                            <form onSubmit={handleManageSubmit}>
-                                <div className="form-group">
-                                    <label className="form-label">Status</label>
-                                    <select
-                                        className="form-input"
-                                        value={manageFormData.status}
-                                        onChange={(e) => setManageFormData({ ...manageFormData, status: e.target.value })}
-                                    >
-                                        <option value="active">Active</option>
-                                        <option value="inactive">Inactive</option>
-                                        <option value="suspended">Suspended</option>
-                                    </select>
-                                </div>
-                                <div className="form-group">
-                                    <label className="form-label">Subscription Plan</label>
-                                    <select
-                                        className="form-input"
-                                        value={manageFormData.subscription_plan}
-                                        onChange={(e) => setManageFormData({ ...manageFormData, subscription_plan: e.target.value })}
-                                    >
-                                        <option value="free">Free Tier</option>
-                                        <option value="pro">Pro Plan</option>
-                                        <option value="enterprise">Enterprise</option>
-                                    </select>
-                                </div>
-                                <div className="form-group">
-                                    <label className="form-label">Subscription Expiry</label>
-                                    <input
-                                        type="date"
-                                        className="form-input"
-                                        value={manageFormData.subscription_expiry}
-                                        onChange={(e) => setManageFormData({ ...manageFormData, subscription_expiry: e.target.value })}
-                                    />
-                                </div>
-                                <div className="form-group">
-                                    <label className="form-label">Update Admin Email (Optional)</label>
-                                    <input
-                                        type="email"
-                                        className="form-input"
-                                        value={manageFormData.adminEmail || ''}
-                                        onChange={(e) => setManageFormData({ ...manageFormData, adminEmail: e.target.value })}
-                                        placeholder="Enter new admin email"
-                                    />
-                                    <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>This will change the login email for the tenant's admin.</p>
-                                </div>
-                                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1.5rem' }}>
-                                    <button type="submit" className="btn btn-primary">Save Changes</button>
-                                </div>
-                            </form>
-                        )}
+                            {manageModal.tab === 'overview' && (
+                                <form onSubmit={handleManageSubmit}>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                        <div className="form-group">
+                                            <label className="form-label block text-sm font-medium text-neutral-700 mb-1">Status</label>
+                                            <select
+                                                className="form-input w-full"
+                                                value={manageFormData.status}
+                                                onChange={(e) => setManageFormData({ ...manageFormData, status: e.target.value })}
+                                            >
+                                                <option value="active">Active</option>
+                                                <option value="inactive">Inactive</option>
+                                                <option value="suspended">Suspended</option>
+                                            </select>
+                                        </div>
+                                        <div className="form-group">
+                                            <label className="form-label block text-sm font-medium text-neutral-700 mb-1">Subscription Plan</label>
+                                            <select
+                                                className="form-input w-full"
+                                                value={manageFormData.subscription_plan}
+                                                onChange={(e) => setManageFormData({ ...manageFormData, subscription_plan: e.target.value })}
+                                            >
+                                                <option value="free">Free Tier</option>
+                                                <option value="pro">Pro Plan</option>
+                                                <option value="enterprise">Enterprise</option>
+                                            </select>
+                                        </div>
+                                    </div>
 
-                        {manageModal.tab === 'security' && (
-                            <form onSubmit={handleResetPassword}>
-                                <div className="alert alert-warning">
-                                    <p><strong>Warning:</strong> This will reset the password for all administrators of this tenant.</p>
-                                </div>
-                                <div className="form-group">
-                                    <label className="form-label">New Admin Password</label>
-                                    <input
-                                        type="password"
-                                        className="form-input"
-                                        value={resetPasswordData}
-                                        onChange={(e) => setResetPasswordData(e.target.value)}
-                                        placeholder="Enter new password"
-                                        required
-                                        minLength={6}
-                                    />
-                                </div>
-                                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1.5rem' }}>
-                                    <button type="submit" className="btn btn-danger">Reset Password</button>
-                                </div>
-                            </form>
-                        )}
+                                    <div className="form-group mb-4">
+                                        <label className="form-label block text-sm font-medium text-neutral-700 mb-1">Subscription Expiry</label>
+                                        <input
+                                            type="date"
+                                            className="form-input w-full"
+                                            value={manageFormData.subscription_expiry}
+                                            onChange={(e) => setManageFormData({ ...manageFormData, subscription_expiry: e.target.value })}
+                                        />
+                                    </div>
 
-                        {manageModal.tab === 'danger' && (
-                            <div>
-                                <div className="alert alert-error">
-                                    <p><strong>CRITICAL WARNING:</strong> Deleting a tenant is irreversible. All data, users, and history will be permanently wiped.</p>
-                                </div>
-                                <p style={{ marginBottom: '1rem' }}>To confirm deletion, please enter your Super Admin 2FA code.</p>
+                                    <div className="form-group mb-4">
+                                        <label className="form-label block text-sm font-medium text-neutral-700 mb-1">Update Admin Email (Optional)</label>
+                                        <input
+                                            type="email"
+                                            className="form-input w-full"
+                                            value={manageFormData.adminEmail || ''}
+                                            onChange={(e) => setManageFormData({ ...manageFormData, adminEmail: e.target.value })}
+                                            placeholder="Enter new admin email"
+                                        />
+                                        <p className="text-xs text-neutral-500 mt-1">This will change the login email for the tenant's admin.</p>
+                                    </div>
 
-                                <div className="form-group">
-                                    <label className="form-label">Super Admin 2FA Code</label>
-                                    <input
-                                        type="text"
-                                        className="form-input"
-                                        value={twoFactorToken}
-                                        onChange={(e) => setTwoFactorToken(e.target.value)}
-                                        placeholder="Enter 6-digit code"
-                                        maxLength={6}
-                                    />
-                                </div>
+                                    <div className="flex justify-end pt-4 mt-2 border-t border-neutral-100">
+                                        <button type="submit" className="btn btn-primary">Save Changes</button>
+                                    </div>
+                                </form>
+                            )}
 
-                                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1.5rem' }}>
-                                    <button
-                                        onClick={handleDeleteTenant}
-                                        className="btn btn-danger"
-                                        disabled={!twoFactorToken || twoFactorToken.length !== 6}
-                                    >
-                                        Permanently Delete Tenant
-                                    </button>
+                            {manageModal.tab === 'security' && (
+                                <form onSubmit={handleResetPassword}>
+                                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+                                        <p className="text-yellow-800 text-sm flex items-start">
+                                            <ExclamationTriangleIcon className="w-5 h-5 mr-2 flex-shrink-0" />
+                                            <span><strong>Warning:</strong> This will reset the password for all administrators of this tenant.</span>
+                                        </p>
+                                    </div>
+
+                                    <div className="form-group mb-6">
+                                        <label className="form-label block text-sm font-medium text-neutral-700 mb-1">New Admin Password</label>
+                                        <input
+                                            type="password"
+                                            className="form-input w-full"
+                                            value={resetPasswordData}
+                                            onChange={(e) => setResetPasswordData(e.target.value)}
+                                            placeholder="Enter new password"
+                                            required
+                                            minLength={6}
+                                        />
+                                    </div>
+
+                                    <div className="flex justify-end pt-4 border-t border-neutral-100">
+                                        <button type="submit" className="btn btn-danger">Reset Password</button>
+                                    </div>
+                                </form>
+                            )}
+
+                            {manageModal.tab === 'danger' && (
+                                <div>
+                                    <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+                                        <p className="text-red-800 text-sm flex items-start">
+                                            <ExclamationTriangleIcon className="w-5 h-5 mr-2 flex-shrink-0" />
+                                            <span><strong>CRITICAL WARNING:</strong> Deleting a tenant is irreversible. All data, users, and history will be permanently wiped.</span>
+                                        </p>
+                                    </div>
+
+                                    <p className="text-neutral-600 mb-4 text-sm">To confirm deletion, please enter your Super Admin 2FA code.</p>
+
+                                    <div className="form-group mb-6">
+                                        <label className="form-label block text-sm font-medium text-neutral-700 mb-1">Super Admin 2FA Code</label>
+                                        <input
+                                            type="text"
+                                            className="form-input w-full"
+                                            value={twoFactorToken}
+                                            onChange={(e) => setTwoFactorToken(e.target.value)}
+                                            placeholder="Enter 6-digit code"
+                                            maxLength={6}
+                                        />
+                                    </div>
+
+                                    <div className="flex justify-end pt-4 border-t border-neutral-100">
+                                        <button
+                                            onClick={handleDeleteTenant}
+                                            className="btn btn-danger"
+                                            disabled={!twoFactorToken || twoFactorToken.length !== 6}
+                                        >
+                                            Permanently Delete Tenant
+                                        </button>
+                                    </div>
                                 </div>
-                            </div>
-                        )}
+                            )}
+                        </div>
                     </div>
                 </div>
             )}

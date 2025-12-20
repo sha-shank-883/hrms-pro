@@ -19,9 +19,9 @@ const poolConfig = process.env.DATABASE_URL
 
 const pool = new Pool({
   ...poolConfig,
-  max: 20,
+  max: 50, // Increased from 20 to handle concurrent requests
   idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 2000,
+  connectionTimeoutMillis: 10000, // Increased timeout
 });
 
 // AsyncLocalStorage to store tenant context
@@ -71,8 +71,36 @@ const query = async (text, params) => {
   }
 };
 
+// Transaction helper
+const transaction = async (callback) => {
+  const client = await pool.connect();
+  const tenantId = tenantStorage.getStore();
+
+  try {
+    if (tenantId) {
+      await client.query(`SET search_path TO "${tenantId}", public`);
+    }
+
+    await client.query('BEGIN');
+    const result = await callback(client);
+    await client.query('COMMIT');
+    return result;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    try {
+      await client.query('SET search_path TO public');
+    } catch (e) {
+      console.error('Error resetting search path', e);
+    }
+    client.release();
+  }
+};
+
 module.exports = {
   pool,
   query,
+  transaction,
   tenantStorage
 };

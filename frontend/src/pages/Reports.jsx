@@ -1,5 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { reportService } from '../services';
+import {
+  FaChartBar,
+  FaUmbrellaBeach,
+  FaMoneyBillWave,
+  FaUsers,
+  FaBullseye,
+  FaFileContract,
+  FaDownload,
+  FaFilter,
+  FaArrowRight
+} from 'react-icons/fa';
 
 const Reports = () => {
   const [loading, setLoading] = useState(false);
@@ -21,10 +32,10 @@ const Reports = () => {
     setError('');
     setReportData(null);
     setSelectedReport(reportType);
-    
+
     try {
       let response;
-      switch(reportType) {
+      switch (reportType) {
         case 'attendance':
           response = await reportService.getAttendanceReport(filters);
           break;
@@ -61,7 +72,7 @@ const Reports = () => {
       setError('Generate a report first!');
       return;
     }
-    
+
     if (format === 'json') {
       const blob = new Blob([JSON.stringify(reportData, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
@@ -74,13 +85,13 @@ const Reports = () => {
     } else if (format === 'csv') {
       // Convert to CSV
       let csvContent = '';
-      
+
       if (Array.isArray(reportData)) {
         // Get headers
         if (reportData.length > 0) {
           const headers = Object.keys(reportData[0]);
           csvContent = headers.join(',') + '\n';
-          
+
           // Add rows
           reportData.forEach(row => {
             const values = headers.map(header => {
@@ -93,7 +104,7 @@ const Reports = () => {
       } else {
         csvContent = JSON.stringify(reportData, null, 2);
       }
-      
+
       const blob = new Blob([csvContent], { type: 'text/csv' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -107,13 +118,13 @@ const Reports = () => {
 
   const renderTableData = () => {
     if (!reportData || !Array.isArray(reportData)) return null;
-    if (reportData.length === 0) return <p style={{ textAlign: 'center', color: '#6b7280', padding: '2rem' }}>No data available for this report.</p>;
+    if (reportData.length === 0) return <p className="text-center text-neutral-500 py-8">No data available for this report.</p>;
 
     const headers = Object.keys(reportData[0]);
-    
+
     return (
-      <div style={{ overflowX: 'auto' }}>
-        <table className="table">
+      <div className="data-table-wrapper">
+        <table className="data-table">
           <thead>
             <tr>
               {headers.map(header => (
@@ -126,8 +137,8 @@ const Reports = () => {
               <tr key={index}>
                 {headers.map(header => (
                   <td key={header}>
-                    {typeof row[header] === 'number' && !header.includes('id') && !header.includes('count') 
-                      ? parseFloat(row[header]).toFixed(2) 
+                    {typeof row[header] === 'number' && !header.includes('id') && !header.includes('count')
+                      ? parseFloat(row[header]).toFixed(2)
                       : row[header] || 'N/A'}
                   </td>
                 ))}
@@ -143,33 +154,36 @@ const Reports = () => {
     if (!reportData || typeof reportData !== 'object') return null;
 
     return (
-      <div className="grid grid-cols-2" style={{ gap: '1.5rem' }}>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {Object.entries(reportData).map(([key, value]) => (
           <div key={key} className="card">
-            <h4 style={{ marginBottom: '1rem', textTransform: 'capitalize' }}>{key.replace(/_/g, ' ')}</h4>
+            <h4 className="font-bold text-neutral-800 mb-4 capitalize">{key.replace(/_/g, ' ')}</h4>
             {Array.isArray(value) && value.length > 0 ? (
-              <div>
+              <div className="space-y-3">
                 {value.map((item, index) => {
                   const name = item.department_name || item.employment_type || item.gender || item.status || 'Unknown';
                   const count = parseInt(item.count) || 0;
                   const total = value.reduce((sum, v) => sum + (parseInt(v.count) || 0), 0);
                   const percentage = total > 0 ? ((count / total) * 100).toFixed(1) : 0;
-                  
+
                   return (
-                    <div key={index} style={{ marginBottom: '0.75rem' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
-                        <span>{name}</span>
-                        <span><strong>{count}</strong> ({percentage}%)</span>
+                    <div key={index}>
+                      <div className="flex justify-between items-center mb-1 text-sm">
+                        <span className="text-neutral-600">{name}</span>
+                        <span className="font-semibold text-neutral-800">{count} <span className="text-xs text-neutral-400 font-normal">({percentage}%)</span></span>
                       </div>
-                      <div style={{ height: '8px', backgroundColor: '#e5e7eb', borderRadius: '4px', overflow: 'hidden' }}>
-                        <div style={{ width: `${percentage}%`, height: '100%', backgroundColor: '#3b82f6', transition: 'width 0.3s' }} />
+                      <div className="h-2 bg-neutral-100 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-primary-500 rounded-full transition-all duration-500"
+                          style={{ width: `${percentage}%` }}
+                        />
                       </div>
                     </div>
                   );
                 })}
               </div>
             ) : (
-              <p style={{ color: '#6b7280' }}>No data available</p>
+              <p className="text-neutral-400 text-sm italic">No data available</p>
             )}
           </div>
         ))}
@@ -181,127 +195,145 @@ const Reports = () => {
     if (!reportData) return null;
 
     return (
-      <div className="card" style={{ marginTop: '2rem' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-          <h3>{selectedReport.charAt(0).toUpperCase() + selectedReport.slice(1)} Report</h3>
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
-            <button className="btn btn-primary" onClick={() => exportReport('csv')}>Export CSV</button>
-            <button className="btn btn-primary" onClick={() => exportReport('json')}>Export JSON</button>
-            <button className="btn btn-secondary" onClick={() => { setReportData(null); setSelectedReport(null); }}>Close</button>
+      <div className="card mt-8 animate-fadeIn">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+          <h3 className="card-title text-xl">{selectedReport.charAt(0).toUpperCase() + selectedReport.slice(1)} Report</h3>
+          <div className="flex flex-wrap gap-2">
+            <button className="btn btn-primary btn-sm" onClick={() => exportReport('csv')}>
+              <FaDownload className="mr-2" /> Export CSV
+            </button>
+            <button className="btn btn-primary btn-sm" onClick={() => exportReport('json')}>
+              <FaDownload className="mr-2" /> Export JSON
+            </button>
+            <button className="btn btn-secondary btn-sm" onClick={() => { setReportData(null); setSelectedReport(null); }}>Close</button>
           </div>
         </div>
-        
+
         {selectedReport === 'demographics' ? renderDemographicsData() : renderTableData()}
       </div>
     );
   };
 
   return (
-    <div>
-      <h1 style={{ marginBottom: '2rem' }}>Reports & Analytics</h1>
+    <div className="page-container">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+        <div>
+          <h1 className="text-2xl font-bold text-neutral-900">Reports & Analytics</h1>
+          <p className="text-neutral-500">Generate and export business intelligence reports</p>
+        </div>
+      </div>
 
-      {error && <div className="error" style={{ marginBottom: '1rem', padding: '1rem', backgroundColor: '#fee2e2', borderRadius: '0.375rem' }}>{error}</div>}
-      {success && <div style={{ marginBottom: '1rem', padding: '1rem', backgroundColor: '#d1fae5', color: '#065f46', borderRadius: '0.375rem' }}>{success}</div>}
-      {loading && <div style={{ marginBottom: '1rem', padding: '1rem', backgroundColor: '#e0f2fe', borderRadius: '0.375rem' }}>Generating report...</div>}
+      {error && (
+        <div className="badge badge-danger w-full justify-start p-4 mb-6 rounded-lg text-sm">
+          {error}
+        </div>
+      )}
+
+      {success && (
+        <div className="badge badge-success w-full justify-start p-4 mb-6 rounded-lg text-sm">
+          {success}
+        </div>
+      )}
+
+      {loading && (
+        <div className="badge badge-info w-full justify-start p-4 mb-6 rounded-lg text-sm animate-pulse">
+          Generating report, please wait...
+        </div>
+      )}
 
       {/* Report Filters */}
-      <div className="card" style={{ marginBottom: '2rem' }}>
-        <h3 style={{ marginBottom: '1rem' }}>Report Filters</h3>
-        <div className="grid grid-cols-4" style={{ gap: '1rem' }}>
-          <div className="form-group" style={{ marginBottom: 0 }}>
+      <div className="card mb-8">
+        <div className="card-header">
+          <h3 className="card-title flex items-center gap-2">
+            <FaFilter className="text-neutral-400" /> Report Filters
+          </h3>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 p-6">
+          <div className="form-group">
             <label className="form-label">Start Date</label>
             <input type="date" className="form-input" value={filters.start_date} onChange={(e) => setFilters({ ...filters, start_date: e.target.value })} />
           </div>
-          <div className="form-group" style={{ marginBottom: 0 }}>
+          <div className="form-group">
             <label className="form-label">End Date</label>
             <input type="date" className="form-input" value={filters.end_date} onChange={(e) => setFilters({ ...filters, end_date: e.target.value })} />
           </div>
-          <div className="form-group" style={{ marginBottom: 0 }}>
+          <div className="form-group">
             <label className="form-label">Year</label>
             <input type="number" className="form-input" value={filters.year} onChange={(e) => setFilters({ ...filters, year: e.target.value })} placeholder="2024" />
           </div>
-          <div className="form-group" style={{ marginBottom: 0 }}>
+          <div className="form-group">
             <label className="form-label">Month</label>
             <select className="form-input" value={filters.month} onChange={(e) => setFilters({ ...filters, month: e.target.value })}>
-              <option value="1">January</option>
-              <option value="2">February</option>
-              <option value="3">March</option>
-              <option value="4">April</option>
-              <option value="5">May</option>
-              <option value="6">June</option>
-              <option value="7">July</option>
-              <option value="8">August</option>
-              <option value="9">September</option>
-              <option value="10">October</option>
-              <option value="11">November</option>
-              <option value="12">December</option>
+              {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].map((month, idx) => (
+                <option key={month} value={idx + 1}>{month}</option>
+              ))}
             </select>
           </div>
         </div>
-        <p style={{ marginTop: '0.75rem', fontSize: '0.875rem', color: '#6b7280' }}>Filters are applied based on the report type. Not all filters apply to all reports.</p>
+        <div className="px-6 pb-4">
+          <p className="text-xs text-neutral-400 italic">Filters are applied based on the report type. Not all filters apply to all reports.</p>
+        </div>
       </div>
-      
+
       {/* Report Cards */}
-      <div className="grid grid-cols-3" style={{ marginBottom: '2rem' }}>
-        <div className="card" style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white', cursor: 'pointer' }} onClick={() => !loading && generateReport('attendance')}>
-          <h3><i className="fas fa-chart-bar"></i> Attendance Report</h3>
-          <p style={{ margin: '1rem 0', opacity: 0.9 }}>View detailed attendance statistics and trends</p>
-          <button className="btn" style={{ backgroundColor: 'white', color: '#667eea' }} disabled={loading}>Generate Report</button>
-        </div>
-        
-        <div className="card" style={{ background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)', color: 'white', cursor: 'pointer' }} onClick={() => !loading && generateReport('leave')}>
-          <h3><i className="fas fa-umbrella-beach"></i> Leave Report</h3>
-          <p style={{ margin: '1rem 0', opacity: 0.9 }}>Analyze leave patterns and balances</p>
-          <button className="btn" style={{ backgroundColor: 'white', color: '#f5576c' }} disabled={loading}>Generate Report</button>
-        </div>
-        
-        <div className="card" style={{ background: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)', color: 'white', cursor: 'pointer' }} onClick={() => !loading && generateReport('payroll')}>
-          <h3><i className="fas fa-money-bill-wave"></i> Payroll Report</h3>
-          <p style={{ margin: '1rem 0', opacity: 0.9 }}>Detailed payroll breakdown and summaries</p>
-          <button className="btn" style={{ backgroundColor: 'white', color: '#43e97b' }} disabled={loading}>Generate Report</button>
-        </div>
-        
-        <div className="card" style={{ background: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)', color: 'white', cursor: 'pointer' }} onClick={() => !loading && generateReport('demographics')}>
-          <h3><i className="fas fa-users"></i> Employee Demographics</h3>
-          <p style={{ margin: '1rem 0', opacity: 0.9 }}>Workforce composition and statistics</p>
-          <button className="btn" style={{ backgroundColor: 'white', color: '#fa709a' }} disabled={loading}>Generate Report</button>
-        </div>
-        
-        <div className="card" style={{ background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)', color: 'white', cursor: 'pointer' }} onClick={() => !loading && generateReport('recruitment')}>
-          <h3><i className="fas fa-bullseye"></i> Recruitment Report</h3>
-          <p style={{ margin: '1rem 0', opacity: 0.9 }}>Hiring metrics and candidate pipeline</p>
-          <button className="btn" style={{ backgroundColor: 'white', color: '#4facfe' }} disabled={loading}>Generate Report</button>
-        </div>
-        
-        <div className="card" style={{ background: 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)', color: '#1f2937', cursor: 'pointer' }} onClick={() => !loading && generateReport('employee')}>
-          <h3><i className="fas fa-chart-line"></i> Employee Report</h3>
-          <p style={{ margin: '1rem 0', opacity: 0.8 }}>Complete employee information analysis</p>
-          <button className="btn btn-primary" disabled={loading}>Generate Report</button>
-        </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+        {[
+          { id: 'attendance', name: 'Attendance Report', icon: FaChartBar, color: 'indigo', desc: 'View detailed attendance statistics, lateness trends, and working hours.' },
+          { id: 'leave', name: 'Leave Report', icon: FaUmbrellaBeach, color: 'pink', desc: 'Analyze leave balances, patterns, and team availability.' },
+          { id: 'payroll', name: 'Payroll Report', icon: FaMoneyBillWave, color: 'emerald', desc: 'Detailed payroll breakdown, tax deductions, and salary summaries.' },
+          { id: 'demographics', name: 'Workforce Demographics', icon: FaUsers, color: 'orange', desc: 'Workforce composition, gender ratio, and department distribution.' },
+          { id: 'recruitment', name: 'Recruitment Stats', icon: FaBullseye, color: 'cyan', desc: 'Hiring pipeline metrics, open positions, and candidate stats.' },
+          { id: 'employee', name: 'Employee Master', icon: FaFileContract, color: 'violet', desc: 'Complete employee database export with all profile details.' }
+        ].map(report => (
+          <div
+            key={report.id}
+            className={`card cursor-pointer hover:shadow-lg transition-all border-t-4 border-t-accent-${report.color} group`}
+            onClick={() => !loading && generateReport(report.id)}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <div className={`p-3 bg-accent-${report.color} bg-opacity-10 rounded-lg text-accent-${report.color} group-hover:bg-opacity-20 transition-colors`}>
+                <report.icon className="text-xl" />
+              </div>
+            </div>
+            <h3 className="text-lg font-bold text-neutral-800 mb-2">{report.name}</h3>
+            <p className="text-sm text-neutral-500 mb-4">{report.desc}</p>
+            <div className={`text-accent-${report.color} text-sm font-semibold flex items-center gap-1 group-hover:gap-2 transition-all`}>
+              Generate Report <FaArrowRight />
+            </div>
+          </div>
+        ))}
       </div>
 
       {/* Generated Report Display */}
       {renderReportData()}
 
-      {/* Quick Stats */}
+      {/* Report Features / Help */}
       {!reportData && (
-        <div className="card">
-          <h3 style={{ marginBottom: '1.5rem' }}>Report Features</h3>
-          <div className="grid grid-cols-3" style={{ gap: '1rem' }}>
-            <div style={{ padding: '1.5rem', backgroundColor: '#f9fafb', borderRadius: '0.375rem', textAlign: 'center' }}>
-              <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}><i className="fas fa-chart-bar"></i></div>
-              <p><strong>Real-time Data</strong></p>
-              <p style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: '0.5rem' }}>All reports fetch live data from the database</p>
+        <div className="card bg-neutral-50 border-none shadow-none">
+          <div className="card-header border-none">
+            <h3 className="card-title">Report Features</h3>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-6">
+            <div className="flex flex-col items-center text-center p-4 bg-white rounded-xl shadow-sm">
+              <div className="w-12 h-12 bg-primary-50 rounded-full flex items-center justify-center text-primary-600 mb-4">
+                <FaChartBar size={24} />
+              </div>
+              <h4 className="font-bold mb-2">Real-time Data</h4>
+              <p className="text-sm text-neutral-500">All reports fetch live data from the database ensuring accuracy.</p>
             </div>
-            <div style={{ padding: '1.5rem', backgroundColor: '#f9fafb', borderRadius: '0.375rem', textAlign: 'center' }}>
-              <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}><i className="fas fa-download"></i></div>
-              <p><strong>Export Options</strong></p>
-              <p style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: '0.5rem' }}>Download reports in CSV or JSON format</p>
+            <div className="flex flex-col items-center text-center p-4 bg-white rounded-xl shadow-sm">
+              <div className="w-12 h-12 bg-primary-50 rounded-full flex items-center justify-center text-primary-600 mb-4">
+                <FaDownload size={24} />
+              </div>
+              <h4 className="font-bold mb-2">Export Options</h4>
+              <p className="text-sm text-neutral-500">Download reports in CSV or JSON format for external analysis.</p>
             </div>
-            <div style={{ padding: '1.5rem', backgroundColor: '#f9fafb', borderRadius: '0.375rem', textAlign: 'center' }}>
-              <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}><i className="fas fa-filter"></i></div>
-              <p><strong>Advanced Filters</strong></p>
-              <p style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: '0.5rem' }}>Filter by date, department, employee and more</p>
+            <div className="flex flex-col items-center text-center p-4 bg-white rounded-xl shadow-sm">
+              <div className="w-12 h-12 bg-primary-50 rounded-full flex items-center justify-center text-primary-600 mb-4">
+                <FaFilter size={24} />
+              </div>
+              <h4 className="font-bold mb-2">Advanced Filters</h4>
+              <p className="text-sm text-neutral-500">Filter by date, department, employee and more for targeted results.</p>
             </div>
           </div>
         </div>

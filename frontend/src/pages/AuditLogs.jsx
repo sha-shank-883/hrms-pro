@@ -65,78 +65,75 @@ const AuditLogs = () => {
     };
 
     if (user.role !== 'admin') {
-        return <div className="container">Access Denied</div>;
+        return <div className="p-8 text-center text-red-500 font-bold">Access Denied</div>;
     }
 
     return (
-        <div className="container">
-            <div className="page-header">
+        <div className="p-6">
+            <div className="flex justify-between items-end mb-6">
                 <div>
-                    <h1 className="page-title">Audit Logs</h1>
-                    <p className="page-description">Track system activities and user actions.</p>
+                    <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                        <FaHistory className="text-gray-400" /> Audit Logs
+                    </h1>
+                    <p className="text-gray-500 mt-1">Track system activities, security events, and user actions.</p>
                 </div>
             </div>
 
             {/* Filters */}
-            <div className="card" style={{ marginBottom: '2rem', padding: '1rem' }}>
-                <div className="grid grid-cols-1 md:grid-cols-4" style={{ gap: '1rem' }}>
-                    <div className="form-group" style={{ marginBottom: 0 }}>
-                        <div className="input-group">
-                            <span className="input-group-text"><FaSearch /></span>
-                            <input
-                                type="text"
-                                className="form-input"
-                                name="action"
-                                placeholder="Filter by Action..."
-                                value={filters.action}
-                                onChange={handleFilterChange}
-                            />
-                        </div>
+            <div className="card mb-6">
+                <div className="p-4 grid grid-cols-4 gap-4">
+                    <div className="relative">
+                        <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400"><FaSearch /></span>
+                        <input
+                            type="text"
+                            className="form-input pl-10"
+                            name="action"
+                            placeholder="Filter by Action..."
+                            value={filters.action}
+                            onChange={handleFilterChange}
+                        />
                     </div>
-                    <div className="form-group" style={{ marginBottom: 0 }}>
-                        <div className="input-group">
-                            <span className="input-group-text"><FaUser /></span>
-                            <input
-                                type="text"
-                                className="form-input"
-                                name="user"
-                                placeholder="Search User..."
-                                value={filters.user}
-                                onChange={handleFilterChange}
-                            />
-                        </div>
+                    <div className="relative">
+                        <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400"><FaUser /></span>
+                        <input
+                            type="text"
+                            className="form-input pl-10"
+                            name="user"
+                            placeholder="Search User..."
+                            value={filters.user}
+                            onChange={handleFilterChange}
+                        />
                     </div>
-                    <div className="form-group" style={{ marginBottom: 0 }}>
-                        <div className="input-group">
-                            <span className="input-group-text"><FaCalendarAlt /></span>
-                            <input
-                                type="date"
-                                className="form-input"
-                                name="startDate"
-                                value={filters.startDate}
-                                onChange={handleFilterChange}
-                            />
-                        </div>
+                    <div className="relative">
+                        <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400"><FaCalendarAlt /></span>
+                        <input
+                            type="date"
+                            className="form-input pl-10"
+                            name="startDate"
+                            value={filters.startDate}
+                            onChange={handleFilterChange}
+                        />
                     </div>
-                    <div className="form-group" style={{ marginBottom: 0 }}>
-                        <div className="input-group">
-                            <span className="input-group-text"><FaCalendarAlt /></span>
-                            <input
-                                type="date"
-                                className="form-input"
-                                name="endDate"
-                                value={filters.endDate}
-                                onChange={handleFilterChange}
-                            />
-                        </div>
+                    <div className="relative">
+                        <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400"><FaCalendarAlt /></span>
+                        <input
+                            type="date"
+                            className="form-input pl-10"
+                            name="endDate"
+                            value={filters.endDate}
+                            onChange={handleFilterChange}
+                        />
                     </div>
                 </div>
             </div>
 
             {/* Logs Table */}
             <div className="card">
-                <div className="table-responsive">
-                    <table className="table">
+                <div className="card-header">
+                    <h3 className="card-title">System Activity</h3>
+                </div>
+                <div className="p-0 table-responsive">
+                    <table className="data-table w-full">
                         <thead>
                             <tr>
                                 <th>Date & Time</th>
@@ -150,39 +147,41 @@ const AuditLogs = () => {
                         <tbody>
                             {loading ? (
                                 <tr>
-                                    <td colSpan="6" className="text-center py-4">Loading...</td>
+                                    <td colSpan="6" className="text-center py-8">
+                                        <div className="flex justify-center"><div className="w-6 h-6 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin"></div></div>
+                                    </td>
                                 </tr>
                             ) : logs.length > 0 ? (
                                 logs.map(log => (
                                     <React.Fragment key={log.log_id}>
-                                        <tr className={expandedLog === log.log_id ? 'bg-gray-50' : ''}>
-                                            <td style={{ whiteSpace: 'nowrap' }}>{formatDate(log.created_at)}</td>
+                                        <tr className={expandedLog === log.log_id ? 'bg-indigo-50/50' : ''}>
+                                            <td className="whitespace-nowrap text-gray-600 font-mono text-xs">{formatDate(log.created_at)}</td>
                                             <td>
                                                 {log.first_name ? (
                                                     <div>
-                                                        <div className="font-medium">{log.first_name} {log.last_name}</div>
+                                                        <div className="font-semibold text-gray-900 text-sm">{log.first_name} {log.last_name}</div>
                                                         <div className="text-xs text-gray-500">{log.email}</div>
                                                     </div>
                                                 ) : (
-                                                    <span className="text-gray-400">System / Unknown</span>
+                                                    <span className="text-gray-400 italic text-sm">System / Unknown</span>
                                                 )}
                                             </td>
                                             <td>
-                                                <span className={`font-medium ${getActionColor(log.action)}`}>
+                                                <span className={`font-mono text-xs font-bold ${getActionColor(log.action)}`}>
                                                     {log.action}
                                                 </span>
                                             </td>
                                             <td>
                                                 {log.entity_type && (
-                                                    <span className="badge badge-ghost">
-                                                        {log.entity_type} #{log.entity_id}
+                                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800 border border-gray-200">
+                                                        {log.entity_type} <span className="text-gray-400 ml-1">#{log.entity_id}</span>
                                                     </span>
                                                 )}
                                             </td>
-                                            <td className="text-sm text-gray-500">{log.ip_address}</td>
+                                            <td className="text-sm text-gray-500 font-mono">{log.ip_address}</td>
                                             <td>
                                                 <button
-                                                    className="btn btn-sm btn-secondary"
+                                                    className={`btn btn-xs ${expandedLog === log.log_id ? 'btn-primary' : 'btn-secondary'}`}
                                                     onClick={() => toggleExpand(log.log_id)}
                                                 >
                                                     {expandedLog === log.log_id ? 'Hide' : 'View'}
@@ -191,27 +190,28 @@ const AuditLogs = () => {
                                         </tr>
                                         {expandedLog === log.log_id && (
                                             <tr>
-                                                <td colSpan="6" style={{ padding: 0 }}>
-                                                    <div style={{ padding: '1rem', background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
-                                                        <div style={{ display: 'flex', gap: '2rem' }}>
-                                                            <div style={{ flex: 1 }}>
-                                                                <h4 style={{ fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                                                    <FaCode /> Request Details
-                                                                </h4>
-                                                                <pre style={{ background: '#1f2937', color: '#e5e7eb', padding: '1rem', borderRadius: '0.5rem', fontSize: '0.75rem', overflowX: 'auto' }}>
+                                                <td colSpan="6" className="p-0 border-b border-indigo-100 bg-gray-50">
+                                                    <div className="p-4 flex gap-6">
+                                                        <div className="flex-1">
+                                                            <h4 className="text-xs font-bold uppercase text-gray-500 mb-2 flex items-center gap-2">
+                                                                <FaCode /> Request Payload & Details
+                                                            </h4>
+                                                            <div className="bg-gray-900 rounded-lg p-3 overflow-x-auto border border-gray-800 shadow-inner">
+                                                                <pre className="text-xs font-mono text-green-400">
                                                                     {JSON.stringify(log.details, null, 2)}
                                                                 </pre>
                                                             </div>
-                                                            <div style={{ width: '250px' }}>
-                                                                <h4 style={{ fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.5rem' }}>Metadata</h4>
-                                                                <div className="text-sm text-gray-600">
-                                                                    <div className="mb-2">
-                                                                        <strong>User Agent:</strong><br />
-                                                                        {log.user_agent}
-                                                                    </div>
-                                                                    <div>
-                                                                        <strong>Log ID:</strong> {log.log_id}
-                                                                    </div>
+                                                        </div>
+                                                        <div className="w-64 border-l border-gray-200 pl-6">
+                                                            <h4 className="text-xs font-bold uppercase text-gray-500 mb-2">Metadata</h4>
+                                                            <div className="text-sm text-gray-600 space-y-3">
+                                                                <div>
+                                                                    <div className="text-xs text-gray-400">User Agent</div>
+                                                                    <div className="break-words text-xs">{log.user_agent}</div>
+                                                                </div>
+                                                                <div>
+                                                                    <div className="text-xs text-gray-400">Log ID</div>
+                                                                    <div className="font-mono text-xs font-bold">#{log.log_id}</div>
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -223,9 +223,9 @@ const AuditLogs = () => {
                                 ))
                             ) : (
                                 <tr>
-                                    <td colSpan="6" className="text-center py-8 text-gray-500">
+                                    <td colSpan="6" className="text-center py-12 text-gray-400">
                                         <FaHistory className="mx-auto mb-2 text-3xl opacity-20" />
-                                        No audit logs found matching your filters.
+                                        <p>No audit logs found matching your filters.</p>
                                     </td>
                                 </tr>
                             )}
@@ -234,11 +234,11 @@ const AuditLogs = () => {
                 </div>
 
                 {/* Pagination */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', borderTop: '1px solid #e5e7eb' }}>
-                    <div className="text-sm text-gray-500">
-                        Showing {((pagination.page - 1) * pagination.limit) + 1} to {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total} entries
+                <div className="flex justify-between items-center p-4 border-t border-gray-100 bg-gray-50 rounded-b-xl">
+                    <div className="text-sm text-gray-500 font-medium">
+                        Showing <span className="font-bold text-gray-900">{((pagination.page - 1) * pagination.limit) + 1}</span> to <span className="font-bold text-gray-900">{Math.min(pagination.page * pagination.limit, pagination.total)}</span> of <span className="font-bold text-gray-900">{pagination.total}</span> entries
                     </div>
-                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <div className="flex gap-2">
                         <button
                             className="btn btn-sm btn-secondary"
                             disabled={pagination.page === 1}

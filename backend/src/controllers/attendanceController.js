@@ -17,12 +17,12 @@ const getAllAttendance = async (req, res) => {
     const { employee_id, start_date, end_date, status, page = 1, limit = 10 } = req.query;
     const userRole = req.user.role;
     const userId = req.user.userId;
-    
+
     // Validate pagination parameters
     const pageNum = Math.max(1, parseInt(page) || 1);
     const limitNum = Math.min(100, Math.max(1, parseInt(limit) || 10)); // Max 100 per page
     const offset = (pageNum - 1) * limitNum;
-    
+
     let queryText = `
       SELECT a.*, 
              e.first_name || ' ' || e.last_name as employee_name,
@@ -80,7 +80,7 @@ const getAllAttendance = async (req, res) => {
     }
 
     queryText += ' ORDER BY a.date DESC, a.created_at DESC';
-    
+
     // Add pagination to main query
     queryText += ` LIMIT $${paramCount} OFFSET $${paramCount + 1}`;
     const paginatedParams = [...params, limitNum, offset];
@@ -147,6 +147,15 @@ const clockIn = async (req, res) => {
       message: 'Clocked in successfully',
       data: result.rows[0],
     });
+
+    if (req.io && req.tenant) {
+      req.io.to(req.tenant.tenant_id).emit('notification', {
+        type: 'ATTENDANCE_LOG',
+        message: `Employee ${employee_id} clocked in`,
+        data: result.rows[0]
+      });
+      req.io.to(req.tenant.tenant_id).emit('dashboard_update', { type: 'ATTENDANCE' });
+    }
   } catch (error) {
     console.error('Clock in error:', error);
     res.status(500).json({
@@ -192,7 +201,7 @@ const clockOut = async (req, res) => {
     // Check if overtime based on settings
     const standardWorkHours = parseFloat(await getSetting('working_hours', '8'));
     const overtimeEnabled = await getSetting('overtime_enabled', 'false');
-    
+
     let overtimeHours = 0;
     if (overtimeEnabled === 'true' && parseFloat(workHours) > standardWorkHours) {
       overtimeHours = (parseFloat(workHours) - standardWorkHours).toFixed(2);
@@ -211,6 +220,15 @@ const clockOut = async (req, res) => {
       message: 'Clocked out successfully',
       data: result.rows[0],
     });
+
+    if (req.io && req.tenant) {
+      req.io.to(req.tenant.tenant_id).emit('notification', {
+        type: 'ATTENDANCE_LOG',
+        message: `Employee ${employee_id} clocked out`,
+        data: result.rows[0]
+      });
+      req.io.to(req.tenant.tenant_id).emit('dashboard_update', { type: 'ATTENDANCE' });
+    }
   } catch (error) {
     console.error('Clock out error:', error);
     res.status(500).json({
@@ -246,6 +264,10 @@ const createAttendance = async (req, res) => {
       message: 'Attendance record created successfully',
       data: result.rows[0],
     });
+
+    if (req.io && req.tenant) {
+      req.io.to(req.tenant.tenant_id).emit('dashboard_update', { type: 'ATTENDANCE' });
+    }
   } catch (error) {
     console.error('Create attendance error:', error);
     res.status(500).json({
@@ -290,6 +312,10 @@ const updateAttendance = async (req, res) => {
       message: 'Attendance record updated successfully',
       data: result.rows[0],
     });
+
+    if (req.io && req.tenant) {
+      req.io.to(req.tenant.tenant_id).emit('dashboard_update', { type: 'ATTENDANCE' });
+    }
   } catch (error) {
     console.error('Update attendance error:', error);
     res.status(500).json({
@@ -321,6 +347,10 @@ const deleteAttendance = async (req, res) => {
       success: true,
       message: 'Attendance record deleted successfully',
     });
+
+    if (req.io && req.tenant) {
+      req.io.to(req.tenant.tenant_id).emit('dashboard_update', { type: 'ATTENDANCE' });
+    }
   } catch (error) {
     console.error('Delete attendance error:', error);
     res.status(500).json({
@@ -331,6 +361,128 @@ const deleteAttendance = async (req, res) => {
   }
 };
 
+// Regularization Request
+const requestRegularization = async (req, res) => {
+  try {
+    const { employee_id, date, requested_clock_in, requested_clock_out, reason } = req.body;
+
+    // Check if a request already exists/pending for this date
+    const existing = await query(
+      'SELECT * FROM attendance_regularization WHERE employee_id = $1 AND date = $2 AND status = \'pending\'',
+      [employee_id, date]
+    );
+
+    if (existing.rows.length > 0) {
+      return res.status(400).json({ success: false, message: 'A pending request already exists for this date.' });
+    }
+
+    // Get original attendance if exists
+    const attendance = await query('SELECT clock_in, clock_out FROM attendance WHERE employee_id = $1 AND date = $2', [employee_id, date]);
+    const original_clock_in = attendance.rows.length > 0 ? attendance.rows[0].clock_in : null;
+    const original_clock_out = attendance.rows.length > 0 ? attendance.rows[0].clock_out : null;
+
+    const result = await query(
+      `INSERT INTO attendance_regularization 
+            (employee_id, date, original_clock_in, original_clock_out, requested_clock_in, requested_clock_out, reason)
+            VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+      [employee_id, date, original_clock_in, original_clock_out, requested_clock_in, requested_clock_out, reason]
+    );
+
+    res.status(201).json({ success: true, message: 'Regularization requested successfully', data: result.rows[0] });
+
+  } catch (error) {
+    console.error('Request regularization error:', error);
+    res.status(500).json({ success: false, message: 'Failed to request regularization', error: error.message });
+  }
+};
+
+// Approve/Reject Regularization
+const updateRegularizationStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body; // 'approved' or 'rejected'
+    const approved_by = req.user.userId; // Assuming middleware adds user info
+
+    const result = await query(
+      `UPDATE attendance_regularization 
+            SET status = $1, approved_by = $2, approved_at = CURRENT_TIMESTAMP 
+            WHERE regularization_id = $3 RETURNING *`,
+      [status, approved_by, id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Request not found' });
+    }
+
+    const request = result.rows[0];
+
+    // If approved, update the main attendance table
+    if (status === 'approved') {
+      // Check if attendance record exists, if not create one
+      const attendance = await query('SELECT * FROM attendance WHERE employee_id = $1 AND date = $2', [request.employee_id, request.date]);
+
+      // Calculate work hours
+      const clockInTime = new Date(`1970-01-01T${request.requested_clock_in}Z`);
+      const clockOutTime = new Date(`1970-01-01T${request.requested_clock_out}Z`);
+      const workHours = ((clockOutTime - clockInTime) / (1000 * 60 * 60)).toFixed(2);
+
+      if (attendance.rows.length > 0) {
+        await query(
+          `UPDATE attendance SET clock_in = $1, clock_out = $2, work_hours = $3, status = 'present', notes = 'Regularized' 
+                     WHERE employee_id = $4 AND date = $5`,
+          [request.requested_clock_in, request.requested_clock_out, workHours, request.employee_id, request.date]
+        );
+      } else {
+        await query(
+          `INSERT INTO attendance (employee_id, date, clock_in, clock_out, work_hours, status, notes)
+                     VALUES ($1, $2, $3, $4, $5, 'present', 'Regularized')`,
+          [request.employee_id, request.date, request.requested_clock_in, request.requested_clock_out, workHours]
+        );
+      }
+    }
+
+    res.json({ success: true, message: `Request ${status} successfully`, data: request });
+
+  } catch (error) {
+    console.error('Update regularization error:', error);
+    res.status(500).json({ success: false, message: 'Failed to update request', error: error.message });
+  }
+};
+
+// Get Regularization Requests
+const getRegularizationRequests = async (req, res) => {
+  try {
+    const { employee_id, status } = req.query;
+    let queryText = `
+            SELECT r.*, e.first_name || ' ' || e.last_name as employee_name 
+            FROM attendance_regularization r
+            JOIN employees e ON r.employee_id = e.employee_id
+            WHERE 1=1
+        `;
+    const params = [];
+    let paramIndex = 1;
+
+    if (employee_id) {
+      queryText += ` AND r.employee_id = $${paramIndex}`;
+      params.push(employee_id);
+      paramIndex++;
+    }
+    if (status) {
+      queryText += ` AND r.status = $${paramIndex}`;
+      params.push(status);
+      paramIndex++;
+    }
+
+    queryText += ' ORDER BY r.created_at DESC';
+
+    const result = await query(queryText, params);
+    res.json({ success: true, data: result.rows });
+  } catch (error) {
+    console.error('Get regularization requests error:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch requests', error: error.message });
+  }
+};
+
 module.exports = {
   getAllAttendance,
   clockIn,
@@ -338,4 +490,7 @@ module.exports = {
   createAttendance,
   updateAttendance,
   deleteAttendance,
+  requestRegularization,
+  updateRegularizationStatus,
+  getRegularizationRequests
 };

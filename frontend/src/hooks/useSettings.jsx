@@ -1,5 +1,6 @@
 import { useState, useEffect, createContext, useContext } from 'react';
 import { settingsService } from '../services';
+import { applyDesignSettings } from '../utils/designSystem';
 
 // Create Settings Context
 const SettingsContext = createContext();
@@ -20,6 +21,9 @@ export const SettingsProvider = ({ children }) => {
       });
       setSettings(settingsObj);
       setError(null);
+      
+      // Apply design settings
+      applyDesignSettings(settingsObj);
     } catch (err) {
       // Only log error if it's not a 401 (unauthorized)
       if (err.response?.status !== 401) {
@@ -33,6 +37,15 @@ export const SettingsProvider = ({ children }) => {
     }
   };
 
+  const refreshSettings = async () => {
+    await loadSettings();
+    
+    // Dispatch event to notify other parts of the app
+    window.dispatchEvent(new CustomEvent('settingsUpdated', {
+      detail: settings
+    }));
+  };
+
   const getSetting = (key, defaultValue = '') => {
     return settings[key] || defaultValue;
   };
@@ -44,58 +57,36 @@ export const SettingsProvider = ({ children }) => {
 
   const getSettingBoolean = (key, defaultValue = false) => {
     const value = settings[key];
-    if (value === 'true' || value === true) return true;
-    if (value === 'false' || value === false) return false;
+    if (value === 'true') return true;
+    if (value === 'false') return false;
     return defaultValue;
-  };
-
-  const refreshSettings = () => {
-    loadSettings();
   };
 
   useEffect(() => {
     loadSettings();
   }, []);
 
-  // Apply Theme Settings
-  useEffect(() => {
-    if (Object.keys(settings).length > 0) {
-      const root = document.documentElement;
-
-      if (settings.brand_primary_color) {
-        root.style.setProperty('--primary-color', settings.brand_primary_color);
-        // Simple darkening for hover state - could be improved with color lib
-        // For now, we rely on the main color or user can set overrides if we add them
-      }
-
-      if (settings.brand_secondary_color) {
-        root.style.setProperty('--secondary-color', settings.brand_secondary_color);
-      }
-
-      // Reset if not present (optional, or stick to defaults defined in CSS)
-    }
-  }, [settings]);
-
   return (
     <SettingsContext.Provider value={{
       settings,
       loading,
       error,
+      loadSettings,
+      refreshSettings,
       getSetting,
       getSettingNumber,
-      getSettingBoolean,
-      refreshSettings
+      getSettingBoolean
     }}>
       {children}
     </SettingsContext.Provider>
   );
 };
 
-// Custom hook to use settings
+// Hook to use settings
 export const useSettings = () => {
   const context = useContext(SettingsContext);
   if (!context) {
-    throw new Error('useSettings must be used within SettingsProvider');
+    throw new Error('useSettings must be used within a SettingsProvider');
   }
   return context;
 };

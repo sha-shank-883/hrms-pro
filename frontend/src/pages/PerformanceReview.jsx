@@ -95,180 +95,192 @@ const PerformanceReview = () => {
         }
     };
 
-    if (loading) return <div className="loading">Loading...</div>;
+    if (loading) return (
+        <div className="flex justify-center items-center h-64">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+        </div>
+    );
 
-    if (!review) return <div className="empty-state">Review not found</div>;
+    if (!review) return (
+        <div className="flex flex-col items-center justify-center py-12 text-neutral-500">
+            <FaCheckCircle size={48} className="text-neutral-300 mb-4" />
+            <h3 className="text-lg font-semibold text-neutral-700">Review not found</h3>
+        </div>
+    );
 
     const isEmployee = user.role === 'employee';
     const isManager = user.role === 'manager' || user.role === 'admin';
     const isCompleted = review.status === 'completed';
 
     return (
-        <div className="container" style={{ paddingBottom: '2rem' }}>
-            <div className="page-header" style={{ marginTop: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div className="w-full pb-8">
+            <div class="page-header">
                 <div>
                     <button
                         onClick={() => navigate('/performance')}
-                        className="btn btn-secondary"
-                        style={{ marginBottom: '1rem' }}
+                        className="text-neutral-500 hover:text-neutral-700 mb-2 flex items-center gap-1 text-sm font-medium transition-colors"
                     >
-                        <FaArrowLeft /> Back to Dashboard
+                        <FaArrowLeft /> Back to Performance
                     </button>
-                    <h1 className="page-title">Performance Review</h1>
-                    <div className="page-description">
+                    <h1 class="page-title">Performance Review</h1>
+                    <div class="text-neutral-600 mt-1">
                         {review.cycle_title} • ID: #{review.review_id}
                     </div>
                 </div>
-                <span className={`badge ${review.status === 'completed' ? 'badge-success' :
+                <div>
+                    <span className={`badge ${review.status === 'completed' ? 'badge-success' :
                         review.status === 'scheduled' ? 'badge-info' : 'badge-secondary'
-                    }`}>
-                    {review.status.replace(/_/g, ' ')}
-                </span>
+                        } text-sm px-3 py-1`}>
+                        {review.status.replace(/_/g, ' ')}
+                    </span>
+                </div>
             </div>
 
-            <div className="grid grid-cols-2" style={{ marginBottom: '2rem' }}>
-                <div className="card">
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                        <div style={{ background: '#e0e7ff', padding: '1rem', borderRadius: '50%', color: '#4f46e5' }}>
+            <div className="grid grid-cols-4 gap-6 mb-8">
+                <div className="card p-4">
+                    <div className="flex items-center gap-4">
+                        <div className="p-3 bg-indigo-50 rounded-full text-indigo-600">
                             <FaUser size={20} />
                         </div>
                         <div>
-                            <label className="form-label" style={{ marginBottom: '0', fontSize: '0.75rem', textTransform: 'uppercase', color: '#6b7280' }}>Employee</label>
-                            <div style={{ fontWeight: 'bold', fontSize: '1.125rem' }}>{review.employee_name}</div>
+                            <label className="block text-xs font-bold text-neutral-500 uppercase tracking-wider mb-0.5">Employee</label>
+                            <div className="text-lg font-semibold text-neutral-900">{review.employee_name}</div>
                         </div>
                     </div>
                 </div>
-                <div className="card">
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                        <div style={{ background: '#f3e8ff', padding: '1rem', borderRadius: '50%', color: '#9333ea' }}>
+                <div className="card p-4">
+                    <div className="flex items-center gap-4">
+                        <div className="p-3 bg-purple-50 rounded-full text-purple-600">
                             <FaUserTie size={20} />
                         </div>
                         <div>
-                            <label className="form-label" style={{ marginBottom: '0', fontSize: '0.75rem', textTransform: 'uppercase', color: '#6b7280' }}>Reviewer</label>
-                            <div style={{ fontWeight: 'bold', fontSize: '1.125rem' }}>{review.reviewer_name || 'Not Assigned'}</div>
+                            <label className="block text-xs font-bold text-neutral-500 uppercase tracking-wider mb-0.5">Reviewer</label>
+                            <div className="text-lg font-semibold text-neutral-900">{review.reviewer_name || 'Not Assigned'}</div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <form onSubmit={handleSubmit} style={{ display: 'grid', gap: '2rem' }}>
+            <form onSubmit={handleSubmit} className="space-y-8">
                 {/* Self Review Section */}
-                <div className="card">
-                    <div style={{ borderBottom: '1px solid #e5e7eb', paddingBottom: '1rem', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                        <div style={{ background: '#4f46e5', color: 'white', width: '32px', height: '32px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>1</div>
-                        <h2 style={{ fontSize: '1.25rem', margin: 0 }}>Self Assessment</h2>
+                <div class="card">
+                    <div className="p-4 border-b border-neutral-100 flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-primary-600 text-white flex items-center justify-center font-bold shadow-sm">1</div>
+                        <h3 className="font-semibold text-neutral-800">Self Assessment</h3>
                     </div>
 
-                    <div className="form-group">
-                        <label className="form-label">Self Rating (1-5)</label>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                            <input
-                                type="number"
-                                name="self_rating"
-                                min="1"
-                                max="5"
-                                step="0.1"
-                                disabled={isCompleted || (isEmployee && review.status !== 'scheduled')}
-                                value={formData.self_rating}
-                                onChange={handleChange}
-                                className="form-input"
-                                style={{ width: '100px', textAlign: 'center', fontWeight: 'bold' }}
-                            />
-                            <div style={{ display: 'flex', color: '#fbbf24' }}>
-                                {[...Array(5)].map((_, i) => (
-                                    <FaStar key={i} color={i < Math.round(formData.self_rating) ? '#fbbf24' : '#e5e7eb'} />
-                                ))}
+                    <div className="p-6 space-y-6">
+                        <div className="form-group">
+                            <label className="block text-sm font-medium text-neutral-700 mb-2">Self Rating (1-5)</label>
+                            <div className="flex items-center gap-4">
+                                <input
+                                    type="number"
+                                    name="self_rating"
+                                    min="1"
+                                    max="5"
+                                    step="0.1"
+                                    disabled={isCompleted || (isEmployee && review.status !== 'scheduled')}
+                                    value={formData.self_rating}
+                                    onChange={handleChange}
+                                    className="form-input w-24 text-center font-bold"
+                                />
+                                <div className="flex text-yellow-400 text-xl gap-1">
+                                    {[...Array(5)].map((_, i) => (
+                                        <FaStar key={i} className={i < Math.round(formData.self_rating) ? 'text-yellow-400' : 'text-neutral-200'} />
+                                    ))}
+                                </div>
                             </div>
                         </div>
-                    </div>
 
-                    <div className="form-group">
-                        <label className="form-label">Your Comments</label>
-                        <textarea
-                            name="self_comments"
-                            rows="6"
-                            disabled={isCompleted || (isEmployee && review.status !== 'scheduled')}
-                            value={formData.self_comments}
-                            onChange={handleChange}
-                            className="form-input"
-                            placeholder="Describe your key achievements, challenges faced, and areas where you've grown..."
-                        ></textarea>
-                    </div>
-
-                    {isEmployee && review.status === 'scheduled' && (
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
-                            <button
-                                type="button"
-                                onClick={handleSubmitSelfReview}
-                                className="btn btn-primary"
-                            >
-                                <FaCheckCircle /> Submit Self Review
-                            </button>
+                        <div className="form-group">
+                            <label className="block text-sm font-medium text-neutral-700 mb-2">Your Comments</label>
+                            <textarea
+                                name="self_comments"
+                                rows="6"
+                                disabled={isCompleted || (isEmployee && review.status !== 'scheduled')}
+                                value={formData.self_comments}
+                                onChange={handleChange}
+                                className="form-textarea w-full"
+                                placeholder="Describe your key achievements, challenges faced, and areas where you've grown..."
+                            ></textarea>
                         </div>
-                    )}
+
+                        {isEmployee && review.status === 'scheduled' && (
+                            <div className="flex justify-end pt-4 border-t border-neutral-100">
+                                <button
+                                    type="button"
+                                    onClick={handleSubmitSelfReview}
+                                    className="btn btn-primary"
+                                >
+                                    <FaCheckCircle className="mr-2" /> Submit Self Review
+                                </button>
+                            </div>
+                        )}
+                    </div>
                 </div>
 
                 {/* Manager Review Section */}
-                <div className="card">
-                    <div style={{ borderBottom: '1px solid #e5e7eb', paddingBottom: '1rem', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                        <div style={{ background: '#9333ea', color: 'white', width: '32px', height: '32px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>2</div>
-                        <h2 style={{ fontSize: '1.25rem', margin: 0 }}>Manager Evaluation</h2>
+                <div class="card">
+                    <div className="p-4 border-b border-neutral-100 flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-purple-600 text-white flex items-center justify-center font-bold shadow-sm">2</div>
+                        <h3 className="font-semibold text-neutral-800">Manager Evaluation</h3>
                     </div>
 
-                    <div className="form-group">
-                        <label className="form-label">Manager Rating (1-5)</label>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                            <input
-                                type="number"
-                                name="manager_rating"
-                                min="1"
-                                max="5"
-                                step="0.1"
-                                disabled={isCompleted || !isManager}
-                                value={formData.manager_rating}
-                                onChange={handleChange}
-                                className="form-input"
-                                style={{ width: '100px', textAlign: 'center', fontWeight: 'bold' }}
-                            />
-                            <div style={{ display: 'flex', color: '#fbbf24' }}>
-                                {[...Array(5)].map((_, i) => (
-                                    <FaStar key={i} color={i < Math.round(formData.manager_rating) ? '#fbbf24' : '#e5e7eb'} />
-                                ))}
+                    <div className="p-6 space-y-6">
+                        <div className="form-group">
+                            <label className="block text-sm font-medium text-neutral-700 mb-2">Manager Rating (1-5)</label>
+                            <div className="flex items-center gap-4">
+                                <input
+                                    type="number"
+                                    name="manager_rating"
+                                    min="1"
+                                    max="5"
+                                    step="0.1"
+                                    disabled={isCompleted || !isManager}
+                                    value={formData.manager_rating}
+                                    onChange={handleChange}
+                                    className="form-input w-24 text-center font-bold"
+                                />
+                                <div className="flex text-yellow-400 text-xl gap-1">
+                                    {[...Array(5)].map((_, i) => (
+                                        <FaStar key={i} className={i < Math.round(formData.manager_rating) ? 'text-yellow-400' : 'text-neutral-200'} />
+                                    ))}
+                                </div>
                             </div>
                         </div>
-                    </div>
 
-                    <div className="form-group">
-                        <label className="form-label">Manager Feedback</label>
-                        <textarea
-                            name="manager_comments"
-                            rows="6"
-                            disabled={isCompleted || !isManager}
-                            value={formData.manager_comments}
-                            onChange={handleChange}
-                            className="form-input"
-                            placeholder="Provide constructive feedback, acknowledge strengths, and suggest improvements..."
-                        ></textarea>
-                    </div>
-
-                    {isManager && !isCompleted && (
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1rem' }}>
-                            <button
-                                type="submit"
-                                disabled={saving}
-                                className="btn btn-secondary"
-                            >
-                                <FaSave /> Save Draft
-                            </button>
-                            <button
-                                type="button"
-                                onClick={handleSubmitManagerReview}
-                                className="btn btn-primary"
-                            >
-                                <FaCheckCircle /> Complete Review
-                            </button>
+                        <div className="form-group">
+                            <label className="block text-sm font-medium text-neutral-700 mb-2">Manager Feedback</label>
+                            <textarea
+                                name="manager_comments"
+                                rows="6"
+                                disabled={isCompleted || !isManager}
+                                value={formData.manager_comments}
+                                onChange={handleChange}
+                                className="form-textarea w-full"
+                                placeholder="Provide constructive feedback, acknowledge strengths, and suggest improvements..."
+                            ></textarea>
                         </div>
-                    )}
+
+                        {isManager && !isCompleted && (
+                            <div className="flex justify-end gap-3 pt-4 border-t border-neutral-100">
+                                <button
+                                    type="submit"
+                                    disabled={saving}
+                                    className="btn btn-secondary"
+                                >
+                                    <FaSave className="mr-2" /> Save Draft
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={handleSubmitManagerReview}
+                                    className="btn btn-primary"
+                                >
+                                    <FaCheckCircle className="mr-2" /> Complete Review
+                                </button>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </form>
         </div>

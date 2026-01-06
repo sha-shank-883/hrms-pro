@@ -1,10 +1,15 @@
 const nodemailer = require('nodemailer');
 
 // Log email configuration (masking password)
+// Parse configuration
+const smtpPort = parseInt(process.env.SMTP_PORT || '587', 10);
+const secure = process.env.SMTP_SECURE === 'true' || (process.env.SMTP_SECURE === undefined && smtpPort === 465);
+
+// Log email configuration (masking password)
 console.log('📧 configuring email service with:', {
     host: process.env.SMTP_HOST,
-    port: process.env.SMTP_PORT,
-    secure: process.env.SMTP_SECURE,
+    port: smtpPort,
+    secure: secure,
     user: process.env.SMTP_USER,
     // pass: '****' 
 });
@@ -12,16 +17,16 @@ console.log('📧 configuring email service with:', {
 // Create reusable transporter object using the default SMTP transport
 const transporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST,
-    port: process.env.SMTP_PORT,
-    secure: process.env.SMTP_SECURE === 'true', // true for 465, false for other ports
+    port: smtpPort,
+    secure: secure, // true for 465, false for other ports
     auth: {
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASS,
     },
-    // Connection settings
-    connectionTimeout: 10000, // 10 seconds
-    greetingTimeout: 5000,    // 5 seconds
-    socketTimeout: 10000,     // 10 seconds
+    // Connection settings - Increased timeouts for better stability
+    connectionTimeout: 20000, // 20 seconds
+    greetingTimeout: 10000,   // 10 seconds
+    socketTimeout: 20000,     // 20 seconds
     // Debug settings
     logger: true,
     debug: true

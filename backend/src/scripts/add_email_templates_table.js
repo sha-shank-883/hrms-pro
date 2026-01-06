@@ -3,7 +3,7 @@ const { query } = require('../config/database');
 
 const createEmailTemplatesTable = async () => {
     console.log('📦 Creating email_templates table...');
-    
+
     try {
         // Create the email_templates table
         await query(`
@@ -18,55 +18,99 @@ const createEmailTemplatesTable = async () => {
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         `);
-        
+
         console.log('✅ Email templates table created successfully');
-        
+
         // Add indexes
         await query(`
             CREATE INDEX IF NOT EXISTS idx_email_templates_name ON email_templates(name)
         `);
-        
+
         console.log('✅ Indexes created successfully');
-        
+
         // Insert default templates
         console.log('📦 Inserting default email templates...');
-        
+
         const defaultTemplates = [
             {
                 name: 'welcome_employee',
                 subject: 'Welcome to {{company_name}} - Your Account Details',
                 body_html: `
-                    <h2>Welcome to {{company_name}}, {{first_name}}!</h2>
-                    <p>We're excited to have you join our team.</p>
-                    <p>Your account has been created with the following details:</p>
-                    <ul>
-                        <li>Email: {{email}}</li>
-                        <li>Position: {{position}}</li>
-                        <li>Department: {{department}}</li>
-                        <li>Start Date: {{start_date}}</li>
-                    </ul>
-                    <p>You can login to our HR portal using your email and the temporary password: <strong>{{temp_password}}</strong></p>
-                    <p>Please change your password after your first login.</p>
-                    <br>
-                    <p>Best regards,<br>The HR Team</p>
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f4f7f6; }
+        .container { max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px 20px; text-align: center; color: #ffffff; }
+        .header h1 { margin: 0; font-size: 28px; font-weight: 300; letter-spacing: 1px; }
+        .content { padding: 40px 30px; }
+        .welcome-text { font-size: 18px; color: #555; margin-bottom: 30px; }
+        .details-box { background-color: #f9f9f9; border-left: 4px solid #764ba2; padding: 20px; margin-bottom: 30px; border-radius: 4px; }
+        .details-item { margin-bottom: 10px; font-size: 15px; }
+        .details-label { font-weight: 600; color: #777; width: 100px; display: inline-block; }
+        .btn { display: inline-block; background-color: #764ba2; color: #ffffff; text-decoration: none; padding: 12px 30px; border-radius: 25px; font-weight: bold; margin-top: 10px; transition: background-color 0.3s; }
+        .btn:hover { background-color: #5a387e; }
+        .footer { background-color: #f4f7f6; padding: 20px; text-align: center; font-size: 12px; color: #999; border-top: 1px solid #eee; }
+        .temp-password { background-color: #eee; padding: 2px 6px; border-radius: 4px; font-family: monospace; font-weight: bold; letter-spacing: 1px; color: #d00; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Welcome to {{company_name}}!</h1>
+        </div>
+        <div class="content">
+            <p class="welcome-text">Hi {{first_name}},</p>
+            <p>We are absolutely thrilled to welcome you to the team! Your journey with us begins now, and we can't wait to see all the great things we'll achieve together.</p>
+            
+            <p>Your employee account has been successfully created. Here are your onboarding details:</p>
+            
+            <div class="details-box">
+                <div class="details-item"><span class="details-label">Position:</span> {{position}}</div>
+                <div class="details-item"><span class="details-label">Department:</span> {{department}}</div>
+                <div class="details-item"><span class="details-label">Start Date:</span> {{start_date}}</div>
+                <div class="details-item"><span class="details-label">Email:</span> {{email}}</div>
+            </div>
+
+            <p>You can access the HR Portal using the credentials below:</p>
+            
+            <div style="text-align: center; margin: 30px 0;">
+                <p>Temporary Password: <span class="temp-password">{{temp_password}}</span></p>
+                <a href="#" class="btn">Login to HR Portal</a>
+            </div>
+
+            <p><em>Security Tip: Please change your password immediately after your first login to keep your account secure.</em></p>
+        </div>
+        <div class="footer">
+            &copy; ${new Date().getFullYear()} {{company_name}}. All rights reserved.<br>
+            If you have any questions, please reach out to the HR department.
+        </div>
+    </div>
+</body>
+</html>
                 `,
                 body_text: `
-                    Welcome to {{company_name}}, {{first_name}}!
+                    WELCOME TO {{company_name}}!
                     
-                    We're excited to have you join our team.
+                    Hi {{first_name}},
                     
-                    Your account has been created with the following details:
-                    - Email: {{email}}
-                    - Position: {{position}}
-                    - Department: {{department}}
-                    - Start Date: {{start_date}}
+                    We are absolutely thrilled to welcome you to the team! Your journey with us begins now.
                     
-                    You can login to our HR portal using your email and the temporary password: {{temp_password}}
+                    Here are your account details:
+                    --------------------------------------------------
+                    Position:    {{position}}
+                    Department:  {{department}}
+                    Start Date:  {{start_date}}
+                    Email:       {{email}}
+                    --------------------------------------------------
                     
-                    Please change your password after your first login.
+                    Temporary Password: {{temp_password}}
+                    
+                    Please login and change your password immediately.
                     
                     Best regards,
-                    The HR Team
+                    The {{company_name}} Team
                 `,
                 variables: {
                     company_name: { required: true, type: 'string', description: 'Company name' },
@@ -195,32 +239,66 @@ const createEmailTemplatesTable = async () => {
                 }
             }
         ];
-        
-        for (const template of defaultTemplates) {
-            try {
-                await query(
-                    `INSERT INTO email_templates (name, subject, body_html, body_text, variables)
-                     VALUES ($1, $2, $3, $4, $5)
-                     ON CONFLICT (name) DO NOTHING`,
-                    [
-                        template.name,
-                        template.subject,
-                        template.body_html.trim(),
-                        template.body_text.trim(),
-                        JSON.stringify(template.variables)
-                    ]
-                );
-                console.log(`✅ Default template "${template.name}" inserted or already exists`);
-            } catch (insertError) {
-                console.error(`❌ Error inserting template "${template.name}":`, insertError.message);
+
+        for (const schema of schemas) {
+            console.log(`Checking schema: ${schema}`);
+
+            // Create table in this schema
+            await client.query(`
+                CREATE TABLE IF NOT EXISTS "${schema}".email_templates (
+                    id SERIAL PRIMARY KEY,
+                    name VARCHAR(255) NOT NULL UNIQUE,
+                    subject TEXT NOT NULL,
+                    body_html TEXT,
+                    body_text TEXT,
+                    variables JSONB DEFAULT '{}',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            `);
+            console.log(`✅ Table email_templates ensured in ${schema}`);
+
+            // Add indexes (if not already present)
+            await client.query(`
+                CREATE INDEX IF NOT EXISTS idx_${schema}_email_templates_name ON "${schema}".email_templates(name)
+            `);
+            console.log(`✅ Index idx_${schema}_email_templates_name ensured in ${schema}`);
+
+            // Insert default templates
+            for (const template of defaultTemplates) {
+                try {
+                    await client.query(
+                        `INSERT INTO "${schema}".email_templates (name, subject, body_html, body_text, variables)
+                         VALUES ($1, $2, $3, $4, $5)
+                         ON CONFLICT (name) DO UPDATE SET
+                            subject = EXCLUDED.subject,
+                            body_html = EXCLUDED.body_html,
+                            body_text = EXCLUDED.body_text,
+                            variables = EXCLUDED.variables,
+                            updated_at = CURRENT_TIMESTAMP
+                        `,
+                        [
+                            template.name,
+                            template.subject,
+                            template.body_html.trim(),
+                            template.body_text.trim(),
+                            JSON.stringify(template.variables)
+                        ]
+                    );
+                    console.log(`   - Template "${template.name}" synced in ${schema}`);
+                } catch (insertError) {
+                    console.error(`   ❌ Error inserting template "${template.name}" in ${schema}:`, insertError.message);
+                }
             }
         }
-        
-        console.log('🎉 Email templates table setup completed successfully!');
+
+        console.log('🎉 Email templates table update completed across all schemas!');
         process.exit(0);
     } catch (error) {
-        console.error('❌ Error creating email templates table:', error.message);
+        console.error('❌ Error updating email templates:', error.message);
         process.exit(1);
+    } finally {
+        client.release();
     }
 };
 

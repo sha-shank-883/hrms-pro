@@ -1,35 +1,20 @@
 require('dotenv').config();
-const { query } = require('../config/database');
+const { pool } = require('../config/database');
 
 const createEmailTemplatesTable = async () => {
-    console.log('📦 Creating email_templates table...');
-
+    const client = await pool.connect();
     try {
-        // Create the email_templates table
-        await query(`
-            CREATE TABLE IF NOT EXISTS email_templates (
-                id SERIAL PRIMARY KEY,
-                name VARCHAR(255) NOT NULL UNIQUE,
-                subject TEXT NOT NULL,
-                body_html TEXT,
-                body_text TEXT,
-                variables JSONB DEFAULT '{}',
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
+        console.log('📦 Starting email templates schema update...');
+
+        // Get all schemes
+        const schemasRes = await client.query(`
+            SELECT schema_name 
+            FROM information_schema.schemata 
+            WHERE schema_name NOT IN ('information_schema', 'pg_catalog', 'pg_toast')
         `);
 
-        console.log('✅ Email templates table created successfully');
-
-        // Add indexes
-        await query(`
-            CREATE INDEX IF NOT EXISTS idx_email_templates_name ON email_templates(name)
-        `);
-
-        console.log('✅ Indexes created successfully');
-
-        // Insert default templates
-        console.log('📦 Inserting default email templates...');
+        const schemas = schemasRes.rows.map(r => r.schema_name);
+        console.log('Found schemas:', schemas);
 
         const defaultTemplates = [
             {

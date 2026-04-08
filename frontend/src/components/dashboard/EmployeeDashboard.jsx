@@ -82,7 +82,7 @@ const EmployeeDashboard = () => {
             </div>
 
             {/* Dashboard Grid - More Compact */}
-            <div className="grid grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {/* Left Column - Attendance & Tasks */}
                 <div className="space-y-4">
                     <ClockInWidget employeeData={employeeData} />
@@ -98,7 +98,7 @@ const EmployeeDashboard = () => {
                         <div className="card-header mb-3">
                             <h3 className="card-title text-sm">Quick Actions</h3>
                         </div>
-                        <div className="grid grid-cols-4 gap-2">
+                        <div className="grid grid-cols-2 gap-2">
                             <div
                                 className="p-3 bg-neutral-50 rounded-lg border border-neutral-100 flex flex-col items-center justify-center cursor-pointer hover:bg-neutral-100 transition-colors group"
                                 onClick={() => navigate('/my-payslips')}

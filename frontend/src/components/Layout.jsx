@@ -177,8 +177,8 @@ const Layout = () => {
         />
       )}
 
-      {/* Sidebar - Using flex layout instead of fixed positioning on desktop */}
-      <aside className={`app-sidebar w-72 flex-shrink-0 transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} z-50 transition-transform duration-300 ease-in-out lg:translate-x-0 lg:z-auto lg:relative lg:transform-none`}>
+      {/* Sidebar - Fixed on mobile to overlay, relative on desktop to push content */}
+      <aside className={`app-sidebar w-72 flex flex-col bg-white h-full fixed inset-y-0 left-0 lg:relative flex-shrink-0 transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} z-50 transition-transform duration-300 ease-in-out lg:translate-x-0 lg:z-auto lg:transform-none shadow-2xl lg:shadow-none`}>
         {/* Sidebar Header - More Padding */}
         <div className="h-20 flex items-center justify-between px-6 border-b border-neutral-200 bg-white">
           <div className="flex items-center gap-4 overflow-hidden">

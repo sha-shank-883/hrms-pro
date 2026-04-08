@@ -412,8 +412,8 @@ const AdminDashboard = () => {
 
         // Dynamic class based on colSpan
         let colClass = "col-span-1";
-        if (config.colSpan === 2) colClass = "col-span-2";
-        if (config.colSpan === 4) colClass = "col-span-4";
+        if (config.colSpan === 2) colClass = "col-span-1 md:col-span-2";
+        if (config.colSpan === 4) colClass = "col-span-1 md:col-span-2 lg:col-span-4";
 
         const commonProps = {
             chartType: config.chartType,
@@ -575,7 +575,7 @@ const AdminDashboard = () => {
 
                 {/* 2. Stats Zone - Adjustable Grid */}
                 <SortableContext items={statOrder} strategy={rectSortingStrategy}>
-                    <div className="grid grid-cols-4 gap-4 mb-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                         {statOrder.map((id) => {
                             const stat = getStatConfig(id);
                             return (
@@ -596,7 +596,7 @@ const AdminDashboard = () => {
 
                 {/* 3. Charts Zone - Adjustable Grid */}
                 <SortableContext items={chartOrder} strategy={rectSortingStrategy}>
-                    <div className="grid grid-cols-4 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                         {chartOrder.map((id) => (
                             <React.Fragment key={id}>
                                 {renderChart(id)}

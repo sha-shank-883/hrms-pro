@@ -59,7 +59,7 @@ const ManagerDashboard = () => {
             </div>
 
             {/* Team Stats - More Compact */}
-            <div className="grid grid-cols-4 gap-4 mb-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                 <div className="card" style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white' }}>
                     <div style={{ fontSize: '1.5rem', marginBottom: '0.25rem' }}><FaUsers /></div>
                     <h3 style={{ fontSize: '1.5rem', marginBottom: '0.1rem', fontWeight: '700' }}>{stats?.employees?.active || 0}</h3>

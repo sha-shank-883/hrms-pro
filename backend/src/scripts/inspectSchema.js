@@ -2,7 +2,7 @@ const { pool, query, tenantStorage } = require('../config/database');
 
 const inspectSchema = async () => {
     const tenantId = 'tenant_test_corp';
-    console.log(`🔍 Inspecting schema for ${tenantId}...`);
+    
 
     try {
         await tenantStorage.run(tenantId, async () => {
@@ -13,7 +13,7 @@ const inspectSchema = async () => {
         WHERE table_name = 'users'
       `);
 
-            console.log('Columns in users table:');
+            
             console.table(res.rows);
         });
 

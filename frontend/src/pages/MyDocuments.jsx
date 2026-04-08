@@ -29,7 +29,7 @@ const MyDocuments = () => {
     try {
       setLoading(true);
       const response = await documentService.getAll({});
-      console.log('Documents loaded:', response.data);
+      
       setDocuments(response.data);
       setError('');
     } catch (error) {

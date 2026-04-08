@@ -13,9 +13,9 @@ const pool = new Pool({
 async function migrate() {
     const client = await pool.connect();
     try {
-        console.log('Starting 2FA migration fix...');
-        console.log(`DB User: ${process.env.DB_USER}`);
-        console.log(`DB Host: ${process.env.DB_HOST}`);
+        
+        
+        
 
         // 1. Get all tenants from shared.tenants
         const tenantsRes = await client.query('SELECT tenant_id FROM shared.tenants');
@@ -23,14 +23,14 @@ async function migrate() {
 
         // 2. Explicitly add tenant_default if not present
         if (!tenants.includes('tenant_default')) {
-            console.log('Adding tenant_default to migration list (not found in shared.tenants)');
+            
             tenants.push('tenant_default');
         }
 
-        console.log(`Found ${tenants.length} tenants to check:`, tenants);
+        
 
         for (const tenantId of tenants) {
-            console.log(`Processing tenant: ${tenantId}`);
+            
 
             try {
                 // Check if schema exists first
@@ -39,7 +39,7 @@ async function migrate() {
                 `, [tenantId]);
 
                 if (schemaCheck.rows.length === 0) {
-                    console.log(`⚠️ Schema ${tenantId} does not exist. Skipping.`);
+                    
                     continue;
                 }
 
@@ -55,13 +55,13 @@ async function migrate() {
                     ADD COLUMN IF NOT EXISTS reset_token_expiry TIMESTAMP
                 `);
 
-                console.log(`✓ Updated users table for ${tenantId}`);
+                
             } catch (err) {
                 console.error(`X Failed to migrate tenant ${tenantId}:`, err.message);
             }
         }
 
-        console.log('Migration completed successfully.');
+        
     } catch (error) {
         console.error('Migration failed:', error);
     } finally {

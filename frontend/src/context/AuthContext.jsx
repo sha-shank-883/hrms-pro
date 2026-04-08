@@ -18,18 +18,18 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     // Check if user is logged in
-    console.log('=== AUTH CONTEXT INIT ===');
+    
     const currentUser = authService.getCurrentUser();
     const authenticated = authService.isAuthenticated();
-    console.log('Current user from localStorage:', currentUser);
-    console.log('Is authenticated:', authenticated);
+    
+    
 
     if (currentUser && authenticated) {
-      console.log('Setting user from localStorage');
+      
       setUser(currentUser);
       setIsAuthenticated(true);
     } else {
-      console.log('No user found in localStorage or not authenticated');
+      
       setUser(null);
       setIsAuthenticated(false);
     }
@@ -51,11 +51,11 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const login = async (email, password) => {
-    console.log('=== AUTH CONTEXT LOGIN CALLED ===');
-    console.log('Email:', email);
+    
+    
 
     const data = await authService.login(email, password);
-    console.log('Login response:', data);
+    
 
     if (data.requires2FA) {
       return data;
@@ -63,15 +63,15 @@ export const AuthProvider = ({ children }) => {
 
     // Fetch full profile to get employee information
     const profileResponse = await authService.getProfile();
-    console.log('Profile response:', profileResponse);
+    
 
     const fullUser = { ...data.data.user, ...profileResponse.data.data };
-    console.log('Full user object:', fullUser);
+    
 
     setUser(fullUser);
     setIsAuthenticated(true);
 
-    console.log('User set in state:', fullUser);
+    
     return data;
   };
 

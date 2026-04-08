@@ -29,7 +29,7 @@ const tenantStorage = new AsyncLocalStorage();
 
 // Test database connection
 pool.on('connect', () => {
-  // console.log('✅ Connected to PostgreSQL database');
+  // 
 });
 
 pool.on('error', (err) => {
@@ -54,7 +54,7 @@ const query = async (text, params) => {
 
     const res = await client.query(text, params);
     const duration = Date.now() - start;
-    // console.log('Executed query', { text, duration, rows: res.rowCount, tenant: tenantId });
+    // 
     return res;
   } catch (error) {
     console.error('Database query error:', error);

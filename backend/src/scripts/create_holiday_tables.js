@@ -12,7 +12,7 @@ const createHolidayTables = async () => {
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         `);
-        console.log("Created table 'holidays'");
+        
 
         await query(`
             CREATE TABLE IF NOT EXISTS employee_restricted_holidays (
@@ -25,7 +25,7 @@ const createHolidayTables = async () => {
                 UNIQUE(employee_id, holiday_id)
             );
         `);
-        console.log("Created table 'employee_restricted_holidays'");
+        
 
         // Insert some sample holidays if empty
         const check = await query('SELECT count(*) FROM holidays');
@@ -41,7 +41,7 @@ const createHolidayTables = async () => {
                 ('Diwali', '2025-10-20', 'mandatory', 'Festival of Lights'),
                 ('Christmas', '2025-12-25', 'mandatory', 'Christmas Day')
             `);
-            console.log("Inserted sample holidays");
+            
         }
 
     } catch (err) {

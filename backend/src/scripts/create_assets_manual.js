@@ -3,7 +3,7 @@ const { pool } = require('../config/database');
 const createAssetsTable = async () => {
     const client = await pool.connect();
     try {
-        console.log('Creating assets table in tenant_default...');
+        
 
         await client.query('SET search_path TO "tenant_default"');
 
@@ -26,7 +26,7 @@ const createAssetsTable = async () => {
             );
         `);
 
-        console.log('✅ Assets table created successfully in tenant_default');
+        
 
     } catch (error) {
         console.error('❌ Failed create table:', error);

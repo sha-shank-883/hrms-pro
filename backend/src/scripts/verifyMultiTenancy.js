@@ -2,12 +2,12 @@ const { pool, query, tenantStorage } = require('../config/database');
 const Tenant = require('../models/tenantModel');
 
 const verifyIsolation = async () => {
-    console.log('🧪 Starting Multi-Tenancy Verification...');
+    
 
     try {
         // 1. Create a Test Tenant
         const testTenantId = 'tenant_test_corp';
-        console.log(`Creating test tenant: ${testTenantId}...`);
+        
 
         // Insert into shared.tenants
         await query(`
@@ -32,26 +32,26 @@ const verifyIsolation = async () => {
         client.release();
 
         // 2. Insert Data into Default Tenant
-        console.log('Inserting user into Default Tenant...');
+        
         // We need to simulate the middleware context
         await tenantStorage.run('tenant_default', async () => {
             await query(`INSERT INTO users (email, password_hash) VALUES ('user@default.com', 'hash123') ON CONFLICT DO NOTHING`);
         });
 
         // 3. Insert Data into Test Tenant
-        console.log('Inserting user into Test Tenant...');
+        
         await tenantStorage.run(testTenantId, async () => {
             await query(`INSERT INTO users (email, password_hash) VALUES ('user@testcorp.com', 'hash456') ON CONFLICT DO NOTHING`);
         });
 
         // 4. Verify Isolation
-        console.log('Verifying Isolation...');
+        
 
         // Check Default Tenant sees only its user
         await tenantStorage.run('tenant_default', async () => {
             const res = await query('SELECT email FROM users');
             const emails = res.rows.map(r => r.email);
-            console.log('Default Tenant Users:', emails);
+            
 
             if (emails.includes('user@testcorp.com')) {
                 throw new Error('❌ FAIL: Default tenant sees Test tenant data!');
@@ -65,7 +65,7 @@ const verifyIsolation = async () => {
         await tenantStorage.run(testTenantId, async () => {
             const res = await query('SELECT email FROM users');
             const emails = res.rows.map(r => r.email);
-            console.log('Test Tenant Users:', emails);
+            
 
             if (emails.includes('user@default.com')) {
                 throw new Error('❌ FAIL: Test tenant sees Default tenant data!');
@@ -75,7 +75,7 @@ const verifyIsolation = async () => {
             }
         });
 
-        console.log('✅ SUCCESS: Tenants are effectively isolated!');
+        
 
     } catch (error) {
         console.error('❌ Verification Failed:', error);

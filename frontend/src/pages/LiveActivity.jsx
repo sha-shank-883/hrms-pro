@@ -9,10 +9,13 @@ import { leaveService, taskService, attendanceService } from '../services';
 import { useSocket } from '../context/SocketContext';
 import { useAuth } from '../context/AuthContext';
 import { useNotifications } from '../context/NotificationContext';
+import { useSettings } from '../hooks/useSettings';
+import { formatDateTime } from '../utils/settingsHelper';
 import '../styles/LiveActivity.css';
 
 const LiveActivity = () => {
     const { user } = useAuth();
+    const { getSetting } = useSettings();
     const navigate = useNavigate();
     const { socket } = useSocket();
     const { markAsRead } = useNotifications();
@@ -469,7 +472,7 @@ const LiveActivity = () => {
                                                         <FaClock size={10} />
                                                         {new Date(item.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                                         <span className="date-sep">•</span>
-                                                        {new Date(item.time).toLocaleDateString()}
+                                                        {formatDateTime(item.time, { date_format: getSetting('date_format', 'MM/DD/YYYY'), timezone: getSetting('timezone') })}
                                                     </span>
                                                 </div>
 

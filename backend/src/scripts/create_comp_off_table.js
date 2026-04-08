@@ -15,7 +15,7 @@ const createCompOffRequestTable = async () => {
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         `);
-        console.log("Created table 'leave_comp_off_requests'");
+        
     } catch (err) {
         console.error("Error creating table:", err);
     }

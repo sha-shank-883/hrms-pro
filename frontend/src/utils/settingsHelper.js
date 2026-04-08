@@ -87,23 +87,74 @@ export const calculateNetSalary = (payrollData, settings = {}) => {
 /**
  * Format date based on settings
  * @param {Date|string} date - Date to format
- * @param {string} format - Date format from settings (MM/DD/YYYY, DD/MM/YYYY, YYYY-MM-DD)
+ * @param {object|string} settingsOrFormat - Settings object or format string
+ * @param {string} optTimezone - Optional timezone override
  * @returns {string} Formatted date string
  */
-export const formatDate = (date, format = 'MM/DD/YYYY') => {
+export const formatDate = (date, settingsOrFormat, optTimezone) => {
+  if (!date) return '';
   const d = new Date(date);
-  const day = String(d.getDate()).padStart(2, '0');
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const year = d.getFullYear();
+  if (isNaN(d.getTime())) return '';
+
+  const format = typeof settingsOrFormat === 'string' ? settingsOrFormat : (settingsOrFormat?.date_format || 'MM/DD/YYYY');
+  const timezone = optTimezone || (typeof settingsOrFormat === 'object' ? settingsOrFormat?.timezone : undefined);
+
+  try {
+    const options = { year: 'numeric', month: '2-digit', day: '2-digit' };
+    if (timezone) options.timeZone = timezone;
+    
+    // We want the parts to construct the requested format
+    const formatter = new Intl.DateTimeFormat('en-US', options);
+    const parts = formatter.formatToParts(d);
+    
+    let day = '01', month = '01', year = '2000';
+    for (const part of parts) {
+      if (part.type === 'day') day = part.value;
+      if (part.type === 'month') month = part.value;
+      if (part.type === 'year') year = part.value;
+    }
+
+    switch (format) {
+      case 'DD/MM/YYYY': return `${day}/${month}/${year}`;
+      case 'YYYY-MM-DD': return `${year}-${month}-${day}`;
+      case 'MM/DD/YYYY': default: return `${month}/${day}/${year}`;
+    }
+  } catch (e) {
+    console.error('Invalid timezone:', timezone, e);
+    // Fallback
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    switch (format) {
+      case 'DD/MM/YYYY': return `${day}/${month}/${year}`;
+      case 'YYYY-MM-DD': return `${year}-${month}-${day}`;
+      case 'MM/DD/YYYY': default: return `${month}/${day}/${year}`;
+    }
+  }
+};
+
+/**
+ * Format date and time based on settings
+ * @param {Date|string} date - Date to format
+ * @param {object} settings - Settings object
+ * @returns {string} Formatted date time string
+ */
+export const formatDateTime = (date, settings = {}) => {
+  if (!date) return '';
+  const dateStr = formatDate(date, settings);
   
-  switch (format) {
-    case 'DD/MM/YYYY':
-      return `${day}/${month}/${year}`;
-    case 'YYYY-MM-DD':
-      return `${year}-${month}-${day}`;
-    case 'MM/DD/YYYY':
-    default:
-      return `${month}/${day}/${year}`;
+  const d = new Date(date);
+  if (isNaN(d.getTime())) return '';
+  
+  const timezone = settings.timezone;
+  try {
+    const options = { hour: '2-digit', minute: '2-digit', hour12: true };
+    if (timezone) options.timeZone = timezone;
+    const timeStr = new Intl.DateTimeFormat('en-US', options).format(d);
+    return `${dateStr} ${timeStr}`;
+  } catch(e) {
+    const timeStr = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    return `${dateStr} ${timeStr}`;
   }
 };
 

@@ -18,7 +18,7 @@ const createRegularizationTable = async () => {
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         `);
-        console.log("Created table 'attendance_regularization'");
+        
     } catch (err) {
         console.error("Error creating table:", err);
     }

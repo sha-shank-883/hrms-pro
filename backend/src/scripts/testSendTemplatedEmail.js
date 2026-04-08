@@ -10,12 +10,12 @@ const ADMIN_EMAIL = 'admin@hrmspro.com';
 const ADMIN_PASSWORD = 'admin123';
 
 const testSendTemplatedEmail = async () => {
-    console.log('📧 Testing Templated Email Sending via API');
-    console.log('========================================');
+    
+    
     
     try {
         // 1. Login to get auth token
-        console.log('\n🔐 Logging in as admin...');
+        
         const loginResponse = await axios.post(`${BASE_URL}/api/auth/login`, {
             email: ADMIN_EMAIL,
             password: ADMIN_PASSWORD
@@ -25,13 +25,13 @@ const testSendTemplatedEmail = async () => {
             }
         });
         
-        console.log('Login response:', JSON.stringify(loginResponse.data, null, 2));
+        
         const token = loginResponse.data.data.token;
-        console.log('✅ Login successful');
-        console.log('Token:', token.substring(0, 20) + '...');
+        
+        
         
         // 2. Get available templates
-        console.log('\n📋 Getting available templates...');
+        
         const templatesResponse = await axios.get(`${BASE_URL}/api/email-templates`, {
             headers: {
                 'Authorization': `Bearer ${token}`,
@@ -39,13 +39,13 @@ const testSendTemplatedEmail = async () => {
             }
         });
         
-        console.log(`Found ${templatesResponse.data.data.length} templates:`);
+        
         templatesResponse.data.data.forEach((template, index) => {
-            console.log(`${index + 1}. ${template.name} - ${template.subject}`);
+            
         });
         
         // 3. Send a welcome email using template
-        console.log('\n📤 Sending welcome email...');
+        
         const sendResponse = await axios.post(`${BASE_URL}/api/email-templates/send`, {
             template_name: 'welcome_employee',
             to: 'test.employee@example.com',
@@ -65,10 +65,10 @@ const testSendTemplatedEmail = async () => {
             }
         });
         
-        console.log('✅ Email send request successful');
-        console.log('Response:', sendResponse.data.message);
         
-        console.log('\n🎉 Templated Email Test Completed Successfully!');
+        
+        
+        
         
     } catch (error) {
         if (error.response) {

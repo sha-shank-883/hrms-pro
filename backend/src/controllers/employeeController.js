@@ -179,7 +179,7 @@ const getEmployeeByUserId = async (req, res) => {
 // Create employee
 const createEmployee = async (req, res) => {
   try {
-    console.log('Create Employee Body:', JSON.stringify(req.body, null, 2));
+    
     const {
       first_name, last_name, email, phone, date_of_birth,
       gender, address, department_id, position,

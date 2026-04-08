@@ -15,7 +15,7 @@ const pool = new Pool({
 const addSSOColumns = async () => {
     const client = await pool.connect();
     try {
-        console.log('Starting SSO columns migration...');
+        
 
         // 1. Get all schemas (tenants + public/shared)
         // We need to update 'users' table in all schemas where it exists.
@@ -34,7 +34,7 @@ const addSSOColumns = async () => {
         const schemas = schemasRes.rows.map(r => r.schema_name);
 
         for (const schema of schemas) {
-            console.log(`Checking schema: ${schema}`);
+            
 
             // Check if users table exists in this schema
             const tableExists = await client.query(`
@@ -45,7 +45,7 @@ const addSSOColumns = async () => {
             `, [schema]);
 
             if (tableExists.rows[0].exists) {
-                console.log(`Updating users table in schema: ${schema}`);
+                
 
                 await client.query(`SET search_path TO "${schema}"`);
 
@@ -61,11 +61,11 @@ const addSSOColumns = async () => {
                     ADD COLUMN IF NOT EXISTS auth_provider_id VARCHAR(255)
                 `);
 
-                console.log(`Successfully updated ${schema}.users`);
+                
             }
         }
 
-        console.log('Migration completed successfully.');
+        
 
     } catch (error) {
         console.error('Migration failed:', error);

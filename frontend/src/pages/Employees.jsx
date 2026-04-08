@@ -124,7 +124,10 @@ const Employees = () => {
       const uploadRes = await uploadService.uploadFile(formDataObj);
       const photoUrl = uploadRes.url || uploadRes.data?.url || uploadRes.path;
 
-      if (!photoUrl) throw new Error('Failed to get upload URL');
+      if (!photoUrl) {
+        setError('Upload failed. The storage provider did not return a valid URL.');
+        return;
+      }
 
       setFormData(prev => ({ ...prev, profile_image: photoUrl }));
     } catch (err) {

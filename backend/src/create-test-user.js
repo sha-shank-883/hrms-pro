@@ -17,10 +17,10 @@ const createTestUser = async () => {
         // Check if user exists
         const check = await query('SELECT * FROM users WHERE email = $1', [email]);
         if (check.rows.length > 0) {
-            console.log('Test user already exists. Updating password and activation...');
+            
             await query('UPDATE users SET password_hash = $1, is_active = true WHERE email = $2', [passwordHash, email]);
         } else {
-            console.log('Creating new test user...');
+            
             const res = await query(
                 'INSERT INTO users (email, password_hash, role, is_active) VALUES ($1, $2, $3, true) RETURNING user_id',
                 [email, passwordHash, role]
@@ -34,7 +34,7 @@ const createTestUser = async () => {
             );
         }
 
-        console.log(`Test user ${email} ready with password ${password}`);
+        
         process.exit(0);
     } catch (error) {
         console.error('Error creating test user:', error);

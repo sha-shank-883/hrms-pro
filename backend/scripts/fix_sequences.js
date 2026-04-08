@@ -1,7 +1,7 @@
 const { Pool } = require('pg');
 require('dotenv').config(); // Load env from current directory
 
-console.log('Starting sequence fix script...');
+
 
 const poolConfig = process.env.DATABASE_URL
     ? {
@@ -21,7 +21,7 @@ const pool = new Pool(poolConfig);
 async function fixSequences() {
     const client = await pool.connect();
     try {
-        console.log('Connected to database.');
+        
 
         // 1. Get all tenants or schemas
         // We'll try to get schemas that look like tenants or just use the shared.tenants table
@@ -33,10 +33,10 @@ async function fixSequences() {
     `);
 
         const schemas = schemasRes.rows.map(r => r.table_schema);
-        console.log(`Found 'attendance' table in schemas: ${schemas.join(', ')}`);
+        
 
         for (const schema of schemas) {
-            console.log(`\n--- Processing schema: ${schema} ---`);
+            
 
             // Set search path
             await client.query(`SET search_path TO "${schema}", public`);
@@ -47,7 +47,7 @@ async function fixSequences() {
             const maxId = maxIdRes.rows[0].max_id || 0;
             const nextId = parseInt(maxId) + 1;
 
-            console.log(`Max attendance_id in ${schema}: ${maxId}. Setting sequence to ${nextId}...`);
+            
 
             // Get sequence name - assuming standard naming or looking it up
             // Dynamic lookup of sequence name associated with the column
@@ -59,9 +59,9 @@ async function fixSequences() {
 
             if (seqName) {
                 await client.query(`SELECT setval('${seqName}', ${nextId}, false)`);
-                console.log(`Successfully updated sequence ${seqName} to ${nextId}`);
+                
             } else {
-                console.log('No sequence found for attendance_id column. It might not be SERIAL.');
+                
             }
 
             // Also fix other tables just in case (Employees, Leaves, Tasks, etc)
@@ -93,16 +93,16 @@ async function fixSequences() {
                         const max = await client.query(`SELECT MAX(${actualPk}) as m FROM ${table}`);
                         const next = (parseInt(max.rows[0].m) || 0) + 1;
                         await client.query(`SELECT setval('${seq}', ${next}, false)`);
-                        console.log(`Fixed ${table} (${actualPk}) sequence -> ${next}`);
+                        
                     }
                 } catch (e) {
                     // Ignore errors for other tables, focus is attendance
-                    // console.log(`Skipped ${table}: ${e.message}`);
+                    // 
                 }
             }
         }
 
-        console.log('\nAll sequences updated successfully.');
+        
 
     } catch (err) {
         console.error('Error running script:', err);

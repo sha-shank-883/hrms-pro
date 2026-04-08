@@ -8,7 +8,7 @@ const pool = new Pool({
   port: process.env.DB_PORT || 5432,
   database: process.env.DB_NAME || 'hrms_db',
   user: process.env.DB_USER || 'postgres',
-  password: process.env.DB_PASSWORD || 'YourNewPassword123'
+  password: process.env.DB_PASSWORD,
 });
 
 // Sample data arrays
@@ -88,13 +88,13 @@ const generateDummyData = async () => {
   let client;
   try {
     client = await pool.connect();
-    console.log('Connected to database');
+    
 
     // Start transaction
     await client.query('BEGIN');
 
     // 1. Create departments
-    console.log('Creating departments...');
+    
     const departmentIds = [];
     for (let i = 0; i < departments.length; i++) {
       // Check if department already exists
@@ -113,10 +113,10 @@ const generateDummyData = async () => {
         departmentIds.push(existingDept.rows[0].department_id);
       }
     }
-    console.log(`Created/Found ${departmentIds.length} departments`);
+    
 
     // 2. Check if admin user exists, if not create it
-    console.log('Checking/Creating admin user...');
+    
     const adminResult = await client.query(
       'SELECT user_id FROM users WHERE email = $1',
       ['admin@hrmspro.com']
@@ -130,14 +130,14 @@ const generateDummyData = async () => {
         ['admin@hrmspro.com', adminPassword, 'admin']
       );
       adminUserId = newAdmin.rows[0].user_id;
-      console.log('Created new admin user');
+      
     } else {
       adminUserId = adminResult.rows[0].user_id;
-      console.log('Admin user already exists');
+      
     }
 
     // 3. Create employees and users
-    console.log('Creating employees and users...');
+    
     const employeeIds = [];
     const userIds = [adminUserId]; // Include admin user
     const managerIds = []; // Keep track of potential managers
@@ -222,10 +222,10 @@ const generateDummyData = async () => {
         managerIds.push(employeeId);
       }
     }
-    console.log(`Created/Updated ${employeeIds.length} employees`);
+    
 
     // 4. Update departments with managers
-    console.log('Assigning managers to departments...');
+    
     for (let i = 0; i < departmentIds.length && i < managerIds.length; i++) {
       await client.query(
         'UPDATE departments SET manager_id = $1 WHERE department_id = $2',
@@ -234,7 +234,7 @@ const generateDummyData = async () => {
     }
 
     // 5. Create attendance records
-    console.log('Creating attendance records...');
+    
     let attendanceCount = 0;
     const today = new Date();
     // Create attendance records for the last 90 days
@@ -285,10 +285,10 @@ const generateDummyData = async () => {
         }
       }
     }
-    console.log(`Created ${attendanceCount} new attendance records`);
+    
 
     // 6. Create leave requests
-    console.log('Creating leave requests...');
+    
     let leaveCount = 0;
     for (const employeeId of employeeIds) {
       // Count existing leave requests for this employee
@@ -337,10 +337,10 @@ const generateDummyData = async () => {
         }
       }
     }
-    console.log(`Created ${leaveCount} new leave requests`);
+    
 
     // 7. Create tasks
-    console.log('Creating tasks...');
+    
     // Count existing tasks
     const existingTasks = await client.query('SELECT COUNT(*) as count FROM tasks');
     const currentTaskCount = parseInt(existingTasks.rows[0].count);
@@ -413,10 +413,10 @@ const generateDummyData = async () => {
         }
       }
     }
-    console.log(`Created ${taskCount} new tasks`);
+    
 
     // 8. Create payroll records
-    console.log('Creating payroll records...');
+    
     let payrollCount = 0;
     // Create payroll for last 12 months
     for (let month = 1; month <= 12; month++) {
@@ -474,10 +474,10 @@ const generateDummyData = async () => {
         }
       }
     }
-    console.log(`Created ${payrollCount} new payroll records`);
+    
 
     // 9. Create job postings
-    console.log('Creating job postings...');
+    
     // Count existing job postings
     const existingJobs = await client.query('SELECT COUNT(*) as count FROM job_postings');
     const currentJobCount = parseInt(existingJobs.rows[0].count);
@@ -509,10 +509,10 @@ const generateDummyData = async () => {
       );
       jobCount++;
     }
-    console.log(`Created ${jobCount} new job postings`);
+    
 
     // 10. Create job applications
-    console.log('Creating job applications...');
+    
     let applicationCount = 0;
     // Get all job postings
     const jobResult = await client.query('SELECT job_id FROM job_postings');
@@ -560,10 +560,10 @@ const generateDummyData = async () => {
         }
       }
     }
-    console.log(`Created ${applicationCount} new job applications`);
+    
 
     // 11. Create documents
-    console.log('Creating documents...');
+    
     let documentCount = 0;
     for (const employeeId of employeeIds) {
       // Count existing documents for this employee
@@ -598,10 +598,10 @@ const generateDummyData = async () => {
         }
       }
     }
-    console.log(`Created ${documentCount} new documents`);
+    
 
     // 12. Create chat messages
-    console.log('Creating chat messages...');
+    
     // Count existing messages
     const existingMessages = await client.query('SELECT COUNT(*) as count FROM chat_messages');
     const currentMessageCount = parseInt(existingMessages.rows[0].count);
@@ -632,11 +632,11 @@ const generateDummyData = async () => {
       );
       messageCount++;
     }
-    console.log(`Created ${messageCount} new chat messages`);
+    
 
     // Commit transaction
     await client.query('COMMIT');
-    console.log('All dummy data created successfully!');
+    
     
   } catch (error) {
     if (client) {

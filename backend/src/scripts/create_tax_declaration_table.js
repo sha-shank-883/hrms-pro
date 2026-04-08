@@ -20,7 +20,7 @@ const createTaxDeclarationTable = async () => {
                 UNIQUE(employee_id, financial_year)
             );
         `);
-        console.log("Created table 'tax_declarations'");
+        
     } catch (err) {
         console.error("Error creating tax_declarations table:", err);
     }

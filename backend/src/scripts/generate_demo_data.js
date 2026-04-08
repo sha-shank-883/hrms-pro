@@ -15,14 +15,14 @@ const getRandomDate = (start, end) => new Date(start.getTime() + Math.random() *
 const generateDemoData = async () => {
     const client = await pool.connect();
     try {
-        console.log('🚀 Starting Demo Data Generation...');
+        
 
         // 1. Get all tenants
         const tenantsRes = await client.query('SELECT tenant_id FROM shared.tenants');
         const tenants = tenantsRes.rows;
 
         for (const tenant of tenants) {
-            console.log(`\n📂 Processing Tenant: ${tenant.tenant_id}`);
+            
 
             // Switch to tenant schema
             await client.query(`SET search_path TO "${tenant.tenant_id}"`);
@@ -32,7 +32,7 @@ const generateDemoData = async () => {
 
             try {
                 // --- 1. Departments ---
-                console.log('   Creating Departments...');
+                
                 const deptIds = [];
                 for (const deptName of departmentsList) {
                     const res = await client.query(
@@ -44,7 +44,7 @@ const generateDemoData = async () => {
                 }
 
                 // --- 2. Users & Employees ---
-                console.log('   Creating Users & Employees...');
+                
                 const employeeIds = [];
                 const userIds = [];
                 // Get Admin ID first to avoid FK issues if needed, or just use created users
@@ -86,7 +86,7 @@ const generateDemoData = async () => {
                 }
 
                 // --- 3. Attendance ---
-                console.log('   Creating Attendance Records...');
+                
                 for (const empId of employeeIds) {
                     for (let i = 0; i < 10; i++) {
                         const date = new Date();
@@ -101,7 +101,7 @@ const generateDemoData = async () => {
                 }
 
                 // --- 4. Leave Requests ---
-                console.log('   Creating Leave Requests...');
+                
                 for (let i = 0; i < 10; i++) {
                     const empId = getRandomItem(employeeIds);
                     const startDate = getRandomDate(new Date(), new Date(2025, 11, 31));
@@ -116,7 +116,7 @@ const generateDemoData = async () => {
                 }
 
                 // --- 5. Tasks ---
-                console.log('   Creating Tasks...');
+                
                 const taskIds = [];
                 for (let i = 0; i < 10; i++) {
                     const res = await client.query(
@@ -134,7 +134,7 @@ const generateDemoData = async () => {
                 }
 
                 // --- 6. Task Assignments ---
-                console.log('   Creating Task Assignments...');
+                
                 for (const taskId of taskIds) {
                     const empId = getRandomItem(employeeIds);
                     await client.query(
@@ -144,7 +144,7 @@ const generateDemoData = async () => {
                 }
 
                 // --- 7. Payroll ---
-                console.log('   Creating Payroll Records...');
+                
                 const month = new Date().getMonth() + 1;
                 const year = new Date().getFullYear();
                 for (const empId of employeeIds) {
@@ -157,7 +157,7 @@ const generateDemoData = async () => {
                 }
 
                 // --- 8. Job Postings ---
-                console.log('   Creating Job Postings...');
+                
                 const jobIds = [];
                 for (let i = 0; i < 5; i++) {
                     const res = await client.query(
@@ -169,7 +169,7 @@ const generateDemoData = async () => {
                 }
 
                 // --- 9. Job Applications ---
-                console.log('   Creating Job Applications...');
+                
                 for (const jobId of jobIds) {
                     await client.query(
                         `INSERT INTO job_applications (job_id, applicant_name, email, status)
@@ -184,7 +184,7 @@ const generateDemoData = async () => {
                 }
 
                 // --- 10. Documents ---
-                console.log('   Creating Documents...');
+                
                 for (let i = 0; i < 10; i++) {
                     await client.query(
                         `INSERT INTO documents (employee_id, document_type, document_name, file_url, uploaded_by)
@@ -194,7 +194,7 @@ const generateDemoData = async () => {
                 }
 
                 // --- 11. Assets ---
-                console.log('   Creating Assets...');
+                
                 for (let i = 0; i < 10; i++) {
                     await client.query(
                         `INSERT INTO assets (name, type, serial_number, status, assigned_to)
@@ -204,7 +204,7 @@ const generateDemoData = async () => {
                 }
 
                 await client.query('COMMIT');
-                console.log(`   ✅ Tenant ${tenant.tenant_id} populated successfully!`);
+                
 
             } catch (err) {
                 await client.query('ROLLBACK');
@@ -212,7 +212,7 @@ const generateDemoData = async () => {
             }
         }
 
-        console.log('\n🎉 Demo Data Generation Complete!');
+        
 
     } catch (error) {
         console.error('❌ Script failed:', error);

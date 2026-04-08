@@ -1035,9 +1035,11 @@ const Payroll = () => {
       {/* Tax Modal */}
       <TaxDeclarationModal
         isOpen={showTaxModal}
-        onClose={() => setShowTaxModal(false)}
+        onClose={() => { setShowTaxModal(false); setEditingDeclaration(null); }}
         onSubmit={handleTaxSubmit}
         initialData={editingDeclaration}
+        isAdmin={user?.role === 'admin'}
+        employees={employees}
       />
     </div >
   );

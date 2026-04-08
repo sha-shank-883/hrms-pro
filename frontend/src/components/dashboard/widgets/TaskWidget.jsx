@@ -61,9 +61,9 @@ const TaskWidget = React.memo(({ chartType = 'pie', onToggle, onSettingsClick, i
     const fetchData = async () => {
         setLoading(true);
         try {
-            console.log("TaskWidget: Fetching data with filters:", filters);
+            
             const response = await reportService.getPerformanceAnalytics(filters);
-            console.log("TaskWidget: API Response:", response);
+            
 
             if (response.data) {
                 // Ensure numbers are numbers (Postgres returns strings for counts)
@@ -82,7 +82,7 @@ const TaskWidget = React.memo(({ chartType = 'pie', onToggle, onSettingsClick, i
                     statusDistribution,
                     completionByDept
                 };
-                console.log("TaskWidget: Setting sanitized data:", newData);
+                
                 setData(newData);
             } else {
                 console.warn("TaskWidget: No data in response");

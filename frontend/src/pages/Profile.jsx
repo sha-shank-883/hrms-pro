@@ -30,6 +30,7 @@ const Profile = () => {
   const [performanceReviews, setPerformanceReviews] = useState([]);
   const [employeeTasks, setEmployeeTasks] = useState([]);
   const [auditLogs, setAuditLogs] = useState([]);
+  const [attendanceLogs, setAttendanceLogs] = useState([]);
 
   const getProfilePicture = (path) => {
     if (!path) return null;
@@ -152,7 +153,7 @@ const Profile = () => {
           const employeeResponse = await employeeService.getByUserId(user.userId);
           employeeData = employeeResponse.data;
         } catch (e) {
-          console.log('No employee record found for this user, proceeding with basic profile.');
+          
         }
       }
 
@@ -389,7 +390,10 @@ const Profile = () => {
       const uploadRes = await uploadService.uploadFile(formData);
       const photoUrl = uploadRes.url || uploadRes.data?.url || uploadRes.path; // Adjust based on API response
 
-      if (!photoUrl) throw new Error('Failed to get upload URL');
+      if (!photoUrl) {
+        setError('Upload failed. The storage provider did not return a valid URL.');
+        return;
+      }
 
       await employeeService.updatePartial(profile.employee_id, { profile_image: photoUrl });
 

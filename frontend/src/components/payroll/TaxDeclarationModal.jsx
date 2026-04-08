@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { FaTimes, FaSave } from 'react-icons/fa';
 
-const TaxDeclarationModal = ({ isOpen, onClose, onSubmit, initialData }) => {
+const TaxDeclarationModal = ({ isOpen, onClose, onSubmit, initialData, isAdmin = false, employees = [] }) => {
     const [formData, setFormData] = useState({
+        employee_id: '',
         financial_year: `${new Date().getFullYear()}-${new Date().getFullYear() + 1}`,
         regime: 'new',
         section_80c: 0,
@@ -15,7 +16,8 @@ const TaxDeclarationModal = ({ isOpen, onClose, onSubmit, initialData }) => {
     useEffect(() => {
         if (initialData) {
             setFormData({
-                financial_year: initialData.financial_year,
+                employee_id: initialData.employee_id || '',
+                financial_year: initialData.financial_year || `${new Date().getFullYear()}-${new Date().getFullYear() + 1}`,
                 regime: initialData.regime || 'new',
                 section_80c: initialData.section_80c || 0,
                 section_80d: initialData.section_80d || 0,
@@ -32,7 +34,7 @@ const TaxDeclarationModal = ({ isOpen, onClose, onSubmit, initialData }) => {
         const { name, value } = e.target;
         setFormData(prev => ({
             ...prev,
-            [name]: name === 'regime' || name === 'financial_year' ? value : parseFloat(value) || 0
+            [name]: name === 'regime' || name === 'financial_year' || name === 'employee_id' ? value : parseFloat(value) || 0
         }));
     };
 
@@ -57,6 +59,25 @@ const TaxDeclarationModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                 </div>
 
                 <form onSubmit={handleSubmit}>
+                    {isAdmin && !initialData?.declaration_id && (
+                        <div className="form-group mb-4">
+                            <label className="form-label">Filing on behalf of (Employee) <span className="text-danger">*</span></label>
+                            <select
+                                name="employee_id"
+                                value={formData.employee_id}
+                                onChange={handleChange}
+                                className="form-input"
+                                required
+                            >
+                                <option value="">Select Employee</option>
+                                {employees.map(emp => (
+                                    <option key={emp.employee_id} value={emp.employee_id}>
+                                        {emp.first_name} {emp.last_name} ({emp.employee_id})
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
                     <div className="grid grid-cols-2 gap-4 mb-4">
                         <div className="form-group">
                             <label className="form-label">Financial Year</label>

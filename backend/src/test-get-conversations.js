@@ -16,7 +16,7 @@ async function testGetConversations() {
         await client.query('SET search_path TO tenant_default');
 
         const userId = 4; // Shashank's ID
-        console.log(`Getting conversations for user: ${userId}`);
+        
 
         const queryText = `
       SELECT DISTINCT ON (other_user_id) 
@@ -43,7 +43,7 @@ async function testGetConversations() {
     `;
 
         const result = await client.query(queryText, [userId]);
-        console.log('Conversations found:', result.rows);
+        
 
     } catch (err) {
         console.error('Error:', err);

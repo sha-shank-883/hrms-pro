@@ -14,7 +14,7 @@ const createAssetsTable = async () => {
         const schemas = ['public', 'tenant_test_corp']; // Add other tenant schemas if known
 
         for (const schema of schemas) {
-            console.log(`Applying to schema: ${schema}`);
+            
             await client.query(`SET search_path TO ${schema}`);
 
             // Check if employees table exists
@@ -24,7 +24,7 @@ const createAssetsTable = async () => {
                 WHERE table_schema = $1
             `, [schema]);
 
-            console.log('Tables in schema:', res.rows.map(r => r.table_name));
+            
 
             await client.query(`
                 CREATE TABLE IF NOT EXISTS assets (
@@ -42,7 +42,7 @@ const createAssetsTable = async () => {
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 );
             `);
-            console.log(`Assets table created in ${schema}`);
+            
         }
 
     } catch (err) {

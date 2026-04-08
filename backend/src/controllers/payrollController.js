@@ -781,6 +781,20 @@ const submitTaxDeclaration = async (req, res) => {
       employee_id, financial_year, regime,
       section_80c, section_80d, hra, lta, other_deductions
     } = req.body;
+    const userRole = req.user.role;
+    const userId = req.user.userId;
+
+    // RBAC: Standard employees can only submit for themselves. 
+    // We must find their employee_id first.
+    const empRes = await query('SELECT employee_id FROM employees WHERE user_id = $1', [userId]);
+    const currentUserEmployeeId = empRes.rows[0]?.employee_id;
+
+    if (userRole !== 'admin' && parseInt(employee_id) !== currentUserEmployeeId) {
+      return res.status(403).json({
+        success: false,
+        message: 'Security Violation: You can only submit tax declarations for your own profile.'
+      });
+    }
 
     // Check for existing declaration
     const existing = await query(
@@ -817,11 +831,23 @@ const submitTaxDeclaration = async (req, res) => {
 const getTaxDeclarations = async (req, res) => {
   try {
     const { employee_id, financial_year, status } = req.query;
+    const userRole = req.user.role;
+    const userId = req.user.userId;
+
     let queryText = 'SELECT td.*, e.first_name, e.last_name FROM tax_declarations td JOIN employees e ON td.employee_id = e.employee_id WHERE 1=1';
     const params = [];
     let paramIndex = 1;
 
-    if (employee_id) {
+    // RBAC: If not admin, force filter by user's own employee_id
+    if (userRole !== 'admin') {
+      const empRes = await query('SELECT employee_id FROM employees WHERE user_id = $1', [userId]);
+      const currentEmpId = empRes.rows[0]?.employee_id;
+      
+      queryText += ` AND td.employee_id = $${paramIndex}`;
+      params.push(currentEmpId);
+      paramIndex++;
+    } else if (employee_id) {
+      // Admins can filter by specific employee_id if they want
       queryText += ` AND td.employee_id = $${paramIndex}`;
       params.push(employee_id);
       paramIndex++;

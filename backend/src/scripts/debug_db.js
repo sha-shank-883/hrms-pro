@@ -22,13 +22,13 @@ const pool = new Pool(poolConfig);
 async function debugDatabase() {
     const client = await pool.connect();
     try {
-        console.log('--- Database Verification: Public vs Tenant_Default ---');
-        console.log('DB Name:', process.env.DB_NAME);
+        
+        
 
         const tables = ['users', 'employees', 'attendance', 'leave_requests', 'tasks', 'payroll'];
 
-        console.log('\\nTable             | Public Count | Tenant_Default Count');
-        console.log('------------------|--------------|---------------------');
+        
+        
 
         for (const table of tables) {
             // Count Public
@@ -41,10 +41,10 @@ async function debugDatabase() {
             const tenantRes = await client.query(`SELECT COUNT(*) FROM ${table}`);
             const tenantCount = tenantRes.rows[0].count;
 
-            console.log(`${table.padEnd(17)} | ${publicCount.padEnd(12)} | ${tenantCount}`);
+            
         }
 
-        console.log('\\n-----------------------------------------------------');
+        
 
     } catch (err) {
         console.error('Debug script error:', err);

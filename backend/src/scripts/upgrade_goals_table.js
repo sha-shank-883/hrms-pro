@@ -9,7 +9,7 @@ const upgradeGoalsTable = async () => {
             ADD COLUMN IF NOT EXISTS priority VARCHAR(20) CHECK (priority IN ('low', 'medium', 'high', 'critical')),
             ADD COLUMN IF NOT EXISTS weightage INTEGER DEFAULT 0
         `);
-        console.log("Updated 'goals' table with new columns");
+        
 
         // Create key_results table
         await query(`
@@ -25,7 +25,7 @@ const upgradeGoalsTable = async () => {
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         `);
-        console.log("Created 'key_results' table");
+        
 
     } catch (err) {
         console.error("Error upgrading goals implementation:", err);

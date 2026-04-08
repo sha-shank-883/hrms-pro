@@ -145,7 +145,7 @@ const Settings = () => {
         let category = null;
         if (['brand_primary_color', 'brand_secondary_color', 'company_logo', 'login_message'].includes(key)) category = 'branding';
         else if (['company_name', 'company_email', 'company_phone', 'company_website', 'company_address', 'timezone', 'date_format'].includes(key)) category = 'general';
-        else if (['working_hours', 'working_days', 'overtime_rate', 'late_arrival_threshold', 'grace_period', 'break_time', 'overtime_enabled', 'auto_clock_out'].includes(key)) category = 'attendance';
+        else if (['working_hours', 'working_days', 'overtime_rate', 'late_arrival_threshold', 'grace_period', 'break_time', 'overtime_enabled', 'auto_clock_out', 'office_latitude', 'office_longitude', 'geofence_radius', 'strict_geofence'].includes(key)) category = 'attendance';
         else if (['annual_leave_days', 'sick_leave_days', 'casual_leave_days', 'max_carry_forward_days', 'advance_notice_days', 'carry_forward_enabled', 'leave_approval_required'].includes(key)) category = 'leave';
         else if (['currency', 'currency_symbol', 'pay_frequency', 'default_tax_rate', 'social_security_rate', 'tax_enabled', 'bonus_enabled'].includes(key)) category = 'payroll';
         else if (key.startsWith('password_') || key === 'max_login_attempts' || key === 'session_timeout' || key === 'two_factor_auth') category = 'security';
@@ -325,6 +325,62 @@ const Settings = () => {
                     <input type="checkbox" checked={formData.auto_clock_out === 'true'} onChange={(e) => handleChange('auto_clock_out', e.target.checked ? 'true' : 'false')} style={{ marginRight: '0.5rem' }} />
                     Auto Clock-Out at End of Day
                   </label>
+                </div>
+                
+                <div className="col-span-2 mt-8 pt-6 border-t border-neutral-100">
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="w-8 h-8 rounded-lg bg-primary-100 text-primary-600 flex items-center justify-center">
+                      <FaClock size={16} />
+                    </div>
+                    <div>
+                      <h4 className="text-base font-bold text-neutral-800">Advanced Geofencing</h4>
+                      <p className="text-xs text-neutral-500">Secure your attendance by restricting check-ins to authorized locations.</p>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-x-6 gap-y-4 bg-neutral-50 p-6 rounded-xl border border-neutral-200">
+                    <div className="form-group">
+                      <label className="form-label text-neutral-700 font-semibold mb-1 flex items-center gap-2">
+                        Office Latitude
+                      </label>
+                      <input type="text" className="form-input bg-white" value={formData.office_latitude || ''} onChange={(e) => handleChange('office_latitude', e.target.value)} placeholder="e.g. 37.7749" />
+                      <p className="text-[10px] text-neutral-400 mt-1">Use decimal format (e.g., 28.6139)</p>
+                    </div>
+                    
+                    <div className="form-group">
+                      <label className="form-label text-neutral-700 font-semibold mb-1 flex items-center gap-2">
+                        Office Longitude
+                      </label>
+                      <input type="text" className="form-input bg-white" value={formData.office_longitude || ''} onChange={(e) => handleChange('office_longitude', e.target.value)} placeholder="e.g. -122.4194" />
+                      <p className="text-[10px] text-neutral-400 mt-1">Use decimal format (e.g., 77.2090)</p>
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label text-neutral-700 font-semibold mb-1">Allowed Radius (Meters)</label>
+                      <div className="relative">
+                        <input type="number" className="form-input bg-white pr-10" value={formData.geofence_radius || ''} onChange={(e) => handleChange('geofence_radius', e.target.value)} />
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-neutral-400">m</span>
+                      </div>
+                      <p className="text-[10px] text-neutral-400 mt-1">Recommended: 200m - 500m</p>
+                    </div>
+
+                    <div className="form-group flex items-end pb-1">
+                      <label className="flex items-center gap-3 p-3 bg-white border border-neutral-200 rounded-lg cursor-pointer hover:border-primary-300 transition-colors w-full group">
+                        <div className="relative flex items-center">
+                          <input 
+                            type="checkbox" 
+                            className="w-5 h-5 rounded border-neutral-300 text-primary-600 focus:ring-primary-500 cursor-pointer"
+                            checked={formData.strict_geofence === 'true'} 
+                            onChange={(e) => handleChange('strict_geofence', e.target.checked ? 'true' : 'false')} 
+                          />
+                        </div>
+                        <div>
+                          <span className="text-sm font-bold text-neutral-700 block group-hover:text-primary-600 transition-colors">Strict Geofencing</span>
+                          <span className="text-[10px] text-neutral-500 leading-tight block">Block check-ins outside the radius.</span>
+                        </div>
+                      </label>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

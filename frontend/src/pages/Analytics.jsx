@@ -12,12 +12,12 @@ const Analytics = () => {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    console.log('Analytics page loaded. User:', user);
+    
     loadData();
   }, [activeTab, user]);
 
   const loadData = async () => {
-    // console.log('Loading data for tab:', activeTab, 'User role:', user?.role);
+    // 
 
     // Check if user has proper role
     if (user?.role !== 'admin' && user?.role !== 'manager') {
@@ -33,21 +33,21 @@ const Analytics = () => {
       let response;
       switch (activeTab) {
         case 'turnover':
-          // console.log('Fetching turnover prediction data...');
+          // 
           response = await reportService.getTurnoverPrediction();
           break;
         case 'performance':
-          // console.log('Fetching performance analytics data...');
+          // 
           response = await reportService.getPerformanceAnalytics();
           break;
         case 'payroll':
-          // console.log('Fetching payroll trends data...');
+          // 
           response = await reportService.getPayrollTrends();
           break;
         default:
           throw new Error('Invalid tab');
       }
-      // console.log('Data loaded successfully:', response);
+      // 
       setData(response.data);
     } catch (error) {
       console.error('Analytics load error:', error);

@@ -37,7 +37,7 @@ export const SocketProvider = ({ children }) => {
             });
 
             newSocket.on('connect', () => {
-                console.log('✅ Socket Connected:', newSocket.id);
+                
                 // Join with User ID for private messaging / notifications
                 newSocket.emit('join', user.user_id || user.id); // Handle both id formats if needed
             });

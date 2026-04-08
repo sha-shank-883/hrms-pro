@@ -219,9 +219,9 @@ export const attendanceService = {
     }
   },
 
-  clockIn: async (employee_id) => {
+  clockIn: async (employee_id, latitude, longitude) => {
     try {
-      const response = await api.post('/attendance/clock-in', { employee_id });
+      const response = await api.post('/attendance/clock-in', { employee_id, latitude, longitude });
       return response.data;
     } catch (error) {
       // If it's a 401 error (unauthorized), dispatch auth:logout event
@@ -232,9 +232,9 @@ export const attendanceService = {
     }
   },
 
-  clockOut: async (employee_id) => {
+  clockOut: async (employee_id, latitude, longitude) => {
     try {
-      const response = await api.post('/attendance/clock-out', { employee_id });
+      const response = await api.post('/attendance/clock-out', { employee_id, latitude, longitude });
       return response.data;
     } catch (error) {
       // If it's a 401 error (unauthorized), dispatch auth:logout event
@@ -703,8 +703,12 @@ import assetService from './assetService';
 // Audit services
 import auditService from './auditService';
 
+// Shift service
+import { shiftService } from './shiftService';
+
 export {
   performanceService,
   assetService,
-  auditService
+  auditService,
+  shiftService
 };

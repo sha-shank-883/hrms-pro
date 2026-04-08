@@ -41,32 +41,61 @@ transporter.verify(function (error, success) {
     }
 });
 
-/**
- * Send an email
- * @param {Object} options - Email options
- * @param {string} options.to - Recipient email address
- * @param {string} options.subject - Email subject
- * @param {string} options.text - Plain text body
- * @param {string} options.html - HTML body
- * @returns {Promise<Object>} - Nodemailer info object
- */
-const sendEmail = async ({ to, subject, text, html }) => {
-    try {
-        console.log(`Attempting to send email to ${to}...`);
-        const info = await transporter.sendMail({
-            from: `"${process.env.SMTP_FROM_NAME || 'HRMS Pro'}" <${process.env.SMTP_FROM_EMAIL || process.env.SMTP_USER}>`,
-            to,
-            subject,
-            text,
-            html,
-        });
+// Background Email Queue
+const emailQueue = [];
+const MAX_QUEUE_SIZE = 1000; // Prevent memory exhaustion
+let isProcessingQueue = false;
 
-        console.log('Message sent: %s', info.messageId);
-        return info;
-    } catch (error) {
-        console.error('Error sending email:', error);
-        throw error;
+const processQueue = async () => {
+    if (isProcessingQueue || emailQueue.length === 0) return;
+    isProcessingQueue = true;
+    
+    while (emailQueue.length > 0) {
+        const emailRequest = emailQueue.shift();
+        const { options, retries = 0 } = emailRequest;
+        
+        try {
+            console.log(`[EmailWorker] Sending email to ${options.to} (Retry: ${retries})...`);
+            const info = await transporter.sendMail({
+                from: `"${process.env.SMTP_FROM_NAME || 'HRMS Pro'}" <${process.env.SMTP_FROM_EMAIL || process.env.SMTP_USER}>`,
+                ...options,
+            });
+            console.log('[EmailWorker] Message sent: %s', info.messageId);
+        } catch (error) {
+            console.error(`[EmailWorker] Error sending email to ${options.to}:`, error.message);
+            
+            // Basic Retry Logic
+            if (retries < 3) {
+                console.log(`[EmailWorker] Re-queueing email to ${options.to} for retry...`);
+                emailQueue.push({ options, retries: retries + 1 });
+            } else {
+                console.error(`[EmailWorker] Max retries reached for ${options.to}. Email dropped.`);
+            }
+        }
+        
+        // Wait 200ms between emails to prevent rate limiting or socket exhaustion
+        await new Promise(resolve => setTimeout(resolve, 200));
     }
+    
+    isProcessingQueue = false;
+};
+
+/**
+ * Send an email asynchronously (non-blocking)
+ * @param {Object} options - Email options
+ */
+const sendEmail = async (options) => {
+    if (emailQueue.length >= MAX_QUEUE_SIZE) {
+        console.error('[EmailService] Queue is full! Dropping email request.');
+        return { status: 'error', message: 'Email queue overflow' };
+    }
+
+    emailQueue.push({ options, retries: 0 });
+    
+    // Trigger queue processing (fire and forget)
+    processQueue().catch(err => console.error('Queue processing error:', err));
+    
+    return { status: 'queued', message: 'Email queued for delivery' };
 };
 
 module.exports = {

@@ -3,7 +3,7 @@ const { pool } = require('../config/database');
 const addDepartmentToAssets = async () => {
     const client = await pool.connect();
     try {
-        console.log('Starting migration: Add department_id to assets table...');
+        
 
         // Get all schemas
         const schemas = await client.query(
@@ -12,7 +12,7 @@ const addDepartmentToAssets = async () => {
 
         for (const row of schemas.rows) {
             const schema = row.nspname;
-            console.log(`Checking schema: ${schema}`);
+            
 
             // Check if assets table exists
             const tableExists = await client.query(
@@ -24,7 +24,7 @@ const addDepartmentToAssets = async () => {
             );
 
             if (tableExists.rows[0].exists) {
-                console.log(`Assets table found in ${schema}. Adding department_id column...`);
+                
 
                 // Add department_id column if it doesn't exist
                 await client.query(`
@@ -45,7 +45,7 @@ const addDepartmentToAssets = async () => {
             }
         }
 
-        console.log('Migration completed successfully.');
+        
     } catch (error) {
         console.error('Migration failed:', error);
     } finally {

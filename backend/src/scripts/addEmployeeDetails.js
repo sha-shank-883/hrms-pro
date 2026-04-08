@@ -6,17 +6,17 @@ require('dotenv').config({ path: path.join(__dirname, '../../.env') });
 async function migrate() {
     const client = await pool.connect();
     try {
-        console.log('Starting migration to add employee details columns...');
+        
 
         // Get all tenants
         const tenantsResult = await client.query('SELECT tenant_id FROM shared.tenants');
         const tenants = tenantsResult.rows;
 
-        console.log(`Found ${tenants.length} tenants. Processing...`);
+        
 
         for (const tenant of tenants) {
             const { tenant_id } = tenant;
-            console.log(`Processing tenant: ${tenant_id}`);
+            
 
             // Switch to tenant schema to ensure we are targeting correct tables
             await client.query(`SET search_path TO "${tenant_id}", public`);
@@ -52,10 +52,10 @@ async function migrate() {
         END $$;
       `);
 
-            console.log(`Updated schema for tenant: ${tenant_id}`);
+            
         }
 
-        console.log('Migration completed successfully.');
+        
     } catch (error) {
         console.error('Migration failed:', error);
     } finally {

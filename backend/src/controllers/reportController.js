@@ -80,15 +80,7 @@ const getDashboardStats = async (req, res) => {
       [], { total: 0, open: 0 }
     );
 
-    console.log('Dashboard Stats Response:', {
-      tenant: req.tenant?.tenant_id,
-      employees,
-      departments,
-      attendance,
-      leaves,
-      tasks,
-      jobs
-    });
+    
 
     res.json({
       success: true,
@@ -479,7 +471,7 @@ const getRecruitmentReport = async (req, res) => {
 // Predictive analytics for employee turnover
 const getTurnoverPrediction = async (req, res) => {
   try {
-    console.log('Turnover prediction request received. User:', req.user);
+    
 
     // Get historical turnover data (last 12 months)
     const turnoverHistory = await query(`

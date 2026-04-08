@@ -18,9 +18,11 @@ import {
   FaUser,
   FaCalendarAlt,
   FaSearch,
-  FaBuilding
+  FaBuilding,
+  FaClock as FaShiftClock
 } from 'react-icons/fa';
 import AttendanceRegularizationModal from '../components/attendance/AttendanceRegularizationModal';
+import ShiftsTab from '../components/attendance/ShiftsTab';
 
 const Attendance = () => {
   const { user } = useAuth();
@@ -173,6 +175,25 @@ const Attendance = () => {
     }
   };
 
+  const getCoordinates = () => {
+    return new Promise((resolve) => {
+      if (!navigator.geolocation) {
+        resolve({ latitude: null, longitude: null });
+        return;
+      }
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          resolve({ latitude: position.coords.latitude, longitude: position.coords.longitude });
+        },
+        (error) => {
+          console.warn("Geolocation warning:", error);
+          resolve({ latitude: null, longitude: null });
+        },
+        { timeout: 10000, maximumAge: 60000 }
+      );
+    });
+  };
+
   const handleClockIn = async () => {
     // For employees, use their own employee ID
     let employeeId = formData.employee_id;
@@ -194,7 +215,8 @@ const Attendance = () => {
     }
 
     try {
-      await attendanceService.clockIn(employeeId);
+      const { latitude, longitude } = await getCoordinates();
+      await attendanceService.clockIn(employeeId, latitude, longitude);
       setSuccess('Clocked in successfully!');
       loadAttendance();
       setTimeout(() => setSuccess(''), 3000);
@@ -224,7 +246,8 @@ const Attendance = () => {
     }
 
     try {
-      await attendanceService.clockOut(employeeId);
+      const { latitude, longitude } = await getCoordinates();
+      await attendanceService.clockOut(employeeId, latitude, longitude);
       setSuccess('Clocked out successfully!');
       loadAttendance();
       setTimeout(() => setSuccess(''), 3000);
@@ -370,6 +393,12 @@ const Attendance = () => {
               {notifications.attendance}
             </span>
           )}
+        </button>
+        <button
+          className={`pb-3 px-5 text-sm font-semibold transition-colors border-b-2 ${activeTab === 'shifts' ? 'text-primary-600 border-primary-600' : 'text-neutral-500 border-transparent hover:text-neutral-700'}`}
+          onClick={() => setActiveTab('shifts')}
+        >
+          <FaShiftClock className="inline mr-2" /> Shift Rostering
         </button>
       </div>
 
@@ -672,9 +701,9 @@ const Attendance = () => {
         </div>
       )}
 
-
-
-
+      {activeTab === 'shifts' && (
+        <ShiftsTab />
+      )}
 
       {/* Add/Edit Record Modal */}
       {showModal && (

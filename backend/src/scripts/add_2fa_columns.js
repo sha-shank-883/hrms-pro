@@ -12,17 +12,17 @@ const pool = new Pool({
 async function migrate() {
     const client = await pool.connect();
     try {
-        console.log('Starting 2FA migration...');
+        
 
         // 1. Get all tenants
         const tenantsRes = await client.query('SELECT tenant_id FROM shared.tenants');
         const tenants = tenantsRes.rows;
 
-        console.log(`Found ${tenants.length} tenants.`);
+        
 
         for (const tenant of tenants) {
             const tenantId = tenant.tenant_id;
-            console.log(`Migrating tenant: ${tenantId}`);
+            
 
             try {
                 // Set search path to tenant schema
@@ -35,13 +35,13 @@ async function migrate() {
           ADD COLUMN IF NOT EXISTS is_two_factor_enabled BOOLEAN DEFAULT false
         `);
 
-                console.log(`✓ Updated users table for ${tenantId}`);
+                
             } catch (err) {
                 console.error(`X Failed to migrate tenant ${tenantId}:`, err.message);
             }
         }
 
-        console.log('Migration completed.');
+        
     } catch (error) {
         console.error('Migration failed:', error);
     } finally {

@@ -1,23 +1,12 @@
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const { uploadFile: abstractUploadFile } = require('../utils/storageProvider');
 
-// Configure multer storage
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const uploadDir = path.join(__dirname, '../../uploads/chat');
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
-    cb(null, uploadDir);
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, uniqueSuffix + path.extname(file.originalname));
-  }
-});
+// Use memory storage so we can process it with storageProvider
+const storage = multer.memoryStorage();
 
-// File filter
+// File filter (keep existing)
 const fileFilter = (req, file, cb) => {
   const allowedTypes = /jpeg|jpg|png|gif|pdf|doc|docx|xls|xlsx|ppt|pptx|txt|mp4|mp3|wav|avi|mov/;
   const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
@@ -49,14 +38,18 @@ const uploadFile = async (req, res) => {
       });
     }
 
-    const fileUrl = `/uploads/chat/${req.file.filename}`;
+    // Identify context - either from request path or generic
+    const contextStr = req.originalUrl.includes('/chat') ? 'chat' : 'general';
+    
+    // Upload via new storage provider
+    const fileUrl = await abstractUploadFile(req.file, contextStr);
     
     res.status(200).json({
       success: true,
       message: 'File uploaded successfully',
       data: {
         url: fileUrl,
-        filename: req.file.filename,
+        filename: path.basename(fileUrl),
         originalName: req.file.originalname,
         mimetype: req.file.mimetype,
         size: req.file.size

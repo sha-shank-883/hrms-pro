@@ -13,7 +13,7 @@ const pool = new Pool({
 async function checkAdmins() {
     const client = await pool.connect();
     try {
-        console.log('Checking for default admin in tenants...');
+        
 
         const tenantsRes = await client.query('SELECT tenant_id FROM shared.tenants');
         const tenants = tenantsRes.rows.map(t => t.tenant_id);
@@ -30,9 +30,9 @@ async function checkAdmins() {
                 const res = await client.query(`SELECT email, role FROM users WHERE email = 'admin@hrmspro.com'`);
 
                 if (res.rows.length > 0) {
-                    console.log(`[${tenantId}] ⚠️  Default admin found!`);
+                    
                 } else {
-                    console.log(`[${tenantId}] ✓ No default admin found.`);
+                    
                 }
             } catch (err) {
                 console.error(`Error checking ${tenantId}:`, err.message);

@@ -3,14 +3,14 @@ const { pool } = require('../config/database');
 const createPerformanceTables = async () => {
     const client = await pool.connect();
     try {
-        console.log('Creating performance management tables for all tenants...');
+        
 
         // 1. Get all tenants
         const tenantsRes = await client.query('SELECT tenant_id FROM shared.tenants');
         const tenants = tenantsRes.rows;
 
         for (const tenant of tenants) {
-            console.log(`Processing tenant: ${tenant.tenant_id}...`);
+            
             try {
                 await client.query(`SET search_path TO "${tenant.tenant_id}"`);
 
@@ -57,14 +57,14 @@ const createPerformanceTables = async () => {
                     );
                 `);
                 
-                console.log(`   ✓ Tables created for ${tenant.tenant_id}`);
+                
 
             } catch (err) {
                 console.error(`   ❌ Failed for ${tenant.tenant_id}:`, err.message);
             }
         }
 
-        console.log('All performance tables created successfully!');
+        
     } catch (error) {
         console.error('Error creating tables:', error);
     } finally {

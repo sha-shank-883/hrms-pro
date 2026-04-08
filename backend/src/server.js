@@ -6,6 +6,7 @@ const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 const http = require('http');
 const socketIo = require('socket.io');
+const jwt = require('jsonwebtoken');
 require('dotenv').config();
 
 const { pool, query, tenantStorage } = require('./config/database');
@@ -13,6 +14,7 @@ const { errorHandler, notFound } = require('./middleware/errorHandler');
 const { sanitizeBody } = require('./middleware/validate');
 const fs = require('fs');
 const path = require('path');
+const { encrypt, decrypt } = require('./utils/crypto');
 
 // Import routes
 const authRoutes = require('./routes/authRoutes');
@@ -83,6 +85,13 @@ app.use(sanitizeBody); // Input sanitization
 
 // ONE-OFF DATABASE SETUP ROUTE (For Render deployment)
 app.get('/api/setup-db', async (req, res) => {
+  const setupPassword = req.headers['x-setup-password'] || req.query.password;
+  const envPassword = process.env.SETUP_PASSWORD || 'ChangeMe123'; // Default placeholder
+
+  if (process.env.NODE_ENV === 'production' && setupPassword !== envPassword) {
+    return res.status(401).json({ success: false, message: 'Unauthorized: Setup password required in production' });
+  }
+
   const client = await pool.connect();
   try {
     console.log('🔄 Starting Database Setup via HTTP...');
@@ -189,9 +198,10 @@ app.use('/api/assets', require('./routes/assetRoutes'));
 app.use('/api/audit-logs', require('./routes/auditRoutes'));
 app.use('/api/tenants', tenantRoutes);
 app.use('/api/holidays', require('./routes/holidayRoutes'));
+app.use('/api/shifts', require('./routes/shiftRoutes'));
 app.use('/api/email-templates', emailTemplateRoutes);
 
-const connectedUsers = new Map();
+const connectedUsers = new Map(); // userId -> Set of socketIds
 
 const broadcastOnlineUsers = () => {
   const onlineUserIds = Array.from(connectedUsers.keys());
@@ -205,18 +215,49 @@ io.on('connection', (socket) => {
   socket.join(tenantId); // Join tenant-specific room
   console.log(`New client connected: ${socket.id} (Tenant: ${tenantId})`);
 
-  // User joins with their user ID
-  socket.on('join', (userId) => {
+  // User joins with their user ID & Token for authentication
+  socket.on('join', (data) => {
+    if (!data) return;
+    // Support both object and direct userId for backwards compatibility (temporary)
+    const { userId, token } = (data && typeof data === 'object') ? data : { userId: data, token: null };
+
     tenantStorage.run(socket.tenantId, async () => {
       try {
-        console.log(`[SOCKET] Join request received for userId: ${userId}, socket: ${socket.id}, tenant: ${socket.tenantId}`);
+        console.log(`[SOCKET] Join request: user ${userId}, socket ${socket.id}, tenant ${socket.tenantId}`);
+        
         if (!userId) {
           console.error('[SOCKET] Join attempt without userId');
           return;
         }
-        connectedUsers.set(userId, socket.id);
+
+        // Security: Verify token matches the userId
+        if (token) {
+          try {
+            const decoded = jwt.verify(token, process.env.JWT_SECRET);
+            if (decoded.userId !== parseInt(userId) && decoded.userId !== userId) {
+              console.error(`[SOCKET] Security Violation: User ${decoded.userId} attempted to join as ${userId}`);
+              socket.emit('error', { message: 'Authentication mismatch: Token does not match requested User ID' });
+              return;
+            }
+          } catch (err) {
+            console.error('[SOCKET] Invalid token during join:', err.message);
+            socket.emit('error', { message: 'Invalid or expired authentication token' });
+            return;
+          }
+        } else if (process.env.NODE_ENV === 'production') {
+          console.error('[SOCKET] Unauthenticated join attempt in production');
+          socket.emit('error', { message: 'Authentication required for chat' });
+          return;
+        }
+
+        // Concurrency: Add socketId to Set
+        if (!connectedUsers.has(userId)) {
+          connectedUsers.set(userId, new Set());
+        }
+        connectedUsers.get(userId).add(socket.id);
+        
         socket.userId = userId;
-        console.log(`[SOCKET] User ${userId} joined successfully. Connected users: ${connectedUsers.size}`);
+        console.log(`[SOCKET] User ${userId} joined successfully. Active sockets for user: ${connectedUsers.get(userId).size}`);
         broadcastOnlineUsers();
       } catch (error) {
         console.error('[SOCKET] Error in join event:', error);
@@ -226,6 +267,7 @@ io.on('connection', (socket) => {
 
   // Send message
   socket.on('send_message', (data) => {
+    if (!data) return;
     tenantStorage.run(socket.tenantId, async () => {
       console.log('[SOCKET] Received send_message event:', JSON.stringify(data));
       const { receiver_id, message, attachment_url, attachment_type, attachment_name } = data;
@@ -239,7 +281,7 @@ io.on('connection', (socket) => {
         return;
       }
 
-      const receiverSocketId = connectedUsers.get(receiver_id);
+      const userSockets = connectedUsers.get(receiver_id);
 
       // Basic validation
       if (!receiver_id || (!message && !attachment_url)) {
@@ -250,10 +292,11 @@ io.on('connection', (socket) => {
 
       // TODO: Implement message encryption before saving to database
       // For now, saving message to database
+      const encryptedMessage = encrypt(message);
       query(
         `INSERT INTO chat_messages (sender_id, receiver_id, message, attachment_url, attachment_type, attachment_name) 
          VALUES ($1, $2, $3, $4, $5, $6) RETURNING message_id, created_at`,
-        [sender_id, receiver_id, message, attachment_url || null, attachment_type || null, attachment_name || null]
+        [sender_id, receiver_id, encryptedMessage, attachment_url || null, attachment_type || null, attachment_name || null]
       ).then(result => {
         const { message_id, created_at } = result.rows[0];
 
@@ -262,7 +305,7 @@ io.on('connection', (socket) => {
           message_id,
           sender_id,
           receiver_id,
-          message, // TODO: Implement decryption for recipient
+          message: message, // Send decrypted message to recipient over WSS
           created_at,
           attachment_url,
           attachment_type,
@@ -270,10 +313,12 @@ io.on('connection', (socket) => {
         };
 
         // Send to receiver if connected
-        if (receiverSocketId) {
-          console.log(`Sending message to receiver ${receiver_id} via socket ${receiverSocketId}`);
-          // TODO: Implement encryption for real-time transmission
-          io.to(receiverSocketId).emit('receive_message', messageData);
+        const receiverSockets = connectedUsers.get(receiver_id);
+        if (receiverSockets && receiverSockets.size > 0) {
+          console.log(`Sending message to receiver ${receiver_id} via ${receiverSockets.size} sockets`);
+          receiverSockets.forEach(sId => {
+            io.to(sId).emit('receive_message', messageData);
+          });
         } else {
           console.log(`Receiver ${receiver_id} not connected or not found`);
         }
@@ -290,6 +335,7 @@ io.on('connection', (socket) => {
 
   // Mark messages as read
   socket.on('mark_read', (data) => {
+    if (!data) return;
     tenantStorage.run(socket.tenantId, async () => {
       const { sender_id } = data; // The user whose messages I am reading (the other person)
       const receiver_id = socket.userId; // Me
@@ -303,10 +349,12 @@ io.on('connection', (socket) => {
         );
 
         // Notify the sender that I read their messages
-        const senderSocketId = connectedUsers.get(sender_id);
-        if (senderSocketId) {
-          io.to(senderSocketId).emit('messages_read', {
-            reader_id: receiver_id
+        const senderSockets = connectedUsers.get(sender_id);
+        if (senderSockets) {
+          senderSockets.forEach(sId => {
+            io.to(sId).emit('messages_read', {
+              reader_id: receiver_id
+            });
           });
         }
       } catch (error) {
@@ -318,80 +366,101 @@ io.on('connection', (socket) => {
   // Typing indicator
   socket.on('typing', (data) => {
     const { receiver_id, sender_id } = data;
-    const receiverSocketId = connectedUsers.get(receiver_id);
+    const receiverSockets = connectedUsers.get(receiver_id);
 
-    if (receiverSocketId) {
-      io.to(receiverSocketId).emit('user_typing', { sender_id });
+    if (receiverSockets) {
+      receiverSockets.forEach(sId => {
+        io.to(sId).emit('user_typing', { sender_id });
+      });
     }
   });
 
   // Stop typing
   socket.on('stop_typing', (data) => {
     const { receiver_id, sender_id } = data;
-    const receiverSocketId = connectedUsers.get(receiver_id);
+    const receiverSockets = connectedUsers.get(receiver_id);
 
-    if (receiverSocketId) {
-      io.to(receiverSocketId).emit('user_stop_typing', { sender_id });
+    if (receiverSockets) {
+      receiverSockets.forEach(sId => {
+        io.to(sId).emit('user_stop_typing', { sender_id });
+      });
     }
   });
 
   // WebRTC Signaling for calls
   socket.on('initiate_call', (data) => {
     const { receiver_id, caller_id, caller_name, callType, offer } = data;
-    const receiverSocketId = connectedUsers.get(receiver_id);
+    const receiverSockets = connectedUsers.get(receiver_id);
 
-    if (receiverSocketId) {
-      io.to(receiverSocketId).emit('call_initiated', {
-        caller_id,
-        caller_name,
-        callType,
-        offer
+    if (receiverSockets) {
+      receiverSockets.forEach(sId => {
+        io.to(sId).emit('call_initiated', {
+          caller_id,
+          caller_name,
+          callType,
+          offer
+        });
       });
     }
   });
 
   socket.on('accept_call', (data) => {
     const { caller_id, answer } = data;
-    const callerSocketId = connectedUsers.get(caller_id);
+    const callerSockets = connectedUsers.get(caller_id);
 
-    if (callerSocketId) {
-      io.to(callerSocketId).emit('call_accepted', { answer });
+    if (callerSockets) {
+      callerSockets.forEach(sId => {
+        io.to(sId).emit('call_accepted', { answer });
+      });
     }
   });
 
   socket.on('reject_call', (data) => {
     const { caller_id } = data;
-    const callerSocketId = connectedUsers.get(caller_id);
+    const callerSockets = connectedUsers.get(caller_id);
 
-    if (callerSocketId) {
-      io.to(callerSocketId).emit('call_rejected');
+    if (callerSockets) {
+      callerSockets.forEach(sId => {
+        io.to(sId).emit('call_rejected');
+      });
     }
   });
 
   socket.on('ice_candidate', (data) => {
     const { receiver_id, candidate } = data;
-    const receiverSocketId = connectedUsers.get(receiver_id);
+    const receiverSockets = connectedUsers.get(receiver_id);
 
-    if (receiverSocketId) {
-      io.to(receiverSocketId).emit('ice_candidate', { candidate });
+    if (receiverSockets) {
+      receiverSockets.forEach(sId => {
+        io.to(sId).emit('ice_candidate', { candidate });
+      });
     }
   });
 
   socket.on('end_call', (data) => {
     const { receiver_id } = data;
-    const receiverSocketId = connectedUsers.get(receiver_id);
+    const receiverSockets = connectedUsers.get(receiver_id);
 
-    if (receiverSocketId) {
-      io.to(receiverSocketId).emit('call_ended');
+    if (receiverSockets) {
+      receiverSockets.forEach(sId => {
+        io.to(sId).emit('call_ended');
+      });
     }
   });
 
   // Disconnect
   socket.on('disconnect', () => {
-    if (socket.userId) {
-      connectedUsers.delete(socket.userId);
-      console.log(`User ${socket.userId} disconnected`);
-      broadcastOnlineUsers();
+    if (socket.userId && connectedUsers.has(socket.userId)) {
+      const userSockets = connectedUsers.get(socket.userId);
+      userSockets.delete(socket.id);
+      
+      if (userSockets.size === 0) {
+        connectedUsers.delete(socket.userId);
+        console.log(`User ${socket.userId} fully disconnected (no active tabs)`);
+        broadcastOnlineUsers();
+      } else {
+        console.log(`Socket ${socket.id} closed for user ${socket.userId}. Remaining tabs: ${userSockets.size}`);
+      }
     }
     console.log('Client disconnected:', socket.id);
   });
@@ -419,9 +488,20 @@ server.listen(PORT, () => {
   console.log('');
 });
 
-// Graceful shutdown
-process.on('SIGTERM', () => {
-  console.log('SIGTERM signal received: closing HTTP server');
+// Handle server startup errors (like EADDRINUSE)
+server.on('error', (error) => {
+  if (error.code === 'EADDRINUSE') {
+    console.error(`❌ FATAL ERROR: Port ${PORT} is already in use.`);
+    console.error('   Please kill the process holding the port or use a different PORT.');
+    process.exit(1);
+  } else {
+    console.error('❌ Server error:', error);
+  }
+});
+
+// Graceful shutdown function
+const shutdown = (signal) => {
+  console.log(`\n[${signal}] signal received: closing HTTP server`);
   server.close(() => {
     console.log('HTTP server closed');
     pool.end(() => {
@@ -429,6 +509,10 @@ process.on('SIGTERM', () => {
       process.exit(0);
     });
   });
-});
+};
+
+// Handle termination signals
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));
 
 module.exports = { app, io };

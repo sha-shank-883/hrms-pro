@@ -3,6 +3,7 @@ const { body } = require('express-validator');
 const { validate } = require('../middleware/validate');
 const { authenticateToken, authorizeRole } = require('../middleware/auth');
 const payrollController = require('../controllers/payrollController');
+const { logAction } = require('../middleware/auditLogger');
 
 const router = express.Router();
 
@@ -15,6 +16,11 @@ const payrollValidation = [
 ];
 
 // Routes
+// Tax Declaration Routes
+router.post('/tax-declarations', authenticateToken, logAction('SUBMIT_TAX_DECLARATION', 'TAX'), payrollController.submitTaxDeclaration);
+router.get('/tax-declarations', authenticateToken, payrollController.getTaxDeclarations);
+router.put('/tax-declarations/:id', authenticateToken, authorizeRole('admin', 'manager'), logAction('UPDATE_TAX_STATUS', 'TAX'), payrollController.updateTaxDeclarationStatus);
+
 // Allow employees to access their own payroll data (filtered in controller)
 router.get('/', authenticateToken, authorizeRole('admin', 'manager', 'employee'), payrollController.getAllPayroll);
 router.get('/statistics', authenticateToken, authorizeRole('admin', 'manager', 'employee'), payrollController.getPayrollStatistics);
@@ -27,10 +33,5 @@ router.delete('/:id', authenticateToken, authorizeRole('admin'), payrollControll
 // Automatic payroll generation
 router.post('/generate', authenticateToken, authorizeRole('admin', 'manager'), payrollController.generateAutomaticPayroll);
 router.post('/generate-bulk', authenticateToken, authorizeRole('admin', 'manager'), payrollController.generateBulkPayroll);
-
-// Tax Declaration Routes
-router.post('/tax-declarations', authenticateToken, payrollController.submitTaxDeclaration);
-router.get('/tax-declarations', authenticateToken, payrollController.getTaxDeclarations);
-router.put('/tax-declarations/:id', authenticateToken, authorizeRole('admin', 'manager'), payrollController.updateTaxDeclarationStatus);
 
 module.exports = router;

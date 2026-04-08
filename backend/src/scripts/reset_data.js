@@ -9,13 +9,13 @@ const rl = readline.createInterface({
 const resetData = async () => {
     const client = await pool.connect();
     try {
-        console.log('⚠️  WARNING: THIS WILL DELETE ALL DATA EXCEPT ADMIN ACCOUNTS ⚠️');
+        
 
         // 1. Get all tenants
         const tenantsRes = await client.query('SELECT tenant_id FROM shared.tenants');
         const tenants = tenantsRes.rows;
 
-        console.log(`Found ${tenants.length} tenants: ${tenants.map(t => t.tenant_id).join(', ')}`);
+        
 
         // Tables to truncate (order matters for FKs)
         const tables = [
@@ -43,7 +43,7 @@ const resetData = async () => {
         ];
 
         for (const tenant of tenants) {
-            console.log(`\nProcessing tenant: ${tenant.tenant_id}...`);
+            
             await client.query(`SET search_path TO "${tenant.tenant_id}"`);
 
             // Disable triggers/constraints locally if needed, or just delete in order.
@@ -62,7 +62,7 @@ const resetData = async () => {
 
                     if (tableCheck.rows[0].exists) {
                         await client.query(`DELETE FROM "${table}" CASCADE`);
-                        console.log(`   ✓ Formatted table: ${table}`);
+                        
                     }
                 } catch (err) {
                     console.error(`   ❌ Failed to clear ${table}:`, err.message);
@@ -70,16 +70,16 @@ const resetData = async () => {
             }
 
             // Cleanup Users (keep admins)
-            console.log('   Cleaning users table (preserving admins)...');
+            
             try {
                 const result = await client.query(`DELETE FROM users WHERE role != 'admin'`);
-                console.log(`   ✓ Deleted ${result.rowCount} non-admin users`);
+                
             } catch (err) {
                 console.error('   ❌ Failed to clean users:', err.message);
             }
         }
 
-        console.log('\n✅ All data reset successfully!');
+        
 
     } catch (error) {
         console.error('❌ Reset failed:', error);
@@ -98,7 +98,7 @@ if (process.argv.includes('--force')) {
         if (answer.toLowerCase() === 'yes') {
             resetData();
         } else {
-            console.log('Cancelled.');
+            
             process.exit(0);
         }
         rl.close();

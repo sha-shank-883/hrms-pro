@@ -4,7 +4,7 @@ const { pool } = require('../config/database');
 const createEmailTemplatesTable = async () => {
     const client = await pool.connect();
     try {
-        console.log('📦 Starting email templates schema update...');
+        
 
         // Get all schemes
         const schemasRes = await client.query(`
@@ -14,7 +14,7 @@ const createEmailTemplatesTable = async () => {
         `);
 
         const schemas = schemasRes.rows.map(r => r.schema_name);
-        console.log('Found schemas:', schemas);
+        
 
         const defaultTemplates = [
             {
@@ -226,7 +226,7 @@ const createEmailTemplatesTable = async () => {
         ];
 
         for (const schema of schemas) {
-            console.log(`Checking schema: ${schema}`);
+            
 
             // Create table in this schema
             await client.query(`
@@ -241,13 +241,13 @@ const createEmailTemplatesTable = async () => {
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             `);
-            console.log(`✅ Table email_templates ensured in ${schema}`);
+            
 
             // Add indexes (if not already present)
             await client.query(`
                 CREATE INDEX IF NOT EXISTS idx_${schema}_email_templates_name ON "${schema}".email_templates(name)
             `);
-            console.log(`✅ Index idx_${schema}_email_templates_name ensured in ${schema}`);
+            
 
             // Insert default templates
             for (const template of defaultTemplates) {
@@ -270,14 +270,14 @@ const createEmailTemplatesTable = async () => {
                             JSON.stringify(template.variables)
                         ]
                     );
-                    console.log(`   - Template "${template.name}" synced in ${schema}`);
+                    
                 } catch (insertError) {
                     console.error(`   ❌ Error inserting template "${template.name}" in ${schema}:`, insertError.message);
                 }
             }
         }
 
-        console.log('🎉 Email templates table update completed across all schemas!');
+        
         process.exit(0);
     } catch (error) {
         console.error('❌ Error updating email templates:', error.message);

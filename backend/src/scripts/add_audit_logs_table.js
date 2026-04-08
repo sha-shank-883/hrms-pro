@@ -3,7 +3,7 @@ const { pool } = require('../config/database');
 const addAuditLogsTable = async () => {
     const client = await pool.connect();
     try {
-        console.log('Starting migration: Create audit_logs table...');
+        
 
         // Get all schemas
         const schemas = await client.query(
@@ -12,7 +12,7 @@ const addAuditLogsTable = async () => {
 
         for (const row of schemas.rows) {
             const schema = row.nspname;
-            console.log(`Checking schema: ${schema}`);
+            
 
             // Check if users table exists
             const usersTableExists = await client.query(
@@ -24,7 +24,7 @@ const addAuditLogsTable = async () => {
             );
 
             if (!usersTableExists.rows[0].exists) {
-                console.log(`Skipping schema ${schema}: users table not found.`);
+                
                 continue;
             }
 
@@ -51,10 +51,10 @@ const addAuditLogsTable = async () => {
         CREATE INDEX IF NOT EXISTS idx_audit_date ON "${schema}".audit_logs(created_at);
       `);
 
-            console.log(`Created/Verified audit_logs table in ${schema}`);
+            
         }
 
-        console.log('Migration completed successfully.');
+        
     } catch (error) {
         console.error('Migration failed:', error);
     } finally {

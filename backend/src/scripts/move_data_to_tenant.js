@@ -24,7 +24,7 @@ async function migrateData() {
     const tenantId = 'tenant_default';
 
     try {
-        console.log(`Starting migration from PUBLIC to ${tenantId}...`);
+        
 
         await client.query('BEGIN');
 
@@ -42,13 +42,13 @@ async function migrateData() {
         ];
 
         for (const table of tables) {
-            console.log(`Migrating ${table}...`);
+            
 
             // select from public
             const publicData = await client.query(`SELECT * FROM public.${table}`);
 
             if (publicData.rows.length > 0) {
-                console.log(`  Found ${publicData.rows.length} rows in public.${table}`);
+                
 
                 const fields = publicData.fields.map(f => f.name);
                 const columns = fields.join(', ');
@@ -68,14 +68,14 @@ async function migrateData() {
                     await client.query(queryText, valueArray);
                     inserted++;
                 }
-                console.log(`  Migrated ${inserted} rows to ${tenantId}.${table}`);
+                
             } else {
-                console.log(`  No data in public.${table}`);
+                
             }
         }
 
         await client.query('COMMIT');
-        console.log('Migration completed successfully!');
+        
 
     } catch (err) {
         await client.query('ROLLBACK');

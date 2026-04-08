@@ -1,4 +1,5 @@
 const { query } = require('../config/database');
+const { encrypt, decrypt } = require('../utils/crypto');
 
 // Get chat messages with pagination
 const getMessages = async (req, res) => {
@@ -59,10 +60,16 @@ const getMessages = async (req, res) => {
 
     // Get paginated results
     const result = await query(queryText, paginatedParams);
+    
+    // Decrypt messages
+    const decryptedRows = result.rows.map(row => ({
+      ...row,
+      message: decrypt(row.message)
+    }));
 
     res.json({
       success: true,
-      data: result.rows,
+      data: decryptedRows,
       pagination: {
         currentPage: pageNum,
         totalPages: totalPages,
@@ -88,16 +95,21 @@ const sendMessage = async (req, res) => {
     const { receiver_id, message, attachment_url, attachment_type, attachment_name } = req.body;
     const sender_id = req.user.userId;
 
+    const encryptedMessage = encrypt(message);
+
     const result = await query(
       `INSERT INTO chat_messages (sender_id, receiver_id, message, attachment_url, attachment_type, attachment_name) 
        VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-      [sender_id, receiver_id, message, attachment_url || null, attachment_type || null, attachment_name || null]
+      [sender_id, receiver_id, encryptedMessage, attachment_url || null, attachment_type || null, attachment_name || null]
     );
+
+    const insertedData = result.rows[0];
+    insertedData.message = message; // return decrypted for immediate UI use
 
     res.status(201).json({
       success: true,
       message: 'Message sent successfully',
-      data: result.rows[0],
+      data: insertedData,
     });
   } catch (error) {
     console.error('Send message error:', error);
@@ -164,7 +176,7 @@ const getUnreadCount = async (req, res) => {
 const getConversations = async (req, res) => {
   try {
     const userId = req.user.userId;
-    console.log('Getting conversations for user:', userId);
+    
 
     const result = await query(
       `SELECT DISTINCT ON (other_user_id) 
@@ -197,10 +209,17 @@ const getConversations = async (req, res) => {
       [userId]
     );
 
-    console.log('Conversations query result:', result.rows);
+    
+    
+    // Decrypt last messages
+    const decryptedConversations = result.rows.map(row => ({
+      ...row,
+      last_message: decrypt(row.last_message)
+    }));
+    
     res.json({
       success: true,
-      data: result.rows,
+      data: decryptedConversations,
       count: result.rows.length,
     });
   } catch (error) {

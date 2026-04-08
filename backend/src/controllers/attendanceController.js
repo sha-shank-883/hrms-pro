@@ -11,6 +11,20 @@ const getSetting = async (key, defaultValue = null) => {
   }
 };
 
+// Haversine formula to calculate distance in meters
+function getDistanceInMeters(lat1, lon1, lat2, lon2) {
+  if (!lat1 || !lon1 || !lat2 || !lon2) return null;
+  const R = 6371000; // Radius of the Earth in meters
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLon/2) * Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
+}
+
+
 // Get all attendance records with pagination
 const getAllAttendance = async (req, res) => {
   try {
@@ -118,7 +132,7 @@ const getAllAttendance = async (req, res) => {
 // Clock in
 const clockIn = async (req, res) => {
   try {
-    const { employee_id } = req.body;
+    const { employee_id, latitude, longitude } = req.body;
     const today = new Date().toISOString().split('T')[0];
     const currentTime = new Date().toTimeString().split(' ')[0];
 
@@ -135,11 +149,64 @@ const clockIn = async (req, res) => {
       });
     }
 
+    let locationStatus = 'unknown';
+    if (latitude && longitude) {
+      const officeLat = await getSetting('office_latitude', '0');
+      const officeLon = await getSetting('office_longitude', '0');
+      const geofenceRadius = parseFloat(await getSetting('geofence_radius', '500'));
+      const isStrict = await getSetting('strict_geofence', 'false') === 'true';
+
+      if (officeLat !== '0' && officeLon !== '0') {
+        const distance = getDistanceInMeters(latitude, longitude, parseFloat(officeLat), parseFloat(officeLon));
+        if (distance !== null) {
+          if (distance <= geofenceRadius) {
+            locationStatus = 'inside';
+          } else {
+            locationStatus = 'outside';
+            if (isStrict) {
+              return res.status(403).json({
+                success: false,
+                message: 'Clock-in blocked: You are outside the designated office geofence.',
+                distance: Math.round(distance)
+              });
+            }
+          }
+        }
+      }
+    }
+
+    let status = 'present';
+    const gracePeriod = parseInt(await getSetting('grace_period', '15'));
+    
+    // Check for assigned shift today
+    const shiftResult = await query(
+      `SELECT s.start_time 
+       FROM employee_shifts es
+       JOIN shifts s ON es.shift_id = s.shift_id
+       WHERE es.employee_id = $1 
+       AND $2 BETWEEN es.start_date AND COALESCE(es.end_date, '9999-12-31')
+       LIMIT 1`,
+      [employee_id, today]
+    );
+
+    if (shiftResult.rows.length > 0) {
+      const shiftStart = shiftResult.rows[0].start_time; // format HH:MM:SS
+      const [sHours, sMinutes] = shiftStart.split(':').map(Number);
+      const [cHours, cMinutes] = currentTime.split(':').map(Number);
+      
+      const shiftStartTotalMinutes = sHours * 60 + sMinutes;
+      const currentTotalMinutes = cHours * 60 + cMinutes;
+      
+      if (currentTotalMinutes > (shiftStartTotalMinutes + gracePeriod)) {
+        status = 'late';
+      }
+    }
+
     const result = await query(
-      `INSERT INTO attendance (employee_id, date, clock_in, status)
-       VALUES ($1, $2, $3, 'present')
+      `INSERT INTO attendance (employee_id, date, clock_in, status, check_in_latitude, check_in_longitude, location_status)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
        RETURNING *`,
-      [employee_id, today, currentTime]
+      [employee_id, today, currentTime, status, latitude || null, longitude || null, locationStatus]
     );
 
     res.status(201).json({
@@ -169,7 +236,7 @@ const clockIn = async (req, res) => {
 // Clock out
 const clockOut = async (req, res) => {
   try {
-    const { employee_id } = req.body;
+    const { employee_id, latitude, longitude } = req.body;
     const today = new Date().toISOString().split('T')[0];
     const currentTime = new Date().toTimeString().split(' ')[0];
 
@@ -207,12 +274,36 @@ const clockOut = async (req, res) => {
       overtimeHours = (parseFloat(workHours) - standardWorkHours).toFixed(2);
     }
 
+    let locationStatus = existing.rows[0].location_status || 'unknown';
+    if (latitude && longitude) {
+      const officeLat = await getSetting('office_latitude', '0');
+      const officeLon = await getSetting('office_longitude', '0');
+      const geofenceRadius = parseFloat(await getSetting('geofence_radius', '500'));
+      const isStrict = await getSetting('strict_geofence', 'false') === 'true';
+
+      if (officeLat !== '0' && officeLon !== '0') {
+        const distance = getDistanceInMeters(latitude, longitude, parseFloat(officeLat), parseFloat(officeLon));
+        if (distance !== null) {
+          if (distance > geofenceRadius) {
+            locationStatus = 'outside';
+            if (isStrict) {
+              return res.status(403).json({
+                success: false,
+                message: 'Clock-out blocked: You are outside the designated office geofence.',
+                distance: Math.round(distance)
+              });
+            }
+          }
+        }
+      }
+    }
+
     const result = await query(
       `UPDATE attendance 
-       SET clock_out = $1, work_hours = $2, updated_at = CURRENT_TIMESTAMP
-       WHERE employee_id = $3 AND date = $4
+       SET clock_out = $1, work_hours = $2, check_out_latitude = $3, check_out_longitude = $4, location_status = $5, updated_at = CURRENT_TIMESTAMP
+       WHERE employee_id = $6 AND date = $7
        RETURNING *`,
-      [currentTime, workHours, employee_id, today]
+      [currentTime, workHours, latitude || null, longitude || null, locationStatus, employee_id, today]
     );
 
     res.json({

@@ -5,7 +5,7 @@ const { pool } = require('../config/database');
 const updateSchema = async () => {
   const client = await pool.connect();
   try {
-    console.log('Starting schema update...');
+    
 
     // Get all schemas (public and tenant schemas)
     // Assuming tenant schemas follow a pattern or we just want to update all schemas that have a tasks table
@@ -16,10 +16,10 @@ const updateSchema = async () => {
     `);
 
     const schemas = schemasRes.rows.map(r => r.schema_name);
-    console.log('Found schemas:', schemas);
+    
 
     for (const schema of schemas) {
-      console.log(`Checking schema: ${schema}`);
+      
 
       // Check if tasks table exists in this schema
       const tableCheck = await client.query(`
@@ -29,7 +29,7 @@ const updateSchema = async () => {
       `, [schema]);
 
       if (tableCheck.rows.length > 0) {
-        console.log(`Found tasks table in ${schema}. Checking for category column...`);
+        
 
         // Check if category column exists
         const columnCheck = await client.query(`
@@ -39,21 +39,21 @@ const updateSchema = async () => {
         `, [schema]);
 
         if (columnCheck.rows.length === 0) {
-          console.log(`Adding category column to ${schema}.tasks...`);
+          
           await client.query(`
             ALTER TABLE "${schema}".tasks 
             ADD COLUMN category VARCHAR(50) DEFAULT 'general' CHECK (category IN ('general', 'onboarding', 'offboarding'))
           `);
-          console.log(`Category column added to ${schema}.tasks successfully.`);
+          
         } else {
-          console.log(`Category column already exists in ${schema}.tasks.`);
+          
         }
       } else {
-        console.log(`No tasks table in ${schema}. Skipping.`);
+        
       }
     }
 
-    console.log('Schema update completed.');
+    
     process.exit(0);
   } catch (error) {
     console.error('Schema update failed:', error);

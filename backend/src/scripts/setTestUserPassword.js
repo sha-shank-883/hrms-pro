@@ -6,7 +6,7 @@ const setPassword = async () => {
     const email = 'user@testcorp.com';
     const newPassword = 'password123';
 
-    console.log(`🔒 Setting password for ${email} in ${tenantId}...`);
+    
 
     try {
         // Hash the password
@@ -21,11 +21,11 @@ const setPassword = async () => {
             );
 
             if (result.rowCount > 0) {
-                console.log(`✅ Password updated successfully!`);
-                console.log(`   User: ${email}`);
-                console.log(`   Password: ${newPassword}`);
+                
+                
+                
             } else {
-                console.log(`❌ User not found in tenant ${tenantId}`);
+                
             }
         });
 

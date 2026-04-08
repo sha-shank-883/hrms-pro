@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useNotifications } from '../context/NotificationContext';
 import io from 'socket.io-client';
 import EmojiPicker from 'emoji-picker-react';
+import { encrypt as e2eEncrypt, decrypt as e2eDecrypt } from '../utils/cryptoBrowser';
 
 const Chat = () => {
   const { user } = useAuth();
@@ -57,7 +58,7 @@ const Chat = () => {
     });
 
     socketRef.current.on('connect', () => {
-      console.log('Socket connected:', socketRef.current.id);
+      
     });
 
     socketRef.current.on('connect_error', (err) => {
@@ -65,11 +66,11 @@ const Chat = () => {
     });
 
     socketRef.current.on('reconnect', () => {
-      console.log('Socket reconnected');
+      
     });
 
     socketRef.current.on('update_online_users', (userIds) => {
-      console.log('Online users updated:', userIds);
+      
       setOnlineUsers(new Set(userIds));
     });
 
@@ -125,12 +126,18 @@ const Chat = () => {
   useEffect(() => {
     if (user && user.userId && socketRef.current) {
       if (socketRef.current.connected) {
-        console.log('User available, joining with user ID:', user.userId);
-        socketRef.current.emit('join', user.userId);
+        
+        socketRef.current.emit('join', {
+          userId: user.userId,
+          token: localStorage.getItem('token')
+        });
       } else {
         const onConnect = () => {
-          console.log('Socket connected (in user effect), joining with user ID:', user.userId);
-          socketRef.current.emit('join', user.userId);
+          
+          socketRef.current.emit('join', {
+            userId: user.userId,
+            token: localStorage.getItem('token')
+          });
         };
         socketRef.current.on('connect', onConnect);
         return () => {
@@ -144,13 +151,15 @@ const Chat = () => {
   useEffect(() => {
     if (!socketRef.current) return;
 
-    const handleReceiveMessage = (data) => {
-      console.log('Received message:', data);
+    const handleReceiveMessage = async (data) => {
+      
+
+      const decryptedMessageText = await e2eDecrypt(data.message);
 
       // Always add the message to the messages list if we're in the correct conversation
       if (selectedUser &&
         (data.sender_id === selectedUser.user_id || data.receiver_id === selectedUser.user_id)) {
-        console.log('Adding message to conversation with:', selectedUser.user_id);
+        
         setMessages(prev => {
           // Prevent duplicate messages
           if (prev.some(m => m.message_id === data.message_id)) return prev;
@@ -159,7 +168,7 @@ const Chat = () => {
             message_id: data.message_id,
             sender_id: data.sender_id,
             receiver_id: data.receiver_id,
-            message: data.message,
+            message: decryptedMessageText,
             created_at: data.created_at,
             is_read: false,
             attachment_url: data.attachment_url || null,
@@ -168,7 +177,7 @@ const Chat = () => {
           }];
         });
       } else {
-        console.log('Message not for current conversation. Selected user:', selectedUser?.user_id, 'Message sender:', data.sender_id, 'Message receiver:', data.receiver_id);
+        
       }
 
       // Always update the conversations list to show new messages and unread counts
@@ -302,7 +311,10 @@ const Chat = () => {
   const loadConversations = async () => {
     try {
       const response = await chatService.getConversations();
-      setConversations(response.data);
+      const decryptedConversations = await Promise.all(response.data.map(async (conv) => {
+        return { ...conv, last_message: await e2eDecrypt(conv.last_message) };
+      }));
+      setConversations(decryptedConversations);
       setError('');
     } catch (error) {
       setError('Failed to load conversations: ' + (error.response?.data?.message || error.message));
@@ -322,7 +334,9 @@ const Chat = () => {
       };
 
       const response = await chatService.getMessages(selectedUser.user_id, params);
-      const newMessages = response.data;
+      const newMessages = await Promise.all(response.data.map(async (msg) => {
+        return { ...msg, message: await e2eDecrypt(msg.message) };
+      }));
       const pagination = response.pagination;
 
       if (page === 1) {
@@ -385,10 +399,11 @@ const Chat = () => {
         };
       }
 
+      const encryptedMsg = await e2eEncrypt(newMessage);
+
       const messageData = {
         receiver_id: selectedUser.user_id,
-        message: newMessage,
-        // TODO: Implement client-side encryption before sending
+        message: encryptedMsg,
         ...attachmentData
       };
 
@@ -516,7 +531,7 @@ const Chat = () => {
     };
 
     peerConnectionRef.current.ontrack = (event) => {
-      console.log('Received remote track:', event);
+      
       const remStream = event.streams[0];
       setRemoteStream(remStream);
 

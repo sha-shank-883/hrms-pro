@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
 import { useNotifications } from '../context/NotificationContext';
 import { useSettings } from '../hooks/useSettings.jsx';
-import { leaveService, taskService } from '../services';
+import { leaveService, taskService, searchService } from '../services';
 import {
   FaHome, FaUsers, FaCalendarCheck, FaMoneyBillWave, FaCog,
   FaSignOutAlt, FaBars, FaTimes, FaFileAlt, FaTasks,
@@ -25,6 +25,70 @@ const Layout = () => {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+
+  const searchRef = useRef(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState(null);
+  const [isSearching, setIsSearching] = useState(false);
+
+  const STATIC_MODULES = [
+    { label: 'Dashboard', path: '/' },
+    { label: 'Employees', path: '/employees' },
+    { label: 'Departments', path: '/departments' },
+    { label: 'Attendance', path: '/attendance' },
+    { label: 'Leaves', path: '/leaves' },
+    { label: 'Tasks', path: '/tasks' },
+    { label: 'Performance', path: '/performance' },
+    { label: 'Payroll', path: '/payroll' },
+    { label: 'Recruitment', path: '/recruitment' },
+    { label: 'Documents', path: '/documents' },
+    { label: 'Assets', path: '/assets' },
+    { label: 'Chat', path: '/chat' },
+  ];
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (searchRef.current && !searchRef.current.contains(event.target)) {
+        setSearchResults(null);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    const delayDebounceFn = setTimeout(async () => {
+      if (searchQuery.trim().length >= 2) {
+        setIsSearching(true);
+        try {
+          const filteredModules = STATIC_MODULES.filter(m => m.label.toLowerCase().includes(searchQuery.toLowerCase()));
+          const res = await searchService.globalSearch(searchQuery);
+          if (res.success) {
+            setSearchResults({
+              modules: filteredModules,
+              ...res.data
+            });
+          }
+        } catch (error) {
+          console.error("Search error:", error);
+        } finally {
+          setIsSearching(false);
+        }
+      } else {
+        setSearchResults(null);
+      }
+    }, 300);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [searchQuery]);
+
+  const handleSearchSelect = (path) => {
+    navigate(path);
+    setSearchQuery('');
+    setSearchResults(null);
+    setIsSearchOpen(false);
+  };
+
 
   // Auto-mark as read on route change
   useEffect(() => {
@@ -261,13 +325,216 @@ const Layout = () => {
               <FaBars className="text-xl" />
             </button>
             {/* Global Search */}
-            <div className="hidden md:flex items-center relative">
+            <div className="hidden md:flex items-center relative" ref={searchRef}>
               <FaSearch className="absolute left-4 text-neutral-400 text-lg" />
               <input
                 type="text"
-                placeholder="Search employees, tasks..."
+                placeholder="Search employees, tasks, modules..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onFocus={(e) => {
+                  if (e.target.value.trim().length >= 2 && !searchResults) {
+                    // Trigger search if it was closed
+                    setSearchQuery(e.target.value + ' ');
+                    setTimeout(() => setSearchQuery(e.target.value), 10);
+                  }
+                }}
                 className="pl-12 pr-6 py-3 bg-white border border-neutral-200 rounded-xl text-base focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 w-80 transition-all shadow-sm hover:shadow-md"
               />
+              
+              {/* Search Dropdown */}
+              {(searchResults || isSearching) && (
+                <div className="absolute top-full left-0 mt-2 w-96 bg-white rounded-xl shadow-xl border border-neutral-100 z-50 max-h-[70vh] flex flex-col overflow-hidden animate-in fade-in duration-200">
+                  <div className="p-3 border-b border-neutral-100 bg-neutral-50 flex justify-between items-center">
+                    <span className="text-xs font-semibold text-neutral-500 uppercase">Search Results</span>
+                    {isSearching && <span className="text-xs text-green-600 font-medium">Searching...</span>}
+                  </div>
+                  
+                  <div className="overflow-y-auto custom-scrollbar flex-1 p-2 space-y-4">
+                    {!isSearching && searchResults && (
+                      <>
+                        {/* Modules */}
+                        {searchResults.modules?.length > 0 && (
+                          <div>
+                            <div className="px-2 py-1 text-xs font-bold text-neutral-400 mb-1">Modules</div>
+                            {searchResults.modules.map(mod => (
+                              <button
+                                key={mod.path}
+                                onClick={() => handleSearchSelect(mod.path)}
+                                className="w-full text-left px-3 py-2 hover:bg-neutral-50 rounded-lg flex items-center gap-3 transition-colors"
+                              >
+                                <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center">
+                                  <FaBoxOpen className="text-sm" />
+                                </div>
+                                <span className="text-sm font-medium text-neutral-700">{mod.label}</span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                        
+                        {/* Employees */}
+                        {searchResults.employees?.length > 0 && (
+                          <div>
+                            <div className="px-2 py-1 text-xs font-bold text-neutral-400 mb-1 leading-none">Employees</div>
+                            {searchResults.employees.map(emp => (
+                              <button
+                                key={emp.employee_id}
+                                onClick={() => handleSearchSelect(`/employees/${emp.employee_id}`)}
+                                className="w-full text-left px-3 py-2 hover:bg-neutral-50 rounded-lg flex items-center gap-3 transition-colors"
+                              >
+                                <div className="w-8 h-8 rounded-full bg-green-50 text-green-600 flex items-center justify-center font-bold text-xs uppercase">
+                                  {emp.first_name.charAt(0)}{emp.last_name.charAt(0)}
+                                </div>
+                                <div>
+                                  <div className="text-sm font-medium text-neutral-700 leading-tight">{emp.first_name} {emp.last_name}</div>
+                                  <div className="text-xs text-neutral-500 leading-tight truncate">{emp.position || emp.department_name || emp.email}</div>
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Tasks */}
+                        {searchResults.tasks?.length > 0 && (
+                          <div>
+                            <div className="px-2 py-1 text-xs font-bold text-neutral-400 mb-1 leading-none">Tasks</div>
+                            {searchResults.tasks.map(task => (
+                              <button
+                                key={task.task_id}
+                                onClick={() => handleSearchSelect(`/tasks?highlight=${task.task_id}`)}
+                                className="w-full text-left px-3 py-2 hover:bg-neutral-50 rounded-lg flex items-center gap-3 transition-colors"
+                              >
+                                <div className="w-8 h-8 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center">
+                                  <FaTasks className="text-sm" />
+                                </div>
+                                <div className="flex-1 overflow-hidden">
+                                  <div className="text-sm font-medium text-neutral-700 truncate">{task.title}</div>
+                                  <div className="text-xs text-neutral-500 capitalize">{task.status.replace('_', ' ')}</div>
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Departments */}
+                        {searchResults.departments?.length > 0 && (
+                          <div>
+                            <div className="px-2 py-1 text-xs font-bold text-neutral-400 mb-1 leading-none">Departments</div>
+                            {searchResults.departments.map(dept => (
+                              <button
+                                key={dept.department_id}
+                                onClick={() => handleSearchSelect(`/departments?highlight=${dept.department_id}`)}
+                                className="w-full text-left px-3 py-2 hover:bg-neutral-50 rounded-lg flex items-center gap-3 transition-colors"
+                              >
+                                <div className="w-8 h-8 rounded-full bg-purple-50 text-purple-600 flex items-center justify-center">
+                                  <FaBuilding className="text-sm" />
+                                </div>
+                                <span className="text-sm font-medium text-neutral-700">{dept.department_name}</span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Documents */}
+                        {searchResults.documents?.length > 0 && (
+                          <div>
+                            <div className="px-2 py-1 text-xs font-bold text-neutral-400 mb-1 leading-none">Documents</div>
+                            {searchResults.documents.map(doc => (
+                              <button
+                                key={doc.document_id}
+                                onClick={() => handleSearchSelect(`/documents?highlight=${doc.document_id}`)}
+                                className="w-full text-left px-3 py-2 hover:bg-neutral-50 rounded-lg flex items-center gap-3 transition-colors"
+                              >
+                                <div className="w-8 h-8 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                                  <FaFileAlt className="text-sm" />
+                                </div>
+                                <div className="flex-1 overflow-hidden">
+                                  <div className="text-sm font-medium text-neutral-700 truncate">{doc.document_name}</div>
+                                  <div className="text-xs text-neutral-500 capitalize">{doc.document_type} {doc.is_confidential ? '(Confidential)' : ''}</div>
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Assets */}
+                        {searchResults.assets?.length > 0 && (
+                          <div>
+                            <div className="px-2 py-1 text-xs font-bold text-neutral-400 mb-1 leading-none">Assets</div>
+                            {searchResults.assets.map(asset => (
+                              <button
+                                key={asset.asset_id}
+                                onClick={() => handleSearchSelect(`/assets?highlight=${asset.asset_id}`)}
+                                className="w-full text-left px-3 py-2 hover:bg-neutral-50 rounded-lg flex items-center gap-3 transition-colors"
+                              >
+                                <div className="w-8 h-8 rounded-full bg-cyan-50 text-cyan-600 flex items-center justify-center">
+                                  <FaBolt className="text-sm" />
+                                </div>
+                                <div className="flex-1 overflow-hidden">
+                                  <div className="text-sm font-medium text-neutral-700 truncate">{asset.name}</div>
+                                  <div className="text-xs text-neutral-500">{asset.serial_number} • {asset.status}</div>
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Job Postings */}
+                        {searchResults.job_postings?.length > 0 && (
+                          <div>
+                            <div className="px-2 py-1 text-xs font-bold text-neutral-400 mb-1 leading-none">Job Postings</div>
+                            {searchResults.job_postings.map(job => (
+                              <button
+                                key={job.job_id}
+                                onClick={() => handleSearchSelect(`/recruitment/jobs?highlight=${job.job_id}`)}
+                                className="w-full text-left px-3 py-2 hover:bg-neutral-50 rounded-lg flex items-center gap-3 transition-colors"
+                              >
+                                <div className="w-8 h-8 rounded-full bg-pink-50 text-pink-600 flex items-center justify-center">
+                                  <FaUserPlus className="text-sm" />
+                                </div>
+                                <div className="flex-1 overflow-hidden">
+                                  <div className="text-sm font-medium text-neutral-700 truncate">{job.title}</div>
+                                  <div className="text-xs text-neutral-500 capitalize">{job.position_type} • {job.status}</div>
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Job Applications */}
+                        {searchResults.job_applications?.length > 0 && (
+                          <div>
+                            <div className="px-2 py-1 text-xs font-bold text-neutral-400 mb-1 leading-none">Job Applications</div>
+                            {searchResults.job_applications.map(app => (
+                              <button
+                                key={app.application_id}
+                                onClick={() => handleSearchSelect(`/recruitment/applications?highlight=${app.application_id}`)}
+                                className="w-full text-left px-3 py-2 hover:bg-neutral-50 rounded-lg flex items-center gap-3 transition-colors"
+                              >
+                                <div className="w-8 h-8 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center">
+                                  <FaUser className="text-sm" />
+                                </div>
+                                <div className="flex-1 overflow-hidden">
+                                  <div className="text-sm font-medium text-neutral-700 truncate">{app.applicant_name}</div>
+                                  <div className="text-xs text-neutral-500 truncate">{app.email}</div>
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* No results */}
+                        {!searchResults.modules?.length && !searchResults.employees?.length && !searchResults.tasks?.length && !searchResults.departments?.length && !searchResults.documents?.length && !searchResults.assets?.length && !searchResults.job_postings?.length && !searchResults.job_applications?.length && (
+                          <div className="py-8 text-center">
+                            <FaSearch className="text-3xl text-neutral-200 mx-auto mb-2" />
+                            <p className="text-sm text-neutral-500">No results found for "{searchQuery}"</p>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
             <button
               className="md:hidden p-3 rounded-md text-neutral-500 hover:bg-neutral-100 transition-colors duration-200"

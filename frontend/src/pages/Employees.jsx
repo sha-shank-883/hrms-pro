@@ -331,7 +331,7 @@ const Employees = () => {
       {/* Enhanced Search and Filter Section - Proper Single Row Flex Layout */}
       <div className="card mb-6">
         <div className="card-body">
-          <div className="flex flex-wrap gap-4 items-end">
+          <div className="flex flex-col md:flex-row flex-wrap gap-4 items-stretch md:items-end w-full">
             {/* Search Field */}
             <div className="flex-grow min-w-[200px]">
               <label className="form-label mb-1">Search Employees</label>
@@ -416,8 +416,8 @@ const Employees = () => {
 
       {/* Enhanced Employees Table - Match Leave Page Design */}
       <div className="card p-0 overflow-hidden">
-        <div className="data-table-wrapper overflow-x-auto">
-          <table className="data-table w-full table-fixed">
+        <div className="data-table-wrapper overflow-x-auto w-full">
+          <table className="data-table w-full min-w-[900px]">
             <thead>
               <tr>
                 <th className="w-16 text-center">Avatar</th>
@@ -549,10 +549,9 @@ const Employees = () => {
         </div>
       )}
 
-      {/* Employee Modal */}
       {showModal && (
-        <div className="modal-overlay" onClick={handleCloseModal}>
-          <div className="modal modal-lg h-[90vh] flex flex-col p-0" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-overlay p-2 sm:p-4 fixed inset-0 z-[100] flex items-center justify-center bg-gray-900/50" onClick={handleCloseModal}>
+          <div className="modal bg-white rounded-xl shadow-xl w-full max-w-[95vw] md:max-w-3xl lg:max-w-4xl max-h-[95vh] flex flex-col p-0 overflow-hidden" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h2 className="modal-title">{editingEmployee ? 'Edit Employee' : 'Add New Employee'}</h2>
               <button onClick={handleCloseModal} className="modal-close">

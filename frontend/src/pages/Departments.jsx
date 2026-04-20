@@ -87,8 +87,9 @@ const Departments = () => {
         </button>
       </div>
 
-      <div className="card data-table-wrapper p-0">
-        <table className="data-table">
+      <div className="card data-table-wrapper p-0 overflow-hidden">
+        <div className="overflow-x-auto w-full">
+          <table className="data-table min-w-[800px] w-full">
           <thead>
             <tr>
               <th>Department Name</th>
@@ -143,6 +144,7 @@ const Departments = () => {
             )}
           </tbody>
         </table>
+        </div>
       </div>
 
       {showModal && (
@@ -182,7 +184,7 @@ const Departments = () => {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="form-group">
                     <label className="block text-sm font-medium text-neutral-700 mb-1">Budget ($)</label>
                     <input

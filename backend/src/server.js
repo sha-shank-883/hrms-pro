@@ -33,6 +33,7 @@ const uploadRoutes = require('./routes/uploadRoutes');
 const emailTemplateRoutes = require('./routes/emailTemplateRoutes');
 const performanceRoutes = require('./routes/performanceRoutes');
 const tenantRoutes = require('./routes/tenantRoutes');
+const searchRoutes = require('./routes/searchRoutes');
 
 // Initialize express app
 const app = express();
@@ -200,6 +201,7 @@ app.use('/api/tenants', tenantRoutes);
 app.use('/api/holidays', require('./routes/holidayRoutes'));
 app.use('/api/shifts', require('./routes/shiftRoutes'));
 app.use('/api/email-templates', emailTemplateRoutes);
+app.use('/api/search', searchRoutes);
 
 const connectedUsers = new Map(); // userId -> Set of socketIds
 

@@ -542,7 +542,7 @@ const Leaves = () => {
             {/* Filters */}
             <div className="card mb-6">
               <div className="card-body">
-                <div className="flex flex-wrap gap-4 items-end">
+                <div className="flex flex-col md:flex-row flex-wrap gap-4 items-stretch md:items-end w-full">
                   {/* Employee Filter (Admin/Manager only) */}
                   {(user?.role === 'admin' || user?.role === 'manager') && (
                     <div className="min-w-[200px] flex-grow">
@@ -621,8 +621,9 @@ const Leaves = () => {
               </div>
             </div>
 
-            <div className="card p-0">
-              <table className="data-table">
+            <div className="card p-0 overflow-hidden">
+              <div className="overflow-x-auto w-full">
+              <table className="data-table min-w-[1000px] w-full">
                 <thead>
                   <tr>
                     <th>Employee</th>
@@ -705,6 +706,7 @@ const Leaves = () => {
                   )}
                 </tbody>
               </table>
+              </div>
             </div>
 
             {/* Pagination Controls */}

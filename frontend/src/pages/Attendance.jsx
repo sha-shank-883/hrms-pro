@@ -376,7 +376,7 @@ const Attendance = () => {
 
 
       {/* Tabs */}
-      <div className="flex gap-xs mb-8 border-b border-neutral-200">
+      <div className="flex gap-xs mb-8 border-b border-neutral-200 overflow-x-auto">
         <button
           className={`pb-3 px-5 text-sm font-semibold transition-colors border-b-2 ${activeTab === 'attendance' ? 'text-primary-600 border-primary-600' : 'text-neutral-500 border-transparent hover:text-neutral-700'}`}
           onClick={() => setActiveTab('attendance')}
@@ -465,7 +465,7 @@ const Attendance = () => {
           {/* Filters */}
           <div className="card mb-6">
             <div className="card-body">
-              <div className="flex flex-wrap gap-4 items-end">
+              <div className="flex flex-col md:flex-row flex-wrap gap-4 items-stretch md:items-end w-full">
                 {/* Employee Filter (Admin/Manager only) */}
                 {(user?.role === 'admin' || user?.role === 'manager') && (
                   <div className="min-w-[200px] flex-grow">
@@ -552,8 +552,9 @@ const Attendance = () => {
             </div>
           </div>
 
-          <div className="data-table-wrapper">
-            <table className="data-table">
+          <div className="data-table-wrapper overflow-hidden">
+            <div className="overflow-x-auto w-full">
+            <table className="data-table min-w-[900px] w-full">
               <thead>
                 <tr>
                   <th>Employee</th>
@@ -635,6 +636,7 @@ const Attendance = () => {
                 )}
               </tbody>
             </table>
+            </div>
           </div>
         </>
       )}
@@ -645,8 +647,9 @@ const Attendance = () => {
             <h3 className="card-title">Regularization Requests</h3>
           </div>
 
-          <div className="data-table-wrapper">
-            <table className="data-table">
+          <div className="data-table-wrapper overflow-hidden">
+            <div className="overflow-x-auto w-full">
+            <table className="data-table min-w-[700px] w-full">
               <thead>
                 <tr>
                   <th>Employee</th>
@@ -697,6 +700,7 @@ const Attendance = () => {
                 )}
               </tbody>
             </table>
+            </div>
           </div>
         </div>
       )}
@@ -748,7 +752,7 @@ const Attendance = () => {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="form-group">
                     <label className="form-label">Clock In</label>
                     <input

@@ -604,6 +604,14 @@ export const reportService = {
   },
 };
 
+// Search service
+export const searchService = {
+  globalSearch: async (query) => {
+    const response = await api.get('/search', { params: { q: query } });
+    return response.data;
+  }
+};
+
 // Settings services
 export const settingsService = {
   getAll: async () => {

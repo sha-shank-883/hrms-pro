@@ -5,41 +5,50 @@ const nodemailer = require('nodemailer');
 const smtpPort = parseInt(process.env.SMTP_PORT || '587', 10);
 const secure = process.env.SMTP_SECURE === 'true' || (process.env.SMTP_SECURE === undefined && smtpPort === 465);
 
-// Log email configuration (masking password)
-console.log('📧 configuring email service with:', {
-    host: process.env.SMTP_HOST,
-    port: smtpPort,
-    secure: secure,
-    user: process.env.SMTP_USER,
-    // pass: '****' 
-});
+// Determine if email should be enabled
+const isEmailEnabled = !!process.env.SMTP_HOST;
 
-// Create reusable transporter object using the default SMTP transport
-const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: smtpPort,
-    secure: secure, // true for 465, false for other ports
-    auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-    },
-    // Connection settings - Increased timeouts for better stability
-    connectionTimeout: 20000, // 20 seconds
-    greetingTimeout: 10000,   // 10 seconds
-    socketTimeout: 20000,     // 20 seconds
-    // Debug settings
-    logger: true,
-    debug: true
-});
+let transporter;
 
-// Verify connection configuration on startup
-transporter.verify(function (error, success) {
-    if (error) {
-        console.error('❌ Email connection error:', error);
-    } else {
-        console.log('✅ Email server is ready to take our messages');
-    }
-});
+if (isEmailEnabled) {
+  // Log email configuration (masking password)
+  console.log('📧 configuring email service with:', {
+      host: process.env.SMTP_HOST,
+      port: smtpPort,
+      secure: secure,
+      user: process.env.SMTP_USER,
+      // pass: '****' 
+  });
+
+  // Create reusable transporter object using the default SMTP transport
+  transporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST,
+      port: smtpPort,
+      secure: secure, // true for 465, false for other ports
+      auth: {
+          user: process.env.SMTP_USER,
+          pass: process.env.SMTP_PASS,
+      },
+      // Connection settings - Increased timeouts for better stability
+      connectionTimeout: 20000, // 20 seconds
+      greetingTimeout: 10000,   // 10 seconds
+      socketTimeout: 20000,     // 20 seconds
+      // Debug settings
+      logger: true,
+      debug: false // turn off debug to reduce log spam
+  });
+
+  // Verify connection configuration on startup
+  transporter.verify(function (error, success) {
+      if (error) {
+          console.error('❌ Email connection error:', error.message);
+      } else {
+          console.log('✅ Email server is ready to take our messages');
+      }
+  });
+} else {
+  console.log('⚠️ SMTP_HOST not provided. Email service is running in mock mode.');
+}
 
 // Background Email Queue
 const emailQueue = [];
@@ -56,16 +65,23 @@ const processQueue = async () => {
         
         try {
             console.log(`[EmailWorker] Sending email to ${options.to} (Retry: ${retries})...`);
-            const info = await transporter.sendMail({
-                from: `"${process.env.SMTP_FROM_NAME || 'HRMS Pro'}" <${process.env.SMTP_FROM_EMAIL || process.env.SMTP_USER}>`,
-                ...options,
-            });
-            console.log('[EmailWorker] Message sent: %s', info.messageId);
+            
+            if (isEmailEnabled && transporter) {
+                const info = await transporter.sendMail({
+                    from: `"${process.env.SMTP_FROM_NAME || 'HRMS Pro'}" <${process.env.SMTP_FROM_EMAIL || process.env.SMTP_USER}>`,
+                    ...options,
+                });
+                console.log('[EmailWorker] Message sent: %s', info.messageId);
+            } else {
+                // Mock behavior if disabled
+                console.log(`[EmailWorker] Mock mode: Simulated sending email to ${options.to}. Subject: ${options.subject}`);
+            }
+            
         } catch (error) {
             console.error(`[EmailWorker] Error sending email to ${options.to}:`, error.message);
             
             // Basic Retry Logic
-            if (retries < 3) {
+            if (retries < 3 && isEmailEnabled) {
                 console.log(`[EmailWorker] Re-queueing email to ${options.to} for retry...`);
                 emailQueue.push({ options, retries: retries + 1 });
             } else {

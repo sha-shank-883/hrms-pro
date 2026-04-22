@@ -370,8 +370,8 @@ const Recruitment = () => {
           {/* Job Filters */}
           <div className="card">
             <div className="card-body">
-              <div className="flex flex-wrap gap-4 items-end">
-                <div className="min-w-[200px] flex-grow">
+              <div className="grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-4 items-end w-full">
+                <div className="w-full">
                   <label className="form-label mb-1">Department</label>
                   <div className="relative">
                     <FaFilter className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" size={12} />
@@ -388,7 +388,7 @@ const Recruitment = () => {
                   </div>
                 </div>
 
-                <div className="min-w-[160px]">
+                <div className="w-full">
                   <label className="form-label mb-1">Status</label>
                   <div className="relative">
                     <FaFilter className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" size={12} />
@@ -405,12 +405,14 @@ const Recruitment = () => {
                   </div>
                 </div>
 
-                <button
-                  className="btn btn-secondary h-[42px] px-4"
-                  onClick={() => setJobFilters({ status: '', department_id: '' })}
-                >
-                  <FaSearch size={14} />
-                </button>
+                <div className="flex gap-2 sm:col-span-2 md:col-span-1 w-full mt-2 md:mt-0">
+                  <button
+                    className="btn btn-secondary h-[42px] px-4"
+                    onClick={() => setJobFilters({ status: '', department_id: '' })}
+                  >
+                    <FaSearch size={14} />
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -531,8 +533,8 @@ const Recruitment = () => {
           {/* Application Filters */}
           <div className="card">
             <div className="card-body">
-              <div className="flex flex-wrap gap-4 items-end">
-                <div className="min-w-[200px] flex-grow">
+              <div className="grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-4 items-end w-full">
+                <div className="w-full">
                   <label className="form-label mb-1">Job Role</label>
                   <div className="relative">
                     <FaBriefcase className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" size={12} />
@@ -549,7 +551,7 @@ const Recruitment = () => {
                   </div>
                 </div>
 
-                <div className="min-w-[160px]">
+                <div className="w-full">
                   <label className="form-label mb-1">Status</label>
                   <div className="relative">
                     <FaFilter className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" size={12} />
@@ -566,12 +568,14 @@ const Recruitment = () => {
                   </div>
                 </div>
 
-                <button
-                  className="btn btn-secondary h-[42px] px-4"
-                  onClick={() => setAppFilters({ status: '', job_id: '' })}
-                >
-                  <FaSearch size={14} />
-                </button>
+                <div className="flex gap-2 sm:col-span-2 md:col-span-1 w-full mt-2 md:mt-0">
+                  <button
+                    className="btn btn-secondary h-[42px] px-4"
+                    onClick={() => setAppFilters({ status: '', job_id: '' })}
+                  >
+                    <FaSearch size={14} />
+                  </button>
+                </div>
               </div>
             </div>
           </div>

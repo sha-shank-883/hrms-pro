@@ -455,9 +455,9 @@ const Payroll = () => {
           {/* Filter Section */}
           <div className="card mb-6">
             <div className="card-body">
-              <div className="flex flex-wrap gap-4 items-end">
+              <div className="grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-4 items-end w-full">
                 {/* Employee Filter */}
-                <div className="min-w-[200px] flex-grow">
+                <div className="w-full">
                   <label className="form-label mb-1">Employee</label>
                   <div className="relative">
                     <FaUser className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" size={12} />
@@ -477,7 +477,7 @@ const Payroll = () => {
                   </div>
                 </div>
 
-                <div className="min-w-[150px]">
+                <div className="w-full">
                   <label className="form-label mb-1">Month</label>
                   <div className="relative">
                     <FaCalendarDay className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" size={12} />
@@ -497,7 +497,7 @@ const Payroll = () => {
                   </div>
                 </div>
 
-                <div className="min-w-[120px]">
+                <div className="w-full">
                   <label className="form-label mb-1">Year</label>
                   <input
                     type="number"
@@ -510,7 +510,7 @@ const Payroll = () => {
                   />
                 </div>
 
-                <div className="min-w-[150px]">
+                <div className="w-full">
                   <label className="form-label mb-1">Status</label>
                   <div className="relative">
                     <FaFilter className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" size={12} />
@@ -528,7 +528,7 @@ const Payroll = () => {
                   </div>
                 </div>
 
-                <div className="flex gap-2">
+                <div className="flex gap-2 sm:col-span-2 md:col-span-1 w-full mt-2 md:mt-0">
                   <button className="btn btn-primary" onClick={applyFilters}>
                     <FaSearch className="mr-2" /> Apply
                   </button>

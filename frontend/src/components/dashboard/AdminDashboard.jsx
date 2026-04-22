@@ -575,7 +575,7 @@ const AdminDashboard = () => {
 
                 {/* 2. Stats Zone - Adjustable Grid */}
                 <SortableContext items={statOrder} strategy={rectSortingStrategy}>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                    <div className="grid md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4 mb-6">
                         {statOrder.map((id) => {
                             const stat = getStatConfig(id);
                             return (
@@ -596,7 +596,7 @@ const AdminDashboard = () => {
 
                 {/* 3. Charts Zone - Adjustable Grid */}
                 <SortableContext items={chartOrder} strategy={rectSortingStrategy}>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
                         {chartOrder.map((id) => (
                             <React.Fragment key={id}>
                                 {renderChart(id)}

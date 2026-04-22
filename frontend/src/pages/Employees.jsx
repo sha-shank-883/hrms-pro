@@ -308,7 +308,7 @@ const Employees = () => {
   if (loading) return <div className="loading">Loading...</div>;
 
   return (
-    <div className="page-container max-w-none mx-0 px-0 pb-12">
+    <div className="max-w-none mx-0 px-0 pb-12">
       {/* Page Header */}
       <div className="page-header">
         <div>
@@ -331,9 +331,8 @@ const Employees = () => {
       {/* Enhanced Search and Filter Section - Proper Single Row Flex Layout */}
       <div className="card mb-6">
         <div className="card-body">
-          <div className="flex flex-col md:flex-row flex-wrap gap-4 items-stretch md:items-end w-full">
-            {/* Search Field */}
-            <div className="flex-grow min-w-[200px]">
+          <div className="grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-4 items-end w-full">
+            <div className="w-full">
               <label className="form-label mb-1">Search Employees</label>
               <div className="relative">
                 <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
@@ -347,8 +346,7 @@ const Employees = () => {
               </div>
             </div>
 
-            {/* Department Filter */}
-            <div className="min-w-[180px]">
+            <div className="w-full">
               <label className="form-label mb-1">Department</label>
               <div className="relative">
                 <FaBuilding className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" size={12} />
@@ -367,8 +365,7 @@ const Employees = () => {
               </div>
             </div>
 
-            {/* Status Filter */}
-            <div className="min-w-[120px]">
+            <div className="w-full">
               <label className="form-label mb-1">Status</label>
               <div className="relative">
                 <FaFilter className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" size={12} />
@@ -385,8 +382,7 @@ const Employees = () => {
               </div>
             </div>
 
-            {/* Employment Type Filter */}
-            <div className="min-w-[140px]">
+            <div className="w-full">
               <label className="form-label mb-1">Type</label>
               <select
                 className="form-select w-full"
@@ -401,8 +397,7 @@ const Employees = () => {
               </select>
             </div>
 
-            {/* Clear Filters Button */}
-            <div className="ml-auto">
+            <div className="flex gap-2 sm:col-span-2 md:col-span-1 w-full mt-2 md:mt-0">
               <button
                 className="btn btn-secondary"
                 onClick={clearFilters}

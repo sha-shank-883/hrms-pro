@@ -542,10 +542,10 @@ const Leaves = () => {
             {/* Filters */}
             <div className="card mb-6">
               <div className="card-body">
-                <div className="flex flex-col md:flex-row flex-wrap gap-4 items-stretch md:items-end w-full">
+                <div className="grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-4 items-end w-full">
                   {/* Employee Filter (Admin/Manager only) */}
                   {(user?.role === 'admin' || user?.role === 'manager') && (
-                    <div className="min-w-[200px] flex-grow">
+                    <div className="w-full">
                       <label className="form-label mb-1">Employee</label>
                       <div className="relative">
                         <FaUser className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" size={12} />
@@ -565,7 +565,7 @@ const Leaves = () => {
                     </div>
                   )}
 
-                  <div className="min-w-[160px]">
+                  <div className="w-full">
                     <label className="form-label mb-1">Status</label>
                     <div className="relative">
                       <FaFilter className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" size={12} />
@@ -582,7 +582,7 @@ const Leaves = () => {
                     </div>
                   </div>
 
-                  <div className="min-w-[160px]">
+                  <div className="w-full">
                     <label className="form-label mb-1">Start Date</label>
                     <div className="relative">
                       <FaCalendarAlt className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" size={12} />
@@ -595,7 +595,7 @@ const Leaves = () => {
                     </div>
                   </div>
 
-                  <div className="min-w-[160px]">
+                  <div className="w-full">
                     <label className="form-label mb-1">End Date</label>
                     <div className="relative">
                       <FaCalendarAlt className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" size={12} />
@@ -608,7 +608,7 @@ const Leaves = () => {
                     </div>
                   </div>
 
-                  <div className="flex gap-2 ml-auto">
+                  <div className="flex gap-2 sm:col-span-2 md:col-span-1 w-full mt-2 md:mt-0">
                     <button
                       className="btn btn-secondary h-[34px]"
                       onClick={() => setFilters({ status: 'all', employee_id: '', start_date: '', end_date: '' })}
@@ -623,89 +623,89 @@ const Leaves = () => {
 
             <div className="card p-0 overflow-hidden">
               <div className="overflow-x-auto w-full">
-              <table className="data-table min-w-[1000px] w-full">
-                <thead>
-                  <tr>
-                    <th>Employee</th>
-                    <th>Department</th>
-                    <th>Leave Type</th>
-                    <th>Start Date</th>
-                    <th>End Date</th>
-                    <th>Days</th>
-                    <th>Reason</th>
-                    <th>Status</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {leaveRequests.length === 0 ? (
+                <table className="data-table min-w-[1000px] w-full">
+                  <thead>
                     <tr>
-                      <td colSpan="9" className="text-center py-12">
-                        <div className="flex flex-col items-center justify-center text-neutral-400">
-                          <div className="p-4 bg-neutral-50 rounded-full mb-3">
-                            <FaCalendarAlt size={32} />
-                          </div>
-                          <h3 className="text-lg font-semibold text-neutral-700 mb-1">No leave requests found</h3>
-                          <p className="text-sm">Submit a new leave request to get started.</p>
-                        </div>
-                      </td>
+                      <th>Employee</th>
+                      <th>Department</th>
+                      <th>Leave Type</th>
+                      <th>Start Date</th>
+                      <th>End Date</th>
+                      <th>Days</th>
+                      <th>Reason</th>
+                      <th>Status</th>
+                      <th>Actions</th>
                     </tr>
-                  ) : (
-                    leaveRequests.map((leave) => (
-                      <tr key={leave.leave_id}>
-                        <td>
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-800 flex items-center justify-center font-semibold text-sm">
-                              {leave.employee_name.charAt(0)}
+                  </thead>
+                  <tbody>
+                    {leaveRequests.length === 0 ? (
+                      <tr>
+                        <td colSpan="9" className="text-center py-12">
+                          <div className="flex flex-col items-center justify-center text-neutral-400">
+                            <div className="p-4 bg-neutral-50 rounded-full mb-3">
+                              <FaCalendarAlt size={32} />
                             </div>
-                            <div className="font-semibold text-neutral-800">{leave.employee_name}</div>
-                          </div>
-                        </td>
-                        <td>{leave.department_name || '-'}</td>
-                        <td>{leave.leave_type}</td>
-                        <td>{formatDate(leave.start_date, getSetting('date_format'))}</td>
-                        <td>{formatDate(leave.end_date, getSetting('date_format'))}</td>
-                        <td>{leave.days_count}</td>
-                        <td className="max-w-[200px] truncate" title={leave.reason}>
-                          {leave.reason}
-                        </td>
-                        <td>
-                          <span className={`badge ${leave.status === 'approved' ? 'badge-success' : leave.status === 'rejected' ? 'badge-danger' : 'badge-warning'}`}>
-                            {leave.status === 'approved' && <FaCheckCircle size={10} style={{ marginRight: '4px' }} />}
-                            {leave.status === 'rejected' && <FaTimesCircle size={10} style={{ marginRight: '4px' }} />}
-                            {leave.status === 'pending' && <FaHourglassHalf size={10} style={{ marginRight: '4px' }} />}
-                            {leave.status.charAt(0).toUpperCase() + leave.status.slice(1)}
-                          </span>
-                        </td>
-                        <td>
-                          <div className="flex gap-2">
-                            {leave.status === 'pending' && user.role !== 'employee' && (
-                              <>
-                                <button className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded transition-colors" onClick={() => handleApprove(leave.leave_id)} title="Approve">
-                                  <FaCheckCircle size={14} />
-                                </button>
-                                <button className="p-1.5 text-rose-600 hover:bg-rose-50 rounded transition-colors" onClick={() => handleReject(leave.leave_id)} title="Reject">
-                                  <FaTimesCircle size={14} />
-                                </button>
-                              </>
-                            )}
-                            {leave.status === 'pending' && (
-                              <button className="p-1.5 text-neutral-500 hover:text-primary-600 hover:bg-primary-50 rounded transition-colors" onClick={() => handleEdit(leave)} title="Edit">
-                                <FaEdit size={14} />
-                              </button>
-                            )}
-                            {user.role !== 'employee' && (
-                              <button className="p-1.5 text-neutral-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors" onClick={() => handleDelete(leave.leave_id)} title="Delete">
-                                <FaTrash size={14} />
-                              </button>
-                            )}
+                            <h3 className="text-lg font-semibold text-neutral-700 mb-1">No leave requests found</h3>
+                            <p className="text-sm">Submit a new leave request to get started.</p>
                           </div>
                         </td>
                       </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
+                    ) : (
+                      leaveRequests.map((leave) => (
+                        <tr key={leave.leave_id}>
+                          <td>
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-800 flex items-center justify-center font-semibold text-sm">
+                                {leave.employee_name.charAt(0)}
+                              </div>
+                              <div className="font-semibold text-neutral-800">{leave.employee_name}</div>
+                            </div>
+                          </td>
+                          <td>{leave.department_name || '-'}</td>
+                          <td>{leave.leave_type}</td>
+                          <td>{formatDate(leave.start_date, getSetting('date_format'))}</td>
+                          <td>{formatDate(leave.end_date, getSetting('date_format'))}</td>
+                          <td>{leave.days_count}</td>
+                          <td className="max-w-[200px] truncate" title={leave.reason}>
+                            {leave.reason}
+                          </td>
+                          <td>
+                            <span className={`badge ${leave.status === 'approved' ? 'badge-success' : leave.status === 'rejected' ? 'badge-danger' : 'badge-warning'}`}>
+                              {leave.status === 'approved' && <FaCheckCircle size={10} style={{ marginRight: '4px' }} />}
+                              {leave.status === 'rejected' && <FaTimesCircle size={10} style={{ marginRight: '4px' }} />}
+                              {leave.status === 'pending' && <FaHourglassHalf size={10} style={{ marginRight: '4px' }} />}
+                              {leave.status.charAt(0).toUpperCase() + leave.status.slice(1)}
+                            </span>
+                          </td>
+                          <td>
+                            <div className="flex gap-2">
+                              {leave.status === 'pending' && user.role !== 'employee' && (
+                                <>
+                                  <button className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded transition-colors" onClick={() => handleApprove(leave.leave_id)} title="Approve">
+                                    <FaCheckCircle size={14} />
+                                  </button>
+                                  <button className="p-1.5 text-rose-600 hover:bg-rose-50 rounded transition-colors" onClick={() => handleReject(leave.leave_id)} title="Reject">
+                                    <FaTimesCircle size={14} />
+                                  </button>
+                                </>
+                              )}
+                              {leave.status === 'pending' && (
+                                <button className="p-1.5 text-neutral-500 hover:text-primary-600 hover:bg-primary-50 rounded transition-colors" onClick={() => handleEdit(leave)} title="Edit">
+                                  <FaEdit size={14} />
+                                </button>
+                              )}
+                              {user.role !== 'employee' && (
+                                <button className="p-1.5 text-neutral-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors" onClick={() => handleDelete(leave.leave_id)} title="Delete">
+                                  <FaTrash size={14} />
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
               </div>
             </div>
 

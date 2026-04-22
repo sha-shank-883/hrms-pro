@@ -465,10 +465,10 @@ const Attendance = () => {
           {/* Filters */}
           <div className="card mb-6">
             <div className="card-body">
-              <div className="flex flex-col md:flex-row flex-wrap gap-4 items-stretch md:items-end w-full">
+              <div className="grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-4 items-end w-full">
                 {/* Employee Filter (Admin/Manager only) */}
                 {(user?.role === 'admin' || user?.role === 'manager') && (
-                  <div className="min-w-[200px] flex-grow">
+                  <div className="w-full">
                     <label className="form-label mb-1">Employee</label>
                     <div className="relative">
                       <FaUser className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" size={12} />
@@ -489,7 +489,7 @@ const Attendance = () => {
                   </div>
                 )}
 
-                <div className="min-w-[160px]">
+                <div className="w-full">
                   <label className="form-label mb-1">Start Date</label>
                   <div className="relative">
                     <FaCalendarAlt className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" size={12} />
@@ -503,7 +503,7 @@ const Attendance = () => {
                   </div>
                 </div>
 
-                <div className="min-w-[160px]">
+                <div className="w-full">
                   <label className="form-label mb-1">End Date</label>
                   <div className="relative">
                     <FaCalendarAlt className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" size={12} />
@@ -517,7 +517,7 @@ const Attendance = () => {
                   </div>
                 </div>
 
-                <div className="min-w-[150px]">
+                <div className="w-full">
                   <label className="form-label mb-1">Status</label>
                   <div className="relative">
                     <FaFilter className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" size={12} />
@@ -537,7 +537,7 @@ const Attendance = () => {
                   </div>
                 </div>
 
-                <div className="flex gap-2">
+                <div className="flex gap-2 sm:col-span-2 md:col-span-1 w-full">
                   <button className="btn btn-primary" onClick={handleFilter}>
                     <FaSearch className="mr-2" /> Apply
                   </button>
@@ -554,88 +554,88 @@ const Attendance = () => {
 
           <div className="data-table-wrapper overflow-hidden">
             <div className="overflow-x-auto w-full">
-            <table className="data-table min-w-[900px] w-full">
-              <thead>
-                <tr>
-                  <th>Employee</th>
-                  <th>Date</th>
-                  <th>Clock In</th>
-                  <th>Clock Out</th>
-                  <th>Hours</th>
-                  <th>Status</th>
-                  <th>Notes</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {attendanceRecords.length === 0 ? (
+              <table className="data-table min-w-[900px] w-full">
+                <thead>
                   <tr>
-                    <td colSpan="8" className="text-center py-12">
-                      <div className="flex flex-col items-center justify-center text-neutral-400">
-                        <div className="p-4 bg-neutral-50 rounded-full mb-3">
-                          <FaCalendarCheck size={32} />
-                        </div>
-                        <h3 className="text-lg font-semibold text-neutral-700 mb-1">No attendance records found</h3>
-                        <p className="text-sm">Adjust your filters or add a new record.</p>
-                      </div>
-                    </td>
+                    <th>Employee</th>
+                    <th>Date</th>
+                    <th>Clock In</th>
+                    <th>Clock Out</th>
+                    <th>Hours</th>
+                    <th>Status</th>
+                    <th>Notes</th>
+                    <th>Actions</th>
                   </tr>
-                ) : (
-                  attendanceRecords.map((record) => (
-                    <tr key={record.attendance_id}>
-                      <td>
-                        <div className="flex items-center gap-3">
-                          <div className="avatar">
-                            {record.employee_name ? record.employee_name.charAt(0) : 'U'}
+                </thead>
+                <tbody>
+                  {attendanceRecords.length === 0 ? (
+                    <tr>
+                      <td colSpan="8" className="text-center py-12">
+                        <div className="flex flex-col items-center justify-center text-neutral-400">
+                          <div className="p-4 bg-neutral-50 rounded-full mb-3">
+                            <FaCalendarCheck size={32} />
                           </div>
-                          <div className="font-semibold text-neutral-800">{record.employee_name}</div>
-                        </div>
-                      </td>
-                      <td className="font-medium text-neutral-700">
-                        {new Date(record.date).toLocaleDateString()}
-                      </td>
-                      <td className="font-mono text-neutral-600">
-                        {record.clock_in || '-'}
-                      </td>
-                      <td className="font-mono text-neutral-600">
-                        {record.clock_out || '-'}
-                      </td>
-                      <td className="font-mono font-semibold text-neutral-800">
-                        {record.work_hours || '-'}
-                        {record.work_hours && <span className="text-xs text-neutral-400 ml-1">hrs</span>}
-                      </td>
-                      <td>
-                        <span className={`badge badge-${record.status === 'present' ? 'success' :
-                          record.status === 'absent' ? 'danger' :
-                            record.status === 'late' ? 'warning' : 'secondary'
-                          }`}>
-                          {record.status === 'present' && <FaCheckCircle size={10} className="mr-1.5" />}
-                          {record.status === 'absent' && <FaTimesCircle size={10} className="mr-1.5" />}
-                          {record.status === 'late' && <FaExclamationTriangle size={10} className="mr-1.5" />}
-                          <span className="capitalize">{record.status}</span>
-                        </span>
-                      </td>
-                      <td className="max-w-[200px] truncate text-neutral-500">
-                        {record.notes || '-'}
-                      </td>
-                      <td>
-                        {/* Actions */}
-                        <div className="flex gap-2">
-                          <button className="p-1.5 text-neutral-500 hover:text-primary-600 hover:bg-primary-50 rounded transition-colors" onClick={() => handleEdit(record)} title="Edit">
-                            <FaEdit size={14} />
-                          </button>
-                          {(user?.role === 'admin' || user?.role === 'manager') && (
-                            <button className="p-1.5 text-neutral-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors" onClick={() => handleDelete(record.attendance_id)} title="Delete">
-                              <FaTrash size={14} />
-                            </button>
-                          )}
+                          <h3 className="text-lg font-semibold text-neutral-700 mb-1">No attendance records found</h3>
+                          <p className="text-sm">Adjust your filters or add a new record.</p>
                         </div>
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                  ) : (
+                    attendanceRecords.map((record) => (
+                      <tr key={record.attendance_id}>
+                        <td>
+                          <div className="flex items-center gap-3">
+                            <div className="avatar">
+                              {record.employee_name ? record.employee_name.charAt(0) : 'U'}
+                            </div>
+                            <div className="font-semibold text-neutral-800">{record.employee_name}</div>
+                          </div>
+                        </td>
+                        <td className="font-medium text-neutral-700">
+                          {new Date(record.date).toLocaleDateString()}
+                        </td>
+                        <td className="font-mono text-neutral-600">
+                          {record.clock_in || '-'}
+                        </td>
+                        <td className="font-mono text-neutral-600">
+                          {record.clock_out || '-'}
+                        </td>
+                        <td className="font-mono font-semibold text-neutral-800">
+                          {record.work_hours || '-'}
+                          {record.work_hours && <span className="text-xs text-neutral-400 ml-1">hrs</span>}
+                        </td>
+                        <td>
+                          <span className={`badge badge-${record.status === 'present' ? 'success' :
+                            record.status === 'absent' ? 'danger' :
+                              record.status === 'late' ? 'warning' : 'secondary'
+                            }`}>
+                            {record.status === 'present' && <FaCheckCircle size={10} className="mr-1.5" />}
+                            {record.status === 'absent' && <FaTimesCircle size={10} className="mr-1.5" />}
+                            {record.status === 'late' && <FaExclamationTriangle size={10} className="mr-1.5" />}
+                            <span className="capitalize">{record.status}</span>
+                          </span>
+                        </td>
+                        <td className="max-w-[200px] truncate text-neutral-500">
+                          {record.notes || '-'}
+                        </td>
+                        <td>
+                          {/* Actions */}
+                          <div className="flex gap-2">
+                            <button className="p-1.5 text-neutral-500 hover:text-primary-600 hover:bg-primary-50 rounded transition-colors" onClick={() => handleEdit(record)} title="Edit">
+                              <FaEdit size={14} />
+                            </button>
+                            {(user?.role === 'admin' || user?.role === 'manager') && (
+                              <button className="p-1.5 text-neutral-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors" onClick={() => handleDelete(record.attendance_id)} title="Delete">
+                                <FaTrash size={14} />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
         </>
@@ -649,57 +649,57 @@ const Attendance = () => {
 
           <div className="data-table-wrapper overflow-hidden">
             <div className="overflow-x-auto w-full">
-            <table className="data-table min-w-[700px] w-full">
-              <thead>
-                <tr>
-                  <th>Employee</th>
-                  <th>Date</th>
-                  <th>Original In/Out</th>
-                  <th>Requested In/Out</th>
-                  <th>Reason</th>
-                  <th>Status</th>
-                  {(user?.role === 'admin' || user?.role === 'manager') && <th>Actions</th>}
-                </tr>
-              </thead>
-              <tbody>
-                {regularizationRequests.length === 0 ? (
-                  <tr><td colSpan="7" className="text-center py-8 text-neutral-400">No regularization requests found.</td></tr>
-                ) : (
-                  regularizationRequests.map(req => (
-                    <tr key={req.regularization_id}>
-                      <td className="font-medium text-neutral-800">{req.employee_name}</td>
-                      <td className="text-neutral-600">{formatDate(req.date)}</td>
-                      <td className="font-mono text-xs text-neutral-500">
-                        {req.original_clock_in ? req.original_clock_in.substring(0, 5) : '--:--'} - {req.original_clock_out ? req.original_clock_out.substring(0, 5) : '--:--'}
-                      </td>
-                      <td className="font-mono text-xs font-semibold text-primary-600 bg-primary-50 px-2 py-1 rounded inline-block">
-                        {req.requested_clock_in?.substring(0, 5)} - {req.requested_clock_out?.substring(0, 5)}
-                      </td>
-                      <td className="text-neutral-600 max-w-[200px] truncate" title={req.reason}>{req.reason}</td>
-                      <td>
-                        <span className={`badge badge-${req.status === 'approved' ? 'success' : req.status === 'rejected' ? 'danger' : 'warning'}`}>
-                          {req.status}
-                        </span>
-                      </td>
-                      {(user?.role === 'admin' || user?.role === 'manager') && (
-                        <td>
-                          {req.status === 'pending' && (
-                            <div className="flex gap-sm">
-                              <button className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded transition-colors" onClick={() => handleApproveRegularization(req.regularization_id)} title="Approve">
-                                <FaCheckCircle size={16} />
-                              </button>
-                              <button className="p-1.5 text-rose-600 hover:bg-rose-50 rounded transition-colors" onClick={() => handleRejectRegularization(req.regularization_id)} title="Reject">
-                                <FaTimesCircle size={16} />
-                              </button>
-                            </div>
-                          )}
+              <table className="data-table min-w-[700px] w-full">
+                <thead>
+                  <tr>
+                    <th>Employee</th>
+                    <th>Date</th>
+                    <th>Original In/Out</th>
+                    <th>Requested In/Out</th>
+                    <th>Reason</th>
+                    <th>Status</th>
+                    {(user?.role === 'admin' || user?.role === 'manager') && <th>Actions</th>}
+                  </tr>
+                </thead>
+                <tbody>
+                  {regularizationRequests.length === 0 ? (
+                    <tr><td colSpan="7" className="text-center py-8 text-neutral-400">No regularization requests found.</td></tr>
+                  ) : (
+                    regularizationRequests.map(req => (
+                      <tr key={req.regularization_id}>
+                        <td className="font-medium text-neutral-800">{req.employee_name}</td>
+                        <td className="text-neutral-600">{formatDate(req.date)}</td>
+                        <td className="font-mono text-xs text-neutral-500">
+                          {req.original_clock_in ? req.original_clock_in.substring(0, 5) : '--:--'} - {req.original_clock_out ? req.original_clock_out.substring(0, 5) : '--:--'}
                         </td>
-                      )}
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                        <td className="font-mono text-xs font-semibold text-primary-600 bg-primary-50 px-2 py-1 rounded inline-block">
+                          {req.requested_clock_in?.substring(0, 5)} - {req.requested_clock_out?.substring(0, 5)}
+                        </td>
+                        <td className="text-neutral-600 max-w-[200px] truncate" title={req.reason}>{req.reason}</td>
+                        <td>
+                          <span className={`badge badge-${req.status === 'approved' ? 'success' : req.status === 'rejected' ? 'danger' : 'warning'}`}>
+                            {req.status}
+                          </span>
+                        </td>
+                        {(user?.role === 'admin' || user?.role === 'manager') && (
+                          <td>
+                            {req.status === 'pending' && (
+                              <div className="flex gap-sm">
+                                <button className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded transition-colors" onClick={() => handleApproveRegularization(req.regularization_id)} title="Approve">
+                                  <FaCheckCircle size={16} />
+                                </button>
+                                <button className="p-1.5 text-rose-600 hover:bg-rose-50 rounded transition-colors" onClick={() => handleRejectRegularization(req.regularization_id)} title="Reject">
+                                  <FaTimesCircle size={16} />
+                                </button>
+                              </div>
+                            )}
+                          </td>
+                        )}
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
         </div>

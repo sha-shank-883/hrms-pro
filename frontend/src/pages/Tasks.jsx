@@ -469,8 +469,8 @@ const Tasks = () => {
       {/* Filter Options */}
       <div className="card mb-6">
         <div className="card-body">
-          <div className="flex flex-wrap gap-4 items-end">
-            <div className="flex-grow min-w-[200px]">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-3 md:gap-4 items-end w-full">
+            <div className="w-full">
               <label className="form-label mb-1">Search</label>
               <div className="relative">
                 <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" size={12} />
@@ -485,7 +485,7 @@ const Tasks = () => {
               </div>
             </div>
 
-            <div className="min-w-[140px]">
+            <div className="w-full">
               <label className="form-label mb-1">Status</label>
               <select
                 className="form-select"
@@ -501,7 +501,7 @@ const Tasks = () => {
               </select>
             </div>
 
-            <div className="min-w-[140px]">
+            <div className="w-full">
               <label className="form-label mb-1">Priority</label>
               <select
                 className="form-select"
@@ -517,7 +517,7 @@ const Tasks = () => {
               </select>
             </div>
 
-            <div className="min-w-[180px]">
+            <div className="w-full">
               <label className="form-label mb-1">Department</label>
               <select
                 className="form-select"
@@ -534,7 +534,7 @@ const Tasks = () => {
               </select>
             </div>
 
-            <div className="flex gap-2 ml-auto">
+            <div className="flex gap-2 sm:col-span-2 md:col-span-1 w-full mt-2 md:mt-0">
               <button className="btn btn-secondary h-[34px]" onClick={clearFilters}>
                 <FaTrash className="mr-1" size={10} /> Clear
               </button>

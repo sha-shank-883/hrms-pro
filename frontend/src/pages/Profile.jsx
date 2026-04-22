@@ -153,7 +153,7 @@ const Profile = () => {
           const employeeResponse = await employeeService.getByUserId(user.userId);
           employeeData = employeeResponse.data;
         } catch (e) {
-          
+
         }
       }
 
@@ -532,7 +532,7 @@ const Profile = () => {
       <div className="flex flex-col lg:flex-row gap-6">
         {/* Sidebar Tabs */}
         <aside className="lg:w-64 flex-shrink-0">
-          <div className="card p-2 sticky top-4">
+          <div className="card p-2 sticky">
             <nav className="flex flex-col space-y-1">
               {sections.map(section => (
                 <button

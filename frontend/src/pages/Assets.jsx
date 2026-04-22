@@ -300,149 +300,151 @@ const Assets = () => {
 
             {/* Add/Edit Modal */}
             {showModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setShowModal(false)}>
-                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in duration-200" onClick={(e) => e.stopPropagation()}>
-                        <div className="px-6 py-4 border-b border-neutral-100 flex justify-between items-center bg-neutral-50/50">
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-neutral-900/50 backdrop-blur-sm" onClick={() => setShowModal(false)}>
+                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200" onClick={(e) => e.stopPropagation()}>
+                        <div className="px-6 py-4 border-b border-neutral-100 flex justify-between items-center bg-neutral-50/50 shrink-0">
                             <h3 className="text-lg font-bold text-neutral-800">{currentAsset ? 'Edit Asset' : 'Add New Asset'}</h3>
                             <button className="text-neutral-400 hover:text-neutral-600 transition-colors" onClick={() => setShowModal(false)}>&times;</button>
                         </div>
-                        <form onSubmit={handleSubmit} className="p-6">
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                                <div className="form-group">
-                                    <label className="block text-sm font-medium text-neutral-700 mb-1">Asset Name</label>
-                                    <input
-                                        type="text"
-                                        className="w-full p-2.5 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-100 focus:border-primary-500 outline-none transition-all"
-                                        name="name"
-                                        value={formData.name}
-                                        onChange={handleInputChange}
-                                        required
-                                    />
-                                </div>
-                                <div className="form-group">
-                                    <label className="block text-sm font-medium text-neutral-700 mb-1">Type</label>
-                                    <select
-                                        className="w-full p-2.5 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-100 focus:border-primary-500 outline-none transition-all block bg-white"
-                                        name="type"
-                                        value={formData.type}
-                                        onChange={handleInputChange}
-                                    >
-                                        <option value="Hardware">Hardware</option>
-                                        <option value="Software">Software</option>
-                                        <option value="License">License</option>
-                                        <option value="Other">Other</option>
-                                    </select>
-                                </div>
-                                <div className="form-group">
-                                    <label className="block text-sm font-medium text-neutral-700 mb-1">Serial Number</label>
-                                    <input
-                                        type="text"
-                                        className="w-full p-2.5 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-100 focus:border-primary-500 outline-none transition-all"
-                                        name="serial_number"
-                                        value={formData.serial_number}
-                                        onChange={handleInputChange}
-                                    />
-                                </div>
-                                <div className="form-group">
-                                    <label className="block text-sm font-medium text-neutral-700 mb-1">Vendor</label>
-                                    <input
-                                        type="text"
-                                        className="w-full p-2.5 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-100 focus:border-primary-500 outline-none transition-all"
-                                        name="vendor"
-                                        value={formData.vendor}
-                                        onChange={handleInputChange}
-                                    />
-                                </div>
-                                <div className="form-group">
-                                    <label className="block text-sm font-medium text-neutral-700 mb-1">Purchase Date</label>
-                                    <input
-                                        type="date"
-                                        className="w-full p-2.5 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-100 focus:border-primary-500 outline-none transition-all"
-                                        name="purchase_date"
-                                        value={formData.purchase_date}
-                                        onChange={handleInputChange}
-                                    />
-                                </div>
-                                <div className="form-group">
-                                    <label className="block text-sm font-medium text-neutral-700 mb-1">Cost</label>
-                                    <input
-                                        type="number"
-                                        className="w-full p-2.5 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-100 focus:border-primary-500 outline-none transition-all"
-                                        name="cost"
-                                        value={formData.cost}
-                                        onChange={handleInputChange}
-                                    />
-                                </div>
-                                <div className="form-group">
-                                    <label className="block text-sm font-medium text-neutral-700 mb-1">Status</label>
-                                    <select
-                                        className="w-full p-2.5 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-100 focus:border-primary-500 outline-none transition-all block bg-white"
-                                        name="status"
-                                        value={formData.status}
-                                        onChange={handleInputChange}
-                                    >
-                                        <option value="Available">Available</option>
-                                        <option value="Assigned">Assigned</option>
-                                        <option value="Maintenance">Maintenance</option>
-                                        <option value="Retired">Retired</option>
-                                    </select>
-                                </div>
-                                <div className="form-group">
-                                    <label className="block text-sm font-medium text-neutral-700 mb-1">Department</label>
-                                    <select
-                                        className="w-full p-2.5 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-100 focus:border-primary-500 outline-none transition-all block bg-white"
-                                        name="department_id"
-                                        value={formData.department_id}
-                                        onChange={(e) => {
-                                            handleInputChange(e);
-                                            setFormData(prev => ({ ...prev, assigned_to: '' }));
-                                        }}
-                                    >
-                                        <option value="">-- Select Department --</option>
-                                        {departments.map(dept => (
-                                            <option key={dept.department_id} value={dept.department_id}>
-                                                {dept.department_name}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-                                <div className="form-group">
-                                    <label className="block text-sm font-medium text-neutral-700 mb-1">Assigned To</label>
-                                    <select
-                                        className="w-full p-2.5 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-100 focus:border-primary-500 outline-none transition-all block bg-white"
-                                        name="assigned_to"
-                                        value={formData.assigned_to}
-                                        onChange={handleInputChange}
-                                        disabled={!formData.department_id}
-                                        title={!formData.department_id ? "Please select a department first" : ""}
-                                    >
-                                        <option value="">-- Unassigned --</option>
-                                        {employees
-                                            .filter(emp => !formData.department_id || emp.department_id === parseInt(formData.department_id))
-                                            .map(emp => (
-                                                <option key={emp.employee_id} value={emp.employee_id}>
-                                                    {emp.first_name} {emp.last_name}
+                        <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
+                            <div className="p-6 overflow-y-auto custom-scrollbar flex-1">
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                    <div className="form-group">
+                                        <label className="block text-sm font-medium text-neutral-700 mb-1">Asset Name</label>
+                                        <input
+                                            type="text"
+                                            className="w-full p-2.5 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-100 focus:border-primary-500 outline-none transition-all"
+                                            name="name"
+                                            value={formData.name}
+                                            onChange={handleInputChange}
+                                            required
+                                        />
+                                    </div>
+                                    <div className="form-group">
+                                        <label className="block text-sm font-medium text-neutral-700 mb-1">Type</label>
+                                        <select
+                                            className="w-full p-2.5 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-100 focus:border-primary-500 outline-none transition-all block bg-white"
+                                            name="type"
+                                            value={formData.type}
+                                            onChange={handleInputChange}
+                                        >
+                                            <option value="Hardware">Hardware</option>
+                                            <option value="Software">Software</option>
+                                            <option value="License">License</option>
+                                            <option value="Other">Other</option>
+                                        </select>
+                                    </div>
+                                    <div className="form-group">
+                                        <label className="block text-sm font-medium text-neutral-700 mb-1">Serial Number</label>
+                                        <input
+                                            type="text"
+                                            className="w-full p-2.5 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-100 focus:border-primary-500 outline-none transition-all"
+                                            name="serial_number"
+                                            value={formData.serial_number}
+                                            onChange={handleInputChange}
+                                        />
+                                    </div>
+                                    <div className="form-group">
+                                        <label className="block text-sm font-medium text-neutral-700 mb-1">Vendor</label>
+                                        <input
+                                            type="text"
+                                            className="w-full p-2.5 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-100 focus:border-primary-500 outline-none transition-all"
+                                            name="vendor"
+                                            value={formData.vendor}
+                                            onChange={handleInputChange}
+                                        />
+                                    </div>
+                                    <div className="form-group">
+                                        <label className="block text-sm font-medium text-neutral-700 mb-1">Purchase Date</label>
+                                        <input
+                                            type="date"
+                                            className="w-full p-2.5 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-100 focus:border-primary-500 outline-none transition-all"
+                                            name="purchase_date"
+                                            value={formData.purchase_date}
+                                            onChange={handleInputChange}
+                                        />
+                                    </div>
+                                    <div className="form-group">
+                                        <label className="block text-sm font-medium text-neutral-700 mb-1">Cost</label>
+                                        <input
+                                            type="number"
+                                            className="w-full p-2.5 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-100 focus:border-primary-500 outline-none transition-all"
+                                            name="cost"
+                                            value={formData.cost}
+                                            onChange={handleInputChange}
+                                        />
+                                    </div>
+                                    <div className="form-group">
+                                        <label className="block text-sm font-medium text-neutral-700 mb-1">Status</label>
+                                        <select
+                                            className="w-full p-2.5 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-100 focus:border-primary-500 outline-none transition-all block bg-white"
+                                            name="status"
+                                            value={formData.status}
+                                            onChange={handleInputChange}
+                                        >
+                                            <option value="Available">Available</option>
+                                            <option value="Assigned">Assigned</option>
+                                            <option value="Maintenance">Maintenance</option>
+                                            <option value="Retired">Retired</option>
+                                        </select>
+                                    </div>
+                                    <div className="form-group">
+                                        <label className="block text-sm font-medium text-neutral-700 mb-1">Department</label>
+                                        <select
+                                            className="w-full p-2.5 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-100 focus:border-primary-500 outline-none transition-all block bg-white"
+                                            name="department_id"
+                                            value={formData.department_id}
+                                            onChange={(e) => {
+                                                handleInputChange(e);
+                                                setFormData(prev => ({ ...prev, assigned_to: '' }));
+                                            }}
+                                        >
+                                            <option value="">-- Select Department --</option>
+                                            {departments.map(dept => (
+                                                <option key={dept.department_id} value={dept.department_id}>
+                                                    {dept.department_name}
                                                 </option>
                                             ))}
-                                    </select>
-                                    {!formData.department_id && (
-                                        <small className="text-xs text-neutral-500 mt-1 block">
-                                            Select a department to view employees.
-                                        </small>
-                                    )}
+                                        </select>
+                                    </div>
+                                    <div className="form-group md:col-span-2 lg:col-span-4">
+                                        <label className="block text-sm font-medium text-neutral-700 mb-1">Assigned To</label>
+                                        <select
+                                            className="w-full p-2.5 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-100 focus:border-primary-500 outline-none transition-all block bg-white"
+                                            name="assigned_to"
+                                            value={formData.assigned_to}
+                                            onChange={handleInputChange}
+                                            disabled={!formData.department_id}
+                                            title={!formData.department_id ? "Please select a department first" : ""}
+                                        >
+                                            <option value="">-- Unassigned --</option>
+                                            {employees
+                                                .filter(emp => !formData.department_id || emp.department_id === parseInt(formData.department_id))
+                                                .map(emp => (
+                                                    <option key={emp.employee_id} value={emp.employee_id}>
+                                                        {emp.first_name} {emp.last_name}
+                                                    </option>
+                                                ))}
+                                        </select>
+                                        {!formData.department_id && (
+                                            <small className="text-xs text-neutral-500 mt-1 block">
+                                                Select a department to view employees.
+                                            </small>
+                                        )}
+                                    </div>
+                                </div>
+                                <div className="form-group mt-4">
+                                    <label className="block text-sm font-medium text-neutral-700 mb-1">Notes</label>
+                                    <textarea
+                                        className="w-full p-2.5 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-100 focus:border-primary-500 outline-none transition-all"
+                                        name="notes"
+                                        value={formData.notes}
+                                        onChange={handleInputChange}
+                                        rows="3"
+                                    ></textarea>
                                 </div>
                             </div>
-                            <div className="form-group mt-4">
-                                <label className="block text-sm font-medium text-neutral-700 mb-1">Notes</label>
-                                <textarea
-                                    className="w-full p-2.5 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-100 focus:border-primary-500 outline-none transition-all"
-                                    name="notes"
-                                    value={formData.notes}
-                                    onChange={handleInputChange}
-                                    rows="3"
-                                ></textarea>
-                            </div>
-                            <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-neutral-100">
+                            <div className="px-6 py-4 border-t border-neutral-100 flex justify-end gap-3 bg-neutral-50 shrink-0">
                                 <button type="button" className="btn btn-ghost" onClick={() => setShowModal(false)}>Cancel</button>
                                 <button type="submit" className="btn btn-primary">Save Asset</button>
                             </div>

@@ -133,7 +133,17 @@ app.get('/api/setup-db', async (req, res) => {
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
-    console.log('✅ Global CMS tables verified.');
+
+    // Ensure at least one row exists in website_settings
+    const settingsCheck = await client.query('SELECT id FROM shared.website_settings LIMIT 1');
+    if (settingsCheck.rows.length === 0) {
+      await client.query(`
+        INSERT INTO shared.website_settings (primary_color, font_family, sections)
+        VALUES ('#16a34a', 'Inter', '[]')
+      `);
+      console.log('✅ Initial website settings record created.');
+    }
+    console.log('✅ Global CMS tables and records verified.');
 
     // 2. Create Default Tenant
     const defaultTenantId = 'tenant_default';

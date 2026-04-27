@@ -4,7 +4,17 @@ const getSettings = async (req, res) => {
   try {
     const result = await pool.query('SELECT * FROM shared.website_settings LIMIT 1');
     if (result.rows.length === 0) {
-      return res.status(404).json({ success: false, message: 'Settings not found' });
+      // Return default settings instead of 404 to avoid frontend breakage
+      return res.json({ 
+        success: true, 
+        data: {
+          primary_color: '#16a34a',
+          font_family: 'Inter',
+          header_links: [],
+          footer_columns: [],
+          sections: []
+        } 
+      });
     }
     res.json({ success: true, data: result.rows[0] });
   } catch (error) {
@@ -38,7 +48,6 @@ const updateSettings = async (req, res) => {
     // Handle files if uploaded via multer
     if (req.files) {
       if (req.files.hero_image) {
-        // e.g., 'uploads/website/imagename.png'
         updateFields.push(`hero_image_url = $${index++}`);
         queryParams.push(`/uploads/website/${req.files.hero_image[0].filename}`);
       }
@@ -52,21 +61,29 @@ const updateSettings = async (req, res) => {
       return res.status(400).json({ success: false, message: 'No fields provided for update' });
     }
 
-    updateFields.push(`updated_at = CURRENT_TIMESTAMP`);
-
-    const query = `
-      UPDATE shared.website_settings 
-      SET ${updateFields.join(', ')} 
-      WHERE id = (SELECT id FROM shared.website_settings LIMIT 1)
-      RETURNING *
-    `;
-
-    const result = await pool.query(query, queryParams);
+    // Check if record exists
+    const checkResult = await pool.query('SELECT id FROM shared.website_settings LIMIT 1');
     
-    if (result.rows.length === 0) {
-      // If table is empty for some reason, insert
-      // We assume setup script already populated it
-      return res.status(404).json({ success: false, message: 'Settings record not found' });
+    let result;
+    if (checkResult.rows.length === 0) {
+      // INSERT if table is empty
+      const columns = updateFields.map(f => f.split(' = ')[0]);
+      const placeholders = columns.map((_, i) => `$${i+1}`);
+      const insertQuery = `
+        INSERT INTO shared.website_settings (${columns.join(', ')})
+        VALUES (${placeholders.join(', ')})
+        RETURNING *
+      `;
+      result = await pool.query(insertQuery, queryParams);
+    } else {
+      // UPDATE existing
+      const updateQuery = `
+        UPDATE shared.website_settings 
+        SET ${updateFields.join(', ')}, updated_at = CURRENT_TIMESTAMP
+        WHERE id = $${index}
+        RETURNING *
+      `;
+      result = await pool.query(updateQuery, [...queryParams, checkResult.rows[0].id]);
     }
 
     res.json({ success: true, data: result.rows[0], message: 'Settings updated successfully' });

@@ -97,25 +97,43 @@ app.get('/api/setup-db', async (req, res) => {
   try {
     console.log('🔄 Starting Database Setup via HTTP...');
 
-    // 1. Create Shared Schema
+    // 1. Create Shared Schema and Global Tables
     const sharedSchemaPath = path.join(__dirname, 'config/shared_schema.sql');
     if (fs.existsSync(sharedSchemaPath)) {
       const sharedSchemaSql = fs.readFileSync(sharedSchemaPath, 'utf8');
       await client.query(sharedSchemaSql);
-      console.log('✅ Shared schema created.');
+      console.log('✅ Shared schema and core tables verified.');
     } else {
-      // Fallback if shared_schema.sql doesn't exist (basic create)
       await client.query(`CREATE SCHEMA IF NOT EXISTS shared`);
-      await client.query(`
-         CREATE TABLE IF NOT EXISTS shared.tenants (
-           tenant_id VARCHAR(50) PRIMARY KEY,
-           name VARCHAR(255) NOT NULL,
-           status VARCHAR(20) DEFAULT 'active',
-           db_name VARCHAR(255),
-           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-         )
-       `);
     }
+
+    // Ensure Global Marketing/CMS Tables exist
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS shared.website_settings (
+        id SERIAL PRIMARY KEY,
+        primary_color VARCHAR(50),
+        font_family VARCHAR(100),
+        logo_url TEXT,
+        header_links JSONB DEFAULT '[]',
+        footer_columns JSONB DEFAULT '[]',
+        sections JSONB DEFAULT '[]',
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+      
+      CREATE TABLE IF NOT EXISTS shared.cms_pages (
+        id SERIAL PRIMARY KEY,
+        slug VARCHAR(255) UNIQUE NOT NULL,
+        title VARCHAR(255) NOT NULL,
+        content_html TEXT,
+        sections JSONB DEFAULT '[]',
+        meta_title VARCHAR(255),
+        meta_description TEXT,
+        published_status VARCHAR(50) DEFAULT 'published',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    console.log('✅ Global CMS tables verified.');
 
     // 2. Create Default Tenant
     const defaultTenantId = 'tenant_default';
@@ -135,6 +153,18 @@ app.get('/api/setup-db', async (req, res) => {
       const tenantSchemaSql = fs.readFileSync(tenantSchemaPath, 'utf8');
       await client.query(tenantSchemaSql);
 
+      // CRITICAL: Ensure permissions and security columns exist in the users table
+      // This fixes the "column u.permissions does not exist" error on live
+      await client.query(`
+        ALTER TABLE users 
+        ADD COLUMN IF NOT EXISTS permissions JSONB DEFAULT '[]'::jsonb,
+        ADD COLUMN IF NOT EXISTS is_two_factor_enabled BOOLEAN DEFAULT false,
+        ADD COLUMN IF NOT EXISTS two_factor_secret VARCHAR(255),
+        ADD COLUMN IF NOT EXISTS reset_token VARCHAR(255),
+        ADD COLUMN IF NOT EXISTS reset_token_expiry TIMESTAMP
+      `);
+      console.log('✅ Tenant users table schema verified (permissions/security columns).');
+
       // 5. Ensure Admin User Exists
       await client.query(`
         INSERT INTO users (email, password_hash, role) 
@@ -143,7 +173,7 @@ app.get('/api/setup-db', async (req, res) => {
       `);
     }
 
-    res.json({ success: true, message: 'Database setup completed successfully!' });
+    res.json({ success: true, message: 'Database setup and schema synchronization completed successfully!' });
   } catch (error) {
     console.error('Setup failed:', error);
     res.status(500).json({ success: false, error: error.message });

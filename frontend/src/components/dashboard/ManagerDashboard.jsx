@@ -45,7 +45,7 @@ const ManagerDashboard = () => {
     };
 
     return (
-        <div className="page-container max-w-none mx-0 px-0 md:px-4 lg:px-6">
+        <div className="">
             {/* Header - More Compact */}
             <div className="page-header pb-3" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>

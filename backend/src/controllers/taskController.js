@@ -17,7 +17,7 @@ const getAllTasks = async (req, res) => {
              d.department_name,
              u.email as created_by_email,
              COALESCE((
-               SELECT json_agg(json_build_object('employee_id', e.employee_id, 'first_name', e.first_name, 'last_name', e.last_name))
+               SELECT json_agg(json_build_object('employee_id', e.employee_id, 'user_id', e.user_id, 'first_name', e.first_name, 'last_name', e.last_name))
                FROM task_assignments ta
                JOIN employees e ON ta.employee_id = e.employee_id
                WHERE ta.task_id = t.task_id
@@ -142,7 +142,7 @@ const getTaskById = async (req, res) => {
               d.department_name,
               u.email as created_by_email,
               COALESCE((
-                SELECT json_agg(json_build_object('employee_id', e.employee_id, 'first_name', e.first_name, 'last_name', e.last_name))
+                SELECT json_agg(json_build_object('employee_id', e.employee_id, 'user_id', e.user_id, 'first_name', e.first_name, 'last_name', e.last_name))
                 FROM task_assignments ta
                 JOIN employees e ON ta.employee_id = e.employee_id
                 WHERE ta.task_id = t.task_id

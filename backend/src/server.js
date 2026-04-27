@@ -202,6 +202,9 @@ app.use('/api/holidays', require('./routes/holidayRoutes'));
 app.use('/api/shifts', require('./routes/shiftRoutes'));
 app.use('/api/email-templates', emailTemplateRoutes);
 app.use('/api/search', searchRoutes);
+app.use('/api/cms', require('./routes/cmsRoutes'));
+app.use('/api/leads', require('./routes/leadRoutes'));
+app.use('/api/website-settings', require('./routes/websiteSettingsRoutes'));
 
 const connectedUsers = new Map(); // userId -> Set of socketIds
 
@@ -517,4 +520,4 @@ const shutdown = (signal) => {
 process.on('SIGTERM', () => shutdown('SIGTERM'));
 process.on('SIGINT', () => shutdown('SIGINT'));
 
-module.exports = { app, io };
+module.exports = { app, io };

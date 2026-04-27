@@ -149,7 +149,7 @@ const SuperAdmin = () => {
             </div>
 
             {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div className="grid md:grid-cols-3 gap-6 mb-8">
                 <div className="card p-4">
                     <div className="flex items-center justify-between">
                         <div>

@@ -823,7 +823,7 @@ const Leaves = () => {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    <div className="grid md:grid-cols-3 gap-6 mb-8">
                       <div className="card p-5">
                         <div className="flex justify-between items-center mb-4">
                           <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg">

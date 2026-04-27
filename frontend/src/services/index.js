@@ -46,6 +46,13 @@ export const authService = {
     return response.data;
   },
 
+  adminUpdatePermissions: async (userId, permissions) => {
+    const response = await api.put(`/auth/permissions/${userId}`, {
+      permissions,
+    });
+    return response.data;
+  },
+
   isAuthenticated: () => {
     return !!localStorage.getItem('token');
   },

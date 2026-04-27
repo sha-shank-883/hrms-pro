@@ -25,11 +25,15 @@ export const AuthProvider = ({ children }) => {
     
 
     if (currentUser && authenticated) {
-      
       setUser(currentUser);
       setIsAuthenticated(true);
+      // Fetch latest profile in background to keep permissions synced
+      authService.getProfile().then(res => {
+        const fullUser = { ...currentUser, ...res.data };
+        setUser(fullUser);
+        localStorage.setItem('user', JSON.stringify(fullUser));
+      }).catch(err => console.error('Failed to sync profile on load', err));
     } else {
-      
       setUser(null);
       setIsAuthenticated(false);
     }
@@ -63,13 +67,11 @@ export const AuthProvider = ({ children }) => {
 
     // Fetch full profile to get employee information
     const profileResponse = await authService.getProfile();
-    
-
-    const fullUser = { ...data.data.user, ...profileResponse.data.data };
-    
+    const fullUser = { ...data.data.user, ...profileResponse.data };
 
     setUser(fullUser);
     setIsAuthenticated(true);
+    localStorage.setItem('user', JSON.stringify(fullUser));
 
     
     return data;
@@ -79,9 +81,10 @@ export const AuthProvider = ({ children }) => {
     const data = await authService.register(email, password, role);
     // Fetch full profile to get employee information
     const profileResponse = await authService.getProfile();
-    const fullUser = { ...data.data.user, ...profileResponse.data.data };
+    const fullUser = { ...data.data.user, ...profileResponse.data };
     setUser(fullUser);
     setIsAuthenticated(true);
+    localStorage.setItem('user', JSON.stringify(fullUser));
     return data;
   };
 
@@ -96,7 +99,11 @@ export const AuthProvider = ({ children }) => {
   const refreshProfile = async () => {
     try {
       const profileResponse = await authService.getProfile();
-      setUser(prevUser => ({ ...prevUser, ...profileResponse.data.data }));
+      setUser(prevUser => {
+        const fullUser = { ...prevUser, ...profileResponse.data };
+        localStorage.setItem('user', JSON.stringify(fullUser));
+        return fullUser;
+      });
     } catch (error) {
       console.error('Failed to refresh profile:', error);
       // If it's an auth error, redirect to login

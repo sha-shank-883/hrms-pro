@@ -494,7 +494,10 @@ const AdminDashboard = () => {
 
     const visibleActions = actionOrder.filter(id => {
         const config = getActionConfig(id);
-        return config && config.roles.includes(user?.role || 'employee');
+        if (!config) return false;
+        const roleMatch = config.roles.includes(user?.role || 'employee');
+        const tenantMatch = config.tenant ? config.tenant === user?.tenant_id : true;
+        return roleMatch && tenantMatch;
     });
 
     if (loading) return <DashboardSkeleton />;
@@ -508,7 +511,7 @@ const AdminDashboard = () => {
     }
 
     return (
-        <div className="page-container max-w-none mx-0 px-0 md:px-4 lg:px-6">
+        <div className="">
             {/* Header - More Compact */}
             <div className="page-header pb-3">
                 <div>

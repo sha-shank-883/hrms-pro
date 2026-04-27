@@ -22,6 +22,7 @@ CREATE TABLE users (
   email VARCHAR(255) UNIQUE NOT NULL,
   password_hash VARCHAR(255) NOT NULL,
   role VARCHAR(50) NOT NULL DEFAULT 'employee',
+  permissions JSONB DEFAULT '[]'::jsonb,
   is_active BOOLEAN DEFAULT true,
   two_factor_secret VARCHAR(255),
   is_two_factor_enabled BOOLEAN DEFAULT false,

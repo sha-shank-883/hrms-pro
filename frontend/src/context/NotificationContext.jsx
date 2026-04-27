@@ -24,6 +24,8 @@ export const NotificationProvider = ({ children }) => {
     });
 
     const refreshCounts = useCallback(async () => {
+        if (!localStorage.getItem('token')) return;
+        
         try {
             // Fetch actionable counts from backend
             const [leavesRes, tasksRes, statsRes, attendanceRes] = await Promise.allSettled([

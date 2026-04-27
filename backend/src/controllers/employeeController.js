@@ -103,7 +103,7 @@ const getEmployeeById = async (req, res) => {
     const userRole = req.user.role;
     const userId = req.user.userId;
 
-    let queryText = `SELECT e.*, d.department_name, u.email as user_email, u.role,
+    let queryText = `SELECT e.*, d.department_name, u.email as user_email, u.role, u.permissions,
               m.first_name as manager_first_name, m.last_name as manager_last_name
        FROM employees e
        LEFT JOIN departments d ON e.department_id = d.department_id
@@ -148,9 +148,10 @@ const getEmployeeByUserId = async (req, res) => {
     const { userId } = req.params;
 
     const result = await query(
-      `SELECT e.*, d.department_name 
+      `SELECT e.*, d.department_name, u.role, u.permissions 
        FROM employees e 
        LEFT JOIN departments d ON e.department_id = d.department_id 
+       LEFT JOIN users u ON e.user_id = u.user_id
        WHERE e.user_id = $1`,
       [userId]
     );
@@ -231,8 +232,8 @@ const createEmployee = async (req, res) => {
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
         RETURNING *`,
         [
-          newUserId, first_name, last_name, email, phone, date_of_birth,
-          gender, address, department_id || null, position,
+          newUserId, first_name, last_name, email, phone || null, date_of_birth || null,
+          gender, address || null, department_id || null, position || null,
           salary || null, employment_type || 'full-time', status || 'active',
           req.body.reporting_manager_id || null,
           safeJSON(req.body.social_links, {}),
@@ -304,8 +305,8 @@ const updateEmployee = async (req, res) => {
          WHERE employee_id = $12
          RETURNING *`,
         [
-          first_name, last_name, phone, date_of_birth,
-          gender, address, profile_image || null,
+          first_name, last_name, phone || null, date_of_birth || null,
+          gender, address || null, profile_image || null,
           req.body.about_me || null, req.body.social_links || {},
           req.body.education || [], req.body.experience || [],
           id
@@ -330,8 +331,8 @@ const updateEmployee = async (req, res) => {
        WHERE employee_id = $18
        RETURNING *`,
       [
-        first_name, last_name, phone, date_of_birth,
-        gender, address, department_id || null, position,
+        first_name, last_name, phone || null, date_of_birth || null,
+        gender, address || null, department_id || null, position || null,
         salary || null, employment_type, status || 'active', profile_image || null,
         req.body.reporting_manager_id || null, req.body.social_links || {},
         req.body.education || [], req.body.experience || [], req.body.about_me || null,

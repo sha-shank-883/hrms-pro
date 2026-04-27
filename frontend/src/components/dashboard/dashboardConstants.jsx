@@ -8,10 +8,76 @@ import {
     FaUsers,
     FaBuilding,
     FaClock,
-    FaCalendarAlt
+    FaCalendarAlt,
+    FaGlobe,
+    FaCogs,
+    FaFileAlt,
+    FaEnvelope,
+    FaHistory,
+    FaChartBar
 } from 'react-icons/fa';
 
 export const QUICK_ACTIONS_CONFIG = [
+    {
+        id: 'action-saas-admin',
+        label: 'SaaS Admin',
+        icon: <FaGlobe />,
+        path: '/super-admin',
+        roles: ['admin'],
+        tenant: 'tenant_default',
+        theme: 'primary'
+    },
+    {
+        id: 'action-website-settings',
+        label: 'Website Settings',
+        icon: <FaCogs />,
+        path: '/super-admin/website-settings',
+        roles: ['admin'],
+        tenant: 'tenant_default',
+        theme: 'primary'
+    },
+    {
+        id: 'action-cms',
+        label: 'Website CMS',
+        icon: <FaFileAlt />,
+        path: '/super-admin/cms',
+        roles: ['admin'],
+        tenant: 'tenant_default',
+        theme: 'primary'
+    },
+    {
+        id: 'action-demo-accounts',
+        label: 'Demo Accounts',
+        icon: <FaUsers />,
+        path: '/super-admin/demo-requests',
+        roles: ['admin'],
+        tenant: 'tenant_default',
+        theme: 'primary'
+    },
+    {
+        id: 'action-reports',
+        label: 'Reports',
+        icon: <FaChartBar />,
+        path: '/reports',
+        roles: ['admin', 'manager'],
+        theme: 'info'
+    },
+    {
+        id: 'action-audit-logs',
+        label: 'Audit Logs',
+        icon: <FaHistory />,
+        path: '/audit-logs',
+        roles: ['admin'],
+        theme: 'secondary'
+    },
+    {
+        id: 'action-email-templates',
+        label: 'Email Templates',
+        icon: <FaEnvelope />,
+        path: '/email-templates',
+        roles: ['admin'],
+        theme: 'secondary'
+    },
     {
         id: 'action-add-employee',
         label: 'Add Employee',

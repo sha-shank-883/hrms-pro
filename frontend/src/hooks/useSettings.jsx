@@ -12,6 +12,12 @@ export const SettingsProvider = ({ children }) => {
   const [error, setError] = useState(null);
 
   const loadSettings = async () => {
+    if (!localStorage.getItem('token')) {
+      setSettings({});
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
       const response = await settingsService.getAll();

@@ -1,7 +1,7 @@
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
-const ProtectedRoute = ({ children, allowedRoles = [] }) => {
+const ProtectedRoute = ({ children, allowedRoles = [], allowedPermissions = [] }) => {
   const { user, isAuthenticated } = useAuth();
 
   if (!isAuthenticated) {
@@ -13,8 +13,15 @@ const ProtectedRoute = ({ children, allowedRoles = [] }) => {
     return children;
   }
 
+  // Check if user has explicit permission override
+  const hasPermissionOverride = allowedPermissions.length > 0 && 
+    user?.permissions && 
+    allowedPermissions.some(p => user.permissions.includes(p));
+
   // Check if user's role is in the allowed roles
-  if (!allowedRoles.includes(user?.role)) {
+  const hasRole = allowedRoles.length === 0 || allowedRoles.includes(user?.role);
+
+  if (!hasRole && !hasPermissionOverride) {
     return (
       <div style={{ 
         padding: '2rem', 

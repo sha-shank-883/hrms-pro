@@ -45,34 +45,34 @@ const TeamWidget = ({ employeeData }) => {
     };
 
     return (
-        <div className="card">
+        <div className="bg-white rounded-2xl shadow-sm border border-neutral-100 p-6">
             <div className="flex justify-between items-center mb-6">
-                <h3 className="font-bold text-lg text-neutral-800">My Team</h3>
+                <h3 className="font-bold text-neutral-900 tracking-tight text-lg">My Team</h3>
                 {employeeData?.department_name && (
-                    <span className="text-[10px] font-bold tracking-wider text-neutral-500 uppercase bg-neutral-100 px-2 py-1 rounded">
+                    <span className="text-[10px] font-bold tracking-wider text-neutral-500 uppercase bg-neutral-100 px-2.5 py-1 rounded-md">
                         {employeeData.department_name}
                     </span>
                 )}
             </div>
 
-            <div className="space-y-1">
+            <div className="space-y-2">
                 {teamMembers.length > 0 ? teamMembers.map((member) => (
-                    <div key={member.employee_id} className="flex items-center justify-between p-2.5 hover:bg-neutral-50 rounded-lg transition-colors group cursor-default">
+                    <div key={member.employee_id} className="flex items-center justify-between p-3 hover:bg-neutral-50 rounded-xl transition-colors group cursor-default border border-transparent hover:border-neutral-100">
                         <div className="flex items-center gap-3">
-                            <div className="w-9 h-9 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center text-xs font-bold border border-indigo-100">
+                            <div className="w-10 h-10 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center text-sm font-bold border border-indigo-100 group-hover:bg-indigo-100 transition-colors">
                                 {getInitials(member.first_name, member.last_name)}
                             </div>
                             <div>
-                                <div className="text-sm font-semibold text-neutral-800 group-hover:text-primary-600 transition-colors">{member.first_name} {member.last_name}</div>
-                                <div className="text-xs text-neutral-500">{member.position}</div>
+                                <div className="text-sm font-bold text-neutral-900 group-hover:text-primary-600 transition-colors leading-tight">{member.first_name} {member.last_name}</div>
+                                <div className="text-xs font-medium text-neutral-500 mt-0.5">{member.position}</div>
                             </div>
                         </div>
 
-                        {/* Since we don't have real status access yet, we show generic 'Active' or nothing */}
+                        {/* Status indicator */}
                         <span className="w-2.5 h-2.5 rounded-full bg-green-500 ring-4 ring-green-50" title="Active"></span>
                     </div>
                 )) : (
-                    <div className="text-sm text-neutral-500 text-center py-6 bg-neutral-50 rounded-lg border border-neutral-100 border-dashed">
+                    <div className="text-sm text-neutral-500 text-center py-8 bg-neutral-50 rounded-xl border border-neutral-200 border-dashed">
                         {loading ? 'Loading team...' : 'No team members found'}
                     </div>
                 )}

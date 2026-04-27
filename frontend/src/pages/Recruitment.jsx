@@ -305,7 +305,7 @@ const Recruitment = () => {
   const appStatuses = ['pending', 'reviewed', 'interview', 'offered', 'rejected'];
 
   return (
-    <div className="page-container">
+    <div className="">
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
         <div>

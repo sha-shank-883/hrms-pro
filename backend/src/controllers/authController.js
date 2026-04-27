@@ -55,6 +55,7 @@ const register = async (req, res) => {
           userId: user.user_id,
           email: user.email,
           role: user.role,
+          permissions: user.permissions || [],
         },
         token,
       },
@@ -132,6 +133,7 @@ const login = async (req, res) => {
           userId: user.user_id,
           email: user.email,
           role: user.role,
+          permissions: user.permissions || [],
         },
         token,
       },
@@ -179,6 +181,7 @@ const verify2FALogin = async (req, res) => {
             userId: user.user_id,
             email: user.email,
             role: user.role,
+            permissions: user.permissions || [],
           },
           token: authToken,
         },
@@ -268,7 +271,7 @@ const disable2FA = async (req, res) => {
 const getProfile = async (req, res) => {
   try {
     const result = await query(
-      'SELECT u.user_id, u.email, u.role, u.created_at, u.is_two_factor_enabled, e.* FROM users u LEFT JOIN employees e ON u.user_id = e.user_id WHERE u.user_id = $1',
+      'SELECT u.user_id, u.email, u.role, u.permissions, u.created_at, u.is_two_factor_enabled, e.* FROM users u LEFT JOIN employees e ON u.user_id = e.user_id WHERE u.user_id = $1',
       [req.user.userId]
     );
 
@@ -404,6 +407,55 @@ const adminChangeUserPassword = async (req, res) => {
   }
 };
 
+// Admin update user permissions
+const adminUpdatePermissions = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { permissions } = req.body;
+    const userRole = req.user.role;
+
+    // Only admins can update permissions
+    if (userRole !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: "Only administrators can update user permissions",
+      });
+    }
+
+    if (!Array.isArray(permissions)) {
+      return res.status(400).json({
+        success: false,
+        message: "Permissions must be an array",
+      });
+    }
+
+    const result = await query(
+      'UPDATE users SET permissions = $1::jsonb, updated_at = CURRENT_TIMESTAMP WHERE user_id = $2 RETURNING user_id, permissions',
+      [JSON.stringify(permissions), userId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found',
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'User permissions updated successfully',
+      data: result.rows[0],
+    });
+  } catch (error) {
+    console.error('Admin update permissions error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update user permissions',
+      error: error.message,
+    });
+  }
+};
+
 // Forgot Password
 const forgotPassword = async (req, res) => {
   try {
@@ -520,6 +572,7 @@ module.exports = {
   getProfile,
   changePassword,
   adminChangeUserPassword,
+  adminUpdatePermissions,
   forgotPassword,
   resetPassword,
   verify2FALogin,

@@ -33,6 +33,7 @@ router.post('/login', loginValidation, validate, logAction('LOGIN', 'USER'), aut
 router.get('/profile', authenticateToken, authController.getProfile);
 router.put('/change-password', authenticateToken, changePasswordValidation, validate, logAction('CHANGE_PASSWORD', 'USER'), authController.changePassword);
 router.put('/change-password/:userId', authenticateToken, adminChangePasswordValidation, validate, logAction('ADMIN_CHANGE_PASSWORD', 'USER'), authController.adminChangeUserPassword);
+router.put('/permissions/:userId', authenticateToken, logAction('ADMIN_UPDATE_PERMISSIONS', 'USER'), authController.adminUpdatePermissions);
 router.post('/forgot-password', authController.forgotPassword);
 router.post('/reset-password/:token', authController.resetPassword);
 

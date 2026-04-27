@@ -4,7 +4,7 @@
   "description": "",
   "main": "src/server.js",
   "scripts": {
-    "start": "node src/scripts/setupMultiTenancy.js && node src/scripts/add_reporting_manager_column.js && node src/scripts/add_email_templates_table.js && node src/scripts/add_shift_tables.js && node src/server.js",
+    "start": "node src/scripts/setupMultiTenancy.js && node src/scripts/add_reporting_manager_column.js && node src/scripts/add_email_templates_table.js && node src/scripts/add_shift_tables.js && node src/scripts/expand_website_settings.js && node src/scripts/add_dynamic_sections.js && node src/server.js",
     "dev": "nodemon src/server.js",
     "create-tenant": "node src/scripts/createTenant.js",
     "test": "echo \"Error: no test specified\" && exit 1",

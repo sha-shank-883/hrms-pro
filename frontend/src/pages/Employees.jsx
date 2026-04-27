@@ -35,6 +35,7 @@ const Employees = () => {
   });
   const [activeTab, setActiveTab] = useState('personal');
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [validationErrors, setValidationErrors] = useState({});
   const [formData, setFormData] = useState({
     first_name: '',
     last_name: '',
@@ -155,6 +156,7 @@ const Employees = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setValidationErrors({});
 
     try {
       // Manual Validation
@@ -165,28 +167,35 @@ const Employees = () => {
         { key: 'hire_date', label: 'Hire Date', tab: 'professional' }
       ];
 
+      const errors = {};
+      let firstErrorTab = null;
+
       for (const field of requiredFields) {
-        if (!formData[field.key]) {
-          setError(`${field.label} is required`);
-          setActiveTab(field.tab);
-          return;
+        if (!formData[field.key] || (typeof formData[field.key] === 'string' && !formData[field.key].trim())) {
+          errors[field.key] = `${field.label} is required`;
+          if (!firstErrorTab) firstErrorTab = field.tab;
         }
       }
 
       // Password validation
       if (!editingEmployee && !formData.password) {
-        setError('Password is required for new employees');
-        setActiveTab('professional');
-        return;
+        errors.password = 'Password is required for new employees';
+        if (!firstErrorTab) firstErrorTab = 'professional';
       }
 
       if (formData.password) {
-        const { isValid, errors } = validatePassword(formData.password, settings);
+        const { isValid, errors: passErrors } = validatePassword(formData.password, settings);
         if (!isValid) {
-          setError(errors.join(' '));
-          setActiveTab('professional');
-          return;
+          errors.password = passErrors.join(' ');
+          if (!firstErrorTab) firstErrorTab = 'professional';
         }
+      }
+
+      if (Object.keys(errors).length > 0) {
+        setValidationErrors(errors);
+        setError('Please fix the validation errors before saving.');
+        if (firstErrorTab) setActiveTab(firstErrorTab);
+        return;
       }
 
       if (editingEmployee) {
@@ -256,6 +265,7 @@ const Employees = () => {
     setShowModal(false);
     setEditingEmployee(null);
     setError('');
+    setValidationErrors({});
     setActiveTab('personal');
     setFormData({
       first_name: '',
@@ -315,7 +325,7 @@ const Employees = () => {
           <h1 className="page-title">Employees</h1>
           <p className="page-subtitle">Manage employee records, roles, and permissions.</p>
         </div>
-        {(user?.role === 'admin' || user?.role === 'manager') && (
+        {((user?.role === 'admin' || user?.role === 'manager') || user?.permissions?.includes('employees:create')) && (
           <button className="btn btn-primary" onClick={() => setShowModal(true)}>
             <FaPlus /> <span>Add Employee</span>
           </button>
@@ -477,10 +487,12 @@ const Employees = () => {
                         >
                           <FaUserTie size={14} />
                         </button>
-                        <button className="p-2 text-primary-600 hover:bg-primary-50 rounded-lg transition-all" onClick={() => handleEdit(employee)} title="Edit">
-                          <FaEdit size={16} />
-                        </button>
-                        {(user?.role === 'admin' || user?.role === 'manager') && (
+                        {((user?.role === 'admin' || user?.role === 'manager') || user?.permissions?.includes('employees:update')) && (
+                          <button className="p-2 text-primary-600 hover:bg-primary-50 rounded-lg transition-all" onClick={() => handleEdit(employee)} title="Edit">
+                            <FaEdit size={16} />
+                          </button>
+                        )}
+                        {((user?.role === 'admin' || user?.role === 'manager') || user?.permissions?.includes('employees:delete')) && (
                           <button className="p-1.5 text-neutral-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors" onClick={() => handleDelete(employee.employee_id)} title="Delete">
                             <FaTrash size={14} />
                           </button>
@@ -599,15 +611,18 @@ const Employees = () => {
                   </div>
                   <div className="form-group">
                     <label className="form-label">First Name <span className="text-red-500">*</span></label>
-                    <input type="text" className="form-input" value={formData.first_name} onChange={(e) => setFormData({ ...formData, first_name: e.target.value })} />
+                    <input type="text" className={`form-input ${validationErrors.first_name ? 'border-red-500 bg-red-50' : ''}`} value={formData.first_name} onChange={(e) => setFormData({ ...formData, first_name: e.target.value })} />
+                    {validationErrors.first_name && <p className="text-red-500 text-xs mt-1">{validationErrors.first_name}</p>}
                   </div>
                   <div className="form-group">
                     <label className="form-label">Last Name <span className="text-red-500">*</span></label>
-                    <input type="text" className="form-input" value={formData.last_name} onChange={(e) => setFormData({ ...formData, last_name: e.target.value })} />
+                    <input type="text" className={`form-input ${validationErrors.last_name ? 'border-red-500 bg-red-50' : ''}`} value={formData.last_name} onChange={(e) => setFormData({ ...formData, last_name: e.target.value })} />
+                    {validationErrors.last_name && <p className="text-red-500 text-xs mt-1">{validationErrors.last_name}</p>}
                   </div>
                   <div className="form-group">
                     <label className="form-label">Email <span className="text-red-500">*</span></label>
-                    <input type="email" className="form-input" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} />
+                    <input type="email" className={`form-input ${validationErrors.email ? 'border-red-500 bg-red-50' : ''}`} value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} />
+                    {validationErrors.email && <p className="text-red-500 text-xs mt-1">{validationErrors.email}</p>}
                   </div>
                   <div className="form-group">
                     <label className="form-label">Phone</label>
@@ -664,7 +679,8 @@ const Employees = () => {
                   </div>
                   <div className="form-group">
                     <label className="form-label">Hire Date <span className="text-red-500">*</span></label>
-                    <input type="date" className="form-input" value={formData.hire_date} onChange={(e) => setFormData({ ...formData, hire_date: e.target.value })} />
+                    <input type="date" className={`form-input ${validationErrors.hire_date ? 'border-red-500 bg-red-50' : ''}`} value={formData.hire_date} onChange={(e) => setFormData({ ...formData, hire_date: e.target.value })} />
+                    {validationErrors.hire_date && <p className="text-red-500 text-xs mt-1">{validationErrors.hire_date}</p>}
                   </div>
                   <div className="form-group">
                     <label className="form-label">Salary</label>
@@ -689,7 +705,8 @@ const Employees = () => {
                   </div>
                   <div className="form-group">
                     <label className="form-label">Password {editingEmployee ? '(optional)' : <span className="text-red-500">*</span>}</label>
-                    <input type="password" className="form-input" value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} />
+                    <input type="password" className={`form-input ${validationErrors.password ? 'border-red-500 bg-red-50' : ''}`} value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} />
+                    {validationErrors.password && <p className="text-red-500 text-xs mt-1">{validationErrors.password}</p>}
                   </div>
                 </div>
 

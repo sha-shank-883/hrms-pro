@@ -134,7 +134,7 @@ const Assets = () => {
     if (loading && !assets.length) return <div className="loading">Loading...</div>;
 
     return (
-        <div className="page-container">
+        <div className="">
             <div className="page-header">
                 <div>
                     <h1 className="page-title">Asset Management</h1>

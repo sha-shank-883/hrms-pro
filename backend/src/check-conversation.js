@@ -41,7 +41,7 @@ async function checkConversation() {
                 
             } else {
                 
-                messages.rows.forEach(m => );
+                messages.rows.forEach(m => console.log(m));
             }
         } else {
             

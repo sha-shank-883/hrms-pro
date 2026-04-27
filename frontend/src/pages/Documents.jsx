@@ -192,7 +192,7 @@ const Documents = () => {
   const documentTypes = ['contract', 'certificate', 'policy', 'id_proof', 'resume', 'offer_letter', 'other'];
 
   return (
-    <div className="page-container">
+    <div className="">
       <div className="page-header">
         <div>
           <h1 className="page-title">Documents</h1>

@@ -56,46 +56,47 @@ const LeaveBalanceWidget = ({ employeeData }) => {
     };
 
     return (
-        <div className="card">
-            <div className="flex justify-between items-center mb-6">
+        <div className="bg-white rounded-2xl shadow-sm border border-neutral-100 p-6 flex flex-col h-full">
+            <div className="flex justify-between items-start mb-8">
                 <div>
-                    <h3 className="font-bold text-lg text-neutral-800">Leave Balance</h3>
-                    <p className="text-xs text-neutral-500 font-medium mt-1">Annual Overview</p>
+                    <h3 className="text-lg font-bold text-neutral-900 tracking-tight">Time Off Balance</h3>
+                    <p className="text-xs text-neutral-500 font-semibold uppercase tracking-wider mt-1.5">Annual Overview</p>
                 </div>
-                <button className="text-xs font-semibold text-primary-600 hover:text-primary-700 flex items-center gap-1 hover:underline transition-all" onClick={() => navigate('/leaves')}>
-                    Apply Now <FaChevronRight size={10} />
+                <button className="px-3 py-1.5 text-xs font-bold text-primary-600 bg-primary-50 hover:bg-primary-100 rounded-lg flex items-center gap-1.5 transition-colors" onClick={() => navigate('/leaves')}>
+                    Request <FaChevronRight size={10} />
                 </button>
             </div>
 
-            <div className="space-y-5">
+            <div className="space-y-6 flex-1">
                 {balances.length > 0 ? balances.map((leave, index) => (
                     <div key={index}>
-                        <div className="flex justify-between text-sm mb-1.5">
-                            <span className="text-neutral-600 font-medium">{leave.type}</span>
-                            <span className="text-neutral-800 font-bold">
-                                <span className={leave.available > 0 ? "text-neutral-800" : "text-red-500"}>{leave.available}</span>
-                                <span className="text-neutral-400 mx-1">/</span>
-                                <span className="text-neutral-500">{leave.total}</span>
-                            </span>
+                        <div className="flex justify-between items-end mb-2">
+                            <span className="text-sm font-bold text-neutral-700">{leave.type}</span>
+                            <div className="text-right">
+                                <span className={`text-xl font-black ${leave.available > 0 ? "text-neutral-900" : "text-red-500"}`}>{leave.available}</span>
+                                <span className="text-neutral-400 font-medium text-xs ml-1">/ {leave.total} days</span>
+                            </div>
                         </div>
-                        <div className="w-full bg-neutral-100 rounded-full h-2">
+                        <div className="w-full bg-neutral-100 rounded-full h-2.5 overflow-hidden">
                             <div
-                                className={`h-2 rounded-full transition-all duration-500 ${leave.color}`}
+                                className={`h-full rounded-full transition-all duration-1000 ease-out ${leave.color}`}
                                 style={{ width: `${(leave.available / leave.total) * 100}%` }}
                             ></div>
                         </div>
                     </div>
                 )) : (
-                    <p className="text-sm text-neutral-500 text-center py-4 bg-neutral-50 rounded-lg">No leave balance data available</p>
+                    <div className="flex items-center justify-center h-32">
+                        <p className="text-sm font-medium text-neutral-500 bg-neutral-50 px-4 py-2 rounded-xl border border-dashed border-neutral-200">No leave balance data available</p>
+                    </div>
                 )}
             </div>
 
-            <div className="mt-6 pt-4 border-t border-neutral-100 flex gap-3">
-                <button className="flex-1 py-2 text-xs font-semibold text-neutral-600 bg-neutral-50 hover:bg-neutral-100 rounded-lg border border-neutral-200 transition-colors" onClick={() => navigate('/leaves')}>
-                    View Leave History
+            <div className="mt-8 pt-6 border-t border-neutral-100 flex gap-3">
+                <button className="flex-1 py-2.5 text-xs font-bold uppercase tracking-wider text-neutral-600 bg-neutral-50 hover:bg-neutral-100 rounded-xl border border-neutral-200 hover:border-neutral-300 transition-colors" onClick={() => navigate('/leaves')}>
+                    History
                 </button>
-                <button className="flex-1 py-2 text-xs font-semibold text-neutral-600 bg-neutral-50 hover:bg-neutral-100 rounded-lg border border-neutral-200 transition-colors" onClick={() => navigate('/leaves')}>
-                    Holiday Calendar
+                <button className="flex-1 py-2.5 text-xs font-bold uppercase tracking-wider text-neutral-600 bg-neutral-50 hover:bg-neutral-100 rounded-xl border border-neutral-200 hover:border-neutral-300 transition-colors" onClick={() => navigate('/leaves')}>
+                    Calendar
                 </button>
             </div>
         </div>

@@ -6,6 +6,7 @@ import { useSettings } from '../hooks/useSettings.jsx';
 import { formatDate } from '../utils/settingsHelper';
 import { validatePassword } from '../utils/passwordHelper';
 import { FaUser, FaBriefcase, FaCalendarCheck, FaFileAlt, FaLock, FaCamera, FaEnvelope, FaPhone, FaMapMarkerAlt, FaBirthdayCake, FaDownload, FaEye, FaMoneyBillWave, FaLaptop, FaChartLine, FaCheckCircle, FaTimesCircle, FaClock, FaTasks, FaHistory, FaExternalLinkAlt, FaGraduationCap, FaLinkedin, FaTwitter, FaGithub, FaUserTie, FaIdCard, FaEdit, FaSave, FaTimes } from 'react-icons/fa';
+import { PERMISSION_MODULES, getAllPermissions } from '../constants/permissions';
 
 const Profile = () => {
   const { id } = useParams();
@@ -19,6 +20,7 @@ const Profile = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [isEditing, setIsEditing] = useState(false);
+  const [validationErrors, setValidationErrors] = useState({});
 
   // Dynamic Data States
   const [leaveBalance, setLeaveBalance] = useState([]);
@@ -303,6 +305,26 @@ const Profile = () => {
     e.preventDefault();
     setError('');
     setSuccess('');
+    setValidationErrors({});
+    
+    // Validate required fields
+    const errors = {};
+    if (!formData.first_name?.trim()) errors.first_name = "First Name is required";
+    if (!formData.last_name?.trim()) errors.last_name = "Last Name is required";
+    if (!formData.phone?.trim()) errors.phone = "Phone is required";
+    
+    if (user.role === 'admin') {
+      if (!formData.department_id) errors.department_id = "Department is required";
+      if (!formData.position?.trim()) errors.position = "Position is required";
+      if (!formData.salary) errors.salary = "Salary is required";
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setValidationErrors(errors);
+      setError("Please fix the validation errors before saving.");
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -323,7 +345,11 @@ const Profile = () => {
       setError('New passwords do not match'); return;
     }
     try {
-      await authService.changePassword(passwordData.currentPassword, passwordData.newPassword);
+      if (!isOwnProfile && user.role === 'admin') {
+         await authService.adminChangeUserPassword(profile.user_id, passwordData.newPassword);
+      } else {
+         await authService.changePassword(passwordData.currentPassword, passwordData.newPassword);
+      }
       setSuccess('Password changed successfully');
       setShowPasswordModal(false);
       setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
@@ -442,8 +468,12 @@ const Profile = () => {
     { id: 'audit', label: 'Audit Log', icon: <FaHistory /> },
   ];
 
+  if (user.role === 'admin') {
+    sections.push({ id: 'permissions', label: 'Permissions', icon: <FaLock /> });
+  }
+
   return (
-    <div className="page-container">
+    <div className="">
 
       {/* 1. Header Section */}
       <div className="card mb-6 overflow-hidden">
@@ -519,7 +549,7 @@ const Profile = () => {
                 <FaEdit /> <span>Edit Profile</span>
               </button>
             )}
-            {isOwnProfile && (
+            {(isOwnProfile || user.role === 'admin') && (
               <button className="btn btn-secondary" onClick={() => setShowPasswordModal(true)} title="Security Settings">
                 <FaLock />
               </button>
@@ -560,7 +590,7 @@ const Profile = () => {
           {success && <div className="mb-6 p-4 rounded-lg bg-success-50 text-success border border-success-50 flex items-center gap-3"><FaCheckCircle /> {success}</div>}
 
           {/* 4. Content */}
-          <div className="min-h-[400px]">
+          <div className="">
             {activeTab === 'personal' && (
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="card md:col-span-2">
@@ -596,16 +626,19 @@ const Profile = () => {
                     ) : (
                       <form id="edit-form" onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="form-group">
-                          <label className="form-label">First Name</label>
-                          <input className="form-input" name="first_name" value={formData.first_name} onChange={handleChange} />
+                          <label className="form-label">First Name <span className="text-red-500">*</span></label>
+                          <input className={`form-input ${validationErrors.first_name ? 'border-red-500 bg-red-50' : ''}`} name="first_name" value={formData.first_name} onChange={handleChange} />
+                          {validationErrors.first_name && <p className="text-red-500 text-xs mt-1">{validationErrors.first_name}</p>}
                         </div>
                         <div className="form-group">
-                          <label className="form-label">Last Name</label>
-                          <input className="form-input" name="last_name" value={formData.last_name} onChange={handleChange} />
+                          <label className="form-label">Last Name <span className="text-red-500">*</span></label>
+                          <input className={`form-input ${validationErrors.last_name ? 'border-red-500 bg-red-50' : ''}`} name="last_name" value={formData.last_name} onChange={handleChange} />
+                          {validationErrors.last_name && <p className="text-red-500 text-xs mt-1">{validationErrors.last_name}</p>}
                         </div>
                         <div className="form-group">
-                          <label className="form-label">Phone</label>
-                          <input className="form-input" name="phone" value={formData.phone} onChange={handleChange} />
+                          <label className="form-label">Phone <span className="text-red-500">*</span></label>
+                          <input className={`form-input ${validationErrors.phone ? 'border-red-500 bg-red-50' : ''}`} name="phone" value={formData.phone} onChange={handleChange} />
+                          {validationErrors.phone && <p className="text-red-500 text-xs mt-1">{validationErrors.phone}</p>}
                         </div>
                         <div className="form-group">
                           <label className="form-label">Address</label>
@@ -614,15 +647,17 @@ const Profile = () => {
                         {user.role === 'admin' && (
                           <>
                             <div className="form-group">
-                              <label className="form-label">Department</label>
-                              <select className="form-input" name="department_id" value={formData.department_id} onChange={handleChange}>
+                              <label className="form-label">Department <span className="text-red-500">*</span></label>
+                              <select className={`form-input ${validationErrors.department_id ? 'border-red-500 bg-red-50' : ''}`} name="department_id" value={formData.department_id} onChange={handleChange}>
                                 <option value="">Select Department</option>
                                 {departments.map(d => <option key={d.department_id} value={d.department_id}>{d.department_name}</option>)}
                               </select>
+                              {validationErrors.department_id && <p className="text-red-500 text-xs mt-1">{validationErrors.department_id}</p>}
                             </div>
                             <div className="form-group">
-                              <label className="form-label">Position</label>
-                              <input className="form-input" name="position" value={formData.position} onChange={handleChange} />
+                              <label className="form-label">Position <span className="text-red-500">*</span></label>
+                              <input className={`form-input ${validationErrors.position ? 'border-red-500 bg-red-50' : ''}`} name="position" value={formData.position} onChange={handleChange} />
+                              {validationErrors.position && <p className="text-red-500 text-xs mt-1">{validationErrors.position}</p>}
                             </div>
                             <div className="form-group">
                               <label className="form-label">Reporting Manager</label>
@@ -634,8 +669,9 @@ const Profile = () => {
                               </select>
                             </div>
                             <div className="form-group">
-                              <label className="form-label">Salary</label>
-                              <input className="form-input" type="number" name="salary" value={formData.salary} onChange={handleChange} />
+                              <label className="form-label">Salary <span className="text-red-500">*</span></label>
+                              <input className={`form-input ${validationErrors.salary ? 'border-red-500 bg-red-50' : ''}`} type="number" name="salary" value={formData.salary} onChange={handleChange} />
+                              {validationErrors.salary && <p className="text-red-500 text-xs mt-1">{validationErrors.salary}</p>}
                             </div>
                             <div className="form-group">
                               <label className="form-label">Employment Type</label>
@@ -1097,6 +1133,123 @@ const Profile = () => {
               <button className="btn btn-primary" onClick={handleSubmit}>Save Changes</button>
             </div>
           )}
+          {activeTab === 'permissions' && user.role === 'admin' && (
+            <div className="card">
+              <div className="card-header border-b border-neutral-100 flex justify-between items-center bg-white p-6 rounded-t-xl">
+                <div>
+                  <h3 className="text-lg font-bold text-neutral-900 flex items-center gap-2">
+                    <FaLock className="text-primary-600" /> Granular Permissions
+                  </h3>
+                  <p className="text-sm text-neutral-500 mt-1">Grant this employee specific access to modules typically reserved for administrators.</p>
+                </div>
+              </div>
+              <div className="p-6">
+                {loadingTabs ? (
+                  <div className="flex justify-center p-8"><div className="w-8 h-8 border-4 border-primary-600 border-t-transparent rounded-full animate-spin"></div></div>
+                ) : (
+                  <div className="space-y-6">
+                    <div className="flex justify-end gap-3 mb-4">
+                      <button 
+                        className="btn btn-secondary btn-sm"
+                        onClick={async () => {
+                          try {
+                            setLoadingTabs(true);
+                            const allPerms = getAllPermissions();
+                            await authService.adminUpdatePermissions(profile.user_id, allPerms);
+                            setProfile({ ...profile, permissions: allPerms });
+                            setSuccess('All permissions granted.');
+                            setTimeout(() => setSuccess(''), 3000);
+                          } catch (err) {
+                            setError('Failed to update permissions');
+                          } finally {
+                            setLoadingTabs(false);
+                          }
+                        }}
+                      >Select All</button>
+                      <button 
+                        className="btn btn-secondary btn-sm"
+                        onClick={async () => {
+                          try {
+                            setLoadingTabs(true);
+                            await authService.adminUpdatePermissions(profile.user_id, []);
+                            setProfile({ ...profile, permissions: [] });
+                            setSuccess('All permissions revoked.');
+                            setTimeout(() => setSuccess(''), 3000);
+                          } catch (err) {
+                            setError('Failed to update permissions');
+                          } finally {
+                            setLoadingTabs(false);
+                          }
+                        }}
+                      >Deselect All</button>
+                    </div>
+
+                    <div className="overflow-x-auto rounded-xl border border-neutral-200">
+                      <table className="w-full text-left border-collapse">
+                        <thead>
+                          <tr className="bg-neutral-50 border-b border-neutral-200">
+                            <th className="p-4 font-semibold text-neutral-700">Module</th>
+                            <th className="p-4 text-center font-semibold text-neutral-700">Read</th>
+                            <th className="p-4 text-center font-semibold text-neutral-700">Create</th>
+                            <th className="p-4 text-center font-semibold text-neutral-700">Update</th>
+                            <th className="p-4 text-center font-semibold text-neutral-700">Delete</th>
+                            <th className="p-4 text-center font-semibold text-neutral-700">Approve</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-neutral-100">
+                          {PERMISSION_MODULES.map(module => (
+                            <tr key={module.id} className="hover:bg-neutral-50/50 transition-colors">
+                              <td className="p-4 font-medium text-neutral-900">{module.label}</td>
+                              {['read', 'create', 'update', 'delete', 'approve'].map(op => {
+                                const isSupported = module.operations.includes(op);
+                                const permString = `${module.id}:${op}`;
+                                const isEnabled = profile.permissions?.includes(permString);
+                                
+                                return (
+                                  <td key={op} className="p-4 text-center">
+                                    {isSupported ? (
+                                      <label className="relative inline-flex items-center cursor-pointer">
+                                        <input
+                                          type="checkbox"
+                                          className="sr-only peer"
+                                          checked={isEnabled}
+                                          onChange={async (e) => {
+                                            const checked = e.target.checked;
+                                            let newPerms = [...(profile.permissions || [])];
+                                            if (checked) {
+                                              if (!newPerms.includes(permString)) newPerms.push(permString);
+                                            } else {
+                                              newPerms = newPerms.filter(p => p !== permString);
+                                            }
+
+                                            try {
+                                              await authService.adminUpdatePermissions(profile.user_id, newPerms);
+                                              setProfile({ ...profile, permissions: newPerms });
+                                              setSuccess(`Permission updated.`);
+                                              setTimeout(() => setSuccess(''), 2000);
+                                            } catch (err) {
+                                              setError('Failed to update permission');
+                                            }
+                                          }}
+                                        />
+                                        <div className={`w-9 h-5 bg-neutral-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all ${isEnabled ? 'peer-checked:bg-primary-600' : ''}`}></div>
+                                      </label>
+                                    ) : (
+                                      <span className="text-neutral-300">-</span>
+                                    )}
+                                  </td>
+                                );
+                              })}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {showPasswordModal && (
             <div className="modal-overlay" onClick={() => setShowPasswordModal(false)}>
@@ -1107,10 +1260,12 @@ const Profile = () => {
                 </div>
                 <form onSubmit={handlePasswordChange}>
                   <div className="modal-body space-y-4">
-                    <div className="form-group">
-                      <label className="form-label">Current Password</label>
-                      <input type="password" name="currentPassword" className="form-input" value={passwordData.currentPassword} onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })} required />
-                    </div>
+                    {(isOwnProfile || user.role !== 'admin') && (
+                      <div className="form-group">
+                        <label className="form-label">Current Password</label>
+                        <input type="password" name="currentPassword" className="form-input" value={passwordData.currentPassword} onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })} required />
+                      </div>
+                    )}
                     <div className="form-group">
                       <label className="form-label">New Password</label>
                       <input type="password" name="newPassword" className="form-input" value={passwordData.newPassword} onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })} required />

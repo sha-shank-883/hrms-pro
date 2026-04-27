@@ -4,7 +4,16 @@ const Tenant = require('../models/tenantModel');
 const tenantMiddleware = async (req, res, next) => {
     const tenantId = req.headers['x-tenant-id'];
 
+    // Public paths that do not require a tenant ID explicitly
+    const publicPaths = ['/leads/demo', '/website-settings', '/website', '/cms', '/setup-db'];
+    const isPublic = publicPaths.some(p => req.path.startsWith(p));
+
     if (!tenantId) {
+        if (isPublic) {
+            return tenantStorage.run('tenant_default', () => {
+                next();
+            });
+        }
         return res.status(400).json({ error: 'X-Tenant-ID header is required' });
     }
 

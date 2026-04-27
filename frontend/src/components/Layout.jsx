@@ -12,7 +12,7 @@ import {
   FaUserSlash, FaBuilding, FaChartLine, FaSitemap, FaBolt,
   FaSearch, FaBell, FaQuestionCircle, FaEnvelope,
   FaChevronDown, FaUser, FaFileInvoiceDollar, FaCheckDouble,
-  FaPlane
+  FaPlane, FaPalette
 } from 'react-icons/fa';
 
 const Layout = () => {
@@ -267,38 +267,77 @@ const Layout = () => {
 
         {/* Sidebar Nav - More Spacious */}
         <nav className="flex-1 overflow-y-auto py-6 px-4 custom-scrollbar bg-white">
-          <NavItem to="/" icon={<FaHome />} label="Dashboard" />
+          <NavItem to="/dashboard" icon={<FaHome />} label="Dashboard" />
 
-          {(user.role === 'admin' || user.role === 'manager') && (
+          {(() => {
+            const hasAccess = (roles = [], perms = []) => {
+              if (roles.includes(user.role)) return true;
+              if (perms.length > 0 && user.permissions && perms.some(p => user.permissions.includes(p))) return true;
+              return false;
+            };
+
+            return (
+              <>
+          {hasAccess(['admin', 'manager'], ['reports:read']) && (
             <NavItem to="/live-activity" icon={<FaBolt />} label="Live Activity" count={notifications.liveActivity} />
           )}
 
           <NavItem to="/chat" icon={<FaComments />} label="Chat" count={notifications.chat} />
 
           <NavSection title="Main Modules" />
-          <NavItem to="/employees" icon={<FaUsers />} label="Employees" />
-          <NavItem to="/departments" icon={<FaBuilding />} label="Departments" />
+          
+          {hasAccess(['admin', 'manager'], ['employees:read']) && (
+            <>
+              <NavItem to="/employees" icon={<FaUsers />} label="Employees" />
+              <NavItem to="/org-chart" icon={<FaSitemap />} label="Directory" />
+            </>
+          )}
+          {hasAccess(['admin', 'manager'], ['departments:read']) && (
+              <NavItem to="/departments" icon={<FaBuilding />} label="Departments" />
+          )}
+          
           <NavItem to="/attendance" icon={<FaCalendarCheck />} label="Attendance" count={notifications.attendance} />
           <NavItem to="/leaves" icon={<FaPlane />} label="Leaves" count={notifications.leaves} />
           <NavItem to="/tasks" icon={<FaTasks />} label="Tasks" count={notifications.tasks} />
           <NavItem to="/performance" icon={<FaChartLine />} label="Performance" />
-          <NavItem to="/payroll" icon={<FaMoneyBillWave />} label="Payroll" />
-          <NavItem to="/recruitment" icon={<FaUserPlus />} label="Recruitment" />
+          
+          {hasAccess(['admin', 'manager'], ['payroll:read']) && (
+              <NavItem to="/payroll" icon={<FaMoneyBillWave />} label="Payroll" />
+          )}
+          {hasAccess(['admin', 'manager'], ['recruitment:read']) && (
+              <NavItem to="/recruitment" icon={<FaUserPlus />} label="Recruitment" />
+          )}
+          
           <NavItem to="/documents" icon={<FaFileAlt />} label="Documents" />
           <NavItem to="/assets" icon={<FaBoxOpen />} label="Assets" />
 
-          {user.role === 'admin' && (
+          {hasAccess(['admin'], ['reports:read', 'settings:read', 'audit_logs:read']) && (
+            <NavSection title="Administration" />
+          )}
+          
+          {hasAccess(['admin'], []) && localStorage.getItem('tenant_id') === 'tenant_default' && (
             <>
-              <NavSection title="Administration" />
-              {localStorage.getItem('tenant_id') === 'tenant_default' && (
-                <NavItem to="/super-admin" icon={<FaBolt />} label="SaaS Admin" />
-              )}
+              <NavItem to="/super-admin" icon={<FaBolt />} label="SaaS Admin" />
+              <NavItem to="/super-admin/website-settings" icon={<FaPalette />} label="Website Settings" />
+              <NavItem to="/super-admin/cms" icon={<FaFileAlt />} label="Website CMS" />
+              <NavItem to="/super-admin/demo-requests" icon={<FaUsers />} label="Demo Accounts" />
+            </>
+          )}
+          
+          {hasAccess(['admin', 'manager'], ['reports:read']) && (
               <NavItem to="/reports" icon={<FaFileAlt />} label="Reports" />
+          )}
+          {hasAccess(['admin'], ['settings:update']) && (
+            <>
               <NavItem to="/email-templates" icon={<FaFileAlt />} label="Email Templates" />
               <NavItem to="/send-email" icon={<FaEnvelope />} label="Send Email" />
-              <NavItem to="/audit-logs" icon={<FaHistory />} label="Audit Logs" />
-              <NavItem to="/settings" icon={<FaCog />} label="Settings" />
             </>
+          )}
+          {hasAccess(['admin'], ['audit_logs:read']) && (
+              <NavItem to="/audit-logs" icon={<FaHistory />} label="Audit Logs" />
+          )}
+          {hasAccess(['admin'], ['settings:read']) && (
+              <NavItem to="/settings" icon={<FaCog />} label="Settings" />
           )}
 
           {user.role === 'employee' && (
@@ -308,6 +347,9 @@ const Layout = () => {
               <NavItem to="/my-payslips" icon={<FaMoneyBillWave />} label="My Payslips" />
             </>
           )}
+              </>
+            );
+          })()}
         </nav>
 
         {/* Sidebar Footer removed - moved to Header */}

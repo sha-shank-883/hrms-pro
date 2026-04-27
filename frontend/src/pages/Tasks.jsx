@@ -387,7 +387,7 @@ const Tasks = () => {
   };
 
   return (
-    <div className="page-container pb-8">
+    <div className="pb-8">
       {/* Page Header */}
       <div className="page-header">
         <div>
@@ -982,7 +982,7 @@ const Tasks = () => {
                       <FaPlus className="text-primary-600" /> New Update
                     </h3>
 
-                    {(user.role === 'admin' || user.role === 'manager' || selectedTaskForUpdate?.assigned_employee_ids?.includes(user.userId)) ? (
+                    {(user.role === 'admin' || user.role === 'manager' || selectedTaskForUpdate?.assigned_employees?.some(emp => emp.user_id === user.userId)) ? (
                       <form onSubmit={handleAddUpdate} className="bg-white border border-neutral-200 rounded-xl p-5 shadow-sm space-y-4">
                         <div>
                           <label className="form-label text-xs mb-1.5">Description of work <span className="text-red-500">*</span></label>

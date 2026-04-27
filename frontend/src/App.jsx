@@ -33,12 +33,26 @@ import Onboarding from './pages/Onboarding';
 import Assets from './pages/Assets';
 import AuditLogs from './pages/AuditLogs';
 import SuperAdmin from './pages/SuperAdmin';
+import CMSManager from './pages/CMSManager';
+import WebsiteSettings from './pages/WebsiteSettings';
+import DemoRequests from './pages/DemoRequests';
 import ChurnRiskReport from './pages/ChurnRiskReport';
 import LiveActivity from './pages/LiveActivity';
 import OrgChart from './components/OrgChart';
 import EmailTemplates from './pages/EmailTemplates';
 import SendEmail from './pages/SendEmail';
 import Layout from './components/Layout';
+import PublicLayout from './components/layout/PublicLayout';
+import Home from './pages/marketing/Home';
+import Demo from './pages/marketing/Demo';
+import DynamicPage from './pages/marketing/DynamicPage';
+import Features from './pages/marketing/Features';
+import Pricing from './pages/marketing/Pricing';
+import About from './pages/marketing/About';
+import Contact from './pages/marketing/Contact';
+import Blog from './pages/marketing/Blog';
+import BlogPost from './pages/marketing/BlogPost';
+import Signup from './pages/Signup';
 import ProtectedRoute from './components/ProtectedRoute';
 import SuperAdminRoute from './components/SuperAdminRoute';
 const AuthRoute = ({ children }) => {
@@ -49,6 +63,12 @@ const AuthRoute = ({ children }) => {
   }
 
   return isAuthenticated ? children : <Navigate to="/login" />;
+};
+
+const AuthRedirect = ({ children }) => {
+  const { isAuthenticated, loading } = useAuth();
+  if (loading) return null;
+  return isAuthenticated ? <Navigate to="/dashboard" /> : children;
 };
 
 import PublicIDCard from './pages/PublicIDCard';
@@ -64,23 +84,45 @@ function App() {
                 {/* Public/View-Only Routes */}
                 <Route path="/view/id-card/:id" element={<PublicIDCard />} />
 
-                <Route path="/login" element={<Login />} />
+                <Route path="/login" element={
+                  <AuthRedirect>
+                    <Login />
+                  </AuthRedirect>
+                } />
+                <Route path="/signup" element={
+                  <AuthRedirect>
+                    <Signup />
+                  </AuthRedirect>
+                } />
                 <Route path="/forgot-password" element={<ForgotPassword />} />
                 <Route path="/reset-password/:token" element={<ResetPassword />} />
 
-                <Route path="/" element={
+                {/* Public Marketing Routes */}
+                <Route element={<PublicLayout />}>
+                  <Route path="/" element={<Home />} />
+                  <Route path="/demo" element={<Demo />} />
+                  <Route path="/features" element={<Features />} />
+                  <Route path="/pricing" element={<Pricing />} />
+                  <Route path="/about" element={<About />} />
+                  <Route path="/contact" element={<Contact />} />
+                  <Route path="/blog" element={<Blog />} />
+                  <Route path="/blog/:id" element={<BlogPost />} />
+                </Route>
+
+                {/* Protected Dashboard Routes */}
+                <Route element={
                   <AuthRoute>
                     <Layout />
                   </AuthRoute>
                 }>
-                  <Route index element={<Dashboard />} />
+                  <Route path="/dashboard" element={<Dashboard />} />
                   <Route path="departments" element={
-                    <ProtectedRoute allowedRoles={['admin', 'manager']}>
+                    <ProtectedRoute allowedRoles={['admin', 'manager']} allowedPermissions={['departments:read']}>
                       <Departments />
                     </ProtectedRoute>
                   } />
                   <Route path="employees" element={
-                    <ProtectedRoute allowedRoles={['admin', 'manager']}>
+                    <ProtectedRoute allowedRoles={['admin', 'manager']} allowedPermissions={['employees:read']}>
                       <Employees />
                     </ProtectedRoute>
                   } />
@@ -97,12 +139,12 @@ function App() {
                   <Route path="performance" element={<Performance />} />
                   <Route path="performance/review/:id" element={<PerformanceReview />} />
                   <Route path="performance/cycles" element={
-                    <ProtectedRoute allowedRoles={['admin']}>
+                    <ProtectedRoute allowedRoles={['admin']} allowedPermissions={['performance:update']}>
                       <PerformanceCycles />
                     </ProtectedRoute>
                   } />
                   <Route path="payroll" element={
-                    <ProtectedRoute allowedRoles={['admin', 'manager']}>
+                    <ProtectedRoute allowedRoles={['admin', 'manager']} allowedPermissions={['payroll:read']}>
                       <Payroll />
                     </ProtectedRoute>
                   } />
@@ -112,7 +154,7 @@ function App() {
                     </ProtectedRoute>
                   } />
                   <Route path="recruitment" element={
-                    <ProtectedRoute allowedRoles={['admin', 'manager']}>
+                    <ProtectedRoute allowedRoles={['admin', 'manager']} allowedPermissions={['recruitment:read']}>
                       <Recruitment />
                     </ProtectedRoute>
                   } />
@@ -124,43 +166,43 @@ function App() {
                   } />
                   <Route path="assets" element={<Assets />} />
                   <Route path="audit-logs" element={
-                    <ProtectedRoute allowedRoles={['admin']}>
+                    <ProtectedRoute allowedRoles={['admin']} allowedPermissions={['audit_logs:read']}>
                       <AuditLogs />
                     </ProtectedRoute>
                   } />
                   <Route path="chat" element={<Chat />} />
                   <Route path="reports" element={
-                    <ProtectedRoute allowedRoles={['admin', 'manager']}>
+                    <ProtectedRoute allowedRoles={['admin', 'manager']} allowedPermissions={['reports:read']}>
                       <Reports />
                     </ProtectedRoute>
                   } />
                   <Route path="reports/churn-risk" element={
-                    <ProtectedRoute allowedRoles={['admin']}>
+                    <ProtectedRoute allowedRoles={['admin']} allowedPermissions={['reports:read']}>
                       <ChurnRiskReport />
                     </ProtectedRoute>
                   } />
                   <Route path="live-activity" element={
-                    <ProtectedRoute allowedRoles={['admin', 'manager']}>
+                    <ProtectedRoute allowedRoles={['admin', 'manager']} allowedPermissions={['reports:read']}>
                       <LiveActivity />
                     </ProtectedRoute>
                   } />
                   <Route path="analytics" element={
-                    <ProtectedRoute allowedRoles={['admin', 'manager']}>
+                    <ProtectedRoute allowedRoles={['admin', 'manager']} allowedPermissions={['reports:read']}>
                       <Analytics />
                     </ProtectedRoute>
                   } />
                   <Route path="settings" element={
-                    <ProtectedRoute allowedRoles={['admin']}>
+                    <ProtectedRoute allowedRoles={['admin']} allowedPermissions={['settings:read']}>
                       <Settings />
                     </ProtectedRoute>
                   } />
                   <Route path="email-templates" element={
-                    <ProtectedRoute allowedRoles={['admin']}>
+                    <ProtectedRoute allowedRoles={['admin']} allowedPermissions={['settings:update']}>
                       <EmailTemplates />
                     </ProtectedRoute>
                   } />
                   <Route path="send-email" element={
-                    <ProtectedRoute allowedRoles={['admin', 'manager']}>
+                    <ProtectedRoute allowedRoles={['admin', 'manager']} allowedPermissions={['manage_settings']}>
                       <SendEmail />
                     </ProtectedRoute>
                   } />
@@ -169,12 +211,32 @@ function App() {
                       <SuperAdmin />
                     </SuperAdminRoute>
                   } />
+                  <Route path="super-admin/cms" element={
+                    <SuperAdminRoute>
+                      <CMSManager />
+                    </SuperAdminRoute>
+                  } />
+                  <Route path="super-admin/website-settings" element={
+                    <SuperAdminRoute>
+                      <WebsiteSettings />
+                    </SuperAdminRoute>
+                  } />
+                  <Route path="super-admin/demo-requests" element={
+                    <SuperAdminRoute>
+                      <DemoRequests />
+                    </SuperAdminRoute>
+                  } />
                   <Route path="profile" element={<Profile />} />
                   <Route path="org-chart" element={
                     <ProtectedRoute allowedRoles={['admin', 'manager', 'employee']}>
                       <OrgChart />
                     </ProtectedRoute>
                   } />
+                </Route>
+                
+                {/* Dynamic CMS Routes (Must be at the bottom of standard routes) */}
+                <Route element={<PublicLayout />}>
+                  <Route path="/:slug" element={<DynamicPage />} />
                 </Route>
               </Routes>
             </Router>

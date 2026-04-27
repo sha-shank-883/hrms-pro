@@ -143,37 +143,52 @@ app.get('/api/setup-db', async (req, res) => {
       ON CONFLICT (tenant_id) DO NOTHING
     `, [defaultTenantId, 'Default Company']);
 
-    // 3. Create Schema for Default Tenant
-    await client.query(`CREATE SCHEMA IF NOT EXISTS "${defaultTenantId}"`);
-
-    // 4. Run Tenant Schema SQL
+    // 4. Run Migration for ALL Tenants
+    const tenantsResult = await client.query('SELECT tenant_id FROM shared.tenants');
+    const tenants = tenantsResult.rows;
+    
     const tenantSchemaPath = path.join(__dirname, 'config/tenant_schema.sql');
-    if (fs.existsSync(tenantSchemaPath)) {
-      await client.query(`SET search_path TO "${defaultTenantId}"`);
-      const tenantSchemaSql = fs.readFileSync(tenantSchemaPath, 'utf8');
-      await client.query(tenantSchemaSql);
+    const hasTenantSchema = fs.existsSync(tenantSchemaPath);
+    const tenantSchemaSql = hasTenantSchema ? fs.readFileSync(tenantSchemaPath, 'utf8') : '';
 
-      // CRITICAL: Ensure permissions and security columns exist in the users table
-      // This fixes the "column u.permissions does not exist" error on live
-      await client.query(`
-        ALTER TABLE users 
-        ADD COLUMN IF NOT EXISTS permissions JSONB DEFAULT '[]'::jsonb,
-        ADD COLUMN IF NOT EXISTS is_two_factor_enabled BOOLEAN DEFAULT false,
-        ADD COLUMN IF NOT EXISTS two_factor_secret VARCHAR(255),
-        ADD COLUMN IF NOT EXISTS reset_token VARCHAR(255),
-        ADD COLUMN IF NOT EXISTS reset_token_expiry TIMESTAMP
-      `);
-      console.log('✅ Tenant users table schema verified (permissions/security columns).');
+    console.log(`🔄 Syncing schema for ${tenants.length} tenants...`);
 
-      // 5. Ensure Admin User Exists
-      await client.query(`
-        INSERT INTO users (email, password_hash, role) 
-        VALUES ('admin@hrmspro.com', '$2b$10$ZI0JCV5V.vT7b4sMK/FUA.xOFngGT9VQ64TK.ug4EvYwlda2FyTou', 'admin')
-        ON CONFLICT (email) DO NOTHING
-      `);
+    for (const tenant of tenants) {
+      const tId = tenant.tenant_id;
+      try {
+        console.log(`   - Syncing tenant: ${tId}`);
+        await client.query(`CREATE SCHEMA IF NOT EXISTS "${tId}"`);
+        await client.query(`SET search_path TO "${tId}"`);
+        
+        if (hasTenantSchema) {
+          await client.query(tenantSchemaSql);
+        }
+
+        // CRITICAL: Ensure permissions and security columns exist in the users table for THIS tenant
+        await client.query(`
+          ALTER TABLE users 
+          ADD COLUMN IF NOT EXISTS permissions JSONB DEFAULT '[]'::jsonb,
+          ADD COLUMN IF NOT EXISTS is_two_factor_enabled BOOLEAN DEFAULT false,
+          ADD COLUMN IF NOT EXISTS two_factor_secret VARCHAR(255),
+          ADD COLUMN IF NOT EXISTS reset_token VARCHAR(255),
+          ADD COLUMN IF NOT EXISTS reset_token_expiry TIMESTAMP
+        `);
+
+        // Ensure Admin User Exists for this tenant
+        await client.query(`
+          INSERT INTO users (email, password_hash, role) 
+          VALUES ('admin@hrmspro.com', '$2b$10$ZI0JCV5V.vT7b4sMK/FUA.xOFngGT9VQ64TK.ug4EvYwlda2FyTou', 'admin')
+          ON CONFLICT (email) DO NOTHING
+        `);
+      } catch (tenantError) {
+        console.error(`   ❌ Failed to sync tenant ${tId}:`, tenantError.message);
+      }
     }
 
-    res.json({ success: true, message: 'Database setup and schema synchronization completed successfully!' });
+    res.json({ 
+      success: true, 
+      message: `Database setup and schema synchronization completed for ${tenants.length} tenants!` 
+    });
   } catch (error) {
     console.error('Setup failed:', error);
     res.status(500).json({ success: false, error: error.message });

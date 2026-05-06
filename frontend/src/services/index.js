@@ -688,6 +688,21 @@ export const tenantService = {
       data: { twoFactorToken } // Keep body for backward compatibility if needed, but headers is primary fix
     });
     return response.data;
+  },
+
+  getBiometricDevices: async () => {
+    const response = await api.get('/tenants/biometric-devices/all');
+    return response.data;
+  },
+
+  registerBiometricDevice: async (data) => {
+    const response = await api.post('/tenants/biometric-devices/register', data);
+    return response.data;
+  },
+
+  deleteBiometricDevice: async (serialNumber) => {
+    const response = await api.delete(`/tenants/biometric-devices/${serialNumber}`);
+    return response.data;
   }
 };
 

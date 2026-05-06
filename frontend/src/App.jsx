@@ -33,6 +33,7 @@ import Onboarding from './pages/Onboarding';
 import Assets from './pages/Assets';
 import AuditLogs from './pages/AuditLogs';
 import SuperAdmin from './pages/SuperAdmin';
+import SuperAdminBiometrics from './pages/SuperAdminBiometrics';
 import CMSManager from './pages/CMSManager';
 import WebsiteSettings from './pages/WebsiteSettings';
 import DemoRequests from './pages/DemoRequests';
@@ -209,6 +210,11 @@ function App() {
                   <Route path="super-admin" element={
                     <SuperAdminRoute>
                       <SuperAdmin />
+                    </SuperAdminRoute>
+                  } />
+                  <Route path="super-admin/biometrics" element={
+                    <SuperAdminRoute>
+                      <SuperAdminBiometrics />
                     </SuperAdminRoute>
                   } />
                   <Route path="super-admin/cms" element={

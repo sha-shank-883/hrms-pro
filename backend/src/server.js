@@ -132,6 +132,16 @@ app.get('/api/setup-db', async (req, res) => {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
+
+      CREATE TABLE IF NOT EXISTS shared.biometric_devices (
+        id SERIAL PRIMARY KEY,
+        tenant_id VARCHAR(100) REFERENCES shared.tenants(tenant_id) ON DELETE CASCADE,
+        serial_number VARCHAR(255) UNIQUE NOT NULL,
+        brand VARCHAR(100),
+        status VARCHAR(50) DEFAULT 'active',
+        last_ping TIMESTAMP,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
     `);
 
     // Ensure at least one row exists in website_settings
@@ -181,8 +191,20 @@ app.get('/api/setup-db', async (req, res) => {
           ADD COLUMN IF NOT EXISTS is_two_factor_enabled BOOLEAN DEFAULT false,
           ADD COLUMN IF NOT EXISTS two_factor_secret VARCHAR(255),
           ADD COLUMN IF NOT EXISTS reset_token VARCHAR(255),
-          ADD COLUMN IF NOT EXISTS reset_token_expiry TIMESTAMP
+          ADD COLUMN IF NOT EXISTS reset_token_expiry TIMESTAMP,
+          ADD COLUMN IF NOT EXISTS biometric_id VARCHAR(100)
         `);
+
+        // Check if attendance exists and add columns if it does
+        try {
+          await client.query(`
+            ALTER TABLE attendance
+            ADD COLUMN IF NOT EXISTS device_serial VARCHAR(255),
+            ADD COLUMN IF NOT EXISTS punch_source VARCHAR(50) DEFAULT 'System'
+          `);
+        } catch (e) {
+            // table might not exist in old migrations, skip gracefully
+        }
 
         // Ensure Admin User Exists for this tenant
         await client.query(`
@@ -260,6 +282,7 @@ app.use('/api/search', searchRoutes);
 app.use('/api/cms', require('./routes/cmsRoutes'));
 app.use('/api/leads', require('./routes/leadRoutes'));
 app.use('/api/website-settings', require('./routes/websiteSettingsRoutes'));
+app.use('/api/webhooks/biometrics', express.text({ type: '*/*' }), require('./routes/biometricRoutes'));
 
 const connectedUsers = new Map(); // userId -> Set of socketIds
 

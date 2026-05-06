@@ -260,4 +260,65 @@ const deleteTenant = async (req, res) => {
     }
 };
 
-module.exports = { createTenant, getAllTenants, updateTenant, resetTenantAdminPassword, deleteTenant };
+const getBiometricDevices = async (req, res) => {
+    try {
+        const result = await pool.query(`
+            SELECT bd.id, bd.tenant_id, bd.serial_number, bd.brand, bd.status, bd.last_ping, bd.created_at, t.name as tenant_name
+            FROM shared.biometric_devices bd
+            LEFT JOIN shared.tenants t ON bd.tenant_id = t.tenant_id
+            ORDER BY bd.created_at DESC
+        `);
+        res.json(result.rows);
+    } catch (error) {
+        console.error('Error fetching biometric devices:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+};
+
+const registerBiometricDevice = async (req, res) => {
+    try {
+        const { tenantId, serialNumber, brand } = req.body;
+
+        if (!tenantId || !serialNumber || !brand) {
+            return res.status(400).json({ error: 'Tenant ID, Serial Number, and Brand are required' });
+        }
+
+        const result = await pool.query(
+            `INSERT INTO shared.biometric_devices (tenant_id, serial_number, brand) 
+             VALUES ($1, $2, $3) RETURNING *`,
+            [tenantId, serialNumber, brand]
+        );
+
+        res.status(201).json({ message: 'Device registered successfully', device: result.rows[0] });
+    } catch (error) {
+        console.error('Error registering biometric device:', error);
+        if (error.code === '23505') { // Unique violation
+            return res.status(400).json({ error: 'Device serial number already registered' });
+        }
+        res.status(500).json({ error: 'Internal server error' });
+    }
+};
+
+const deleteBiometricDevice = async (req, res) => {
+    try {
+        const { serialNumber } = req.params;
+        const result = await pool.query(
+            `DELETE FROM shared.biometric_devices WHERE serial_number = $1 RETURNING id`,
+            [serialNumber]
+        );
+
+        if (result.rowCount === 0) {
+            return res.status(404).json({ error: 'Device not found' });
+        }
+
+        res.json({ message: 'Device deleted successfully' });
+    } catch (error) {
+        console.error('Error deleting biometric device:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+};
+
+module.exports = { 
+    createTenant, getAllTenants, updateTenant, resetTenantAdminPassword, deleteTenant,
+    getBiometricDevices, registerBiometricDevice, deleteBiometricDevice 
+};

@@ -321,6 +321,7 @@ const Layout = () => {
               <NavItem to="/super-admin/website-settings" icon={<FaPalette />} label="Website Settings" />
               <NavItem to="/super-admin/cms" icon={<FaFileAlt />} label="Website CMS" />
               <NavItem to="/super-admin/demo-requests" icon={<FaUsers />} label="Demo Accounts" />
+              <NavItem to="/super-admin/biometrics" icon={<FaBolt />} label="Biometric Devices" />
             </>
           )}
           

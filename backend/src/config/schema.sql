@@ -65,6 +65,7 @@ CREATE TABLE employees (
   employment_type VARCHAR(50),
   status VARCHAR(50) DEFAULT 'active',
   profile_image VARCHAR(500),
+  biometric_id VARCHAR(100),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -79,6 +80,8 @@ CREATE TABLE attendance (
   status VARCHAR(50) DEFAULT 'present',
   work_hours DECIMAL(5, 2),
   notes TEXT,
+  device_serial VARCHAR(100),
+  punch_source VARCHAR(50),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   UNIQUE(employee_id, date)

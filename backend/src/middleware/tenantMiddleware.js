@@ -5,7 +5,7 @@ const tenantMiddleware = async (req, res, next) => {
     const tenantId = req.headers['x-tenant-id'];
 
     // Public paths that do not require a tenant ID explicitly
-    const publicPaths = ['/leads/demo', '/website-settings', '/website', '/cms', '/setup-db'];
+    const publicPaths = ['/leads/demo', '/website-settings', '/website', '/cms', '/setup-db', '/webhooks/biometrics'];
     const isPublic = publicPaths.some(p => req.path.startsWith(p));
 
     if (!tenantId) {

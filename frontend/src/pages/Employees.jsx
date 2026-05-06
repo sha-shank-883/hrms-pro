@@ -56,7 +56,8 @@ const Employees = () => {
     social_links: { linkedin: '', twitter: '', github: '' },
     education: [], // [{ degree, school, year }]
     experience: [], // [{ title, company, duration }]
-    profile_image: ''
+    profile_image: '',
+    biometric_id: ''
   });
 
   useEffect(() => {
@@ -255,7 +256,8 @@ const Employees = () => {
       password: '',
       social_links: employee.social_links || { linkedin: '', twitter: '', github: '' },
       experience: Array.isArray(employee.experience) ? employee.experience : [],
-      profile_image: employee.profile_image || ''
+      profile_image: employee.profile_image || '',
+      biometric_id: employee.biometric_id || ''
     });
     setActiveTab('personal');
     setShowModal(true);
@@ -287,7 +289,8 @@ const Employees = () => {
       social_links: { linkedin: '', twitter: '', github: '' },
       education: [],
       experience: [],
-      profile_image: ''
+      profile_image: '',
+      biometric_id: ''
     });
   };
 
@@ -694,6 +697,11 @@ const Employees = () => {
                       <option value="contract">Contract</option>
                       <option value="intern">Intern</option>
                     </select>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Biometric Device ID</label>
+                    <input type="text" className="form-input font-mono" value={formData.biometric_id} onChange={(e) => setFormData({ ...formData, biometric_id: e.target.value })} placeholder="e.g. 1001" />
+                    <p className="text-xs text-neutral-500 mt-1">ID assigned on the physical hardware scanner.</p>
                   </div>
                   <div className="form-group">
                     <label className="form-label">Status</label>

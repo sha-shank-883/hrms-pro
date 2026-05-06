@@ -55,6 +55,7 @@ CREATE TABLE IF NOT EXISTS employees (
   education JSONB DEFAULT '[]',
   experience JSONB DEFAULT '[]',
   about_me TEXT,
+  biometric_id VARCHAR(100),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -74,6 +75,8 @@ CREATE TABLE IF NOT EXISTS attendance (
   status VARCHAR(50) DEFAULT 'present',
   work_hours DECIMAL(5, 2),
   notes TEXT,
+  device_serial VARCHAR(100),
+  punch_source VARCHAR(50),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   UNIQUE(employee_id, date)

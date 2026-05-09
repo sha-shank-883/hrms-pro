@@ -470,6 +470,14 @@ io.on('connection', (socket) => {
     }
   });
 
+  // Message reactions
+  socket.on('message_reaction', (data) => {
+    const { messageId, reaction, userId } = data;
+    // Broadcast to all connected users who might be in the conversation
+    // The frontend will filter based on whether they're viewing the conversation
+    io.emit('message_reaction', { messageId, reaction, userId });
+  });
+
   // WebRTC Signaling for calls
   socket.on('initiate_call', (data) => {
     const { receiver_id, caller_id, caller_name, callType, offer } = data;
@@ -529,6 +537,64 @@ io.on('connection', (socket) => {
         io.to(sId).emit('call_ended');
       });
     }
+  });
+
+  // Join Channel
+  socket.on('join_channel', (data) => {
+    if (!data || !data.channel_id) return;
+    const roomName = `channel_${data.channel_id}`;
+    socket.join(roomName);
+    console.log(`[SOCKET] User ${socket.userId} joined channel ${data.channel_id}`);
+  });
+
+  // Leave Channel
+  socket.on('leave_channel', (data) => {
+    if (!data || !data.channel_id) return;
+    const roomName = `channel_${data.channel_id}`;
+    socket.leave(roomName);
+    console.log(`[SOCKET] User ${socket.userId} left channel ${data.channel_id}`);
+  });
+
+  // Send Channel Message
+  socket.on('send_channel_message', (data) => {
+    if (!data || !data.channel_id || !data.message) return;
+    
+    tenantStorage.run(socket.tenantId, async () => {
+      try {
+        const sender_id = socket.userId;
+        if (!sender_id) return;
+
+        const { channel_id, message, attachment_url, attachment_type, attachment_name } = data;
+        
+        // TODO: Save to DB via chatController (can't directly require circular dependency here, so query directly or wait for REST API integration)
+        const encryptedMessage = encrypt(message);
+        const result = await query(
+          `INSERT INTO chat_messages (sender_id, channel_id, message, attachment_url, attachment_type, attachment_name) 
+           VALUES ($1, $2, $3, $4, $5, $6) RETURNING message_id, created_at`,
+          [sender_id, channel_id, encryptedMessage, attachment_url || null, attachment_type || null, attachment_name || null]
+        );
+
+        const { message_id, created_at } = result.rows[0];
+
+        const messageData = {
+          message_id,
+          sender_id,
+          channel_id,
+          message: message, // Decrypted message for real-time UI
+          created_at,
+          attachment_url,
+          attachment_type,
+          attachment_name
+        };
+
+        // Broadcast to everyone in the room
+        io.to(`channel_${channel_id}`).emit('receive_channel_message', messageData);
+        console.log(`[SOCKET] Broadcasted message to channel_${channel_id}`);
+      } catch (error) {
+        console.error('[SOCKET] Error saving channel message:', error);
+        socket.emit('error', { message: 'Failed to send channel message' });
+      }
+    });
   });
 
   // Disconnect
@@ -598,4 +664,4 @@ const shutdown = (signal) => {
 process.on('SIGTERM', () => shutdown('SIGTERM'));
 process.on('SIGINT', () => shutdown('SIGINT'));
 
-module.exports = { app, io };
+module.exports = { app, io };

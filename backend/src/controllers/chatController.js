@@ -296,6 +296,201 @@ const deleteConversation = async (req, res) => {
   }
 };
 
+// Add reaction to message
+const addReaction = async (req, res) => {
+  try {
+    const { message_id, reaction } = req.body;
+    const userId = req.user.userId;
+
+    // First check if message exists and user can access it
+    const messageCheck = await query(
+      'SELECT * FROM chat_messages WHERE message_id = $1 AND (sender_id = $2 OR receiver_id = $2)',
+      [message_id, userId]
+    );
+
+    if (messageCheck.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Message not found or unauthorized',
+      });
+    }
+
+    // Insert or update reaction
+    const result = await query(
+      `INSERT INTO message_reactions (message_id, user_id, reaction, created_at)
+       VALUES ($1, $2, $3, NOW())
+       ON CONFLICT (message_id, user_id)
+       DO UPDATE SET reaction = EXCLUDED.reaction, created_at = NOW()
+       RETURNING *`,
+      [message_id, userId, reaction]
+    );
+
+    // Emit socket event for real-time updates
+    const io = req.app.get('io');
+    if (io) {
+      const message = messageCheck.rows[0];
+      const receiverId = message.sender_id === userId ? message.receiver_id : message.sender_id;
+      const receiverSockets = req.app.get('connectedUsers')?.get(receiverId);
+
+      if (receiverSockets) {
+        receiverSockets.forEach(socketId => {
+          io.to(socketId).emit('message_reaction', {
+            messageId: message_id,
+            reaction,
+            userId
+          });
+        });
+      }
+    }
+
+    res.json({
+      success: true,
+      message: 'Reaction added successfully',
+      data: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Add reaction error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to add reaction',
+      error: error.message,
+    });
+  }
+};
+
+// Create a new channel
+const createChannel = async (req, res) => {
+  try {
+    const { name, description, is_private, type = 'group' } = req.body;
+    const userId = req.user.userId;
+
+    const result = await query(
+      `INSERT INTO chat_channels (name, description, is_private, type, created_by)
+       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+      [name, description, is_private || false, type, userId]
+    );
+    const channel = result.rows[0];
+
+    // Add creator to participants
+    await query(
+      `INSERT INTO chat_participants (channel_id, user_id, role)
+       VALUES ($1, $2, 'admin')`,
+      [channel.id, userId]
+    );
+
+    res.status(201).json({ success: true, data: channel });
+  } catch (error) {
+    console.error('Create channel error:', error);
+    res.status(500).json({ success: false, message: 'Failed to create channel' });
+  }
+};
+
+// Get channels for user
+const getChannels = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+
+    // Get public channels + private channels the user is a part of
+    const result = await query(`
+      SELECT c.*, 
+             (SELECT COUNT(*) FROM chat_participants cp WHERE cp.channel_id = c.id) as participant_count,
+             CASE WHEN cp2.user_id IS NOT NULL THEN true ELSE false END as is_joined
+      FROM chat_channels c
+      LEFT JOIN chat_participants cp2 ON c.id = cp2.channel_id AND cp2.user_id = $1
+      WHERE c.is_private = false OR cp2.user_id IS NOT NULL
+      ORDER BY c.created_at DESC
+    `, [userId]);
+
+    res.json({ success: true, data: result.rows });
+  } catch (error) {
+    console.error('Get channels error:', error);
+    res.status(500).json({ success: false, message: 'Failed to get channels' });
+  }
+};
+
+// Join channel
+const joinChannel = async (req, res) => {
+  try {
+    const { id: channelId } = req.params;
+    const userId = req.user.userId;
+
+    // Check if channel exists and is public
+    const channelRes = await query(`SELECT * FROM chat_channels WHERE id = $1`, [channelId]);
+    if (channelRes.rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Channel not found' });
+    }
+    const channel = channelRes.rows[0];
+
+    if (channel.is_private) {
+      return res.status(403).json({ success: false, message: 'Cannot join private channel' });
+    }
+
+    await query(
+      `INSERT INTO chat_participants (channel_id, user_id, role)
+       VALUES ($1, $2, 'member') ON CONFLICT DO NOTHING`,
+      [channelId, userId]
+    );
+
+    res.json({ success: true, message: 'Joined channel successfully' });
+  } catch (error) {
+    console.error('Join channel error:', error);
+    res.status(500).json({ success: false, message: 'Failed to join channel' });
+  }
+};
+
+// Get channel messages
+const getChannelMessages = async (req, res) => {
+  try {
+    const { id: channelId } = req.params;
+    const { page = 1, limit = 20 } = req.query;
+    const userId = req.user.userId;
+
+    // Verify user is a participant
+    const partRes = await query(`SELECT * FROM chat_participants WHERE channel_id = $1 AND user_id = $2`, [channelId, userId]);
+    if (partRes.rows.length === 0) {
+      return res.status(403).json({ success: false, message: 'Not a participant of this channel' });
+    }
+
+    const pageNum = Math.max(1, parseInt(page) || 1);
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit) || 20));
+    const offset = (pageNum - 1) * limitNum;
+
+    const queryText = `
+      SELECT cm.*, 
+             us.email as sender_email
+      FROM chat_messages cm
+      JOIN users us ON cm.sender_id = us.user_id
+      WHERE cm.channel_id = $1
+      ORDER BY cm.created_at DESC
+      LIMIT $2 OFFSET $3
+    `;
+    const result = await query(queryText, [channelId, limitNum, offset]);
+
+    const countRes = await query(`SELECT COUNT(*) FROM chat_messages WHERE channel_id = $1`, [channelId]);
+    const total = parseInt(countRes.rows[0].count);
+
+    const decryptedRows = result.rows.map(row => ({
+      ...row,
+      message: decrypt(row.message)
+    }));
+
+    decryptedRows.reverse();
+
+    res.json({
+      success: true,
+      data: decryptedRows,
+      pagination: {
+        currentPage: pageNum,
+        totalItems: total,
+        totalPages: Math.ceil(total / limitNum)
+      }
+    });
+  } catch (error) {
+    console.error('Get channel messages error:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch messages' });
+  }
+};
+
 module.exports = {
   getMessages,
   sendMessage,
@@ -303,5 +498,10 @@ module.exports = {
   getUnreadCount,
   getConversations,
   deleteMessage,
-  deleteConversation
+  deleteConversation,
+  addReaction,
+  createChannel,
+  getChannels,
+  joinChannel,
+  getChannelMessages
 };

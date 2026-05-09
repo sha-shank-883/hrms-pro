@@ -1,8 +1,8 @@
 # Project Roadmap
 
-## Phase 1: Communication Architecture & Data Models
+## ~~Phase 1: Communication Architecture & Data Models~~
 **Goal:** Implement the database tables, API routes, and Socket.IO boilerplate for 1-on-1 and group messaging.
-**Status:** pending
+**Status:** complete
 **Dependencies:** none
 **Requirements:** REQ-01, REQ-02
 

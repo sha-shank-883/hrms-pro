@@ -1,51 +1,89 @@
-import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, ScrollView, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ActivityIndicator, StatusBar } from 'react-native';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
+import { 
+  View, Text, TouchableOpacity, KeyboardAvoidingView, Platform, 
+  ActivityIndicator, StatusBar, Dimensions, StyleSheet, FlatList, 
+  ImageBackground, Image 
+} from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../context/AuthContext';
 import { useChat } from '../context/ChatContext';
 import { useTheme } from '../context/ThemeContext';
+import { useAppConfig } from '../context/AppConfigContext';
 import { chatService, employeeService } from '../api';
+import * as Clipboard from 'expo-clipboard';
+import { format, isToday, isYesterday, isSameDay } from 'date-fns';
+import Animated, { 
+  FadeIn, FadeInUp, SlideInDown, Layout
+} from 'react-native-reanimated';
 import { 
-  Send, Search, Zap, ArrowLeft, MoreVertical, Paperclip, CheckCheck, Users
+  ArrowLeft, MoreVertical, Search, ShieldAlert, Phone, Video, X, 
+  Reply as ReplyIcon, Copy, Star, Trash2, Users, User, CheckCheck, Camera 
 } from 'lucide-react-native';
-import { styled } from 'nativewind';
-import Animated, { FadeInUp, SlideInRight } from 'react-native-reanimated';
-import { PremiumCard } from '../components/ui/DesignSystem';
+import { cryptoUtils } from '../utils/crypto';
 
-const StyledView = styled(View);
-const StyledText = styled(Text);
-const StyledTouchableOpacity = styled(TouchableOpacity);
-const StyledScrollView = styled(ScrollView);
-const StyledTextInput = styled(TextInput);
-const StyledAnimatedView = styled(Animated.View);
-const StyledSafeAreaView = styled(SafeAreaView);
-const StyledKeyboardAvoidingView = styled(KeyboardAvoidingView);
+import { MessageBubble } from '../components/chat/MessageBubble';
+import { ChatInput } from '../components/chat/ChatInput';
+import { ChatListItem } from '../components/chat/ChatListItem';
+
+const { width } = Dimensions.get('window');
 
 export default function ChatScreen() {
-  const { user } = useAuth();
-  const { socket, onlineUsers } = useChat();
   const theme = useTheme();
-  
-  const [activeTab, setActiveTab] = useState<'direct' | 'channels'>('direct');
-  const [conversations, setConversations] = useState<any[]>([]);
-  const [channels, setChannels] = useState<any[]>([]);
-  const [employees, setEmployees] = useState<any[]>([]);
-  
-  const [selectedChat, setSelectedChat] = useState<any>(null); // can be user or channel
-  const [messages, setMessages] = useState<any[]>([]);
-  const [newMessage, setNewMessage] = useState('');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [loading, setLoading] = useState(true);
-  
-  const scrollViewRef = useRef<any>(null);
-  const selectedChatRef = useRef<any>(null);
+  const { colors } = theme;
+  const isDark = theme.mode === 'dark';
 
-  const getContactId = (contact: any) => contact.other_user_id || contact.user_id || contact.employee_id || contact.id;
-  const getContactName = (contact: any) => {
+  const { user } = useAuth();
+  const { isFeatureEnabled, loading: configLoading } = useAppConfig();
+  const { socket, onlineUsers, typingUsers, sendTyping, sendStopTyping, reactToMessage } = useChat();
+  const navigation = useNavigation();
+
+  const [activeTab, setActiveTab] = useState('direct'); // 'direct' | 'channels'
+  const [conversations, setConversations] = useState<Record<string, any>[]>([]);
+  const [channels, setChannels] = useState<Record<string, any>[]>([]);
+  const [employees, setEmployees] = useState<Record<string, any>[]>([]);
+  
+  const [selectedChat, setSelectedChat] = useState<Record<string, any> | null>(null);
+  const [messages, setMessages] = useState<Record<string, any>[]>([]);
+  const [newMessage, setNewMessage] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [selectedMessage, setSelectedMessage] = useState<Record<string, any> | null>(null);
+  const [showOptions, setShowOptions] = useState(false);
+  const [replyTo, setReplyTo] = useState<Record<string, any> | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingDuration, setRecordingDuration] = useState(0);
+  
+  const scrollViewRef = useRef<FlatList<Record<string, any>>>(null);
+  const selectedChatRef = useRef<Record<string, any> | null>(null);
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const getCurrentUserId = () => {
+    const v = user?.user_id || user?.id;
+    return v ? String(v) : null;
+  };
+
+  const isMessageMine = (msg: { sender_id?: string | number } | null) => {
+    const myId = getCurrentUserId();
+    if (!myId || !msg?.sender_id) return false;
+    return String(msg.sender_id) === myId;
+  };
+
+  const getContactId = (contact: Record<string, any> | null) => {
+    if (!contact) return null;
+    if (contact.is_channel) return contact.id;
+    return contact.other_user_id || contact.user_id || contact.employee_id || contact.id;
+  };
+  
+  const getContactName = (contact: Record<string, any> | null) => {
+    if (!contact) return '';
+    if (contact.is_channel) return contact.name || 'Group';
     if (contact.other_user_first_name || contact.other_user_last_name) {
       return `${contact.other_user_first_name || ''} ${contact.other_user_last_name || ''}`.trim() || 'Colleague';
     }
-    return `${contact.first_name || ''} ${contact.last_name || ''}`.trim() || 'Colleague';
+    if (contact.first_name || contact.last_name) {
+      return `${contact.first_name || ''} ${contact.last_name || ''}`.trim() || 'Colleague';
+    }
+    return contact.full_name || 'Colleague';
   };
 
   useEffect(() => {
@@ -58,282 +96,366 @@ export default function ChatScreen() {
       const [empRes, convRes, chanRes] = await Promise.all([
         employeeService.getEmployeesForChat().catch(() => ({ data: { data: [] } })),
         chatService.getConversations().catch(() => ({ data: { data: [] } })),
-        chatService.getChannels().catch(() => ({ data: { data: [] } })),
+        chatService.getChannels().catch(() => ({ data: { data: [] } }))
       ]);
-      setEmployees(empRes.data.data || []);
+      setEmployees(empRes.data?.data || []);
       setConversations(convRes.data?.data || []);
       setChannels(chanRes.data?.data || []);
     } catch (error) {
-      console.log('Chat load failure:', error);
+      console.log('Error loading chat lists', error);
     } finally {
       setLoading(false);
     }
+  };
+
+  const tryDecrypt = (msg: string | null | undefined) => { 
+    if (!msg) return '';
+    try { 
+      const d = cryptoUtils.decrypt(msg); 
+      return d || msg; 
+    } catch { return msg; } 
   };
 
   useEffect(() => {
     if (!socket) return;
 
-    const handleReceiveMessage = (message: any) => {
-      const currentChat = selectedChatRef.current;
-      if (!currentChat) return;
-      
-      // If it's a direct message and we are in this direct chat
-      if (!currentChat.is_channel) {
-        const contactId = getContactId(currentChat);
-        if (parseInt(message.sender_id) === parseInt(contactId) || parseInt(message.receiver_id) === parseInt(contactId)) {
-          setMessages(prev => [...prev, message]);
-          setTimeout(() => scrollViewRef.current?.scrollToEnd({ animated: true }), 100);
-        }
+    const onReceive = (msg: Record<string, any>) => {
+      const contactId = getContactId(selectedChatRef.current);
+      if (contactId && String(msg.sender_id) === String(contactId)) {
+        setMessages(prev => {
+          // Deduplicate by message_id
+          if (msg.message_id && prev.some(m => m.message_id === msg.message_id)) return prev;
+          return [...prev, { ...msg, message: tryDecrypt(msg.message) }];
+        });
+        socket.emit('messages_read', { sender_id: msg.sender_id });
       }
+      loadLists();
     };
 
-    const handleReceiveChannelMessage = (message: any) => {
-      const currentChat = selectedChatRef.current;
-      if (!currentChat) return;
+    const onChannelReceive = (msg: Record<string, any>) => {
+      if (selectedChatRef.current?.is_channel && String(msg.channel_id) === String(selectedChatRef.current.id)) {
+        setMessages(prev => {
+          // Check if we already have this message (either by message_id or by temp_id if it's our own)
+          if (msg.message_id && prev.some(m => m.message_id === msg.message_id)) return prev;
+          
+          // If it's our own message coming back from the server, replace the temp one
+          const myId = getCurrentUserId();
+          if (String(msg.sender_id) === myId) {
+            const tempIndex = prev.findLastIndex(m => m.status === 'sending' && m.message === tryDecrypt(msg.message));
+            if (tempIndex !== -1) {
+              const newMsgs = [...prev];
+              newMsgs[tempIndex] = { ...msg, message: tryDecrypt(msg.message), status: 'sent' };
+              return newMsgs;
+            }
+          }
 
-      // If it's a channel message and we are in this channel
-      if (currentChat.is_channel && parseInt(message.channel_id) === parseInt(currentChat.id)) {
-        setMessages(prev => [...prev, message]);
-        setTimeout(() => scrollViewRef.current?.scrollToEnd({ animated: true }), 100);
+          return [...prev, { ...msg, message: tryDecrypt(msg.message) }];
+        });
       }
+      loadLists();
     };
 
-    socket.on('receive_message', handleReceiveMessage);
-    socket.on('receive_channel_message', handleReceiveChannelMessage);
+    socket.on('receive_message', onReceive);
+    socket.on('receive_channel_message', onChannelReceive);
 
     return () => {
-      socket.off('receive_message', handleReceiveMessage);
-      socket.off('receive_channel_message', handleReceiveChannelMessage);
+      socket.off('receive_message', onReceive);
+      socket.off('receive_channel_message', onChannelReceive);
     };
   }, [socket]);
 
-  const selectDirectChat = async (contact: any) => {
-    setSelectedChat({ ...contact, is_channel: false });
-    selectedChatRef.current = { ...contact, is_channel: false };
+  const selectChat = async (chat: Record<string, any>, isChannel = false) => {
+    const fullChat = { ...chat, is_channel: isChannel };
+    setSelectedChat(fullChat);
+    selectedChatRef.current = fullChat;
     setLoading(true);
+    setMessages([]);
+    
     try {
-      const { data } = await chatService.getMessages(getContactId(contact), { limit: 50 });
-      setMessages(data.data || []);
-      setTimeout(() => scrollViewRef.current?.scrollToEnd({ animated: false }), 100);
-    } catch (error) {
-      console.log('Message sync failed:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const selectChannel = async (channel: any) => {
-    setSelectedChat({ ...channel, is_channel: true });
-    selectedChatRef.current = { ...channel, is_channel: true };
-    setLoading(true);
-    try {
-      await chatService.joinChannel(channel.id);
-      if (socket) {
-        socket.emit('join_channel', channel.id);
+      let res;
+      if (isChannel) {
+        res = await chatService.getChannelMessages(chat.id);
+      } else {
+        res = await chatService.getMessages(getContactId(chat));
+        socket?.emit('messages_read', { sender_id: getContactId(chat) });
       }
-      const { data } = await chatService.getChannelMessages(channel.id, { limit: 50 });
-      setMessages(data.data || []);
-      setTimeout(() => scrollViewRef.current?.scrollToEnd({ animated: false }), 100);
+      const msgs = ((res.data?.data || []) as Record<string, any>[]).map((m: Record<string, any>) => ({ ...m, message: tryDecrypt(m.message as string) }));
+      setMessages(msgs);
     } catch (error) {
-      console.log('Channel sync failed:', error);
+      console.log('Error fetching messages', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSendMessage = () => {
+  const handleSend = async () => {
     if (!newMessage.trim() || !selectedChat || !socket) return;
     
+    const content = newMessage.trim();
+    const encrypted = cryptoUtils.encrypt(content);
+    const tempId = `temp_${Date.now()}`;
+    const myId = getCurrentUserId();
+    
+    const baseMsg = {
+      message: content,
+      sender_id: myId,
+      created_at: new Date().toISOString(),
+      temp_id: tempId,
+      reply_to: replyTo,
+      status: 'sending'
+    };
+
     if (selectedChat.is_channel) {
-      const msgPayload = { channel_id: selectedChat.id, message: newMessage.trim() };
-      socket.emit('send_channel_message', msgPayload);
-      
-      const tempMsg = { ...msgPayload, sender_id: user.userId || user.id, created_at: new Date().toISOString() };
-      setMessages(prev => [...prev, tempMsg]);
+      socket.emit('send_channel_message', { channel_id: selectedChat.id, message: encrypted, reply_to_id: replyTo?.message_id });
+      setMessages(prev => [...prev, { ...baseMsg, channel_id: selectedChat.id }]);
     } else {
-      const msgPayload = { receiver_id: getContactId(selectedChat), message: newMessage.trim() };
-      socket.emit('send_message', msgPayload);
-      
-      const tempMsg = { ...msgPayload, sender_id: user.userId || user.id, created_at: new Date().toISOString() };
-      setMessages(prev => [...prev, tempMsg]);
+      socket.emit('send_message', { receiver_id: getContactId(selectedChat), message: encrypted, reply_to_id: replyTo?.message_id });
+      setMessages(prev => [...prev, { ...baseMsg, receiver_id: getContactId(selectedChat) }]);
+      sendStopTyping(getContactId(selectedChat));
     }
 
     setNewMessage('');
-    setTimeout(() => scrollViewRef.current?.scrollToEnd({ animated: true }), 100);
+    setReplyTo(null);
   };
 
-  return (
-    <StyledSafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }} edges={['top']}>
-      <StatusBar barStyle="light-content" />
+  const isUserTyping = () => {
+    const contactId = getContactId(selectedChat);
+    return typingUsers[contactId]?.length > 0;
+  };
+
+  const renderDateSeparator = (dateString: string) => {
+    const date = new Date(dateString);
+    let label = format(date, 'd MMMM yyyy');
+    if (isToday(date)) label = 'TODAY';
+    else if (isYesterday(date)) label = 'YESTERDAY';
+
+    return (
+      <View style={styles.dateSeparator}>
+        <View style={[styles.dateBadge, { backgroundColor: isDark ? 'rgba(30, 41, 59, 0.9)' : 'rgba(255, 255, 255, 0.9)' }]}>
+          <Text style={[styles.dateText, { color: colors.subtext }]}>{label}</Text>
+        </View>
+      </View>
+    );
+  };
+
+  const groupedMessages = useMemo(() => {
+    const groups: (Record<string, any>)[] = [];
+    messages.forEach((msg, idx) => {
+      const showDate = idx === 0 || !isSameDay(new Date(messages[idx-1].created_at), new Date(msg.created_at));
+      if (showDate) groups.push({ type: 'date', date: msg.created_at, id: `date_${msg.created_at}_${idx}` });
       
+      // Ensure absolute uniqueness in the flattened list by combining original ID with type and index
+      const msgId = msg.message_id || msg.temp_id || `temp_msg_${idx}`;
+      groups.push({ ...msg, type: 'message', id: `msg_${msgId}_${idx}` });
+    });
+    return groups;
+  }, [messages]);
+
+  if (!configLoading && !isFeatureEnabled?.('enableChat')) {
+    return (
+      <View style={[styles.centered, { backgroundColor: colors.background }]}>
+        <ShieldAlert size={64} color={colors.primary} />
+        <Text style={[styles.errorTitle, { color: colors.text }]}>Communication Restricted</Text>
+        <Text style={{ color: colors.subtext, marginTop: 10 }}>Contact Admin for access.</Text>
+      </View>
+    );
+  }
+
+  return (
+    <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]} edges={['top']}>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={colors.background} />
+
       {!selectedChat ? (
-        <StyledView className="flex-1">
-          <StyledView style={{ backgroundColor: theme.colors.primary, padding: 24, paddingTop: 30, borderBottomLeftRadius: 40, borderBottomRightRadius: 40 }}>
-            <StyledView className="flex-row justify-between items-center mb-6">
-               <StyledView>
-                  <StyledText className="text-3xl font-black text-white">Comms Hub</StyledText>
-                  <StyledText className="text-white/60 font-bold text-xs uppercase tracking-widest mt-1">Secure Network</StyledText>
-               </StyledView>
-               <StyledView className="bg-white/20 p-3 rounded-2xl">
-                  <Zap size={24} color="#fff" />
-               </StyledView>
-            </StyledView>
+        <Animated.View entering={FadeIn} style={styles.listContainer}>
+          <View style={styles.listHeader}>
+            <View style={styles.headerTop}>
+              <Text style={[styles.listTitle, { color: colors.text }]}>HRMS Connect</Text>
+              <View style={styles.listIcons}>
+                <TouchableOpacity style={styles.iconBtn}><Camera size={22} color={colors.text} /></TouchableOpacity>
+                <TouchableOpacity style={styles.iconBtn}><Search size={22} color={colors.text} /></TouchableOpacity>
+                <TouchableOpacity style={styles.iconBtn}><MoreVertical size={22} color={colors.text} /></TouchableOpacity>
+              </View>
+            </View>
+            
+            <View style={styles.tabBar}>
+              <TouchableOpacity onPress={() => setActiveTab('direct')} style={styles.tab}>
+                <Text style={[styles.tabText, { color: activeTab === 'direct' ? colors.primary : colors.subtext, fontWeight: activeTab === 'direct' ? 'bold' : '500' }]}>CHATS</Text>
+                {activeTab === 'direct' && <Animated.View layout={Layout} style={[styles.activeTabLine, { backgroundColor: colors.primary }]} />}
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => setActiveTab('channels')} style={styles.tab}>
+                <Text style={[styles.tabText, { color: activeTab === 'channels' ? colors.primary : colors.subtext, fontWeight: activeTab === 'channels' ? 'bold' : '500' }]}>GROUPS</Text>
+                {activeTab === 'channels' && <Animated.View layout={Layout} style={[styles.activeTabLine, { backgroundColor: colors.primary }]} />}
+              </TouchableOpacity>
+            </View>
+          </View>
 
-            {/* Segmented Control */}
-            <StyledView className="flex-row bg-white/10 rounded-2xl p-1 mb-4">
-              <StyledTouchableOpacity 
-                className={`flex-1 py-2 rounded-xl items-center ${activeTab === 'direct' ? 'bg-white/20' : ''}`}
-                onPress={() => setActiveTab('direct')}
-              >
-                <StyledText className="text-white font-bold text-xs uppercase tracking-wider">Direct</StyledText>
-              </StyledTouchableOpacity>
-              <StyledTouchableOpacity 
-                className={`flex-1 py-2 rounded-xl items-center ${activeTab === 'channels' ? 'bg-white/20' : ''}`}
-                onPress={() => setActiveTab('channels')}
-              >
-                <StyledText className="text-white font-bold text-xs uppercase tracking-wider">Channels</StyledText>
-              </StyledTouchableOpacity>
-            </StyledView>
-
-            <StyledView className="bg-white/10 rounded-2xl px-4 py-3 flex-row items-center border border-white/20 mb-2">
-              <Search size={18} color="#fff" />
-              <StyledTextInput 
-                className="flex-1 ml-3 text-white font-bold"
-                placeholder="Search..."
-                placeholderTextColor="rgba(255,255,255,0.5)"
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-              />
-            </StyledView>
-          </StyledView>
-
-          {loading ? (
-            <StyledView className="flex-1 justify-center items-center">
-              <ActivityIndicator size="large" color={theme.colors.primary} />
-            </StyledView>
+          {loading && conversations.length === 0 ? (
+            <ActivityIndicator style={{ marginTop: 20 }} color={colors.primary} />
           ) : (
-            <StyledScrollView className="flex-1 px-6 pt-10" showsVerticalScrollIndicator={false}>
-               <StyledView className="flex-row items-center mb-6">
-                  <StyledView className="h-[1px] flex-1 bg-gray-100 dark:bg-gray-800" />
-                  <StyledText className="mx-4 text-[10px] font-black opacity-30 uppercase tracking-widest" style={{ color: theme.colors.subtext }}>
-                    {activeTab === 'direct' ? 'Direct Messages' : 'Channels'}
-                  </StyledText>
-                  <StyledView className="h-[1px] flex-1 bg-gray-100 dark:bg-gray-800" />
-               </StyledView>
-
-               {activeTab === 'direct' ? (
-                 conversations.map((conv, idx) => (
-                   <StyledAnimatedView key={`dm-${idx}`} entering={FadeInUp.delay(idx * 50)}>
-                     <StyledTouchableOpacity onPress={() => selectDirectChat(conv)}>
-                       <PremiumCard className="mb-4 p-5 flex-row items-center">
-                          <StyledView className="w-14 h-14 bg-blue-100 dark:bg-blue-900/20 rounded-[22px] items-center justify-center mr-4">
-                             <StyledText className="text-blue-600 font-black text-xl">{getContactName(conv).charAt(0)}</StyledText>
-                          </StyledView>
-                          <StyledView className="flex-1">
-                             <StyledText className="text-lg font-black" style={{ color: theme.colors.text }}>{getContactName(conv)}</StyledText>
-                             <StyledText className="text-xs font-bold opacity-50 mt-1" style={{ color: theme.colors.subtext }} numberOfLines={1}>
-                               {conv.last_message || 'Secure transmission...'}
-                             </StyledText>
-                          </StyledView>
-                       </PremiumCard>
-                     </StyledTouchableOpacity>
-                   </StyledAnimatedView>
-                 ))
-               ) : (
-                 channels.map((chan, idx) => (
-                   <StyledAnimatedView key={`ch-${idx}`} entering={FadeInUp.delay(idx * 50)}>
-                     <StyledTouchableOpacity onPress={() => selectChannel(chan)}>
-                       <PremiumCard className="mb-4 p-5 flex-row items-center">
-                          <StyledView className="w-14 h-14 bg-indigo-100 dark:bg-indigo-900/20 rounded-[22px] items-center justify-center mr-4">
-                             <Users size={24} color="#4f46e5" />
-                          </StyledView>
-                          <StyledView className="flex-1">
-                             <StyledText className="text-lg font-black" style={{ color: theme.colors.text }}># {chan.name}</StyledText>
-                             <StyledText className="text-xs font-bold opacity-50 mt-1" style={{ color: theme.colors.subtext }} numberOfLines={1}>
-                               {chan.description || 'General Discussion'}
-                             </StyledText>
-                          </StyledView>
-                       </PremiumCard>
-                     </StyledTouchableOpacity>
-                   </StyledAnimatedView>
-                 ))
-               )}
-               <StyledView className="h-20" />
-            </StyledScrollView>
+            <FlatList
+              data={activeTab === 'direct' ? conversations : channels}
+              keyExtractor={(item, index) => item.id ? `item_${item.id}` : (item.channel_id ? `channel_${item.channel_id}` : `idx_${index}`)}
+              renderItem={({ item, index }) => (
+                <ChatListItem 
+                  item={item} 
+                  onPress={() => selectChat(item, activeTab === 'channels')}
+                  isOnline={onlineUsers.includes(String(getContactId(item)))}
+                  isTyping={typingUsers[getContactId(item)]?.length > 0}
+                  colors={colors}
+                  idx={index}
+                />
+              )}
+              contentContainerStyle={{ paddingBottom: 100 }}
+              showsVerticalScrollIndicator={false}
+            />
           )}
-        </StyledView>
+        </Animated.View>
       ) : (
-        <StyledKeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} className="flex-1">
-           {/* Chat Header */}
-           <StyledView className="bg-white dark:bg-gray-900 px-6 py-4 flex-row items-center border-b border-gray-100 dark:border-gray-800 shadow-sm z-10">
-              <StyledTouchableOpacity onPress={() => setSelectedChat(null)} className="w-10 h-10 rounded-full bg-gray-50 dark:bg-gray-800 items-center justify-center mr-4">
-                 <ArrowLeft size={20} color={theme.colors.text} />
-              </StyledTouchableOpacity>
-              <StyledView className="w-10 h-10 bg-blue-100 dark:bg-blue-900/20 rounded-xl items-center justify-center mr-3">
-                 {selectedChat.is_channel ? (
-                    <Users size={20} color="#2563eb" />
-                 ) : (
-                    <StyledText className="text-blue-600 font-black">{getContactName(selectedChat).charAt(0)}</StyledText>
-                 )}
-              </StyledView>
-              <StyledView className="flex-1">
-                 <StyledText className="text-base font-black" style={{ color: theme.colors.text }}>
-                   {selectedChat.is_channel ? `# ${selectedChat.name}` : getContactName(selectedChat)}
-                 </StyledText>
-                 <StyledView className="flex-row items-center">
-                    <StyledView className="w-1.5 h-1.5 rounded-full bg-green-500 mr-1.5" />
-                    <StyledText className="text-[10px] font-black text-green-500 uppercase">Secure Link Active</StyledText>
-                 </StyledView>
-              </StyledView>
-              <StyledTouchableOpacity>
-                 <MoreVertical size={20} color={theme.colors.text} />
-              </StyledTouchableOpacity>
-           </StyledView>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
+          <View style={[styles.roomHeader, { backgroundColor: colors.background, borderBottomWidth: 0.5, borderBottomColor: isDark ? '#1e293b' : '#e2e8f0' }]}>
+            <TouchableOpacity onPress={() => { setSelectedChat(null); selectedChatRef.current = null; }} style={styles.backBtn}>
+              <ArrowLeft size={24} color={colors.text} />
+            </TouchableOpacity>
+            
+            <TouchableOpacity style={styles.headerInfo} activeOpacity={0.7} onPress={() => {}}>
+              <View style={[styles.headerAvatar, { backgroundColor: isDark ? '#1e293b' : '#f1f5f9' }]}>
+                {selectedChat.is_channel ? <Users size={20} color={colors.primary} /> : <Text style={{ color: colors.primary, fontWeight: 'bold' }}>{getContactName(selectedChat).charAt(0)}</Text>}
+              </View>
+              <View style={styles.headerNames}>
+                <Text style={[styles.roomName, { color: colors.text }]} numberOfLines={1}>{getContactName(selectedChat)}</Text>
+                <Text style={[styles.roomStatus, { color: colors.subtext }]}>
+                  {isUserTyping() ? 'typing...' : (onlineUsers.includes(String(getContactId(selectedChat))) ? 'online' : 'away')}
+                </Text>
+              </View>
+            </TouchableOpacity>
 
-           <StyledScrollView 
-             ref={scrollViewRef}
-             className="flex-1 px-6 pt-6"
-             contentContainerStyle={{ paddingBottom: 30 }}
-           >
-              {messages.map((msg, idx) => {
-                const isMe = parseInt(msg.sender_id) === parseInt(user.userId || user.id);
+            <View style={styles.roomIcons}>
+              <TouchableOpacity style={styles.roomIconBtn}><Video size={20} color={colors.text} /></TouchableOpacity>
+              <TouchableOpacity style={styles.roomIconBtn}><Phone size={20} color={colors.text} /></TouchableOpacity>
+              <TouchableOpacity style={styles.roomIconBtn}><MoreVertical size={20} color={colors.text} /></TouchableOpacity>
+            </View>
+          </View>
+
+          <View style={{ flex: 1, backgroundColor: isDark ? '#0b141a' : '#efe7de' }}>
+            <FlatList
+              ref={scrollViewRef}
+              data={groupedMessages}
+              keyExtractor={(item) => item.id}
+              renderItem={({ item }: { item: Record<string, any> }) => {
+                if (item.type === 'date') return renderDateSeparator(item.date as string);
                 return (
-                  <StyledAnimatedView key={idx} entering={SlideInRight.duration(300)} className={`mb-6 flex-row ${isMe ? 'justify-end' : 'justify-start'}`}>
-                     <StyledView className={`max-w-[85%] p-4 rounded-[28px] ${isMe ? 'bg-blue-600 rounded-br-none shadow-lg shadow-blue-600/30' : 'bg-gray-100 dark:bg-gray-800 rounded-bl-none'}`}>
-                        <StyledText className={`text-base font-bold ${isMe ? 'text-white' : 'text-gray-900 dark:text-white'}`}>{msg.message}</StyledText>
-                        <StyledView className="flex-row items-center justify-end mt-2 opacity-40">
-                           <StyledText className={`text-[8px] font-black ${isMe ? 'text-white' : 'text-gray-500'}`}>
-                             {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                           </StyledText>
-                           {isMe && <CheckCheck size={10} color="#fff" style={{ marginLeft: 4 }} />}
-                        </StyledView>
-                     </StyledView>
-                  </StyledAnimatedView>
+                  <MessageBubble 
+                    message={item as Record<string, any>} 
+                    isMe={isMessageMine(item as { sender_id?: string | number })} 
+                    colors={colors}
+                    themeMode={theme.mode}
+                    onLongPress={(m: Record<string, any>) => { setSelectedMessage(m); setShowOptions(true); }}
+                    onReplyPress={setReplyTo}
+                  />
                 );
-              })}
-           </StyledScrollView>
+              }}
+              contentContainerStyle={{ paddingHorizontal: 12, paddingVertical: 10 }}
+              onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
+              showsVerticalScrollIndicator={false}
+            />
+          </View>
 
-           {/* Input Bar */}
-           <StyledView className="bg-white dark:bg-gray-900 px-6 py-5 border-t border-gray-100 dark:border-gray-800 flex-row items-center">
-              <StyledTouchableOpacity className="w-10 h-10 rounded-full bg-gray-50 dark:bg-gray-800 items-center justify-center mr-3">
-                 <Paperclip size={18} color={theme.colors.text} />
-              </StyledTouchableOpacity>
-              <StyledView className="flex-1 bg-gray-50 dark:bg-gray-800 rounded-[24px] px-5 py-3 border border-gray-100 dark:border-gray-700 flex-row items-center">
-                 <StyledTextInput 
-                   className="flex-1 text-sm font-bold text-gray-900 dark:text-white"
-                   placeholder="Type an intelligence report..."
-                   placeholderTextColor="rgba(0,0,0,0.3)"
-                   value={newMessage}
-                   onChangeText={setNewMessage}
-                   multiline
-                 />
-                 <StyledTouchableOpacity onPress={handleSendMessage} className={`w-8 h-8 rounded-full items-center justify-center ${newMessage.trim() ? 'bg-blue-600' : 'bg-gray-300'}`}>
-                    <Send size={14} color="#fff" />
-                 </StyledTouchableOpacity>
-              </StyledView>
-           </StyledView>
-        </StyledKeyboardAvoidingView>
+          {replyTo && (
+            <Animated.View entering={FadeInUp} style={[styles.replyPreview, { backgroundColor: isDark ? '#1e293b' : '#fff', borderLeftColor: colors.primary }]}>
+               <View style={{ flex: 1 }}>
+                  <Text style={[styles.replyUser, { color: colors.primary }]}>{replyTo.sender_name || 'Message'}</Text>
+                  <Text style={[styles.replyText, { color: colors.subtext }]} numberOfLines={1}>{replyTo.message}</Text>
+               </View>
+               <TouchableOpacity onPress={() => setReplyTo(null)}><X size={18} color={colors.subtext} /></TouchableOpacity>
+            </Animated.View>
+          )}
+
+          <ChatInput 
+            value={newMessage}
+            onChangeText={(t: string) => {
+              setNewMessage(t);
+              if (selectedChat && !selectedChat.is_channel) {
+                sendTyping(getContactId(selectedChat));
+                if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+                typingTimeoutRef.current = setTimeout(() => sendStopTyping(getContactId(selectedChat)), 2000);
+              }
+            }}
+            onSend={handleSend}
+            onAttach={() => {}}
+            isRecording={isRecording}
+            recordingDuration={recordingDuration}
+            onStartRecording={() => setIsRecording(true)}
+            onStopRecording={() => setIsRecording(false)}
+            colors={colors}
+            themeMode={theme.mode}
+          />
+        </KeyboardAvoidingView>
       )}
-    </StyledSafeAreaView>
+
+      {showOptions && selectedMessage && (
+        <View style={styles.overlay}>
+           <TouchableOpacity style={{ flex: 1 }} onPress={() => setShowOptions(false)} />
+           <Animated.View entering={SlideInDown} style={[styles.options, { backgroundColor: isDark ? '#1e293b' : '#fff' }]}>
+              <View style={styles.reactions}>
+                 {['❤️', '👍', '😂', '😮', '😢', '🙏'].map((e: string) => (
+                   <TouchableOpacity key={e} onPress={() => { reactToMessage(selectedMessage.message_id, e); setShowOptions(false); }}>
+                      <Text style={{ fontSize: 24 }}>{e}</Text>
+                   </TouchableOpacity>
+                 ))}
+              </View>
+              <TouchableOpacity style={styles.option} onPress={() => { setReplyTo(selectedMessage); setShowOptions(false); }}>
+                 <ReplyIcon size={20} color={colors.subtext} />
+                 <Text style={[styles.optionText, { color: colors.text }]}>Reply</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.option} onPress={async () => { await Clipboard.setStringAsync(selectedMessage.message); setShowOptions(false); }}>
+                 <Copy size={20} color={colors.subtext} />
+                 <Text style={[styles.optionText, { color: colors.text }]}>Copy</Text>
+              </TouchableOpacity>
+           </Animated.View>
+        </View>
+      )}
+    </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  safe: { flex: 1 },
+  centered: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
+  errorTitle: { fontSize: 22, fontWeight: 'bold' },
+  
+  listContainer: { flex: 1 },
+  listHeader: { paddingHorizontal: 16, paddingTop: 10 },
+  headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+  listTitle: { fontSize: 22, fontWeight: '700' },
+  listIcons: { flexDirection: 'row', gap: 16 },
+  iconBtn: { padding: 4 },
+  
+  tabBar: { flexDirection: 'row', gap: 24 },
+  tab: { paddingVertical: 10, position: 'relative' },
+  tabText: { fontSize: 14, letterSpacing: 0.5 },
+  activeTabLine: { position: 'absolute', bottom: 0, left: 0, right: 0, height: 3, borderRadius: 1.5 },
+  
+  roomHeader: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8, paddingHorizontal: 8 },
+  backBtn: { padding: 8 },
+  headerInfo: { flex: 1, flexDirection: 'row', alignItems: 'center', marginLeft: 4 },
+  headerAvatar: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+  headerNames: { marginLeft: 12, flex: 1 },
+  roomName: { fontSize: 16, fontWeight: '600' },
+  roomStatus: { fontSize: 12, marginTop: 1 },
+  roomIcons: { flexDirection: 'row', gap: 4 },
+  roomIconBtn: { padding: 8 },
+  
+  dateSeparator: { alignItems: 'center', marginVertical: 16 },
+  dateBadge: { paddingHorizontal: 12, paddingVertical: 4, borderRadius: 8, elevation: 1 },
+  dateText: { fontSize: 11, fontWeight: '700' },
+  
+  replyPreview: { marginHorizontal: 8, marginBottom: 8, borderRadius: 12, padding: 12, flexDirection: 'row', alignItems: 'center', borderLeftWidth: 4, elevation: 2 },
+  replyUser: { fontSize: 13, fontWeight: '700' },
+  replyText: { fontSize: 14, marginTop: 2 },
+  
+  overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
+  options: { borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 },
+  reactions: { flexDirection: 'row', justifyContent: 'space-around', marginBottom: 20, paddingBottom: 20, borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.05)' },
+  option: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, gap: 16 },
+  optionText: { fontSize: 16, fontWeight: '500' },
+});

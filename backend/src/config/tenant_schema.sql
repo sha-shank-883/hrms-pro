@@ -196,6 +196,98 @@ CREATE TABLE IF NOT EXISTS payroll (
   UNIQUE(employee_id, month, year)
 );
 
+-- Payroll Runs table (batch payroll processing)
+CREATE TABLE IF NOT EXISTS payroll_runs (
+  run_id SERIAL PRIMARY KEY,
+  period_month INTEGER NOT NULL,
+  period_year INTEGER NOT NULL,
+  status VARCHAR(50) DEFAULT 'draft',
+  total_employees INTEGER DEFAULT 0,
+  total_gross DECIMAL(15, 2) DEFAULT 0,
+  total_deductions DECIMAL(15, 2) DEFAULT 0,
+  total_net DECIMAL(15, 2) DEFAULT 0,
+  generated_by INTEGER REFERENCES users(user_id),
+  finalized_at TIMESTAMP,
+  paid_at TIMESTAMP,
+  notes TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(period_month, period_year)
+);
+
+-- Payslips table (individual employee payslips per run)
+CREATE TABLE IF NOT EXISTS payslips (
+  payslip_id SERIAL PRIMARY KEY,
+  run_id INTEGER REFERENCES payroll_runs(run_id) ON DELETE CASCADE,
+  employee_id INTEGER REFERENCES employees(employee_id) ON DELETE CASCADE,
+  payroll_record_id INTEGER REFERENCES payroll(payroll_id) ON DELETE SET NULL,
+  basic_salary DECIMAL(15, 2) NOT NULL,
+  gross_pay DECIMAL(15, 2) NOT NULL,
+  total_deductions DECIMAL(15, 2) NOT NULL,
+  net_pay DECIMAL(15, 2) NOT NULL,
+  payment_status VARCHAR(50) DEFAULT 'pending',
+  payment_date DATE,
+  payment_method VARCHAR(50),
+  pdf_path VARCHAR(500),
+  qr_code VARCHAR(255),
+  verified BOOLEAN DEFAULT FALSE,
+  notes TEXT,
+  generated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(run_id, employee_id)
+);
+
+-- Payslip itemized earnings
+CREATE TABLE IF NOT EXISTS payslip_earnings (
+  earning_id SERIAL PRIMARY KEY,
+  payslip_id INTEGER REFERENCES payslips(payslip_id) ON DELETE CASCADE,
+  component_name VARCHAR(100) NOT NULL,
+  amount DECIMAL(15, 2) NOT NULL,
+  is_taxable BOOLEAN DEFAULT TRUE,
+  sort_order INTEGER DEFAULT 0,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Payslip itemized deductions
+CREATE TABLE IF NOT EXISTS payslip_deductions (
+  deduction_id SERIAL PRIMARY KEY,
+  payslip_id INTEGER REFERENCES payslips(payslip_id) ON DELETE CASCADE,
+  component_name VARCHAR(100) NOT NULL,
+  amount DECIMAL(15, 2) NOT NULL,
+  is_mandatory BOOLEAN DEFAULT TRUE,
+  sort_order INTEGER DEFAULT 0,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Configurable payslip templates (JSON-based layout)
+CREATE TABLE IF NOT EXISTS payslip_templates (
+  template_id SERIAL PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  description TEXT,
+  layout_json JSONB NOT NULL DEFAULT '{}',
+  is_default BOOLEAN DEFAULT FALSE,
+  is_active BOOLEAN DEFAULT TRUE,
+  created_by INTEGER REFERENCES users(user_id),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Email queue for payslip delivery
+CREATE TABLE IF NOT EXISTS email_queue (
+  queue_id SERIAL PRIMARY KEY,
+  payslip_id INTEGER REFERENCES payslips(payslip_id) ON DELETE CASCADE,
+  recipient_email VARCHAR(255) NOT NULL,
+  recipient_name VARCHAR(255),
+  subject VARCHAR(500),
+  status VARCHAR(50) DEFAULT 'pending',
+  attempts INTEGER DEFAULT 0,
+  max_attempts INTEGER DEFAULT 3,
+  last_error TEXT,
+  sent_at TIMESTAMP,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Job Postings table (Recruitment)
 CREATE TABLE IF NOT EXISTS job_postings (
   job_id SERIAL PRIMARY KEY,
@@ -263,6 +355,16 @@ CREATE TABLE IF NOT EXISTS chat_messages (
   attachment_type VARCHAR(50),
   attachment_name VARCHAR(255),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Message Reactions table
+CREATE TABLE IF NOT EXISTS message_reactions (
+  reaction_id SERIAL PRIMARY KEY,
+  message_id INTEGER REFERENCES chat_messages(message_id) ON DELETE CASCADE,
+  user_id INTEGER REFERENCES users(user_id) ON DELETE CASCADE,
+  reaction VARCHAR(10) NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(message_id, user_id)
 );
 
 -- Assets table
@@ -394,6 +496,32 @@ INSERT INTO settings (setting_key, setting_value, category, description) VALUES
 ('notify_payroll', 'true', 'notifications', 'Notify on payroll processing'),
 ('notify_attendance', 'true', 'notifications', 'Notify on attendance issues'),
 ('notify_tasks', 'true', 'notifications', 'Notify on task assignments'),
+
+-- Mobile App Settings
+('mobile_app_enabled', 'true', 'mobile', 'Enable mobile app access'),
+('mobile_feature_dashboard', 'true', 'mobile', 'Allow dashboard in mobile app'),
+('mobile_feature_attendance', 'true', 'mobile', 'Allow attendance in mobile app'),
+('mobile_feature_leaves', 'true', 'mobile', 'Allow leave management in mobile app'),
+('mobile_feature_tasks', 'true', 'mobile', 'Allow tasks in mobile app'),
+('mobile_feature_chat', 'true', 'mobile', 'Allow chat in mobile app'),
+('mobile_feature_employees', 'true', 'mobile', 'Allow employee directory in mobile app'),
+('mobile_feature_departments', 'true', 'mobile', 'Allow department browsing in mobile app'),
+('mobile_feature_payroll', 'true', 'mobile', 'Allow payroll in mobile app'),
+('mobile_feature_documents', 'true', 'mobile', 'Allow documents in mobile app'),
+('mobile_feature_recruitment', 'true', 'mobile', 'Allow recruitment in mobile app'),
+('mobile_feature_performance', 'true', 'mobile', 'Allow performance in mobile app'),
+('mobile_feature_reports', 'true', 'mobile', 'Allow reports in mobile app'),
+('mobile_feature_assets', 'true', 'mobile', 'Allow assets in mobile app'),
+('mobile_feature_holidays', 'true', 'mobile', 'Allow holidays in mobile app'),
+('mobile_feature_shifts', 'true', 'mobile', 'Allow shifts in mobile app'),
+('mobile_feature_audit_logs', 'false', 'mobile', 'Allow audit logs in mobile app'),
+('mobile_feature_tenants', 'false', 'mobile', 'Allow tenant management in mobile app'),
+('mobile_feature_cms', 'false', 'mobile', 'Allow CMS management in mobile app'),
+('mobile_feature_leads', 'false', 'mobile', 'Allow lead/demo management in mobile app'),
+('mobile_feature_biometric_login', 'true', 'mobile', 'Allow biometric login in mobile app'),
+('mobile_feature_2fa_required', 'false', 'mobile', 'Require 2FA for mobile login'),
+('mobile_feature_secure_storage', 'true', 'mobile', 'Require secure storage for mobile credentials'),
+('mobile_feature_push_notifications', 'true', 'mobile', 'Enable push notifications on mobile app'),
 
 -- Document Settings
 ('max_file_size', '10', 'documents', 'Maximum file size in MB'),

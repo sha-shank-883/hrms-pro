@@ -17,7 +17,8 @@ import {
   FaPlay,
   FaFileContract,
   FaUser,
-  FaCalendarDay
+  FaCalendarDay,
+  FaSave
 } from 'react-icons/fa';
 import TaxDeclarationModal from '../components/payroll/TaxDeclarationModal';
 
@@ -727,7 +728,7 @@ const Payroll = () => {
               Next
             </button>
 
-            <span style={{ marginLeft: '1rem', color: '#6b7280' }}>
+            <span className="ml-4 text-neutral-500">
               Page {pagination.currentPage} of {pagination.totalPages}
               {' '}({pagination.totalItems} total records)
             </span>
@@ -749,15 +750,9 @@ const Payroll = () => {
             backgroundColor: 'rgba(0, 0, 0, 0.5)',
             backdropFilter: 'blur(4px)'
           }} onClick={handleCloseModal}>
-            <div style={{
-              backgroundColor: 'white',
-              borderRadius: '0.75rem',
-              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-              width: '100%',
-              maxWidth: '32rem',
-              overflow: 'hidden',
-              animation: 'fade-in 0.2s ease-out'
-            }} onClick={(e) => e.stopPropagation()}>
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden"
+              style={{ animation: 'fade-in 0.2s ease-out' }}
+              onClick={(e) => e.stopPropagation()}>
               <div style={{
                 padding: '1.5rem',
                 borderBottom: '1px solid var(--neutral-100)',

@@ -23,6 +23,7 @@ router.get('/statistics', authenticateToken, taskController.getTaskStatistics);
 router.get('/:id', authenticateToken, taskController.getTaskById);
 router.post('/', authenticateToken, authorizeRole('admin', 'manager'), taskValidation, validate, taskController.createTask);
 router.put('/:id', authenticateToken, authorizeRole('admin', 'manager'), taskValidation, validate, taskController.updateTask);
+router.put('/:id/status', authenticateToken, taskController.updateTaskStatus);
 router.delete('/:id', authenticateToken, authorizeRole('admin', 'manager'), taskController.deleteTask);
 
 // Task updates routes

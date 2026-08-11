@@ -18,6 +18,7 @@ router.get('/unread-count', authenticateToken, chatController.getUnreadCount);
 router.post('/messages', authenticateToken, messageValidation, validate, chatController.sendMessage);
 router.post('/messages/reaction', authenticateToken, chatController.addReaction);
 router.put('/messages/read', authenticateToken, chatController.markAsRead);
+router.put('/messages/:id', authenticateToken, chatController.editMessage);
 router.delete('/messages/:id', authenticateToken, chatController.deleteMessage);
 router.delete('/conversations/:userId', authenticateToken, chatController.deleteConversation);
 

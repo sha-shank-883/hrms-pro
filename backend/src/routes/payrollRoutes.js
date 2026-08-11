@@ -24,6 +24,8 @@ router.put('/tax-declarations/:id', authenticateToken, authorizeRole('admin', 'm
 // Allow employees to access their own payroll data (filtered in controller)
 router.get('/', authenticateToken, authorizeRole('admin', 'manager', 'employee'), payrollController.getAllPayroll);
 router.get('/statistics', authenticateToken, authorizeRole('admin', 'manager', 'employee'), payrollController.getPayrollStatistics);
+router.get('/my-payslips', authenticateToken, authorizeRole('admin', 'manager', 'employee'), payrollController.getMyPayslips);
+router.get('/:id/payslip', authenticateToken, authorizeRole('admin', 'manager', 'employee'), payrollController.getPayslipById);
 router.get('/:id', authenticateToken, authorizeRole('admin', 'manager', 'employee'), payrollController.getPayrollById);
 router.post('/', authenticateToken, authorizeRole('admin', 'manager'), payrollValidation, validate, payrollController.createPayroll);
 router.put('/:id', authenticateToken, authorizeRole('admin', 'manager'), payrollController.updatePayroll);

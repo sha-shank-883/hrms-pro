@@ -4,10 +4,14 @@ require('dotenv').config();
 // The cipher algorithm
 const algorithm = 'aes-256-cbc';
 
-// Use an environment variable for the key, or fallback to a hardcoded key for local dev (32 bytes)
-const ENCRYPTION_KEY = process.env.CHAT_ENCRYPTION_KEY 
-    ? Buffer.from(process.env.CHAT_ENCRYPTION_KEY, 'hex') 
-    : crypto.scryptSync('default_hrms_chat_secret_key_2025', 'salt', 32);
+const ENCRYPTION_KEY = process.env.CHAT_ENCRYPTION_KEY
+    ? Buffer.from(process.env.CHAT_ENCRYPTION_KEY, 'hex')
+    : (() => {
+        if (process.env.NODE_ENV === 'production') {
+          throw new Error('CHAT_ENCRYPTION_KEY environment variable is required in production');
+        }
+        return crypto.scryptSync('dev_hrms_chat_secret', 'salt', 32);
+      })();
 
 // Initialization vector length for AES
 const IV_LENGTH = 16;

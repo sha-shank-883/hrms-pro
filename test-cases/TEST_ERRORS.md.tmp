@@ -1,0 +1,17 @@
+## New Errors Logged During This Run
+
+| # | Date | Module | Test | Severity | Status |
+|---|---|---|---|---|---|
+| 1 | 2026-05-28 | Leaves | Apply leave valid | Medium | Open |
+| 2 | 2026-05-28 | Leaves | Apply leave SQL injection | High | Open |
+| 3 | 2026-05-28 | Recruitment | Apply to job | Medium | Open |
+| 4 | 2026-05-28 | Performance | Create goal | + | Open |
+| 5 | 2026-05-28 | Performance | Create goal without auth | 197 | Open |
+| 6 | 2026-05-28 | Performance | Create review | + | Open |
+| 7 | 2026-05-28 | Settings | Create setting | Medium | Open |
+| 8 | 2026-05-28 | Settings | Create SQL injection | High | Open |
+| 9 | 2026-05-28 | Support | Create FAQ | + | Open |
+| 10 | 2026-05-28 | Support | Create FAQ without auth | 1 | Open |
+| 11 | 2026-05-28 | Support | Get chat history | Medium | Open |
+| 12 | 2026-05-28 | Tenants_Leads | Submit demo request | Medium | Open |
+| 13 | 2026-05-28 | Remaining | Create template missing body | Medium | Open |

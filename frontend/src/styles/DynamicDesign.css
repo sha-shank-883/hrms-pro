@@ -102,3 +102,40 @@
   --task-status-inprogress-color: #3b82f6;
   --task-status-completed-color: #10b981;
 }
+
+.dark {
+  /* Module-specific Backgrounds */
+  --dashboard-widget-bg: #1e293b;
+  --employee-card-bg: #1e293b;
+  --recruitment-card-bg: #1e293b;
+  --performance-review-card-bg: #1e293b;
+  --payroll-summary-card-bg: #1e293b;
+  --leave-request-card-bg: #1e293b;
+  --task-card-bg: #1e293b;
+
+  /* Module-specific Borders */
+  --dashboard-widget-border: #334155;
+  --employee-card-border: #334155;
+  --recruitment-card-border: #334155;
+  --payroll-item-border: #334155;
+
+  /* Table */
+  --table-row-hover: #1e293b;
+  --table-border: #334155;
+
+  /* Navigation */
+  --nav-active-bg: rgba(140, 198, 63, 0.15);
+
+  /* Shadows */
+  --card-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.3);
+  --button-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.25);
+  --dashboard-widget-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.35);
+  --employee-card-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.3);
+
+  /* Modal */
+  --modal-backdrop: rgba(2, 6, 23, 0.7);
+
+  /* Tooltip */
+  --tooltip-bg: #1e293b;
+  --tooltip-text: #f1f5f9;
+}

@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { SocketProvider } from './context/SocketContext';
 import { NotificationProvider } from './context/NotificationContext';
 import { SettingsProvider } from './hooks/useSettings.jsx';
+import { ThemeProvider } from './context/ThemeContext';
 import './styles/global.css';
 
 // Pages
@@ -17,6 +18,9 @@ import Attendance from './pages/Attendance';
 import Leaves from './pages/Leaves';
 import Tasks from './pages/Tasks';
 import Payroll from './pages/Payroll';
+import PayrollRuns from './pages/PayrollRuns';
+import PayslipDesigner from './pages/PayslipDesigner';
+import BatchActions from './pages/BatchActions';
 import MyPayslips from './pages/MyPayslips';
 import Recruitment from './pages/Recruitment';
 import Documents from './pages/Documents';
@@ -34,10 +38,14 @@ import Assets from './pages/Assets';
 import AuditLogs from './pages/AuditLogs';
 import SuperAdmin from './pages/SuperAdmin';
 import SuperAdminBiometrics from './pages/SuperAdminBiometrics';
-import CMSManager from './pages/CMSManager';
-import WebsiteSettings from './pages/WebsiteSettings';
+
+import MobileAppConfig from './pages/MobileAppConfig';
 import DemoRequests from './pages/DemoRequests';
 import ChurnRiskReport from './pages/ChurnRiskReport';
+import SupportDashboard from './pages/SupportDashboard';
+import SupportTickets from './pages/SupportTickets';
+import SupportFAQ from './pages/SupportFAQ';
+import ChatWidget from './components/support/ChatWidget';
 import LiveActivity from './pages/LiveActivity';
 import OrgChart from './components/OrgChart';
 import EmailTemplates from './pages/EmailTemplates';
@@ -46,13 +54,20 @@ import Layout from './components/Layout';
 import PublicLayout from './components/layout/PublicLayout';
 import Home from './pages/marketing/Home';
 import Demo from './pages/marketing/Demo';
-import DynamicPage from './pages/marketing/DynamicPage';
 import Features from './pages/marketing/Features';
 import Pricing from './pages/marketing/Pricing';
 import About from './pages/marketing/About';
 import Contact from './pages/marketing/Contact';
 import Blog from './pages/marketing/Blog';
+import ResourcesMarket from './pages/marketing/Resources';
 import BlogPost from './pages/marketing/BlogPost';
+import Privacy from './pages/marketing/Privacy';
+import Terms from './pages/marketing/Terms';
+import FAQPage from './pages/marketing/FAQPage';
+import NotFound from './pages/marketing/NotFound';
+import VsBambooHR from './pages/marketing/VsBambooHR';
+import VsGusto from './pages/marketing/VsGusto';
+import VsRippling from './pages/marketing/VsRippling';
 import Signup from './pages/Signup';
 import ProtectedRoute from './components/ProtectedRoute';
 import SuperAdminRoute from './components/SuperAdminRoute';
@@ -74,13 +89,21 @@ const AuthRedirect = ({ children }) => {
 
 import PublicIDCard from './pages/PublicIDCard';
 
+const AuthenticatedChatWidget = () => {
+  const { isAuthenticated } = useAuth();
+  if (!isAuthenticated) return null;
+  return <ChatWidget />;
+};
+
 function App() {
   return (
     <AuthProvider>
       <SocketProvider>
         <NotificationProvider>
           <SettingsProvider>
+          <ThemeProvider>
             <Router>
+              <AuthenticatedChatWidget />
               <Routes>
                 {/* Public/View-Only Routes */}
                 <Route path="/view/id-card/:id" element={<PublicIDCard />} />
@@ -107,8 +130,16 @@ function App() {
                   <Route path="/about" element={<About />} />
                   <Route path="/contact" element={<Contact />} />
                   <Route path="/blog" element={<Blog />} />
+                  <Route path="/resources" element={<ResourcesMarket />} />
                   <Route path="/blog/:id" element={<BlogPost />} />
+                  <Route path="/privacy" element={<Privacy />} />
+                  <Route path="/terms" element={<Terms />} />
+                  <Route path="/faq" element={<FAQPage />} />
+                  <Route path="/vs-bamboohr" element={<VsBambooHR />} />
+                  <Route path="/vs-gusto" element={<VsGusto />} />
+                  <Route path="/vs-rippling" element={<VsRippling />} />
                 </Route>
+                <Route path="*" element={<NotFound />} />
 
                 {/* Protected Dashboard Routes */}
                 <Route element={
@@ -147,6 +178,21 @@ function App() {
                   <Route path="payroll" element={
                     <ProtectedRoute allowedRoles={['admin', 'manager']} allowedPermissions={['payroll:read']}>
                       <Payroll />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="payroll/runs" element={
+                    <ProtectedRoute allowedRoles={['admin', 'manager']} allowedPermissions={['payroll:read']}>
+                      <PayrollRuns />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="payroll/payslip-designer" element={
+                    <ProtectedRoute allowedRoles={['admin']} allowedPermissions={['payroll:read']}>
+                      <PayslipDesigner />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="payroll/batch" element={
+                    <ProtectedRoute allowedRoles={['admin', 'manager']} allowedPermissions={['payroll:read']}>
+                      <BatchActions />
                     </ProtectedRoute>
                   } />
                   <Route path="my-payslips" element={
@@ -217,14 +263,9 @@ function App() {
                       <SuperAdminBiometrics />
                     </SuperAdminRoute>
                   } />
-                  <Route path="super-admin/cms" element={
+                  <Route path="super-admin/mobile-config" element={
                     <SuperAdminRoute>
-                      <CMSManager />
-                    </SuperAdminRoute>
-                  } />
-                  <Route path="super-admin/website-settings" element={
-                    <SuperAdminRoute>
-                      <WebsiteSettings />
+                      <MobileAppConfig />
                     </SuperAdminRoute>
                   } />
                   <Route path="super-admin/demo-requests" element={
@@ -238,14 +279,25 @@ function App() {
                       <OrgChart />
                     </ProtectedRoute>
                   } />
-                </Route>
-                
-                {/* Dynamic CMS Routes (Must be at the bottom of standard routes) */}
-                <Route element={<PublicLayout />}>
-                  <Route path="/:slug" element={<DynamicPage />} />
+                  <Route path="support" element={
+                    <ProtectedRoute allowedRoles={['admin', 'manager']} allowedPermissions={['support:read']}>
+                      <SupportDashboard />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="support/tickets" element={
+                    <ProtectedRoute allowedRoles={['admin', 'manager', 'employee']} allowedPermissions={['support:read', 'tickets:read']}>
+                      <SupportTickets />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="support/faq" element={
+                    <ProtectedRoute allowedRoles={['admin', 'manager']} allowedPermissions={['support:read']}>
+                      <SupportFAQ />
+                    </ProtectedRoute>
+                  } />
                 </Route>
               </Routes>
             </Router>
+          </ThemeProvider>
           </SettingsProvider>
         </NotificationProvider>
       </SocketProvider>

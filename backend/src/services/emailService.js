@@ -11,13 +11,11 @@ const isEmailEnabled = !!process.env.SMTP_HOST;
 let transporter;
 
 if (isEmailEnabled) {
-  // Log email configuration (masking password)
   console.log('📧 configuring email service with:', {
       host: process.env.SMTP_HOST,
       port: smtpPort,
       secure: secure,
-      user: process.env.SMTP_USER,
-      // pass: '****' 
+      user: process.env.SMTP_USER ? 'set' : 'not set',
   });
 
   // Create reusable transporter object using the default SMTP transport
@@ -97,8 +95,9 @@ const processQueue = async () => {
 };
 
 /**
- * Send an email asynchronously (non-blocking)
+ * Send an email asynchronously via the background queue (non-blocking).
  * @param {Object} options - Email options
+ * @returns {{ status: string, message: string }}
  */
 const sendEmail = async (options) => {
     if (emailQueue.length >= MAX_QUEUE_SIZE) {
@@ -114,6 +113,33 @@ const sendEmail = async (options) => {
     return { status: 'queued', message: 'Email queued for delivery' };
 };
 
+/**
+ * Send an email synchronously — waits for the SMTP response.
+ * Use for critical flows (password reset, notifications) where
+ * the caller needs to know if delivery succeeded or failed.
+ * @param {Object} options - Email options (to, subject, text/html)
+ * @returns {Promise<Object>} { status: 'sent'|'error', messageId?: string, message: string }
+ */
+const sendEmailSync = async (options) => {
+    if (!isEmailEnabled || !transporter) {
+        console.log(`[EmailSync] Mock mode: Simulated sending email to ${options.to}. Subject: ${options.subject}`);
+        return { status: 'sent', message: 'Mock mode — email not actually sent' };
+    }
+
+    try {
+        const info = await transporter.sendMail({
+            from: `"${process.env.SMTP_FROM_NAME || 'HRMS Pro'}" <${process.env.SMTP_FROM_EMAIL || process.env.SMTP_USER}>`,
+            ...options,
+        });
+        console.log(`[EmailSync] Message sent to ${options.to}: ${info.messageId}`);
+        return { status: 'sent', messageId: info.messageId, message: 'Email sent successfully' };
+    } catch (error) {
+        console.error(`[EmailSync] Failed to send email to ${options.to}:`, error.message);
+        throw error;
+    }
+};
+
 module.exports = {
     sendEmail,
+    sendEmailSync,
 };

@@ -1,97 +1,106 @@
 const { query } = require('../config/database');
+const asyncHandler = require('../utils/asyncHandler');
+const { NotFoundError, ValidationError, ConflictError } = require('../utils/errors');
 
-// GET all pages
-exports.getAllPages = async (req, res) => {
-  try {
-    const result = await query(`SELECT * FROM shared.cms_pages ORDER BY created_at DESC`);
-    res.json({ success: true, data: result.rows });
-  } catch (error) {
-    console.error('Error fetching pages:', error);
-    res.status(500).json({ success: false, message: 'Server error fetching pages.' });
-  }
+const ALLOWED_LAYOUTS = ['default', 'full-width', 'with-sidebar', 'centered', 'landing'];
+
+const parseSections = (sections) => {
+  if (!sections) return '[]';
+  if (typeof sections === 'string') return sections;
+  return JSON.stringify(sections);
 };
 
-// GET single page by slug
-exports.getPageBySlug = async (req, res) => {
-  try {
-    const { slug } = req.params;
-    const result = await query(`SELECT * FROM shared.cms_pages WHERE slug = $1`, [slug]);
-    if (result.rows.length === 0) {
-      return res.status(404).json({ success: false, message: 'Page not found.' });
-    }
-    res.json({ success: true, data: result.rows[0] });
-  } catch (error) {
-    console.error('Error fetching page:', error);
-    res.status(500).json({ success: false, message: 'Server error fetching page.' });
+exports.getAllPages = asyncHandler(async (req, res) => {
+  const result = await query(`SELECT id, slug, title, meta_title, meta_description, published_status, layout_template, created_at, updated_at FROM shared.cms_pages ORDER BY created_at DESC`);
+  res.json({ success: true, data: result.rows });
+});
+
+exports.getPageBySlug = asyncHandler(async (req, res) => {
+  const { slug } = req.params;
+  const result = await query(`SELECT * FROM shared.cms_pages WHERE slug = $1`, [slug]);
+  if (result.rows.length === 0) {
+    throw new NotFoundError('Page not found.');
   }
-};
+  res.json({ success: true, data: result.rows[0] });
+});
 
-// CREATE a page
-exports.createPage = async (req, res) => {
-  try {
-    const { slug, title, content_html, meta_title, meta_description, published_status, sections } = req.body;
-    
-    // Check if slug exists
-    const checkSlug = await query(`SELECT id FROM shared.cms_pages WHERE slug = $1`, [slug]);
-    if (checkSlug.rows.length > 0) {
-        return res.status(400).json({ success: false, message: 'Slug already exists.' });
-    }
+exports.createPage = asyncHandler(async (req, res) => {
+  const { slug, title, content_html, meta_title, meta_description, published_status, sections, layout_template, custom_css, custom_js } = req.body;
 
-    const result = await query(
-      `INSERT INTO shared.cms_pages (slug, title, content_html, meta_title, meta_description, published_status, sections) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-      [slug, title, content_html, meta_title, meta_description, published_status || 'draft', sections ? JSON.stringify(sections) : '[]']
-    );
-    res.status(201).json({ success: true, data: result.rows[0], message: 'Page created successfully.' });
-  } catch (error) {
-    console.error('Error creating page:', error);
-    res.status(500).json({ success: false, message: 'Server error creating page.' });
+  const checkSlug = await query(`SELECT id FROM shared.cms_pages WHERE slug = $1`, [slug]);
+  if (checkSlug.rows.length > 0) {
+    throw new ConflictError('Slug already exists.');
   }
-};
 
-// UPDATE a page
-exports.updatePage = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { slug, title, content_html, meta_title, meta_description, published_status, sections } = req.body;
+  const result = await query(
+    `INSERT INTO shared.cms_pages (slug, title, content_html, meta_title, meta_description, published_status, sections, layout_template, custom_css, custom_js)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *`,
+    [
+      slug, title, content_html || '', meta_title || '', meta_description || '',
+      published_status || 'draft', parseSections(sections),
+      layout_template || 'default', custom_css || '', custom_js || ''
+    ]
+  );
+  res.status(201).json({ success: true, data: result.rows[0], message: 'Page created successfully.' });
+});
 
-    // Check if new slug exists for a DIFFERENT page
-    const checkSlug = await query(`SELECT id FROM shared.cms_pages WHERE slug = $1 AND id != $2`, [slug, id]);
-    if (checkSlug.rows.length > 0) {
-        return res.status(400).json({ success: false, message: 'Slug already in use by another page.' });
-    }
+exports.updatePage = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const { slug, title, content_html, meta_title, meta_description, published_status, sections, layout_template, custom_css, custom_js } = req.body;
 
-    const result = await query(
-      `UPDATE shared.cms_pages 
-       SET slug = $1, title = $2, content_html = $3, meta_title = $4, meta_description = $5, published_status = $6, sections = $7, updated_at = CURRENT_TIMESTAMP
-       WHERE id = $8 RETURNING *`,
-      [slug, title, content_html, meta_title, meta_description, published_status, sections ? JSON.stringify(sections) : '[]', id]
-    );
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({ success: false, message: 'Page not found.' });
-    }
-
-    res.json({ success: true, data: result.rows[0], message: 'Page updated successfully.' });
-  } catch (error) {
-    console.error('Error updating page:', error);
-    res.status(500).json({ success: false, message: 'Server error updating page.' });
+  if (!slug && !title && !content_html && !meta_title && !meta_description && !published_status && !sections && !layout_template && !custom_css && !custom_js) {
+    throw new ValidationError('No fields provided for update.');
   }
-};
 
-// DELETE a page
-exports.deletePage = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const result = await query(`DELETE FROM shared.cms_pages WHERE id = $1 RETURNING *`, [id]);
-    
-    if (result.rows.length === 0) {
-      return res.status(404).json({ success: false, message: 'Page not found.' });
-    }
-
-    res.json({ success: true, message: 'Page deleted successfully.' });
-  } catch (error) {
-    console.error('Error deleting page:', error);
-    res.status(500).json({ success: false, message: 'Server error deleting page.' });
+  const checkSlug = await query(`SELECT id FROM shared.cms_pages WHERE slug = $1 AND id != $2`, [slug, id]);
+  if (checkSlug.rows.length > 0) {
+    throw new ConflictError('Slug already in use by another page.');
   }
-};
+
+  const fields = [];
+  const values = [];
+  let idx = 1;
+
+  if (slug !== undefined) { fields.push(`slug = $${idx++}`); values.push(slug); }
+  if (title !== undefined) { fields.push(`title = $${idx++}`); values.push(title); }
+  if (content_html !== undefined) { fields.push(`content_html = $${idx++}`); values.push(content_html); }
+  if (meta_title !== undefined) { fields.push(`meta_title = $${idx++}`); values.push(meta_title); }
+  if (meta_description !== undefined) { fields.push(`meta_description = $${idx++}`); values.push(meta_description); }
+  if (published_status !== undefined) { fields.push(`published_status = $${idx++}`); values.push(published_status); }
+  if (sections !== undefined) { fields.push(`sections = $${idx++}`); values.push(parseSections(sections)); }
+  if (layout_template !== undefined) {
+    if (!ALLOWED_LAYOUTS.includes(layout_template)) {
+      throw new ValidationError(`Invalid layout template. Allowed: ${ALLOWED_LAYOUTS.join(', ')}`);
+    }
+    fields.push(`layout_template = $${idx++}`);
+    values.push(layout_template);
+  }
+  if (custom_css !== undefined) { fields.push(`custom_css = $${idx++}`); values.push(custom_css); }
+  if (custom_js !== undefined) { fields.push(`custom_js = $${idx++}`); values.push(custom_js); }
+
+  if (fields.length === 0) {
+    throw new ValidationError('No valid fields provided.');
+  }
+
+  fields.push(`updated_at = CURRENT_TIMESTAMP`);
+
+  const result = await query(
+    `UPDATE shared.cms_pages SET ${fields.join(', ')} WHERE id = $${idx} RETURNING *`,
+    [...values, id]
+  );
+
+  if (result.rows.length === 0) {
+    throw new NotFoundError('Page not found.');
+  }
+
+  res.json({ success: true, data: result.rows[0], message: 'Page updated successfully.' });
+});
+
+exports.deletePage = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const result = await query(`DELETE FROM shared.cms_pages WHERE id = $1 RETURNING *`, [id]);
+  if (result.rows.length === 0) {
+    throw new NotFoundError('Page not found.');
+  }
+  res.json({ success: true, message: 'Page deleted successfully.' });
+});

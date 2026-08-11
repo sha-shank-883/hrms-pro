@@ -22,7 +22,7 @@ export const SocketProvider = ({ children }) => {
             // Determine backend URL (handle both Vercel/Render and local)
             // VITE_API_URL usually points to /api, so we might need to trim it or use a separate VITE_SOCKET_URL
             // If VITE_API_URL is "http://localhost:5000/api", we want "http://localhost:5000"
-            const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+            const apiUrl = import.meta.env.VITE_API_URL || '/api';
             const socketUrl = apiUrl.replace('/api', '');
 
             const newSocket = io(socketUrl, {

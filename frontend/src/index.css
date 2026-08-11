@@ -1,2 +1,194 @@
 @import "tailwindcss";
+@plugin "@tailwindcss/typography";
 @config "../tailwind.config.js";
+
+/* Theme transition for smooth switching */
+html {
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+html.dark {
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Light mode defaults */
+body {
+  background-color: #f8fafc;
+  color: #1e293b;
+}
+
+html.dark body {
+  background-color: #0f172a;
+  color: #f1f5f9;
+}
+
+/* Dark mode overrides for surfaces */
+.dark .bg-white {
+  background-color: #1e293b !important;
+}
+
+.dark .bg-neutral-50,
+.dark .bg-gray-50 {
+  background-color: #0f172a !important;
+}
+
+.dark .bg-neutral-100,
+.dark .bg-gray-100 {
+  background-color: #1e293b !important;
+}
+
+.dark .bg-neutral-200,
+.dark .bg-gray-200 {
+  background-color: #334155 !important;
+}
+
+.dark .bg-gray-900 {
+  background-color: #0f172a !important;
+}
+
+.dark .bg-gray-800 {
+  background-color: #1e293b !important;
+}
+
+/* Dark mode border colors */
+.dark .border-neutral-200,
+.dark .border-neutral-100,
+.dark .border-gray-200,
+.dark .border-gray-100 {
+  border-color: #334155 !important;
+}
+
+.dark .border-neutral-300,
+.dark .border-gray-300 {
+  border-color: #475569 !important;
+}
+
+/* Dark mode text colors */
+.dark .text-neutral-700,
+.dark .text-neutral-800,
+.dark .text-neutral-900,
+.dark .text-gray-700,
+.dark .text-gray-800,
+.dark .text-gray-900 {
+  color: #f1f5f9 !important;
+}
+
+.dark .text-neutral-500,
+.dark .text-neutral-600,
+.dark .text-gray-500,
+.dark .text-gray-600 {
+  color: #94a3b8 !important;
+}
+
+.dark .text-neutral-400,
+.dark .text-neutral-300,
+.dark .text-gray-400,
+.dark .text-gray-300 {
+  color: #64748b !important;
+}
+
+/* Hover states for dark mode */
+.dark .hover\:text-neutral-700:hover,
+.dark .hover\:text-gray-700:hover,
+.dark .hover\:text-gray-600:hover {
+  color: #cbd5e1 !important;
+}
+
+.dark .hover\:bg-neutral-50:hover,
+.dark .hover\:bg-neutral-100:hover,
+.dark .hover\:bg-gray-50:hover,
+.dark .hover\:bg-gray-100:hover {
+  background-color: #334155 !important;
+}
+
+.dark .hover\:bg-neutral-200:hover,
+.dark .hover\:bg-gray-200:hover {
+  background-color: #475569 !important;
+}
+
+/* Dark mode color backgrounds */
+.dark .bg-red-50 {
+  background-color: rgba(127, 29, 29, 0.4) !important;
+}
+.dark .bg-red-100 {
+  background-color: rgba(127, 29, 29, 0.6) !important;
+}
+.dark .bg-blue-50 {
+  background-color: rgba(30, 58, 95, 0.4) !important;
+}
+.dark .bg-blue-100 {
+  background-color: rgba(30, 58, 95, 0.6) !important;
+}
+.dark .bg-green-50 {
+  background-color: rgba(6, 78, 59, 0.4) !important;
+}
+.dark .bg-green-100 {
+  background-color: rgba(6, 78, 59, 0.6) !important;
+}
+.dark .bg-yellow-50,
+.dark .bg-amber-50 {
+  background-color: rgba(120, 53, 15, 0.4) !important;
+}
+.dark .bg-indigo-50 {
+  background-color: rgba(49, 46, 129, 0.4) !important;
+}
+.dark .bg-purple-50 {
+  background-color: rgba(88, 28, 135, 0.4) !important;
+}
+
+/* Dark mode text color overrides */
+.dark .text-red-700,
+.dark .text-red-800,
+.dark .text-red-900 {
+  color: #fca5a5 !important;
+}
+.dark .text-green-700,
+.dark .text-green-800,
+.dark .text-green-900 {
+  color: #86efac !important;
+}
+.dark .text-blue-700,
+.dark .text-blue-800,
+.dark .text-blue-900 {
+  color: #93c5fd !important;
+}
+.dark .text-yellow-700,
+.dark .text-yellow-800,
+.dark .text-yellow-900 {
+  color: #fde047 !important;
+}
+
+/* Dark mode other utilities */
+.dark .divide-gray-100,
+.dark .divide-gray-200,
+.dark .divide-neutral-100,
+.dark .divide-neutral-200 > * + * {
+  border-color: #334155 !important;
+}
+
+.dark .ring-white {
+  --tw-ring-color: #1e293b !important;
+}
+
+.dark .placeholder-gray-400::placeholder,
+.dark .placeholder-neutral-400::placeholder {
+  color: #64748b !important;
+}
+
+.dark .shadow-sm,
+.dark .shadow,
+.dark .shadow-md,
+.dark .shadow-lg {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2) !important;
+}
+
+@keyframes marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+.animate-marquee {
+  animation: marquee 30s linear infinite;
+}
+.animate-marquee:hover {
+  animation-play-state: paused;
+}

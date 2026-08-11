@@ -28,18 +28,7 @@ const DraggableWidget = ({ id, children, style: propStyle }) => {
             <div
                 {...attributes}
                 {...listeners}
-                style={{
-                    position: 'absolute',
-                    top: '10px',
-                    right: '10px',
-                    zIndex: 10,
-                    cursor: 'grab',
-                    padding: '5px',
-                    background: 'rgba(255,255,255,0.7)',
-                    borderRadius: '4px',
-                    color: '#9ca3af'
-                }}
-                className="drag-handle"
+                className="drag-handle absolute top-[10px] right-[10px] z-10 cursor-grab p-[5px] bg-white/70 dark:bg-gray-800/80 rounded text-neutral-400"
                 title="Drag to reorder"
             >
                 <FaGripVertical />

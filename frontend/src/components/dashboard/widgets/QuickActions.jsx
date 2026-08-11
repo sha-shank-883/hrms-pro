@@ -76,14 +76,7 @@ const QuickActions = memo(({ userRole }) => {
                 <button
                     key={index}
                     onClick={() => navigate(action.path)}
-                    className="btn"
-                    style={{
-                        backgroundColor: 'white',
-                        border: '1px solid var(--border-color)',
-                        color: 'var(--text-secondary)',
-                        padding: '0.6rem 1rem',
-                        boxShadow: 'var(--shadow-sm)'
-                    }}
+                    className="btn bg-white border border-[var(--border-color)] text-[var(--text-secondary)] px-4 py-2.5 shadow-sm"
                 >
                     <span style={{
                         display: 'inline-flex',

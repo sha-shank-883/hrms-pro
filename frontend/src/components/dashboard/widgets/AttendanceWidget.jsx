@@ -161,13 +161,13 @@ const AttendanceWidget = React.memo(({ chartType = 'area', onToggle, onSettingsC
                 {loading && (
                     <div className="loading-overlay">
                         <div className="loading-spinner"></div>
-                        <span style={{ fontSize: '0.75rem', marginTop: '0.5rem', color: '#10B981', fontWeight: 500 }}>Updating...</span>
+                        <span className="text-xs mt-2 text-emerald-500 font-medium">Updating...</span>
                     </div>
                 )}
 
                 {!loading && !hasData && (
-                    <div className="loading-overlay" style={{ background: 'white' }}>
-                        <span style={{ color: '#9CA3AF', marginBottom: '0.5rem' }}>No data available</span>
+                    <div className="loading-overlay bg-white">
+                        <span className="text-neutral-400 mb-2">No data available</span>
                     </div>
                 )}
 
@@ -189,7 +189,7 @@ const AttendanceWidget = React.memo(({ chartType = 'area', onToggle, onSettingsC
                                 <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: '#9ca3af', fontSize: 11 }} dy={10} />
                                 <YAxis axisLine={false} tickLine={false} tick={{ fill: '#9ca3af', fontSize: 11 }} />
                                 <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }} />
-                                <Legend iconType="circle" wrapperStyle={{ paddingTop: '10px' }} formatter={(value) => <span style={{ fontSize: '0.75rem', color: '#4B5563', marginLeft: '4px' }}>{value}</span>} />
+                                <Legend iconType="circle" wrapperStyle={{ paddingTop: '10px' }} formatter={(value) => <span className="text-xs text-gray-600 ml-1">{value}</span>} />
                                 <Area type="monotone" dataKey="present" stroke="#10b981" strokeWidth={2} fillOpacity={1} fill="url(#colorPresent)" name="Present" />
                                 <Area type="monotone" dataKey="absent" stroke="#ef4444" strokeWidth={2} fillOpacity={1} fill="url(#colorAbsent)" name="Absent" />
                             </AreaChart>
@@ -200,7 +200,7 @@ const AttendanceWidget = React.memo(({ chartType = 'area', onToggle, onSettingsC
                                 <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: '#9ca3af', fontSize: 11 }} dy={10} />
                                 <YAxis axisLine={false} tickLine={false} tick={{ fill: '#9ca3af', fontSize: 11 }} />
                                 <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }} />
-                                <Legend iconType="circle" wrapperStyle={{ paddingTop: '10px' }} formatter={(value) => <span style={{ fontSize: '0.75rem', color: '#4B5563', marginLeft: '4px' }}>{value}</span>} />
+                                <Legend iconType="circle" wrapperStyle={{ paddingTop: '10px' }} formatter={(value) => <span className="text-xs text-gray-600 ml-1">{value}</span>} />
                                 <Bar dataKey="present" name="Present" fill="#10b981" radius={[4, 4, 0, 0]} />
                                 <Bar dataKey="absent" name="Absent" fill="#ef4444" radius={[4, 4, 0, 0]} />
                             </BarChart>
@@ -211,7 +211,7 @@ const AttendanceWidget = React.memo(({ chartType = 'area', onToggle, onSettingsC
                                 <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: '#9ca3af', fontSize: 11 }} dy={10} />
                                 <YAxis axisLine={false} tickLine={false} tick={{ fill: '#9ca3af', fontSize: 11 }} />
                                 <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }} />
-                                <Legend iconType="circle" wrapperStyle={{ paddingTop: '10px' }} formatter={(value) => <span style={{ fontSize: '0.75rem', color: '#4B5563', marginLeft: '4px' }}>{value}</span>} />
+                                <Legend iconType="circle" wrapperStyle={{ paddingTop: '10px' }} formatter={(value) => <span className="text-xs text-gray-600 ml-1">{value}</span>} />
                                 <Line type="monotone" dataKey="present" name="Present" stroke="#10b981" strokeWidth={2} dot={{ r: 3 }} />
                                 <Line type="monotone" dataKey="absent" name="Absent" stroke="#ef4444" strokeWidth={2} dot={{ r: 3 }} />
                             </LineChart>

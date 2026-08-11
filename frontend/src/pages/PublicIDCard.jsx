@@ -38,7 +38,7 @@ const PublicIDCard = () => {
                 }
 
                 // Using the existing endpoint (via axios directly to avoid context dependencies if this is standalone)
-                const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
+                const baseUrl = import.meta.env.VITE_API_URL || '/api';
                 const response = await axios.get(`${baseUrl}/employees/${id}`, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
@@ -65,7 +65,7 @@ const PublicIDCard = () => {
     const getProfilePicture = (path) => {
         if (!path) return null;
         if (path.startsWith('http')) return path;
-        const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+        const baseUrl = import.meta.env.VITE_API_URL || '';
         const cleanBaseUrl = baseUrl.replace('/api', '');
         return `${cleanBaseUrl}${path.startsWith('/') ? '' : '/'}${path}`;
     };

@@ -1,150 +1,112 @@
-const { pool, query } = require('../config/database');
+const { query, transaction } = require('../config/database');
 const bcrypt = require('bcryptjs');
 const fs = require('fs');
 const path = require('path');
-const jwt = require('jsonwebtoken');
 const speakeasy = require('speakeasy');
+const asyncHandler = require('../utils/asyncHandler');
+const { NotFoundError, UnauthorizedError, ForbiddenError, ValidationError, ConflictError, AppError } = require('../utils/errors');
 
-// GET all leads (for admin dashboard)
-exports.getAllLeads = async (req, res) => {
-  try {
-    const result = await query(`
-      SELECT dr.*, t.subscription_plan 
-      FROM shared.demo_requests dr
-      LEFT JOIN shared.tenants t ON dr.tenant_id = t.tenant_id
-      ORDER BY dr.created_at DESC
-    `);
-    res.json({ success: true, data: result.rows });
-  } catch (error) {
-    console.error('Error fetching leads:', error);
-    res.status(500).json({ success: false, message: 'Server error fetching leads.' });
+exports.getAllLeads = asyncHandler(async (req, res) => {
+  const result = await query(`
+    SELECT dr.*, t.subscription_plan 
+    FROM shared.demo_requests dr
+    LEFT JOIN shared.tenants t ON dr.tenant_id = t.tenant_id
+    ORDER BY dr.created_at DESC
+  `);
+  res.json({ success: true, data: result.rows });
+});
+
+exports.applyForDemo = asyncHandler(async (req, res) => {
+  const { name, email, company_name, phone, password } = req.body;
+
+  if (!name || !email || !company_name || !password) {
+    throw new ValidationError('Name, email, company, and password are required.');
   }
-};
 
-// POST free demo request (Saves as pending, emails admin)
-exports.applyForDemo = async (req, res) => {
-  const client = await pool.connect();
-  try {
-    const { name, email, company_name, phone, password } = req.body;
+  const existingReq = await query(`SELECT id FROM shared.demo_requests WHERE email = $1`, [email]);
+  if (existingReq.rows.length > 0) {
+    throw new ConflictError('A demo has already been requested with this email.');
+  }
 
-    if (!name || !email || !company_name || !password) {
-      return res.status(400).json({ success: false, message: 'Name, email, company, and password are required.' });
-    }
+  await query(`ALTER TABLE shared.demo_requests ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255)`);
 
-    // 1. Check if email already requested a demo
-    const existingReq = await client.query(`SELECT id FROM shared.demo_requests WHERE email = $1`, [email]);
-    if (existingReq.rows.length > 0) {
-      return res.status(400).json({ success: false, message: 'A demo has already been requested with this email.' });
-    }
+  const salt = await bcrypt.genSalt(10);
+  const passwordHash = await bcrypt.hash(password, salt);
 
-    // Hash password immediately to store securely in demo_requests if we need it later, 
-    // or just store it temporarily (In a real production app, we would store a hash and when provisioning, create the user).
-    // Let's add a password_hash column or temporarily store it in a secure way.
-    // Wait, demo_requests does not have password_hash column!
-    // We need to alter table shared.demo_requests to add password_hash if it doesn't exist, OR we don't allow setting password here and generate it on provision.
-    // Let's assume we alter table dynamically here or just generate a password on provision.
-    // Actually, we can just hash it and store it if the column exists. Let's add the column first.
-    await client.query(`ALTER TABLE shared.demo_requests ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255)`);
+  let baseTenantId = 'tenant_' + company_name.toLowerCase().replace(/[^a-z0-9]/g, '');
+  let tenantId = baseTenantId;
+  let counter = 1;
 
-    const salt = await bcrypt.genSalt(10);
-    const passwordHash = await bcrypt.hash(password, salt);
+  while (true) {
+    const checkTenant = await query(`SELECT tenant_id FROM shared.tenants WHERE tenant_id = $1`, [tenantId]);
+    if (checkTenant.rows.length === 0) break;
+    tenantId = `${baseTenantId}${counter}`;
+    counter++;
+  }
 
-    // Generate unique tenant_id based on company name
-    let baseTenantId = 'tenant_' + company_name.toLowerCase().replace(/[^a-z0-9]/g, '');
-    let tenantId = baseTenantId;
-    let counter = 1;
-    
-    while (true) {
-      const checkTenant = await client.query(`SELECT tenant_id FROM shared.tenants WHERE tenant_id = $1`, [tenantId]);
-      if (checkTenant.rows.length === 0) break;
-      tenantId = `${baseTenantId}${counter}`;
-      counter++;
-    }
-
-    await client.query('BEGIN');
-
-    // Save Demo Request Lead
+  await transaction(async (client) => {
     await client.query(
       `INSERT INTO shared.demo_requests (name, email, company_name, phone, status, tenant_id, password_hash) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
       [name, email, company_name, phone, 'pending', tenantId, passwordHash]
     );
+  });
 
-    await client.query('COMMIT');
-
-    // Send email to Super Admin
-    try {
-      const { sendEmail } = require('../services/emailService');
-      await sendEmail({
-        to: process.env.SMTP_USER || 'admin@hrmspro.online',
-        subject: 'New Demo Request',
-        html: `<p>A new demo request has been submitted by <b>${name}</b> from <b>${company_name}</b> (${email}).</p><p>Please log in to the Super Admin dashboard to approve and provision this account.</p>`
-      });
-    } catch (emailErr) {
-      console.error('Error sending admin notification email:', emailErr);
-    }
-
-    res.status(201).json({ 
-      success: true, 
-      message: 'Demo request submitted successfully. We will contact you soon.'
-    });
-
-  } catch (error) {
-    await client.query('ROLLBACK');
-    console.error('Error submitting demo request:', error);
-    res.status(500).json({ success: false, message: 'Server error during submission.', error: error.message });
-  } finally {
-    client.release();
-  }
-};
-
-// POST provision demo (Super Admin only)
-exports.provisionDemo = async (req, res) => {
-  const client = await pool.connect();
   try {
-    const { id } = req.params;
+    const { sendEmail } = require('../services/emailService');
+    await sendEmail({
+      to: process.env.SMTP_USER || 'admin@hrmspro.online',
+      subject: 'New Demo Request',
+      html: `<p>A new demo request has been submitted by <b>${name}</b> from <b>${company_name}</b> (${email}).</p><p>Please log in to the Super Admin dashboard to approve and provision this account.</p>`
+    });
+  } catch (emailErr) {
+    console.error('Error sending admin notification email:', emailErr);
+  }
 
-    // 1. Fetch demo request
-    const leadResult = await client.query(`SELECT * FROM shared.demo_requests WHERE id = $1`, [id]);
-    if (leadResult.rows.length === 0) {
-      return res.status(404).json({ success: false, message: 'Demo request not found.' });
-    }
+  res.status(201).json({
+    success: true,
+    message: 'Demo request submitted successfully. We will contact you soon.'
+  });
+});
 
-    const lead = leadResult.rows[0];
+exports.provisionDemo = asyncHandler(async (req, res) => {
+  const { id } = req.params;
 
-    if (lead.status === 'provisioned') {
-      return res.status(400).json({ success: false, message: 'Demo request has already been provisioned.' });
-    }
+  const leadResult = await query(`SELECT * FROM shared.demo_requests WHERE id = $1`, [id]);
+  if (leadResult.rows.length === 0) {
+    throw new NotFoundError('Demo request not found.');
+  }
 
-    const { name, email, company_name, tenant_id: tenantId, password_hash } = lead;
+  const lead = leadResult.rows[0];
 
-    await client.query('BEGIN');
+  if (lead.status === 'provisioned') {
+    throw new ConflictError('Demo request has already been provisioned.');
+  }
 
-    // 2. Register Tenant in shared.tenants
+  const { name, email, company_name, tenant_id: tenantId, password_hash } = lead;
+
+  await transaction(async (client) => {
     await client.query(
       `INSERT INTO shared.tenants (tenant_id, name, status, subscription_plan) VALUES ($1, $2, 'active', 'free')`,
       [tenantId, company_name]
     );
 
-    // 3. Create Schema
     await client.query(`CREATE SCHEMA IF NOT EXISTS "${tenantId}"`);
 
-    // 4. Run Migrations for the new tenant
     const tenantSchemaPath = path.join(__dirname, '../config/tenant_schema.sql');
     if (!fs.existsSync(tenantSchemaPath)) {
-      throw new Error('tenant_schema.sql not found');
+      throw new AppError('tenant_schema.sql not found', 500);
     }
-    
+
     await client.query(`SET search_path TO "${tenantId}"`);
     const tenantSchemaSql = fs.readFileSync(tenantSchemaPath, 'utf8');
     await client.query(tenantSchemaSql);
 
-    // 5. Create Admin User
     const userResult = await client.query(
       `INSERT INTO users (email, password_hash, role, is_active) 
        VALUES ($1, $2, 'admin', true) RETURNING user_id`,
       [email, password_hash]
     );
-    
+
     const userId = userResult.rows[0].user_id;
 
     await client.query(
@@ -153,206 +115,155 @@ exports.provisionDemo = async (req, res) => {
       [userId, name.split(' ')[0], name.split(' ').slice(1).join(' ') || '', email]
     );
 
-    // 6. Update Demo Request status
     await client.query('SET search_path TO public');
     await client.query(
       `UPDATE shared.demo_requests SET status = 'provisioned' WHERE id = $1`,
       [id]
     );
+  });
 
-    await client.query('COMMIT');
+  try {
+    const { sendEmail } = require('../services/emailService');
+    const frontendUrl = process.env.VITE_API_URL ? process.env.VITE_API_URL.replace('/api', '') : 'http://localhost:5173';
 
-    // 7. Send Welcome Email to User
+    await sendEmail({
+      to: email,
+      subject: 'Welcome to HRMS Pro - Your Demo is Ready!',
+      html: `
+        <h2>Welcome to HRMS Pro!</h2>
+        <p>Hi ${name},</p>
+        <p>Your demo environment for <b>${company_name}</b> has been successfully provisioned and is ready for you to explore.</p>
+        <p>You can log in to your dashboard here: <a href="${frontendUrl}/login">${frontendUrl}/login</a></p>
+        <p>Use the email and password you provided during sign-up to access your admin account.</p>
+        <br/>
+        <p>Best regards,<br/>The HRMS Pro Team</p>
+      `
+    });
+  } catch (emailErr) {
+    console.error('Error sending welcome email:', emailErr);
+  }
+
+  res.status(200).json({
+    success: true,
+    message: 'Demo account provisioned successfully.'
+  });
+});
+
+exports.backupDemoAccount = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  const leadResult = await query(`SELECT tenant_id, company_name FROM shared.demo_requests WHERE id = $1 AND status = 'provisioned'`, [id]);
+  if (leadResult.rows.length === 0) {
+    throw new NotFoundError('Provisioned demo account not found.');
+  }
+
+  const { tenant_id, company_name } = leadResult.rows[0];
+
+  const tables = [
+    'users', 'departments', 'employees', 'attendance', 'attendance_regularization',
+    'leave_requests', 'tasks', 'task_assignments', 'task_updates', 'shifts',
+    'employee_shifts', 'payroll', 'job_postings', 'job_applications',
+    'documents', 'chat_messages', 'assets', 'settings'
+  ];
+
+  const backupData = {
+    metadata: {
+      tenant_id,
+      company_name,
+      backup_date: new Date().toISOString(),
+      version: '1.0'
+    },
+    data: {}
+  };
+
+  for (const table of tables) {
     try {
-      const { sendEmail } = require('../services/emailService');
-      const frontendUrl = process.env.VITE_API_URL ? process.env.VITE_API_URL.replace('/api', '') : 'http://localhost:5173';
-      
-      await sendEmail({
-        to: email,
-        subject: 'Welcome to HRMS Pro - Your Demo is Ready!',
-        html: `
-          <h2>Welcome to HRMS Pro!</h2>
-          <p>Hi ${name},</p>
-          <p>Your demo environment for <b>${company_name}</b> has been successfully provisioned and is ready for you to explore.</p>
-          <p>You can log in to your dashboard here: <a href="${frontendUrl}/login">${frontendUrl}/login</a></p>
-          <p>Use the email and password you provided during sign-up to access your admin account.</p>
-          <br/>
-          <p>Best regards,<br/>The HRMS Pro Team</p>
-        `
-      });
-    } catch (emailErr) {
-      console.error('Error sending welcome email:', emailErr);
+      const tableData = await query(`SELECT * FROM "${tenant_id}".${table}`);
+      backupData.data[table] = tableData.rows;
+    } catch (tableErr) {
+      console.warn(`Could not backup table ${table} for tenant ${tenant_id}:`, tableErr.message);
+      backupData.data[table] = [];
     }
-
-    res.status(200).json({ 
-      success: true, 
-      message: 'Demo account provisioned successfully.'
-    });
-
-  } catch (error) {
-    await client.query('ROLLBACK');
-    await client.query('SET search_path TO public');
-    console.error('Error auto-provisioning demo:', error);
-    res.status(500).json({ success: false, message: 'Server error during provisioning.', error: error.message });
-  } finally {
-    client.release();
   }
-};
 
-// GET full JSON backup of a demo account
-exports.backupDemoAccount = async (req, res) => {
-  try {
-    const { id } = req.params;
+  const safeCompanyName = company_name.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+  const filename = `backup_${safeCompanyName}_${new Date().toISOString().split('T')[0]}.json`;
 
-    // 1. Get tenant_id
-    const leadResult = await query(`SELECT tenant_id, company_name FROM shared.demo_requests WHERE id = $1 AND status = 'provisioned'`, [id]);
-    if (leadResult.rows.length === 0) {
-      return res.status(404).json({ success: false, message: 'Provisioned demo account not found.' });
-    }
+  res.setHeader('Content-Type', 'application/json');
+  res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+  res.status(200).send(JSON.stringify(backupData, null, 2));
+});
 
-    const { tenant_id, company_name } = leadResult.rows[0];
+exports.deleteDemoAccount = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const userId = req.user.userId;
 
-    // 2. Fetch all data from the tenant's schema
-    const tables = [
-      'users', 'departments', 'employees', 'attendance', 'attendance_regularization',
-      'leave_requests', 'tasks', 'task_assignments', 'task_updates', 'shifts',
-      'employee_shifts', 'payroll', 'job_postings', 'job_applications',
-      'documents', 'chat_messages', 'assets', 'settings'
-    ];
-
-    const backupData = {
-      metadata: {
-        tenant_id,
-        company_name,
-        backup_date: new Date().toISOString(),
-        version: '1.0'
-      },
-      data: {}
-    };
-
-    for (const table of tables) {
-      try {
-        const tableData = await query(`SELECT * FROM "${tenant_id}".${table}`);
-        backupData.data[table] = tableData.rows;
-      } catch (tableErr) {
-        // Table might not exist or be empty, skip gracefully
-        console.warn(`Could not backup table ${table} for tenant ${tenant_id}:`, tableErr.message);
-        backupData.data[table] = [];
-      }
-    }
-
-    // 3. Send as downloadable JSON file
-    const safeCompanyName = company_name.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-    const filename = `backup_${safeCompanyName}_${new Date().toISOString().split('T')[0]}.json`;
-
-    res.setHeader('Content-Type', 'application/json');
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-    res.status(200).send(JSON.stringify(backupData, null, 2));
-
-  } catch (error) {
-    console.error('Error backing up demo account:', error);
-    res.status(500).json({ success: false, message: 'Server error during backup.', error: error.message });
+  let twoFactorToken = req.headers['x-2fa-token'];
+  if (!twoFactorToken) {
+    throw new ValidationError('2FA token is required to delete a demo account.');
   }
-};
 
-// DELETE a demo account (Drops schema and removes records)
-exports.deleteDemoAccount = async (req, res) => {
-  const client = await pool.connect();
-  try {
-    const { id } = req.params;
-    const userId = req.user.userId;
+  const userRes = await query(`SELECT two_factor_secret FROM users WHERE user_id = $1`, [userId]);
+  if (userRes.rows.length === 0) {
+    throw new NotFoundError('Super Admin user not found.');
+  }
 
-    let twoFactorToken = req.headers['x-2fa-token'];
-    if (!twoFactorToken) {
-      return res.status(400).json({ success: false, message: '2FA token is required to delete a demo account.' });
-    }
+  const { two_factor_secret } = userRes.rows[0];
+  if (!two_factor_secret) {
+    throw new ValidationError('2FA is not enabled for your account. Please enable it first.');
+  }
 
-    // Verify 2FA
-    await client.query(`SET search_path TO "tenant_default"`);
-    const userRes = await client.query('SELECT two_factor_secret FROM users WHERE user_id = $1', [userId]);
+  const verified = speakeasy.totp.verify({
+    secret: two_factor_secret,
+    encoding: 'base32',
+    token: twoFactorToken
+  });
 
-    if (userRes.rows.length === 0) {
-      return res.status(404).json({ success: false, message: 'Super Admin user not found.' });
-    }
+  if (!verified) {
+    throw new UnauthorizedError('Invalid 2FA token.');
+  }
 
-    const { two_factor_secret } = userRes.rows[0];
-    if (!two_factor_secret) {
-      return res.status(400).json({ success: false, message: '2FA is not enabled for your account. Please enable it first.' });
-    }
+  const leadResult = await query(`SELECT tenant_id FROM shared.demo_requests WHERE id = $1`, [id]);
+  if (leadResult.rows.length === 0) {
+    throw new NotFoundError('Demo account not found.');
+  }
 
-    const verified = speakeasy.totp.verify({
-      secret: two_factor_secret,
-      encoding: 'base32',
-      token: twoFactorToken
-    });
+  const { tenant_id } = leadResult.rows[0];
 
-    if (!verified) {
-      return res.status(401).json({ success: false, message: 'Invalid 2FA token.' });
-    }
-
-    // 1. Get tenant_id
-    await client.query('SET search_path TO public');
-    const leadResult = await client.query(`SELECT tenant_id FROM shared.demo_requests WHERE id = $1`, [id]);
-    if (leadResult.rows.length === 0) {
-      return res.status(404).json({ success: false, message: 'Demo account not found.' });
-    }
-
-    const { tenant_id } = leadResult.rows[0];
-
-    await client.query('BEGIN');
-
-    // 2. Drop the isolated schema
+  await transaction(async (client) => {
     if (tenant_id) {
       await client.query(`DROP SCHEMA IF EXISTS "${tenant_id}" CASCADE`);
-
-      // 3. Delete from shared.tenants
       await client.query(`DELETE FROM shared.tenants WHERE tenant_id = $1`, [tenant_id]);
     }
 
-    // 4. Delete from shared.demo_requests
     await client.query(`DELETE FROM shared.demo_requests WHERE id = $1`, [id]);
+  });
 
-    await client.query('COMMIT');
+  res.status(200).json({ success: true, message: 'Demo account and database completely deleted.' });
+});
 
-    res.status(200).json({ success: true, message: 'Demo account and database completely deleted.' });
-  } catch (error) {
-    await client.query('ROLLBACK');
-    console.error('Error deleting demo account:', error);
-    res.status(500).json({ success: false, message: 'Server error during deletion.', error: error.message });
-  } finally {
-    client.release();
+exports.restoreDemoAccount = asyncHandler(async (req, res) => {
+  const backupStr = req.body.backup;
+  if (!backupStr) {
+    throw new ValidationError('No backup data provided.');
   }
-};
 
-// POST Restore Demo Account from Backup
-exports.restoreDemoAccount = async (req, res) => {
-  const client = await pool.connect();
+  let backupData;
   try {
-    const backupStr = req.body.backup;
-    if (!backupStr) {
-      return res.status(400).json({ success: false, message: 'No backup data provided.' });
-    }
+    backupData = typeof backupStr === 'string' ? JSON.parse(backupStr) : backupStr;
+  } catch (e) {
+    throw new ValidationError('Invalid JSON format.');
+  }
 
-    let backupData;
-    try {
-      backupData = typeof backupStr === 'string' ? JSON.parse(backupStr) : backupStr;
-    } catch (e) {
-      return res.status(400).json({ success: false, message: 'Invalid JSON format.' });
-    }
+  if (!backupData.metadata || !backupData.data) {
+    throw new ValidationError('Invalid backup file structure.');
+  }
 
-    if (!backupData.metadata || !backupData.data) {
-      return res.status(400).json({ success: false, message: 'Invalid backup file structure.' });
-    }
+  const { tenant_id, company_name } = backupData.metadata;
 
-    const { tenant_id, company_name } = backupData.metadata;
-    
-    await client.query('BEGIN');
-
-    // 1. Create or update the demo_requests record
-    // Check if email exists
+  await transaction(async (client) => {
     const adminEmail = backupData.data.users && backupData.data.users.length > 0 ? backupData.data.users.find(u => u.role === 'admin')?.email : 'admin@restored.com';
-    
-    // We don't have all original demo_request details, we will insert a generic one to act as anchor
+
     await client.query(
       `INSERT INTO shared.demo_requests (name, email, company_name, status, tenant_id) 
        VALUES ('Restored Admin', $1, $2, 'provisioned', $3)
@@ -360,7 +271,6 @@ exports.restoreDemoAccount = async (req, res) => {
       [adminEmail, company_name, tenant_id]
     );
 
-    // 2. Create or update shared.tenants
     await client.query(
       `INSERT INTO shared.tenants (tenant_id, name, status, subscription_plan) 
        VALUES ($1, $2, 'active', 'free')
@@ -368,17 +278,14 @@ exports.restoreDemoAccount = async (req, res) => {
       [tenant_id, company_name]
     );
 
-    // 3. Re-create Schema
     await client.query(`DROP SCHEMA IF EXISTS "${tenant_id}" CASCADE`);
     await client.query(`CREATE SCHEMA "${tenant_id}"`);
 
-    // 4. Run Table Migrations
     const tenantSchemaPath = path.join(__dirname, '../config/tenant_schema.sql');
     await client.query(`SET search_path TO "${tenant_id}"`);
     const tenantSchemaSql = fs.readFileSync(tenantSchemaPath, 'utf8');
     await client.query(tenantSchemaSql);
 
-    // 5. Insert Data in strict foreign-key order
     const tables = [
       'users', 'departments', 'employees', 'attendance', 'attendance_regularization',
       'leave_requests', 'tasks', 'task_assignments', 'task_updates', 'shifts',
@@ -391,14 +298,13 @@ exports.restoreDemoAccount = async (req, res) => {
       if (!rows || rows.length === 0) continue;
 
       if (table === 'settings') {
-        // Clear defaults from schema creation
         await client.query(`DELETE FROM "${tenant_id}"."settings"`);
       }
 
       for (const row of rows) {
         const columns = Object.keys(row);
         const values = Object.values(row);
-        
+
         const placeholders = columns.map((_, i) => `$${i + 1}`).join(', ');
         const colNames = columns.map(c => `"${c}"`).join(', ');
 
@@ -406,17 +312,108 @@ exports.restoreDemoAccount = async (req, res) => {
         await client.query(queryStr, values);
       }
     }
+  });
 
-    await client.query('COMMIT');
-    await client.query('SET search_path TO public');
+  res.status(200).json({ success: true, message: 'Tenant successfully restored from backup.' });
+});
 
-    res.status(200).json({ success: true, message: 'Tenant successfully restored from backup.' });
-  } catch (error) {
-    await client.query('ROLLBACK');
-    await client.query('SET search_path TO public');
-    console.error('Error restoring demo account:', error);
-    res.status(500).json({ success: false, message: 'Server error during restore.', error: error.message });
-  } finally {
-    client.release();
+exports.downloadLeadMagnet = asyncHandler(async (req, res) => {
+  const { email, name, company, resource } = req.body;
+
+  if (!email || !name) {
+    throw new ValidationError('Name and email are required.');
   }
-};
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS shared.lead_magnet_downloads (
+      id SERIAL PRIMARY KEY,
+      email VARCHAR(255) NOT NULL,
+      name VARCHAR(255) NOT NULL,
+      company VARCHAR(255),
+      resource VARCHAR(255) NOT NULL DEFAULT 'HR Compliance Checklist 2026',
+      downloaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  await query(
+    `INSERT INTO shared.lead_magnet_downloads (email, name, company, resource) VALUES ($1, $2, $3, $4)`,
+    [email.trim().toLowerCase(), name.trim(), company?.trim() || '', resource || 'HR Compliance Checklist 2026']
+  );
+
+  try {
+    const { sendEmail } = require('../services/emailService');
+    await sendEmail({
+      to: email,
+      subject: 'Your HR Compliance Checklist 2026 — Download Ready',
+      html: `
+        <div style="font-family: system-ui, sans-serif; max-width: 560px; margin: 0 auto;">
+          <h2 style="color: #4f46e5; margin-bottom: 8px;">Thanks, ${name}!</h2>
+          <p style="color: #475569; line-height: 1.6;">Your <strong>HR Compliance Checklist 2026</strong> is ready to download.</p>
+          <a href="${process.env.FRONTEND_URL || 'https://hrmspro.online'}/resources"
+             style="display: inline-block; margin: 16px 0; padding: 12px 32px; background: #4f46e5; color: white; text-decoration: none; border-radius: 12px; font-weight: 600;">
+            Download Your Checklist
+          </a>
+          <p style="color: #64748b; font-size: 14px;">The link above will take you to our resources page where you can access the checklist and other helpful guides.</p>
+          <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 24px 0;" />
+          <p style="color: #94a3b8; font-size: 12px;">HRMS Pro — Modern HR management platform for growing businesses.</p>
+        </div>
+      `
+    });
+  } catch (emailErr) {
+    console.error('Error sending lead magnet email:', emailErr);
+  }
+
+  res.status(200).json({ success: true, message: 'Checklist sent! Check your inbox.' });
+});
+
+exports.submitContactInquiry = asyncHandler(async (req, res) => {
+  const { name, email, company, phone, subject, message } = req.body;
+
+  if (!name || !email || !subject || !message) {
+    throw new ValidationError('Name, email, subject, and message are required.');
+  }
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS shared.contact_inquiries (
+      id SERIAL PRIMARY KEY,
+      name VARCHAR(255) NOT NULL,
+      email VARCHAR(255) NOT NULL,
+      company VARCHAR(255),
+      phone VARCHAR(50),
+      subject VARCHAR(255) NOT NULL,
+      message TEXT NOT NULL,
+      submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  await query(
+    `INSERT INTO shared.contact_inquiries (name, email, company, phone, subject, message) 
+     VALUES ($1, $2, $3, $4, $5, $6)`,
+    [name.trim(), email.trim().toLowerCase(), company?.trim() || '', phone?.trim() || '', subject.trim(), message.trim()]
+  );
+
+  try {
+    const { sendEmail } = require('../services/emailService');
+    await sendEmail({
+      to: process.env.SMTP_USER || 'admin@hrmspro.online',
+      subject: `New Contact Inquiry: ${subject}`,
+      html: `
+        <div style="font-family: system-ui, sans-serif; max-width: 560px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 16px; padding: 24px; background: #fff;">
+          <h2 style="color: #4f46e5; margin-bottom: 16px;">New Contact Inquiry Received</h2>
+          <p style="color: #334155; font-size: 14px; margin: 6px 0;"><strong>Name:</strong> ${name}</p>
+          <p style="color: #334155; font-size: 14px; margin: 6px 0;"><strong>Email:</strong> ${email}</p>
+          <p style="color: #334155; font-size: 14px; margin: 6px 0;"><strong>Company:</strong> ${company || 'N/A'}</p>
+          <p style="color: #334155; font-size: 14px; margin: 6px 0;"><strong>Phone:</strong> ${phone || 'N/A'}</p>
+          <p style="color: #334155; font-size: 14px; margin: 6px 0;"><strong>Subject:</strong> ${subject}</p>
+          <div style="margin-top: 16px; padding: 16px; background: #f8fafc; border-radius: 8px; border-left: 4px solid #4f46e5;">
+            <p style="color: #475569; font-size: 14px; line-height: 1.6; margin: 0; white-space: pre-wrap;">${message}</p>
+          </div>
+        </div>
+      `
+    });
+  } catch (emailErr) {
+    console.error('Error sending contact notification email:', emailErr);
+  }
+
+  res.status(200).json({ success: true, message: 'Your message has been sent successfully. We will get back to you soon.' });
+});

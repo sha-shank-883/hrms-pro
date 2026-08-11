@@ -19,6 +19,8 @@ const clockValidation = [
 
 // Routes
 router.get('/', authenticateToken, attendanceController.getAllAttendance);
+router.get('/today', authenticateToken, attendanceController.checkToday);
+router.get('/history', authenticateToken, attendanceController.getHistory);
 router.post('/clock-in', authenticateToken, clockValidation, validate, logAction('CLOCK_IN', 'ATTENDANCE'), attendanceController.clockIn);
 router.post('/clock-out', authenticateToken, clockValidation, validate, logAction('CLOCK_OUT', 'ATTENDANCE'), attendanceController.clockOut);
 router.post('/', authenticateToken, authorizeRole('admin', 'manager'), attendanceValidation, validate, logAction('CREATE_ATTENDANCE', 'ATTENDANCE'), attendanceController.createAttendance);

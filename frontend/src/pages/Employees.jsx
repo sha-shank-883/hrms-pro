@@ -143,7 +143,7 @@ const Employees = () => {
   const getProfilePicture = (path) => {
     if (!path) return null;
     if (path.startsWith('http')) return path;
-    const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+    const baseUrl = import.meta.env.VITE_API_URL || '';
     const cleanBaseUrl = baseUrl.replace('/api', '');
     return `${cleanBaseUrl}${path.startsWith('/') ? '' : '/'}${path}`;
   };

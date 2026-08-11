@@ -19,88 +19,119 @@ const poolConfig = process.env.DATABASE_URL
 
 const pool = new Pool({
   ...poolConfig,
-  max: 50, // Increased from 20 to handle concurrent requests
+  max: 50,
   idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 10000, // Increased timeout
+  connectionTimeoutMillis: 10000,
+  allowExitOnIdle: false,
 });
 
-// AsyncLocalStorage to store tenant context
 const tenantStorage = new AsyncLocalStorage();
 
-// Test database connection
-pool.on('connect', () => {
-  // 
-});
-
 pool.on('error', (err) => {
-  console.error('❌ Unexpected database error:', err);
-  process.exit(-1);
+  console.error('Unexpected database pool error:', err.message);
 });
 
-// Query helper function with tenant support
-const query = async (text, params) => {
-  const start = Date.now();
-  const tenantId = tenantStorage.getStore();
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
-  // If no tenant context, use default pool.query (public schema usually, or whatever is default)
-  // However, for multi-tenancy, we usually want to enforce a schema.
-  // If tenantId is 'shared', we use the shared schema.
-
-  const client = await pool.connect();
-  try {
-    if (tenantId) {
-      await client.query(`SET search_path TO "${tenantId}", public`);
-    }
-
-    const res = await client.query(text, params);
-    const duration = Date.now() - start;
-    // 
-    return res;
-  } catch (error) {
-    console.error('Database query error:', error);
-    throw error;
-  } finally {
-    // Reset search path to public before releasing to avoid pollution if pool is shared
-    // Although next checkout will overwrite it if we always set it, it's safer to reset.
+const retryQuery = async (fn, maxRetries = 2) => {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
-      await client.query('SET search_path TO public');
-    } catch (e) {
-      console.error('Error resetting search path', e);
+      return await fn();
+    } catch (error) {
+      const isTransient = error.code === 'ETIMEDOUT'
+        || error.message?.includes('connection timeout')
+        || error.message?.includes('Connection terminated')
+        || error.code === '57P01';
+      if (attempt < maxRetries && isTransient) {
+        console.warn(`DB query retry ${attempt + 1}/${maxRetries} after: ${error.message}`);
+        await sleep(500 * (attempt + 1));
+        continue;
+      }
+      throw error;
     }
-    client.release();
   }
 };
 
-// Transaction helper
-const transaction = async (callback) => {
+const applyTenantSchema = async (client, tenantId) => {
+  await client.query(`SET search_path TO "${tenantId}", public`);
+};
+
+const resetSchema = async (client) => {
+  await client.query('SET search_path TO public');
+};
+
+const getClient = async () => {
   const client = await pool.connect();
   const tenantId = tenantStorage.getStore();
-
-  try {
-    if (tenantId) {
-      await client.query(`SET search_path TO "${tenantId}", public`);
-    }
-
-    await client.query('BEGIN');
-    const result = await callback(client);
-    await client.query('COMMIT');
-    return result;
-  } catch (error) {
-    await client.query('ROLLBACK');
-    throw error;
-  } finally {
-    try {
-      await client.query('SET search_path TO public');
-    } catch (e) {
-      console.error('Error resetting search path', e);
-    }
-    client.release();
+  if (tenantId) {
+    await applyTenantSchema(client, tenantId);
   }
+  return client;
+};
+
+const query = async (text, params, clientOverride) => {
+  if (clientOverride) {
+    return retryQuery(() => clientOverride.query(text, params));
+  }
+
+  return retryQuery(async () => {
+    const client = await pool.connect();
+    try {
+      const tenantId = tenantStorage.getStore();
+      if (tenantId) {
+        await applyTenantSchema(client, tenantId);
+      }
+
+      const res = await client.query(text, params);
+      return res;
+    } catch (error) {
+      if (error.message?.includes('current transaction is aborted')) {
+        try { await client.query('ROLLBACK'); } catch (_) { }
+      }
+      throw error;
+    } finally {
+      try {
+        await resetSchema(client);
+      } catch (e) {
+        console.error('Error resetting search path', e);
+      }
+      client.release();
+    }
+  });
+};
+
+const transaction = async (callback) => {
+  return retryQuery(async () => {
+    const client = await pool.connect();
+    const tenantId = tenantStorage.getStore();
+
+    try {
+      if (tenantId) {
+        await applyTenantSchema(client, tenantId);
+      }
+
+      await client.query('BEGIN');
+      const result = await callback(client);
+      await client.query('COMMIT');
+      return result;
+    } catch (error) {
+      try { await client.query('ROLLBACK'); } catch (_) { }
+      throw error;
+    } finally {
+      try {
+        await resetSchema(client);
+      } catch (e) {
+        console.error('Error resetting search path', e);
+      }
+      client.release();
+    }
+  });
 };
 
 module.exports = {
   pool,
   query,
   transaction,
+  getClient,
   tenantStorage
 };

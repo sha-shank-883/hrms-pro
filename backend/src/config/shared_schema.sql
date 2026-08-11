@@ -16,5 +16,5 @@ CREATE TABLE IF NOT EXISTS shared.tenants (
 
 -- Insert default tenant for migration/testing
 INSERT INTO shared.tenants (tenant_id, name, status) 
-VALUES ('default', 'Default Company', 'active')
+VALUES ('tenant_default', 'Default Company', 'active')
 ON CONFLICT (tenant_id) DO NOTHING;

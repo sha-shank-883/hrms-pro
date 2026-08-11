@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useLayoutEffect } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
 import { useNotifications } from '../context/NotificationContext';
 import { useSettings } from '../hooks/useSettings.jsx';
+import { useTheme } from '../context/ThemeContext';
 import { leaveService, taskService, searchService } from '../services';
 import {
   FaHome, FaUsers, FaCalendarCheck, FaMoneyBillWave, FaCog,
@@ -12,7 +13,8 @@ import {
   FaUserSlash, FaBuilding, FaChartLine, FaSitemap, FaBolt,
   FaSearch, FaBell, FaQuestionCircle, FaEnvelope,
   FaChevronDown, FaUser, FaFileInvoiceDollar, FaCheckDouble,
-  FaPlane, FaPalette
+  FaPlane, FaPalette, FaMoon, FaSun,
+  FaHeadset, FaTicketAlt
 } from 'react-icons/fa';
 
 const Layout = () => {
@@ -22,11 +24,29 @@ const Layout = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth > 1024);
+  const { dark, toggle: toggleTheme } = useTheme();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
 
   const searchRef = useRef(null);
+  const sidebarNavRef = useRef(null);
+  const sidebarScrollRef = useRef(0);
+
+  useEffect(() => {
+    const nav = sidebarNavRef.current;
+    if (!nav) return;
+    const onScroll = () => { sidebarScrollRef.current = nav.scrollTop; };
+    nav.addEventListener('scroll', onScroll, { passive: true });
+    return () => nav.removeEventListener('scroll', onScroll);
+  }, []);
+
+  useLayoutEffect(() => {
+    if (sidebarNavRef.current) {
+      sidebarNavRef.current.scrollTop = sidebarScrollRef.current;
+    }
+  });
+
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState(null);
   const [isSearching, setIsSearching] = useState(false);
@@ -115,9 +135,24 @@ const Layout = () => {
   const getProfilePicture = (path) => {
     if (!path) return null;
     if (path.startsWith('http')) return path;
-    const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+    const baseUrl = import.meta.env.VITE_API_URL || '';
     const cleanBaseUrl = baseUrl.replace('/api', '');
     return `${cleanBaseUrl}${path.startsWith('/') ? '' : '/'}${path}`;
+  };
+
+  const SubNavItem = ({ to, label }) => {
+    const isActive = location.pathname === to;
+    return (
+      <NavLink
+        to={to}
+        className={`block px-3 py-2 text-sm font-medium rounded-lg transition-all ${isActive
+          ? 'bg-green-100 text-green-700 font-semibold'
+          : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+        }`}
+      >
+        {label}
+      </NavLink>
+    );
   };
 
   const NavItem = ({ to, icon, label, count, badgeColor = 'primary-soft' }) => {
@@ -266,7 +301,7 @@ const Layout = () => {
         </div>
 
         {/* Sidebar Nav - More Spacious */}
-        <nav className="flex-1 overflow-y-auto py-6 px-4 custom-scrollbar bg-white">
+        <nav ref={sidebarNavRef} className="flex-1 overflow-y-auto py-6 px-4 custom-scrollbar bg-white" style={{ overflowAnchor: 'none' }}>
           <NavItem to="/dashboard" icon={<FaHome />} label="Dashboard" />
 
           {(() => {
@@ -302,7 +337,16 @@ const Layout = () => {
           <NavItem to="/performance" icon={<FaChartLine />} label="Performance" />
           
           {hasAccess(['admin', 'manager'], ['payroll:read']) && (
+            <div>
               <NavItem to="/payroll" icon={<FaMoneyBillWave />} label="Payroll" />
+              {location.pathname.startsWith('/payroll') && (
+                <div className="ml-8 mb-2 space-y-1 border-l-2 border-green-200 pl-3">
+                  <SubNavItem to="/payroll/runs" label="Runs" />
+                  <SubNavItem to="/payroll/payslip-designer" label="Designer" />
+                  <SubNavItem to="/payroll/batch" label="Batch Actions" />
+                </div>
+              )}
+            </div>
           )}
           {hasAccess(['admin', 'manager'], ['recruitment:read']) && (
               <NavItem to="/recruitment" icon={<FaUserPlus />} label="Recruitment" />
@@ -311,6 +355,19 @@ const Layout = () => {
           <NavItem to="/documents" icon={<FaFileAlt />} label="Documents" />
           <NavItem to="/assets" icon={<FaBoxOpen />} label="Assets" />
 
+          {hasAccess(['admin', 'manager'], ['support:read']) && (
+            <NavSection title="Support" />
+          )}
+          {hasAccess(['admin', 'manager'], ['support:read']) && (
+            <NavItem to="/support" icon={<FaHeadset />} label="Support" />
+          )}
+          {hasAccess(['admin', 'manager', 'employee'], ['support:read', 'tickets:read']) && (
+            <NavItem to="/support/tickets" icon={<FaTicketAlt />} label="Tickets" />
+          )}
+          {hasAccess(['admin', 'manager'], ['support:read']) && (
+            <NavItem to="/support/faq" icon={<FaQuestionCircle />} label="FAQ" />
+          )}
+
           {hasAccess(['admin'], ['reports:read', 'settings:read', 'audit_logs:read']) && (
             <NavSection title="Administration" />
           )}
@@ -318,8 +375,6 @@ const Layout = () => {
           {hasAccess(['admin'], []) && localStorage.getItem('tenant_id') === 'tenant_default' && (
             <>
               <NavItem to="/super-admin" icon={<FaBolt />} label="SaaS Admin" />
-              <NavItem to="/super-admin/website-settings" icon={<FaPalette />} label="Website Settings" />
-              <NavItem to="/super-admin/cms" icon={<FaFileAlt />} label="Website CMS" />
               <NavItem to="/super-admin/demo-requests" icon={<FaUsers />} label="Demo Accounts" />
               <NavItem to="/super-admin/biometrics" icon={<FaBolt />} label="Biometric Devices" />
             </>
@@ -596,6 +651,9 @@ const Layout = () => {
             </button>
             <button className="p-3 text-neutral-500 hover:text-green-600 transition-colors duration-200 rounded-md hover:bg-neutral-100">
               <FaQuestionCircle className="text-xl" />
+            </button>
+            <button onClick={toggleTheme} className="p-3 text-neutral-500 hover:text-amber-500 transition-colors duration-200 rounded-md hover:bg-neutral-100" title="Toggle theme">
+              {dark ? <FaSun className="text-xl" /> : <FaMoon className="text-xl" />}
             </button>
             <div className="h-8 w-px bg-neutral-200 mx-2"></div>
 

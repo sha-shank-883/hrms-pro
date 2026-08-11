@@ -1,860 +1,724 @@
 const { query } = require('../config/database');
 const { calculateRisk } = require('../services/churnService');
+const asyncHandler = require('../utils/asyncHandler');
+const { NotFoundError, UnauthorizedError, ForbiddenError, ValidationError, ConflictError, AppError } = require('../utils/errors');
 
-// Dashboard statistics
-const getDashboardStats = async (req, res) => {
-  try {
-    const safeQuery = async (queryText, params = [], fallback = {}) => {
-      try {
-        const result = await query(queryText, params);
-        return result.rows[0];
-      } catch (e) {
-        console.error(`Query failed: ${queryText.substring(0, 50)}...`, e.message);
-        return fallback;
-      }
-    };
+const getDashboardStats = asyncHandler(async (req, res) => {
+  const safeQuery = async (queryText, params = [], fallback = {}) => {
+    try {
+      const result = await query(queryText, params);
+      return result.rows[0];
+    } catch (e) {
+      console.error(`Query failed: ${queryText.substring(0, 50)}...`, e.message);
+      return fallback;
+    }
+  };
 
-    // Total employees
-    const employees = await safeQuery(
-      'SELECT COUNT(*) as total, COUNT(CASE WHEN status = \'active\' THEN 1 END) as active FROM employees',
-      [], { total: 0, active: 0 }
-    );
+  const employees = await safeQuery(
+    'SELECT COUNT(*) as total, COUNT(CASE WHEN status = \'active\' THEN 1 END) as active FROM employees',
+    [], { total: 0, active: 0 }
+  );
 
-    // Total departments
-    const departments = await safeQuery('SELECT COUNT(*) as total FROM departments', [], { total: 0 });
+  const departments = await safeQuery('SELECT COUNT(*) as total FROM departments', [], { total: 0 });
 
-    // Attendance today
-    // Use DB current date to avoid timezone mismatches between app and DB
-    const attendance = await safeQuery(
-      `SELECT 
-        COUNT(*) as total,
-        COUNT(CASE WHEN status = 'present' THEN 1 END) as present,
-        COUNT(CASE WHEN status = 'absent' THEN 1 END) as absent,
-        COUNT(CASE WHEN status = 'late' THEN 1 END) as late,
-        COUNT(CASE WHEN status = 'half_day' THEN 1 END) as half_day
-       FROM attendance WHERE date = CURRENT_DATE`,
-      [], { total: 0, present: 0, absent: 0, late: 0, half_day: 0 }
-    );
+  const attendance = await safeQuery(
+    `SELECT
+      COUNT(*) as total,
+      COUNT(CASE WHEN status = 'present' THEN 1 END) as present,
+      COUNT(CASE WHEN status = 'absent' THEN 1 END) as absent,
+      COUNT(CASE WHEN status = 'late' THEN 1 END) as late,
+      COUNT(CASE WHEN status = 'half_day' THEN 1 END) as half_day
+     FROM attendance WHERE date = CURRENT_DATE`,
+    [], { total: 0, present: 0, absent: 0, late: 0, half_day: 0 }
+  );
 
-    // Leave requests pending
-    const leaves = await safeQuery(
-      `SELECT 
-        COUNT(*) as total,
-        COUNT(CASE WHEN status = 'pending' THEN 1 END) as pending,
-        COUNT(CASE WHEN status = 'approved' THEN 1 END) as approved,
-        COUNT(CASE WHEN status = 'rejected' THEN 1 END) as rejected
-       FROM leave_requests`,
-      [], { total: 0, pending: 0, approved: 0, rejected: 0 }
-    );
+  const leaves = await safeQuery(
+    `SELECT
+      COUNT(*) as total,
+      COUNT(CASE WHEN status = 'pending' THEN 1 END) as pending,
+      COUNT(CASE WHEN status = 'approved' THEN 1 END) as approved,
+      COUNT(CASE WHEN status = 'rejected' THEN 1 END) as rejected
+     FROM leave_requests`,
+    [], { total: 0, pending: 0, approved: 0, rejected: 0 }
+  );
 
-    // Tasks statistics
-    const tasks = await safeQuery(
-      `SELECT 
-        COUNT(*) as total,
-        COUNT(CASE WHEN status = 'todo' THEN 1 END) as todo,
-        COUNT(CASE WHEN status = 'in_progress' THEN 1 END) as in_progress,
-        COUNT(CASE WHEN status = 'completed' THEN 1 END) as completed
-       FROM tasks`,
-      [], { total: 0, todo: 0, in_progress: 0, completed: 0 }
-    );
+  const tasks = await safeQuery(
+    `SELECT
+      COUNT(*) as total,
+      COUNT(CASE WHEN status = 'todo' THEN 1 END) as todo,
+      COUNT(CASE WHEN status = 'in_progress' THEN 1 END) as in_progress,
+      COUNT(CASE WHEN status = 'completed' THEN 1 END) as completed
+     FROM tasks`,
+    [], { total: 0, todo: 0, in_progress: 0, completed: 0 }
+  );
 
-    // Payroll this month
-    const currentMonth = new Date().getMonth() + 1;
-    const currentYear = new Date().getFullYear();
-    const payroll = await safeQuery(
-      `SELECT 
-        COUNT(*) as total,
-        SUM(net_salary) as total_amount,
-        COUNT(CASE WHEN payment_status = 'paid' THEN 1 END) as paid,
-        COUNT(CASE WHEN payment_status = 'pending' THEN 1 END) as pending
-       FROM payroll WHERE month = $1 AND year = $2`,
-      [currentMonth, currentYear], { total: 0, total_amount: 0, paid: 0, pending: 0 }
-    );
+  const currentMonth = new Date().getMonth() + 1;
+  const currentYear = new Date().getFullYear();
+  const payroll = await safeQuery(
+    `SELECT
+      COUNT(*) as total,
+      SUM(net_salary) as total_amount,
+      COUNT(CASE WHEN payment_status = 'paid' THEN 1 END) as paid,
+      COUNT(CASE WHEN payment_status = 'pending' THEN 1 END) as pending
+     FROM payroll WHERE month = $1 AND year = $2`,
+    [currentMonth, currentYear], { total: 0, total_amount: 0, paid: 0, pending: 0 }
+  );
 
-    // Active job postings
-    const jobs = await safeQuery(
-      `SELECT 
-        COUNT(*) as total,
-        COUNT(CASE WHEN status = 'open' THEN 1 END) as open
-       FROM job_postings`,
-      [], { total: 0, open: 0 }
-    );
+  const jobs = await safeQuery(
+    `SELECT
+      COUNT(*) as total,
+      COUNT(CASE WHEN status = 'open' THEN 1 END) as open
+     FROM job_postings`,
+    [], { total: 0, open: 0 }
+  );
 
-    
-
-    res.json({
-      success: true,
-      data: {
-        employees,
-        departments,
-        attendance,
-        leaves,
-        tasks,
-        payroll: {
-          ...payroll,
-          total_amount: parseFloat(payroll.total_amount || 0),
-        },
-        jobs,
+  res.json({
+    success: true,
+    data: {
+      employees,
+      departments,
+      attendance,
+      leaves,
+      tasks,
+      payroll: {
+        ...payroll,
+        total_amount: parseFloat(payroll.total_amount || 0),
       },
-    });
-  } catch (error) {
-    console.error('Get dashboard stats error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch dashboard statistics',
-      error: error.message,
-    });
+      jobs,
+    },
+  });
+});
+
+const getAttendanceReport = asyncHandler(async (req, res) => {
+  const { start_date, end_date, department_id } = req.query;
+
+  let queryText = `
+    SELECT
+      e.employee_id,
+      e.first_name || ' ' || e.last_name as employee_name,
+      d.department_name,
+      COUNT(*) as total_days,
+      COUNT(CASE WHEN a.status = 'present' THEN 1 END) as present_days,
+      COUNT(CASE WHEN a.status = 'absent' THEN 1 END) as absent_days,
+      SUM(a.work_hours) as total_hours,
+      AVG(a.work_hours) as avg_hours
+    FROM employees e
+    LEFT JOIN attendance a ON e.employee_id = a.employee_id
+    LEFT JOIN departments d ON e.department_id = d.department_id
+    WHERE 1=1
+  `;
+  const params = [];
+  let paramCount = 1;
+
+  if (start_date) {
+    queryText += ` AND a.date >= $${paramCount}`;
+    params.push(start_date);
+    paramCount++;
   }
-};
 
-// Attendance report
-const getAttendanceReport = async (req, res) => {
-  try {
-    const { start_date, end_date, department_id } = req.query;
-
-    let queryText = `
-      SELECT 
-        e.employee_id,
-        e.first_name || ' ' || e.last_name as employee_name,
-        d.department_name,
-        COUNT(*) as total_days,
-        COUNT(CASE WHEN a.status = 'present' THEN 1 END) as present_days,
-        COUNT(CASE WHEN a.status = 'absent' THEN 1 END) as absent_days,
-        SUM(a.work_hours) as total_hours,
-        AVG(a.work_hours) as avg_hours
-      FROM employees e
-      LEFT JOIN attendance a ON e.employee_id = a.employee_id
-      LEFT JOIN departments d ON e.department_id = d.department_id
-      WHERE 1=1
-    `;
-    const params = [];
-    let paramCount = 1;
-
-    if (start_date) {
-      queryText += ` AND a.date >= $${paramCount}`;
-      params.push(start_date);
-      paramCount++;
-    }
-
-    if (end_date) {
-      queryText += ` AND a.date <= $${paramCount}`;
-      params.push(end_date);
-      paramCount++;
-    }
-
-    if (department_id) {
-      queryText += ` AND e.department_id = $${paramCount}`;
-      params.push(department_id);
-      paramCount++;
-    }
-
-    queryText += ' GROUP BY e.employee_id, e.first_name, e.last_name, d.department_name ORDER BY e.employee_id';
-
-    const result = await query(queryText, params);
-
-    res.json({
-      success: true,
-      data: result.rows,
-      count: result.rows.length,
-    });
-  } catch (error) {
-    console.error('Get attendance report error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch attendance report',
-      error: error.message,
-    });
+  if (end_date) {
+    queryText += ` AND a.date <= $${paramCount}`;
+    params.push(end_date);
+    paramCount++;
   }
-};
 
-// Leave report
-const getLeaveReport = async (req, res) => {
-  try {
-    const { year, department_id } = req.query;
-
-    let queryText = `
-      SELECT 
-        e.employee_id,
-        e.first_name || ' ' || e.last_name as employee_name,
-        d.department_name,
-        lr.leave_type,
-        COUNT(*) as total_requests,
-        SUM(lr.days_count) as total_days,
-        COUNT(CASE WHEN lr.status = 'approved' THEN 1 END) as approved_requests,
-        COUNT(CASE WHEN lr.status = 'rejected' THEN 1 END) as rejected_requests,
-        COUNT(CASE WHEN lr.status = 'pending' THEN 1 END) as pending_requests
-      FROM employees e
-      LEFT JOIN leave_requests lr ON e.employee_id = lr.employee_id
-      LEFT JOIN departments d ON e.department_id = d.department_id
-      WHERE 1=1
-    `;
-    const params = [];
-    let paramCount = 1;
-
-    if (year) {
-      queryText += ` AND EXTRACT(YEAR FROM lr.start_date) = $${paramCount}`;
-      params.push(year);
-      paramCount++;
-    }
-
-    if (department_id) {
-      queryText += ` AND e.department_id = $${paramCount}`;
-      params.push(department_id);
-      paramCount++;
-    }
-
-    queryText += ' GROUP BY e.employee_id, e.first_name, e.last_name, d.department_name, lr.leave_type ORDER BY e.employee_id';
-
-    const result = await query(queryText, params);
-
-    res.json({
-      success: true,
-      data: result.rows,
-      count: result.rows.length,
-    });
-  } catch (error) {
-    console.error('Get leave report error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch leave report',
-      error: error.message,
-    });
+  if (department_id) {
+    queryText += ` AND e.department_id = $${paramCount}`;
+    params.push(department_id);
+    paramCount++;
   }
-};
 
-// Payroll report
-const getPayrollReport = async (req, res) => {
-  try {
-    const { year, month, department_id } = req.query;
+  queryText += ' GROUP BY e.employee_id, e.first_name, e.last_name, d.department_name ORDER BY e.employee_id';
 
-    let queryText = `
-      SELECT 
-        e.employee_id,
-        e.first_name || ' ' || e.last_name as employee_name,
-        e.position,
-        d.department_name,
-        p.month,
-        p.year,
-        p.basic_salary,
-        p.allowances,
-        p.deductions,
-        p.overtime_pay,
-        p.bonus,
-        p.tax,
-        p.net_salary,
-        p.payment_status
-      FROM payroll p
-      JOIN employees e ON p.employee_id = e.employee_id
-      LEFT JOIN departments d ON e.department_id = d.department_id
-      WHERE 1=1
-    `;
-    const params = [];
-    let paramCount = 1;
+  const result = await query(queryText, params);
 
-    if (year) {
-      queryText += ` AND p.year = $${paramCount}`;
-      params.push(year);
-      paramCount++;
-    }
+  res.json({
+    success: true,
+    data: result.rows,
+    count: result.rows.length,
+  });
+});
 
-    if (month) {
-      queryText += ` AND p.month = $${paramCount}`;
-      params.push(month);
-      paramCount++;
-    }
+const getLeaveReport = asyncHandler(async (req, res) => {
+  const { year, department_id } = req.query;
 
-    if (department_id) {
-      queryText += ` AND e.department_id = $${paramCount}`;
-      params.push(department_id);
-      paramCount++;
-    }
+  let queryText = `
+    SELECT
+      e.employee_id,
+      e.first_name || ' ' || e.last_name as employee_name,
+      d.department_name,
+      lr.leave_type,
+      COUNT(*) as total_requests,
+      SUM(lr.days_count) as total_days,
+      COUNT(CASE WHEN lr.status = 'approved' THEN 1 END) as approved_requests,
+      COUNT(CASE WHEN lr.status = 'rejected' THEN 1 END) as rejected_requests,
+      COUNT(CASE WHEN lr.status = 'pending' THEN 1 END) as pending_requests
+    FROM employees e
+    LEFT JOIN leave_requests lr ON e.employee_id = lr.employee_id
+    LEFT JOIN departments d ON e.department_id = d.department_id
+    WHERE 1=1
+  `;
+  const params = [];
+  let paramCount = 1;
 
-    queryText += ' ORDER BY p.year DESC, p.month DESC, e.employee_id';
-
-    const result = await query(queryText, params);
-
-    // Calculate totals
-    const totals = result.rows.reduce((acc, row) => ({
-      total_basic: acc.total_basic + parseFloat(row.basic_salary || 0),
-      total_allowances: acc.total_allowances + parseFloat(row.allowances || 0),
-      total_deductions: acc.total_deductions + parseFloat(row.deductions || 0),
-      total_net: acc.total_net + parseFloat(row.net_salary || 0),
-    }), { total_basic: 0, total_allowances: 0, total_deductions: 0, total_net: 0 });
-
-    res.json({
-      success: true,
-      data: result.rows,
-      count: result.rows.length,
-      totals,
-    });
-  } catch (error) {
-    console.error('Get payroll report error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch payroll report',
-      error: error.message,
-    });
+  if (year) {
+    queryText += ` AND EXTRACT(YEAR FROM lr.start_date) = $${paramCount}`;
+    params.push(year);
+    paramCount++;
   }
-};
 
-// Employee demographics report
-const getEmployeeDemographics = async (req, res) => {
-  try {
-    // By department
-    const byDepartment = await query(`
-      SELECT d.department_name, COUNT(e.employee_id) as count
-      FROM departments d
-      LEFT JOIN employees e ON d.department_id = e.department_id
-      GROUP BY d.department_name
-      ORDER BY count DESC
-    `);
-
-    // By employment type
-    const byEmploymentType = await query(`
-      SELECT employment_type, COUNT(*) as count
-      FROM employees
-      GROUP BY employment_type
-      ORDER BY count DESC
-    `);
-
-    // By gender
-    const byGender = await query(`
-      SELECT gender, COUNT(*) as count
-      FROM employees
-      WHERE gender IS NOT NULL
-      GROUP BY gender
-      ORDER BY count DESC
-    `);
-
-    // By status
-    const byStatus = await query(`
-      SELECT status, COUNT(*) as count
-      FROM employees
-      GROUP BY status
-      ORDER BY count DESC
-    `);
-
-    res.json({
-      success: true,
-      data: {
-        by_department: byDepartment.rows,
-        by_employment_type: byEmploymentType.rows,
-        by_gender: byGender.rows,
-        by_status: byStatus.rows,
-      },
-    });
-  } catch (error) {
-    console.error('Get employee demographics error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch employee demographics',
-      error: error.message,
-    });
+  if (department_id) {
+    queryText += ` AND e.department_id = $${paramCount}`;
+    params.push(department_id);
+    paramCount++;
   }
-};
 
-// Employee report (detailed employee list)
-const getEmployeeReport = async (req, res) => {
-  try {
-    const { department_id, status, employment_type } = req.query;
+  queryText += ' GROUP BY e.employee_id, e.first_name, e.last_name, d.department_name, lr.leave_type ORDER BY e.employee_id';
 
-    let queryText = `
-      SELECT 
-        e.employee_id,
-        e.first_name || ' ' || e.last_name as employee_name,
-        e.email,
-        e.phone,
-        e.position,
-        e.employment_type,
-        e.status,
-        e.date_of_birth,
-        e.gender,
-        e.address,
-        e.hire_date,
-        d.department_name,
-        u.email as user_email,
-        u.role as user_role
-      FROM employees e
-      LEFT JOIN departments d ON e.department_id = d.department_id
-      LEFT JOIN users u ON e.user_id = u.user_id
-      WHERE 1=1
-    `;
-    const params = [];
-    let paramCount = 1;
+  const result = await query(queryText, params);
 
-    if (department_id) {
-      queryText += ` AND e.department_id = $${paramCount}`;
-      params.push(department_id);
-      paramCount++;
-    }
+  res.json({
+    success: true,
+    data: result.rows,
+    count: result.rows.length,
+  });
+});
 
-    if (status) {
-      queryText += ` AND e.status = $${paramCount}`;
-      params.push(status);
-      paramCount++;
-    }
+const getPayrollReport = asyncHandler(async (req, res) => {
+  const { year, month, department_id } = req.query;
 
-    if (employment_type) {
-      queryText += ` AND e.employment_type = $${paramCount}`;
-      params.push(employment_type);
-      paramCount++;
-    }
+  let queryText = `
+    SELECT
+      e.employee_id,
+      e.first_name || ' ' || e.last_name as employee_name,
+      e.position,
+      d.department_name,
+      p.month,
+      p.year,
+      p.basic_salary,
+      p.allowances,
+      p.deductions,
+      p.overtime_pay,
+      p.bonus,
+      p.tax,
+      p.net_salary,
+      p.payment_status
+    FROM payroll p
+    JOIN employees e ON p.employee_id = e.employee_id
+    LEFT JOIN departments d ON e.department_id = d.department_id
+    WHERE 1=1
+  `;
+  const params = [];
+  let paramCount = 1;
 
-    queryText += ' ORDER BY e.employee_id';
-
-    const result = await query(queryText, params);
-
-    res.json({
-      success: true,
-      data: result.rows,
-      count: result.rows.length,
-    });
-  } catch (error) {
-    console.error('Get employee report error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch employee report',
-      error: error.message,
-    });
+  if (year) {
+    queryText += ` AND p.year = $${paramCount}`;
+    params.push(year);
+    paramCount++;
   }
-};
 
-// Recruitment report
-const getRecruitmentReport = async (req, res) => {
-  try {
-    const { year } = req.query;
-
-    let queryText = `
-      SELECT 
-        jp.job_id,
-        jp.title,
-        jp.position_type,
-        d.department_name,
-        jp.status,
-        jp.posted_date,
-        COUNT(ja.application_id) as total_applications,
-        COUNT(CASE WHEN ja.status = 'submitted' THEN 1 END) as submitted,
-        COUNT(CASE WHEN ja.status = 'interview' THEN 1 END) as interview,
-        COUNT(CASE WHEN ja.status = 'hired' THEN 1 END) as hired,
-        COUNT(CASE WHEN ja.status = 'rejected' THEN 1 END) as rejected
-      FROM job_postings jp
-      LEFT JOIN departments d ON jp.department_id = d.department_id
-      LEFT JOIN job_applications ja ON jp.job_id = ja.job_id
-      WHERE 1=1
-    `;
-    const params = [];
-
-    if (year) {
-      queryText += ' AND EXTRACT(YEAR FROM jp.posted_date) = $1';
-      params.push(year);
-    }
-
-    queryText += ' GROUP BY jp.job_id, jp.title, jp.position_type, d.department_name, jp.status, jp.posted_date ORDER BY jp.posted_date DESC';
-
-    const result = await query(queryText, params);
-
-    res.json({
-      success: true,
-      data: result.rows,
-      count: result.rows.length,
-    });
-  } catch (error) {
-    console.error('Get recruitment report error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch recruitment report',
-      error: error.message,
-    });
+  if (month) {
+    queryText += ` AND p.month = $${paramCount}`;
+    params.push(month);
+    paramCount++;
   }
-};
 
-// Predictive analytics for employee turnover
-const getTurnoverPrediction = async (req, res) => {
-  try {
-    
-
-    // Get historical turnover data (last 12 months)
-    const turnoverHistory = await query(`
-      SELECT 
-        EXTRACT(MONTH FROM termination_date) as month,
-        EXTRACT(YEAR FROM termination_date) as year,
-        COUNT(*) as terminations
-      FROM employees 
-      WHERE status = 'terminated' 
-        AND termination_date IS NOT NULL
-        AND termination_date >= CURRENT_DATE - INTERVAL '12 months'
-      GROUP BY EXTRACT(MONTH FROM termination_date), EXTRACT(YEAR FROM termination_date)
-      ORDER BY year, month
-    `);
-
-    // Get employee satisfaction data (simulated)
-    const satisfactionData = await query(`
-      SELECT 
-        e.department_id,
-        d.department_name,
-        COUNT(*) as employee_count,
-        AVG(CASE WHEN e.status = 'active' THEN 1 ELSE 0 END) as retention_rate
-      FROM employees e
-      LEFT JOIN departments d ON e.department_id = d.department_id
-      GROUP BY e.department_id, d.department_name
-    `);
-
-    // Calculate turnover risk factors
-    const riskFactors = await query(`
-      SELECT 
-        d.department_name,
-        COUNT(e.employee_id) as total_employees,
-        COUNT(CASE WHEN e.status = 'terminated' THEN 1 END) as terminated_count,
-        ROUND(
-          (COUNT(CASE WHEN e.status = 'terminated' THEN 1 END) * 100.0 / 
-           NULLIF(COUNT(e.employee_id), 0)), 2
-        ) as turnover_rate,
-        CASE 
-          WHEN (COUNT(CASE WHEN e.status = 'terminated' THEN 1 END) * 100.0 / 
-                NULLIF(COUNT(e.employee_id), 0)) > 15 THEN 'High'
-          WHEN (COUNT(CASE WHEN e.status = 'terminated' THEN 1 END) * 100.0 / 
-                NULLIF(COUNT(e.employee_id), 0)) > 8 THEN 'Medium'
-          ELSE 'Low'
-        END as risk_level
-      FROM employees e
-      LEFT JOIN departments d ON e.department_id = d.department_id
-      GROUP BY d.department_name
-    `);
-
-    // Predict next quarter turnover (simple calculation)
-    const totalEmployees = await query('SELECT COUNT(*) as total FROM employees WHERE status = \'active\'');
-    const recentTerminations = await query(`
-      SELECT COUNT(*) as count FROM employees 
-      WHERE status = 'terminated' 
-        AND termination_date IS NOT NULL
-        AND termination_date >= CURRENT_DATE - INTERVAL '3 months'
-    `);
-
-    const avgMonthlyTurnover = recentTerminations.rows[0] ? recentTerminations.rows[0].count / 3 : 0;
-    const totalActiveEmployees = totalEmployees.rows[0] ? parseInt(totalEmployees.rows[0].total) : 0;
-
-    res.json({
-      success: true,
-      data: {
-        turnover_history: turnoverHistory.rows,
-        satisfaction_data: satisfactionData.rows,
-        risk_factors: riskFactors.rows,
-        predictions: {
-          total_active_employees: totalActiveEmployees,
-          avg_monthly_turnover: avgMonthlyTurnover,
-          predicted_next_quarter_turnover: Math.round(avgMonthlyTurnover * 3),
-          predicted_turnover_rate: totalActiveEmployees > 0 ? ((avgMonthlyTurnover / totalActiveEmployees) * 100).toFixed(2) + '%' : '0.00%'
-        }
-      }
-    });
-  } catch (error) {
-    console.error('Get turnover prediction error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch turnover predictions',
-      error: error.message,
-    });
+  if (department_id) {
+    queryText += ` AND e.department_id = $${paramCount}`;
+    params.push(department_id);
+    paramCount++;
   }
-};
 
-// Performance analytics
-const getPerformanceAnalytics = async (req, res) => {
-  try {
-    const { start_date, end_date, department_id, priority, status } = req.query;
+  queryText += ' ORDER BY p.year DESC, p.month DESC, e.employee_id';
 
-    let dateFilter = '';
-    let deptFilter = '';
-    let advancedFilter = '';
+  const result = await query(queryText, params);
 
-    // Date Filtering for Tasks
-    if (start_date) {
-      dateFilter += ` AND t.created_at >= '${start_date}'`;
-    }
-    if (end_date) {
-      dateFilter += ` AND t.created_at <= '${end_date}'`;
-    }
+  const totals = result.rows.reduce((acc, row) => ({
+    total_basic: acc.total_basic + parseFloat(row.basic_salary || 0),
+    total_allowances: acc.total_allowances + parseFloat(row.allowances || 0),
+    total_deductions: acc.total_deductions + parseFloat(row.deductions || 0),
+    total_net: acc.total_net + parseFloat(row.net_salary || 0),
+  }), { total_basic: 0, total_allowances: 0, total_deductions: 0, total_net: 0 });
 
-    // Department Filtering
-    if (department_id) {
-      deptFilter = ` AND d.department_id = ${department_id}`;
-    }
+  res.json({
+    success: true,
+    data: result.rows,
+    count: result.rows.length,
+    totals,
+  });
+});
 
-    // Advanced Filters
-    if (priority) {
-      advancedFilter += ` AND t.priority = '${priority}'`;
-    }
-    if (status && status !== 'all') { // Optional status filter for specific drill-down
-      advancedFilter += ` AND t.status = '${status}'`;
-    }
+const getEmployeeDemographics = asyncHandler(async (req, res) => {
+  const byDepartment = await query(`
+    SELECT d.department_name, COUNT(e.employee_id) as count
+    FROM departments d
+    LEFT JOIN employees e ON d.department_id = e.department_id
+    GROUP BY d.department_name
+    ORDER BY count DESC
+  `);
 
-    // Task completion rates
-    const taskCompletion = await query(`
-      SELECT 
-        COALESCE(d.department_name, 'Unassigned') as department_name,
-        COUNT(t.task_id) as total_tasks,
-        COUNT(CASE WHEN t.status = 'completed' THEN 1 END) as completed_tasks,
-        COUNT(CASE WHEN t.status = 'todo' THEN 1 END) as todo_tasks,
-        COUNT(CASE WHEN t.status = 'in_progress' THEN 1 END) as in_progress_tasks,
-        ROUND(
-          (COUNT(CASE WHEN t.status = 'completed' THEN 1 END) * 100.0 / 
-           NULLIF(COUNT(t.task_id), 0)), 2
-        ) as completion_rate
-      FROM tasks t
-      LEFT JOIN task_assignments ta ON t.task_id = ta.task_id
-      LEFT JOIN employees e ON ta.employee_id = e.employee_id
-      LEFT JOIN departments d ON e.department_id = d.department_id
-      WHERE 1=1 ${dateFilter} ${deptFilter} ${advancedFilter}
-      GROUP BY d.department_name
-    `);
+  const byEmploymentType = await query(`
+    SELECT employment_type, COUNT(*) as count
+    FROM employees
+    GROUP BY employment_type
+    ORDER BY count DESC
+  `);
 
-    // Task Status Distribution
-    const taskStatusDistribution = await query(`
-      SELECT 
-        t.status,
-        COUNT(*) as count
-      FROM tasks t
-      LEFT JOIN task_assignments ta ON t.task_id = ta.task_id
-      LEFT JOIN employees e ON ta.employee_id = e.employee_id
-      LEFT JOIN departments d ON e.department_id = d.department_id
-      WHERE 1=1 ${dateFilter} ${deptFilter} ${advancedFilter}
-      GROUP BY t.status
-    `);
+  const byGender = await query(`
+    SELECT gender, COUNT(*) as count
+    FROM employees
+    WHERE gender IS NOT NULL
+    GROUP BY gender
+    ORDER BY count DESC
+  `);
 
-    // Employee productivity scores (simulated)
-    const productivityScores = await query(`
-      SELECT 
-        e.employee_id,
-        e.first_name || ' ' || e.last_name as employee_name,
-        d.department_name,
-        COUNT(t.task_id) as tasks_assigned,
-        COUNT(CASE WHEN t.status = 'completed' THEN 1 END) as tasks_completed,
-        ROUND(
-          (COUNT(CASE WHEN t.status = 'completed' THEN 1 END) * 100.0 / 
-           NULLIF(COUNT(t.task_id), 0)), 2
-        ) as productivity_score
-      FROM employees e
-      LEFT JOIN task_assignments ta ON e.employee_id = ta.employee_id
-      LEFT JOIN tasks t ON ta.task_id = t.task_id
-      LEFT JOIN departments d ON e.department_id = d.department_id
-      WHERE e.status = 'active'
-      ${dateFilter} ${deptFilter} ${advancedFilter}
-      GROUP BY e.employee_id, e.first_name, e.last_name, d.department_name
-      HAVING COUNT(t.task_id) > 0
-      ORDER BY productivity_score DESC
-      LIMIT 10
-    `);
+  const byStatus = await query(`
+    SELECT status, COUNT(*) as count
+    FROM employees
+    GROUP BY status
+    ORDER BY count DESC
+  `);
 
-    // High performers recognition
-    const highPerformers = productivityScores.rows ? productivityScores.rows.filter(emp => parseFloat(emp.productivity_score) >= 90) : [];
+  res.json({
+    success: true,
+    data: {
+      by_department: byDepartment.rows,
+      by_employment_type: byEmploymentType.rows,
+      by_gender: byGender.rows,
+      by_status: byStatus.rows,
+    },
+  });
+});
 
-    res.json({
-      success: true,
-      data: {
-        task_completion_by_department: taskCompletion.rows,
-        task_status_distribution: taskStatusDistribution.rows,
-        top_performers: productivityScores.rows ? productivityScores.rows.slice(0, 5) : [],
-        high_performers_count: highPerformers.length,
-        overall_productivity: productivityScores.rows && productivityScores.rows.length > 0 ?
-          (productivityScores.rows.reduce((sum, emp) => sum + parseFloat(emp.productivity_score || 0), 0) / productivityScores.rows.length).toFixed(2) : 0
-      }
-    });
-  } catch (error) {
-    console.error('Get performance analytics error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch performance analytics',
-      error: error.message,
-    });
+const getEmployeeReport = asyncHandler(async (req, res) => {
+  const { department_id, status, employment_type } = req.query;
+
+  let queryText = `
+    SELECT
+      e.employee_id,
+      e.first_name || ' ' || e.last_name as employee_name,
+      e.email,
+      e.phone,
+      e.position,
+      e.employment_type,
+      e.status,
+      e.date_of_birth,
+      e.gender,
+      e.address,
+      e.hire_date,
+      d.department_name,
+      u.email as user_email,
+      u.role as user_role
+    FROM employees e
+    LEFT JOIN departments d ON e.department_id = d.department_id
+    LEFT JOIN users u ON e.user_id = u.user_id
+    WHERE 1=1
+  `;
+  const params = [];
+  let paramCount = 1;
+
+  if (department_id) {
+    queryText += ` AND e.department_id = $${paramCount}`;
+    params.push(department_id);
+    paramCount++;
   }
-};
 
-// Breakdown of Churn Risk by Employee
-const getChurnRiskAnalysis = async (req, res) => {
-  try {
-    const { department_id } = req.query;
+  if (status) {
+    queryText += ` AND e.status = $${paramCount}`;
+    params.push(status);
+    paramCount++;
+  }
 
-    // Get all active employees
-    let queryText = `
-      SELECT e.employee_id, e.first_name, e.last_name, e.department_id, d.department_name
-      FROM employees e
-      LEFT JOIN departments d ON e.department_id = d.department_id
-      WHERE e.status = 'active'
-    `;
-    const params = [];
+  if (employment_type) {
+    queryText += ` AND e.employment_type = $${paramCount}`;
+    params.push(employment_type);
+    paramCount++;
+  }
 
-    if (department_id) {
-      queryText += ' AND e.department_id = $1';
-      params.push(department_id);
-    }
+  queryText += ' ORDER BY e.employee_id';
 
-    const employeesResult = await query(queryText, params);
+  const result = await query(queryText, params);
 
-    const riskAnalysis = [];
+  res.json({
+    success: true,
+    data: result.rows,
+    count: result.rows.length,
+  });
+});
 
-    // Calculate risk for each employee
-    for (const emp of employeesResult.rows) {
-      const riskData = await calculateRisk(emp.employee_id);
-      if (riskData) {
-        riskAnalysis.push({
-          ...emp,
-          ...riskData
-        });
+const getRecruitmentReport = asyncHandler(async (req, res) => {
+  const { year } = req.query;
+
+  let queryText = `
+    SELECT
+      jp.job_id,
+      jp.title,
+      jp.position_type,
+      d.department_name,
+      jp.status,
+      jp.posted_date,
+      COUNT(ja.application_id) as total_applications,
+      COUNT(CASE WHEN ja.status = 'submitted' THEN 1 END) as submitted,
+      COUNT(CASE WHEN ja.status = 'interview' THEN 1 END) as interview,
+      COUNT(CASE WHEN ja.status = 'hired' THEN 1 END) as hired,
+      COUNT(CASE WHEN ja.status = 'rejected' THEN 1 END) as rejected
+    FROM job_postings jp
+    LEFT JOIN departments d ON jp.department_id = d.department_id
+    LEFT JOIN job_applications ja ON jp.job_id = ja.job_id
+    WHERE 1=1
+  `;
+  const params = [];
+
+  if (year) {
+    queryText += ' AND EXTRACT(YEAR FROM jp.posted_date) = $1';
+    params.push(year);
+  }
+
+  queryText += ' GROUP BY jp.job_id, jp.title, jp.position_type, d.department_name, jp.status, jp.posted_date ORDER BY jp.posted_date DESC';
+
+  const result = await query(queryText, params);
+
+  res.json({
+    success: true,
+    data: result.rows,
+    count: result.rows.length,
+  });
+});
+
+const getTurnoverPrediction = asyncHandler(async (req, res) => {
+  const turnoverHistory = await query(`
+    SELECT
+      EXTRACT(MONTH FROM termination_date) as month,
+      EXTRACT(YEAR FROM termination_date) as year,
+      COUNT(*) as terminations
+    FROM employees
+    WHERE status = 'terminated'
+      AND termination_date IS NOT NULL
+      AND termination_date >= CURRENT_DATE - INTERVAL '12 months'
+    GROUP BY EXTRACT(MONTH FROM termination_date), EXTRACT(YEAR FROM termination_date)
+    ORDER BY year, month
+  `);
+
+  const satisfactionData = await query(`
+    SELECT
+      e.department_id,
+      d.department_name,
+      COUNT(*) as employee_count,
+      AVG(CASE WHEN e.status = 'active' THEN 1 ELSE 0 END) as retention_rate
+    FROM employees e
+    LEFT JOIN departments d ON e.department_id = d.department_id
+    GROUP BY e.department_id, d.department_name
+  `);
+
+  const riskFactors = await query(`
+    SELECT
+      d.department_name,
+      COUNT(e.employee_id) as total_employees,
+      COUNT(CASE WHEN e.status = 'terminated' THEN 1 END) as terminated_count,
+      ROUND(
+        (COUNT(CASE WHEN e.status = 'terminated' THEN 1 END) * 100.0 /
+         NULLIF(COUNT(e.employee_id), 0)), 2
+      ) as turnover_rate,
+      CASE
+        WHEN (COUNT(CASE WHEN e.status = 'terminated' THEN 1 END) * 100.0 /
+              NULLIF(COUNT(e.employee_id), 0)) > 15 THEN 'High'
+        WHEN (COUNT(CASE WHEN e.status = 'terminated' THEN 1 END) * 100.0 /
+              NULLIF(COUNT(e.employee_id), 0)) > 8 THEN 'Medium'
+        ELSE 'Low'
+      END as risk_level
+    FROM employees e
+    LEFT JOIN departments d ON e.department_id = d.department_id
+    GROUP BY d.department_name
+  `);
+
+  const totalEmployees = await query('SELECT COUNT(*) as total FROM employees WHERE status = \'active\'');
+  const recentTerminations = await query(`
+    SELECT COUNT(*) as count FROM employees
+    WHERE status = 'terminated'
+      AND termination_date IS NOT NULL
+      AND termination_date >= CURRENT_DATE - INTERVAL '3 months'
+  `);
+
+  const avgMonthlyTurnover = recentTerminations.rows[0] ? recentTerminations.rows[0].count / 3 : 0;
+  const totalActiveEmployees = totalEmployees.rows[0] ? parseInt(totalEmployees.rows[0].total) : 0;
+
+  res.json({
+    success: true,
+    data: {
+      turnover_history: turnoverHistory.rows,
+      satisfaction_data: satisfactionData.rows,
+      risk_factors: riskFactors.rows,
+      predictions: {
+        total_active_employees: totalActiveEmployees,
+        avg_monthly_turnover: avgMonthlyTurnover,
+        predicted_next_quarter_turnover: Math.round(avgMonthlyTurnover * 3),
+        predicted_turnover_rate: totalActiveEmployees > 0 ? ((avgMonthlyTurnover / totalActiveEmployees) * 100).toFixed(2) + '%' : '0.00%'
       }
     }
+  });
+});
 
-    // Sort by Risk Score (High to Low)
-    riskAnalysis.sort((a, b) => b.riskScore - a.riskScore);
+const getPerformanceAnalytics = asyncHandler(async (req, res) => {
+  const { start_date, end_date, department_id, priority, status } = req.query;
 
-    res.json({
-      success: true,
-      data: riskAnalysis
-    });
-  } catch (error) {
-    console.error('Get churn risk analysis error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch churn risk analysis',
-      error: error.message
-    });
+  let dateFilter = '';
+  let deptFilter = '';
+  let advancedFilter = '';
+
+  if (start_date) {
+    dateFilter += ` AND t.created_at >= '${start_date}'`;
   }
-};
+  if (end_date) {
+    dateFilter += ` AND t.created_at <= '${end_date}'`;
+  }
 
-// Payroll trend analysis
-const getPayrollTrends = async (req, res) => {
-  try {
-    const { year, department_id, payment_status } = req.query; // Added payment_status
-    const targetYear = year || new Date().getFullYear();
-    let paramFilter = '';
+  if (department_id) {
+    deptFilter = ` AND d.department_id = ${department_id}`;
+  }
 
-    if (department_id) {
-      paramFilter += ` AND e.department_id = ${department_id}`;
+  if (priority) {
+    advancedFilter += ` AND t.priority = '${priority}'`;
+  }
+  if (status && status !== 'all') {
+    advancedFilter += ` AND t.status = '${status}'`;
+  }
+
+  const taskCompletion = await query(`
+    SELECT
+      COALESCE(d.department_name, 'Unassigned') as department_name,
+      COUNT(t.task_id) as total_tasks,
+      COUNT(CASE WHEN t.status = 'completed' THEN 1 END) as completed_tasks,
+      COUNT(CASE WHEN t.status = 'todo' THEN 1 END) as todo_tasks,
+      COUNT(CASE WHEN t.status = 'in_progress' THEN 1 END) as in_progress_tasks,
+      ROUND(
+        (COUNT(CASE WHEN t.status = 'completed' THEN 1 END) * 100.0 /
+         NULLIF(COUNT(t.task_id), 0)), 2
+      ) as completion_rate
+    FROM tasks t
+    LEFT JOIN task_assignments ta ON t.task_id = ta.task_id
+    LEFT JOIN employees e ON ta.employee_id = e.employee_id
+    LEFT JOIN departments d ON e.department_id = d.department_id
+    WHERE 1=1 ${dateFilter} ${deptFilter} ${advancedFilter}
+    GROUP BY d.department_name
+  `);
+
+  const taskStatusDistribution = await query(`
+    SELECT
+      t.status,
+      COUNT(*) as count
+    FROM tasks t
+    LEFT JOIN task_assignments ta ON t.task_id = ta.task_id
+    LEFT JOIN employees e ON ta.employee_id = e.employee_id
+    LEFT JOIN departments d ON e.department_id = d.department_id
+    WHERE 1=1 ${dateFilter} ${deptFilter} ${advancedFilter}
+    GROUP BY t.status
+  `);
+
+  const productivityScores = await query(`
+    SELECT
+      e.employee_id,
+      e.first_name || ' ' || e.last_name as employee_name,
+      d.department_name,
+      COUNT(t.task_id) as tasks_assigned,
+      COUNT(CASE WHEN t.status = 'completed' THEN 1 END) as tasks_completed,
+      ROUND(
+        (COUNT(CASE WHEN t.status = 'completed' THEN 1 END) * 100.0 /
+         NULLIF(COUNT(t.task_id), 0)), 2
+      ) as productivity_score
+    FROM employees e
+    LEFT JOIN task_assignments ta ON e.employee_id = ta.employee_id
+    LEFT JOIN tasks t ON ta.task_id = t.task_id
+    LEFT JOIN departments d ON e.department_id = d.department_id
+    WHERE e.status = 'active'
+    ${dateFilter} ${deptFilter} ${advancedFilter}
+    GROUP BY e.employee_id, e.first_name, e.last_name, d.department_name
+    HAVING COUNT(t.task_id) > 0
+    ORDER BY productivity_score DESC
+    LIMIT 10
+  `);
+
+  const highPerformers = productivityScores.rows ? productivityScores.rows.filter(emp => parseFloat(emp.productivity_score) >= 90) : [];
+
+  res.json({
+    success: true,
+    data: {
+      task_completion_by_department: taskCompletion.rows,
+      task_status_distribution: taskStatusDistribution.rows,
+      top_performers: productivityScores.rows ? productivityScores.rows.slice(0, 5) : [],
+      high_performers_count: highPerformers.length,
+      overall_productivity: productivityScores.rows && productivityScores.rows.length > 0 ?
+        (productivityScores.rows.reduce((sum, emp) => sum + parseFloat(emp.productivity_score || 0), 0) / productivityScores.rows.length).toFixed(2) : 0
     }
-    if (payment_status) {
-      paramFilter += ` AND p.payment_status = '${payment_status}'`;
+  });
+});
+
+const getChurnRiskAnalysis = asyncHandler(async (req, res) => {
+  const { department_id } = req.query;
+
+  let queryText = `
+    SELECT e.employee_id, e.first_name, e.last_name, e.department_id, d.department_name
+    FROM employees e
+    LEFT JOIN departments d ON e.department_id = d.department_id
+    WHERE e.status = 'active'
+  `;
+  const params = [];
+
+  if (department_id) {
+    queryText += ' AND e.department_id = $1';
+    params.push(department_id);
+  }
+
+  const employeesResult = await query(queryText, params);
+
+  const riskAnalysis = [];
+
+  for (const emp of employeesResult.rows) {
+    const riskData = await calculateRisk(emp.employee_id);
+    if (riskData) {
+      riskAnalysis.push({
+        ...emp,
+        ...riskData
+      });
     }
+  }
 
-    // Monthly payroll trends
-    const monthlyTrends = await query(`
-      SELECT 
-        p.year,
-        p.month,
-        SUM(p.net_salary) as total_payroll,
-        COUNT(p.employee_id) as employee_count,
-        ROUND(AVG(p.net_salary), 2) as avg_salary
-      FROM payroll p
-      JOIN employees e ON p.employee_id = e.employee_id
-      WHERE p.year = ${targetYear} ${paramFilter}
-      GROUP BY p.year, p.month
-      ORDER BY p.month ASC
-    `);
+  riskAnalysis.sort((a, b) => b.riskScore - a.riskScore);
 
-    // Department-wise salary distribution
-    const deptSalaryDistribution = await query(`
-      SELECT 
-        d.department_name,
-        COUNT(p.employee_id) as employee_count,
-        ROUND(AVG(p.net_salary), 2) as avg_salary,
-        ROUND(MIN(p.net_salary), 2) as min_salary,
-        ROUND(MAX(p.net_salary), 2) as max_salary
-      FROM payroll p
-      JOIN employees e ON p.employee_id = e.employee_id
-      LEFT JOIN departments d ON e.department_id = d.department_id
-      WHERE p.year = ${targetYear} ${paramFilter}
-      GROUP BY d.department_name
-      ORDER BY avg_salary DESC
-    `);
+  res.json({
+    success: true,
+    data: riskAnalysis
+  });
+});
 
-    res.json({
-      success: true,
-      data: {
-        monthly_trends: monthlyTrends.rows,
-        department_salary_distribution: deptSalaryDistribution.rows,
-        salary_growth: {
-          current_month_avg: 0,
-          previous_month_avg: 0,
-          growth_rate: '0%'
-        }
+const getPayrollTrends = asyncHandler(async (req, res) => {
+  const { year, department_id, payment_status } = req.query;
+  const targetYear = parseInt(year) || new Date().getFullYear();
+
+  const params = [targetYear];
+  let paramFilter = '';
+  let paramIndex = 2;
+
+  if (department_id) {
+    paramFilter += ` AND e.department_id = $${paramIndex}`;
+    params.push(parseInt(department_id));
+    paramIndex++;
+  }
+  if (payment_status) {
+    paramFilter += ` AND p.payment_status = $${paramIndex}`;
+    params.push(payment_status);
+    paramIndex++;
+  }
+
+  const monthlyTrends = await query(`
+    SELECT
+      p.year,
+      p.month,
+      SUM(p.net_salary) as total_payroll,
+      COUNT(p.employee_id) as employee_count,
+      ROUND(AVG(p.net_salary), 2) as avg_salary
+    FROM payroll p
+    JOIN employees e ON p.employee_id = e.employee_id
+    WHERE p.year = $1 ${paramFilter}
+    GROUP BY p.year, p.month
+    ORDER BY p.month ASC
+  `, params);
+
+  const deptSalaryDistribution = await query(`
+    SELECT
+      d.department_name,
+      COUNT(p.employee_id) as employee_count,
+      ROUND(AVG(p.net_salary), 2) as avg_salary,
+      ROUND(MIN(p.net_salary), 2) as min_salary,
+      ROUND(MAX(p.net_salary), 2) as max_salary
+    FROM payroll p
+    JOIN employees e ON p.employee_id = e.employee_id
+    LEFT JOIN departments d ON e.department_id = d.department_id
+    WHERE p.year = $1 ${paramFilter}
+    GROUP BY d.department_name
+    ORDER BY avg_salary DESC
+  `, params);
+
+  res.json({
+    success: true,
+    data: {
+      monthly_trends: monthlyTrends.rows,
+      department_salary_distribution: deptSalaryDistribution.rows,
+      salary_growth: {
+        current_month_avg: 0,
+        previous_month_avg: 0,
+        growth_rate: '0%'
       }
-    });
-  } catch (error) {
-    console.error('Get payroll trends error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch payroll trends',
-      error: error.message,
-    });
+    }
+  });
+});
+
+const getAttendanceTrends = asyncHandler(async (req, res) => {
+  const { start_date, end_date, department_id, status_filter } = req.query;
+  const userRole = req.user.role;
+  const userId = req.user.userId;
+
+  const dateRangeClause = start_date && end_date
+    ? `generate_series($1::date, $2::date, '1 day')::date`
+    : `generate_series(CURRENT_DATE - INTERVAL '6 days', CURRENT_DATE, '1 day')::date`;
+
+  const params = [];
+  let paramIndex = 1;
+
+  if (start_date && end_date) {
+    params.push(start_date, end_date);
+    paramIndex = 3;
   }
-};
 
+  let queryText = `
+    SELECT
+      TO_CHAR(d.date, 'YYYY-MM-DD') as date,
+      COUNT(CASE WHEN a.status = 'present' THEN 1 END) as present,
+      COUNT(CASE WHEN a.status = 'absent' THEN 1 END) as absent,
+      COUNT(CASE WHEN a.status = 'late' THEN 1 END) as late,
+      COUNT(CASE WHEN a.status = 'half_day' THEN 1 END) as half_day
+    FROM (
+      SELECT ${dateRangeClause} as date
+    ) d
+    LEFT JOIN attendance a ON a.date = d.date
+  `;
 
-// Get attendance trends
-const getAttendanceTrends = async (req, res) => {
-  try {
-    const { start_date, end_date, department_id, status_filter } = req.query; // Added status_filter
-    const userRole = req.user.role;
-    const userId = req.user.userId;
-
-    // Default to last 7 days if no range provided
-    const dateRangeClause = start_date && end_date
-      ? `generate_series('${start_date}'::date, '${end_date}'::date, '1 day')::date`
-      : `generate_series(CURRENT_DATE - INTERVAL '6 days', CURRENT_DATE, '1 day')::date`;
-
-    let queryText = `
-      SELECT
-        TO_CHAR(d.date, 'YYYY-MM-DD') as date,
-        COUNT(CASE WHEN a.status = 'present' THEN 1 END) as present,
-        COUNT(CASE WHEN a.status = 'absent' THEN 1 END) as absent,
-        COUNT(CASE WHEN a.status = 'late' THEN 1 END) as late,
-        COUNT(CASE WHEN a.status = 'half_day' THEN 1 END) as half_day
-      FROM (
-        SELECT ${dateRangeClause} as date
-      ) d
-      LEFT JOIN attendance a ON a.date = d.date
-    `;
-
-    // Improve Join Logic for Filters
-    if (department_id || userRole === 'employee' || status_filter) {
-      // Only join if needed to avoid ambiguity or perf cost, but here simpler is better
-      queryText += ` JOIN employees e ON a.employee_id = e.employee_id`;
-    }
-
-    let whereConditions = [];
-
-    if (userRole === 'employee') {
-      whereConditions.push(`e.user_id = ${userId}`);
-    }
-
-    if (department_id) {
-      whereConditions.push(`e.department_id = ${department_id}`);
-    }
-
-    // NOTE: Filtering by specific status in a "Trends" chart is tricky.
-    // If I filter only "late", then "present" count is 0. That's actually correct for a filter.
-    if (status_filter) {
-      whereConditions.push(`a.status = '${status_filter}'`);
-    }
-
-    if (whereConditions.length > 0) {
-      queryText += ` WHERE ${whereConditions.join(' AND ')}`;
-    }
-
-    queryText += ` GROUP BY d.date ORDER BY d.date ASC`;
-
-    const result = await query(queryText);
-
-    res.json({
-      success: true,
-      data: result.rows
-    });
-  } catch (error) {
-    console.error('Get attendance trends error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch attendance trends',
-      error: error.message,
-    });
+  if (department_id || userRole === 'employee' || status_filter) {
+    queryText += ` JOIN employees e ON a.employee_id = e.employee_id`;
   }
-};
+
+  const whereClauses = [];
+
+  if (userRole === 'employee') {
+    whereClauses.push(`e.user_id = $${paramIndex}`);
+    params.push(userId);
+    paramIndex++;
+  }
+
+  if (department_id) {
+    whereClauses.push(`e.department_id = $${paramIndex}`);
+    params.push(parseInt(department_id));
+    paramIndex++;
+  }
+
+  if (status_filter) {
+    whereClauses.push(`a.status = $${paramIndex}`);
+    params.push(status_filter);
+    paramIndex++;
+  }
+
+  if (whereClauses.length > 0) {
+    queryText += ` WHERE ${whereClauses.join(' AND ')}`;
+  }
+
+  queryText += ` GROUP BY d.date ORDER BY d.date ASC`;
+
+  const result = await query(queryText, params);
+
+  res.json({
+    success: true,
+    data: result.rows
+  });
+});
 
 module.exports = {
   getDashboardStats,

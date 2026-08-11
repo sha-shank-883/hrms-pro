@@ -345,7 +345,7 @@ const Attendance = () => {
   const absentCount = attendanceRecords.filter(r => r.status === 'absent').length;
 
   return (
-    <div className="w-full" style={{ paddingBottom: '2rem' }}>
+    <div className="w-full pb-8">
       {/* Page Header */}
       <div className="page-header">
         <div>
@@ -415,7 +415,7 @@ const Attendance = () => {
                 <div className="bg-primary-50 text-primary-600 rounded-lg border border-primary-50 p-2">
                   <FaCalendarCheck size={16} />
                 </div>
-                <span className="text-xs font-bold uppercase tracking-wide text-neutral-400" style={{ fontSize: '10px' }}>Total Records</span>
+                <span className="text-[10px] font-bold uppercase tracking-wide text-neutral-400">Total Records</span>
               </div>
               <div className="mb-1">
                 <h3 className="text-2xl font-bold text-neutral-900 tracking-tight">{pagination.totalItems}</h3>
@@ -428,7 +428,7 @@ const Attendance = () => {
                 <div className="bg-success-50 text-success rounded-lg border border-success-50 p-2">
                   <FaCheckCircle size={16} />
                 </div>
-                <span className="text-xs font-bold uppercase tracking-wide text-neutral-400" style={{ fontSize: '10px' }}>Present</span>
+                <span className="text-[10px] font-bold uppercase tracking-wide text-neutral-400">Present</span>
               </div>
               <div className="mb-1">
                 <h3 className="text-2xl font-bold text-neutral-900 tracking-tight">{presentCount}</h3>
@@ -441,7 +441,7 @@ const Attendance = () => {
                 <div className="bg-warning-50 text-warning rounded-lg border border-warning-50 p-2">
                   <FaExclamationTriangle size={16} />
                 </div>
-                <span className="text-xs font-bold uppercase tracking-wide text-neutral-400" style={{ fontSize: '10px' }}>Late</span>
+                <span className="text-[10px] font-bold uppercase tracking-wide text-neutral-400">Late</span>
               </div>
               <div className="mb-1">
                 <h3 className="text-2xl font-bold text-neutral-900 tracking-tight">{lateCount}</h3>
@@ -454,7 +454,7 @@ const Attendance = () => {
                 <div className="bg-danger-50 text-danger rounded-lg border border-danger-50 p-2">
                   <FaTimesCircle size={16} />
                 </div>
-                <span className="text-xs font-bold uppercase tracking-wide text-neutral-400" style={{ fontSize: '10px' }}>Absent</span>
+                <span className="text-[10px] font-bold uppercase tracking-wide text-neutral-400">Absent</span>
               </div>
               <div className="mb-1">
                 <h3 className="text-2xl font-bold text-neutral-900 tracking-tight">{absentCount}</h3>

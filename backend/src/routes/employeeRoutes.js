@@ -14,8 +14,8 @@ const createEmployeeValidation = [
   body('last_name').notEmpty().withMessage('Last name is required'),
   body('email').isEmail().withMessage('Valid email is required'),
   body('department_id').optional().isInt().withMessage('Valid department ID is required'),
-  body('position').notEmpty().withMessage('Position is required'),
-  body('hire_date').isISO8601().withMessage('Valid hire date is required'),
+  body('position').optional().notEmpty().withMessage('Position cannot be empty'),
+  body('hire_date').optional().isISO8601().withMessage('Valid hire date is required'),
   body('salary').optional().isDecimal().withMessage('Valid salary is required'),
 ];
 
@@ -34,8 +34,8 @@ router.get('/', authenticateToken, authorizeRoleOrPermission(['admin', 'manager'
 router.get('/chat', authenticateToken, employeeController.getEmployeesForChat);
 // Org Chart
 router.get('/org-chart', authenticateToken, authorizeRoleOrPermission(['admin', 'manager'], 'employees:read'), employeeController.getOrgChart);
-router.get('/:id', authenticateToken, authorizeRoleOrPermission(['admin', 'manager', 'employee'], 'employees:read'), employeeController.getEmployeeById);
 router.get('/user/:userId', authenticateToken, authorizeRoleOrPermission(['admin', 'manager', 'employee'], 'employees:read'), employeeController.getEmployeeByUserId);
+router.get('/:id', authenticateToken, authorizeRoleOrPermission(['admin', 'manager', 'employee'], 'employees:read'), employeeController.getEmployeeById);
 router.get('/:id/qrcode', authenticateToken, authorizeRoleOrPermission(['admin', 'manager', 'employee'], 'employees:read'), employeeController.getEmployeeQRCode);
 router.post('/', authenticateToken, authorizeRoleOrPermission(['admin'], 'employees:create'), createEmployeeValidation, validate, logAction('CREATE_EMPLOYEE', 'EMPLOYEE'), employeeController.createEmployee);
 router.post('/delete-by-email', authenticateToken, authorizeRoleOrPermission(['admin'], 'employees:delete'), logAction('DELETE_EMPLOYEE_BY_EMAIL', 'EMPLOYEE'), employeeController.deleteEmployeeByEmail);

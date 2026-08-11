@@ -28,24 +28,6 @@ export const QUICK_ACTIONS_CONFIG = [
         theme: 'primary'
     },
     {
-        id: 'action-website-settings',
-        label: 'Website Settings',
-        icon: <FaCogs />,
-        path: '/super-admin/website-settings',
-        roles: ['admin'],
-        tenant: 'tenant_default',
-        theme: 'primary'
-    },
-    {
-        id: 'action-cms',
-        label: 'Website CMS',
-        icon: <FaFileAlt />,
-        path: '/super-admin/cms',
-        roles: ['admin'],
-        tenant: 'tenant_default',
-        theme: 'primary'
-    },
-    {
         id: 'action-demo-accounts',
         label: 'Demo Accounts',
         icon: <FaUsers />,

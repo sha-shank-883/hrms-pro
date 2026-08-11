@@ -88,7 +88,7 @@ const DemoRequests = () => {
       const token = localStorage.getItem('token');
       const tenantId = localStorage.getItem('tenant_id');
       
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001/api'}/leads/${selectedTenant.id}/backup`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || '/api'}/leads/${selectedTenant.id}/backup`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'x-tenant-id': tenantId

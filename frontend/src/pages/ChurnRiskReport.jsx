@@ -156,12 +156,12 @@ const ChurnRiskReport = () => {
                                                 {item.factors.length > 0 ? (
                                                     item.factors.map((factor, idx) => (
                                                         <span key={idx} className="risk-factor-tag">
-                                                            <FaExclamationTriangle size={10} style={{ marginRight: '4px', color: '#ef4444' }} />
+                                                            <FaExclamationTriangle size={10} className="mr-1 text-red-500" />
                                                             {factor}
                                                         </span>
                                                     ))
                                                 ) : (
-                                                    <span style={{ color: '#9ca3af', fontSize: '0.8rem', fontStyle: 'italic' }}>No significant risk factors</span>
+                                                    <span className="text-neutral-400 text-xs italic">No significant risk factors</span>
                                                 )}
                                             </div>
                                         </td>

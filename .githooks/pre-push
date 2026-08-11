@@ -1,0 +1,74 @@
+#!/bin/sh
+# .githooks/pre-push — Pre-push hook: blocks push if secrets or localhost URLs are staged
+#
+# To enable: git config core.hooksPath .githooks
+# Or run: powershell -File setup-hooks.ps1
+
+REMOTE="$1"
+URL="$2"
+
+echo ""
+echo "=== Pre-Push Check ==="
+
+BLOCK=0
+STAGED=$(git diff --cached --name-only)
+
+# -------------------------------------------------------
+# 1. Check for .env files staged
+# -------------------------------------------------------
+ENV_STAGED=$(echo "$STAGED" | grep -E '\.env$|\.env\.')
+if [ -n "$ENV_STAGED" ]; then
+  echo "❌ BLOCKED: .env files are staged!"
+  echo "$ENV_STAGED"
+  BLOCK=1
+fi
+
+# -------------------------------------------------------
+# 2. Check for secrets in staged files
+# -------------------------------------------------------
+SECRET_PATTERNS="xsmtpsib|SMTP_PASS|JWT_SECRET|password_hash|api[Kk]ey|sk-[a-zA-Z0-9]{20,}|ghp_[a-zA-Z0-9]{36}"
+SECRETS=$(git diff --cached -S "$SECRET_PATTERNS" 2>/dev/null || true)
+if git diff --cached -S "xsmtpsib" --name-only 2>/dev/null | grep -q .; then
+  echo "❌ BLOCKED: Potential API keys/secrets detected in staged files!"
+  git diff --cached -S "xsmtpsib\|SMTP_PASS\|JWT_SECRET\|sk-" --name-only 2>/dev/null
+  BLOCK=1
+fi
+
+# -------------------------------------------------------
+# 3. Check for hardcoded localhost URLs in source files
+# -------------------------------------------------------
+echo "$STAGED" | grep -E '\.(js|jsx|ts|tsx)$' | grep -vE '(scripts/|test|mock|spec|__tests__)' | while read -r file; do
+  if [ -f "$file" ]; then
+    MATCHES=$(git show ":${file}" 2>/dev/null | grep -cE "localhost:500[^1]|'http://localhost:[0-9]" || true)
+    if [ "$MATCHES" -gt 0 ]; then
+      echo "⚠️  WARNING: $file contains localhost references (port 5000?)"
+    fi
+  fi
+done
+
+# -------------------------------------------------------
+# 4. Check for hardcoded mobile IP addresses
+# -------------------------------------------------------
+echo "$STAGED" | grep -E '\.(js|jsx|ts|tsx)$' | while read -r file; do
+  if [ -f "$file" ]; then
+    IP_MATCHES=$(git show ":${file}" 2>/dev/null | grep -cE "192\.168\.|10\.0\.|172\.(1[6-9]|2[0-9]|3[01])" || true)
+    if [ "$IP_MATCHES" -gt 0 ]; then
+      echo "⚠️  WARNING: $file contains hardcoded local IP addresses"
+      git show ":${file}" 2>/dev/null | grep -nE "192\.168\.|10\.0\." | head -3
+    fi
+  fi
+done
+
+# -------------------------------------------------------
+# Result
+# -------------------------------------------------------
+if [ "$BLOCK" -eq 1 ]; then
+  echo ""
+  echo "❌ Push BLOCKED — fix the issues above and commit again."
+  echo ""
+  exit 1
+fi
+
+echo "✅ Push checks passed."
+echo ""
+exit 0

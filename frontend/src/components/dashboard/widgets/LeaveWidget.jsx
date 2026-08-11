@@ -178,7 +178,7 @@ const LeaveWidget = memo(({ chartType, onToggle, onSettingsClick, isSettingsOpen
                 {loading && (
                     <div className="loading-overlay">
                         <div className="loading-spinner"></div>
-                        <span style={{ fontSize: '0.75rem', marginTop: '0.5rem', color: '#6366F1', fontWeight: 500 }}>Updating...</span>
+                        <span className="text-xs mt-2 text-indigo-500 font-medium">Updating...</span>
                     </div>
                 )}
 
@@ -206,7 +206,7 @@ const LeaveWidget = memo(({ chartType, onToggle, onSettingsClick, isSettingsOpen
                                 <Cell key="cell-1" fill="#10b981" /> {/* Approved */}
                                 <Cell key="cell-2" fill="#ef4444" /> {/* Rejected */}
                             </Pie>
-                            <Tooltip contentStyle={{ backgroundColor: '#fff', borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }} />
+                            <Tooltip contentStyle={{ borderRadius: '8px', border: 'none' }} />
                             <Legend iconType="circle" />
                         </PieChart>
                     )}
@@ -215,7 +215,7 @@ const LeaveWidget = memo(({ chartType, onToggle, onSettingsClick, isSettingsOpen
                             <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f3f4f6" />
                             <XAxis type="number" hide />
                             <YAxis dataKey="name" type="category" width={80} tick={{ fontSize: 12, fill: '#6b7280' }} axisLine={false} tickLine={false} />
-                            <Tooltip cursor={{ fill: 'transparent' }} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }} />
+                            <Tooltip cursor={{ fill: 'transparent' }} contentStyle={{ borderRadius: '8px', border: 'none' }} />
                             <Bar dataKey="value" radius={[0, 4, 4, 0]}>
                                 {leaveData.map((entry, index) => (
                                     <Cell key={`cell-${index}`} fill={['#f59e0b', '#10b981', '#ef4444'][index]} />

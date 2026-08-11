@@ -154,13 +154,13 @@ const PayrollWidget = React.memo(({ chartType = 'bar', onToggle, currencySymbol 
                 {loading && (
                     <div className="loading-overlay">
                         <div className="loading-spinner"></div>
-                        <span style={{ fontSize: '0.75rem', marginTop: '0.5rem', color: '#6366F1', fontWeight: 500 }}>Updating...</span>
+                        <span className="text-xs mt-2 text-indigo-500 font-medium">Updating...</span>
                     </div>
                 )}
 
                 {!loading && !hasData && (
-                    <div className="loading-overlay" style={{ background: 'white' }}>
-                        <span style={{ color: '#9CA3AF', marginBottom: '0.5rem' }}>No payroll data available</span>
+                    <div className="loading-overlay bg-white">
+                        <span className="text-neutral-400 mb-2">No payroll data available</span>
                     </div>
                 )}
 
@@ -173,8 +173,8 @@ const PayrollWidget = React.memo(({ chartType = 'bar', onToggle, currencySymbol 
                                 <YAxis axisLine={false} tickLine={false} tick={{ fill: '#9ca3af', fontSize: 12 }} />
                                 <Tooltip
                                     formatter={(value) => `${currencySymbol}${value.toLocaleString()}`}
-                                    cursor={{ fill: '#f9fafb' }}
-                                    contentStyle={{ backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #e5e7eb' }}
+                                    cursor={{ fill: 'var(--neutral-100, #f9fafb)' }}
+                                    contentStyle={{ borderRadius: '8px' }}
                                 />
                                 <Bar dataKey="total_payroll" name="Total Payroll" fill="#6366f1" radius={[4, 4, 0, 0]} />
                             </BarChart>
@@ -186,7 +186,7 @@ const PayrollWidget = React.memo(({ chartType = 'bar', onToggle, currencySymbol 
                                 <YAxis axisLine={false} tickLine={false} tick={{ fill: '#9ca3af', fontSize: 12 }} />
                                 <Tooltip
                                     formatter={(value) => `${currencySymbol}${value.toLocaleString()}`}
-                                    contentStyle={{ backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #e5e7eb' }}
+                                    contentStyle={{ borderRadius: '8px' }}
                                 />
                                 <Line type="monotone" dataKey="total_payroll" name="Total Payroll" stroke="#6366f1" strokeWidth={2} dot={{ r: 4 }} activeDot={{ r: 6 }} />
                             </LineChart>
@@ -204,7 +204,7 @@ const PayrollWidget = React.memo(({ chartType = 'bar', onToggle, currencySymbol 
                                 <YAxis axisLine={false} tickLine={false} tick={{ fill: '#9ca3af', fontSize: 12 }} />
                                 <Tooltip
                                     formatter={(value) => `${currencySymbol}${value.toLocaleString()}`}
-                                    contentStyle={{ backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #e5e7eb' }}
+                                    contentStyle={{ borderRadius: '8px' }}
                                 />
                                 <Area type="monotone" dataKey="total_payroll" name="Total Payroll" stroke="#6366f1" fillOpacity={1} fill="url(#colorPayroll)" />
                             </AreaChart>

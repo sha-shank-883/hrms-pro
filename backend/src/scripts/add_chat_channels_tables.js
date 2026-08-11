@@ -10,7 +10,7 @@ const updateSchemas = async () => {
         const schemasRes = await client.query(`
             SELECT schema_name 
             FROM information_schema.schemata 
-            WHERE schema_name NOT IN ('information_schema', 'pg_catalog', 'pg_toast', 'public', 'shared')
+            WHERE schema_name LIKE 'tenant\\_%'
         `);
 
         const schemas = schemasRes.rows.map(r => r.schema_name);

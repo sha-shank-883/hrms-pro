@@ -235,6 +235,16 @@ CREATE TABLE chat_messages (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Message Reactions table
+CREATE TABLE message_reactions (
+  reaction_id SERIAL PRIMARY KEY,
+  message_id INTEGER REFERENCES chat_messages(message_id) ON DELETE CASCADE,
+  user_id INTEGER REFERENCES users(user_id) ON DELETE CASCADE,
+  reaction VARCHAR(10) NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(message_id, user_id)
+);
+
 -- Settings table
 CREATE TABLE settings (
   setting_id SERIAL PRIMARY KEY,
@@ -450,6 +460,32 @@ INSERT INTO settings (setting_key, setting_value, category, description) VALUES
 ('notify_payroll', 'true', 'notifications', 'Notify on payroll processing'),
 ('notify_attendance', 'true', 'notifications', 'Notify on attendance issues'),
 ('notify_tasks', 'true', 'notifications', 'Notify on task assignments'),
+
+-- Mobile App Settings
+('mobile_app_enabled', 'true', 'mobile', 'Enable mobile app access'),
+('mobile_feature_dashboard', 'true', 'mobile', 'Allow dashboard in mobile app'),
+('mobile_feature_attendance', 'true', 'mobile', 'Allow attendance in mobile app'),
+('mobile_feature_leaves', 'true', 'mobile', 'Allow leave management in mobile app'),
+('mobile_feature_tasks', 'true', 'mobile', 'Allow tasks in mobile app'),
+('mobile_feature_chat', 'true', 'mobile', 'Allow chat in mobile app'),
+('mobile_feature_employees', 'true', 'mobile', 'Allow employee directory in mobile app'),
+('mobile_feature_departments', 'true', 'mobile', 'Allow department browsing in mobile app'),
+('mobile_feature_payroll', 'true', 'mobile', 'Allow payroll in mobile app'),
+('mobile_feature_documents', 'true', 'mobile', 'Allow documents in mobile app'),
+('mobile_feature_recruitment', 'true', 'mobile', 'Allow recruitment in mobile app'),
+('mobile_feature_performance', 'true', 'mobile', 'Allow performance in mobile app'),
+('mobile_feature_reports', 'true', 'mobile', 'Allow reports in mobile app'),
+('mobile_feature_assets', 'true', 'mobile', 'Allow assets in mobile app'),
+('mobile_feature_holidays', 'true', 'mobile', 'Allow holidays in mobile app'),
+('mobile_feature_shifts', 'true', 'mobile', 'Allow shifts in mobile app'),
+('mobile_feature_audit_logs', 'false', 'mobile', 'Allow audit logs in mobile app'),
+('mobile_feature_tenants', 'false', 'mobile', 'Allow tenant management in mobile app'),
+('mobile_feature_cms', 'false', 'mobile', 'Allow CMS management in mobile app'),
+('mobile_feature_leads', 'false', 'mobile', 'Allow lead/demo management in mobile app'),
+('mobile_feature_biometric_login', 'true', 'mobile', 'Allow biometric login in mobile app'),
+('mobile_feature_2fa_required', 'false', 'mobile', 'Require 2FA for mobile login'),
+('mobile_feature_secure_storage', 'true', 'mobile', 'Require secure storage for mobile credentials'),
+('mobile_feature_push_notifications', 'true', 'mobile', 'Enable push notifications on mobile app'),
 
 -- Document Settings
 ('max_file_size', '10', 'documents', 'Maximum file size in MB'),

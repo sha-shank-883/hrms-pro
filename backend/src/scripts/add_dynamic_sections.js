@@ -4,6 +4,21 @@ async function addDynamicSections() {
   console.log('🔄 Checking website_settings for dynamic JSONB columns...');
   const client = await pool.connect();
   try {
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS shared.website_settings (
+        id SERIAL PRIMARY KEY,
+        primary_color VARCHAR(50),
+        font_family VARCHAR(100),
+        logo_url TEXT,
+        header_links JSONB DEFAULT '[]',
+        footer_columns JSONB DEFAULT '[]',
+        sections JSONB DEFAULT '[]',
+        custom_css TEXT,
+        custom_js TEXT,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
     const defaultHeaderLinks = JSON.stringify([
       { id: "h1", label: "Products", url: "/#features", isButton: false },
       { id: "h2", label: "Pricing", url: "/pricing", isButton: false }

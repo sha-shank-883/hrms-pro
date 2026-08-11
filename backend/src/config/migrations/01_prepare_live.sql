@@ -49,7 +49,11 @@ CREATE TABLE IF NOT EXISTS goals (
     status VARCHAR(20) DEFAULT 'pending',
     progress INTEGER DEFAULT 0,
     due_date DATE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    category VARCHAR(50),
+    priority VARCHAR(20) DEFAULT 'medium',
+    weightage INTEGER DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS performance_reviews (

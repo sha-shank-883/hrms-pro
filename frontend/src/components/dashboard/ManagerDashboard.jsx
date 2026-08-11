@@ -53,8 +53,8 @@ const ManagerDashboard = () => {
                     <p className="page-subtitle text-xs">Team overview and management</p>
                 </div>
                 <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '0.875rem', fontWeight: '600', color: '#1f2937' }}>{formatTime(currentTime)}</div>
-                    <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>{formatDate(currentTime, getSetting('date_format'))}</div>
+                    <div className="text-sm font-semibold text-neutral-900">{formatTime(currentTime)}</div>
+                    <div className="text-xs text-neutral-500">{formatDate(currentTime, getSetting('date_format'))}</div>
                 </div>
             </div>
 

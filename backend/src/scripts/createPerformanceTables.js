@@ -33,10 +33,14 @@ const createPerformanceTables = async () => {
                         employee_id INTEGER REFERENCES employees(employee_id),
                         title VARCHAR(200) NOT NULL,
                         description TEXT,
-                        status VARCHAR(20) DEFAULT 'pending', -- pending, in_progress, completed, cancelled
-                        progress INTEGER DEFAULT 0, -- 0-100
+                        status VARCHAR(20) DEFAULT 'pending',
+                        progress INTEGER DEFAULT 0,
                         due_date DATE,
-                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                        category VARCHAR(50),
+                        priority VARCHAR(20) DEFAULT 'medium',
+                        weightage INTEGER DEFAULT 0,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                     );
                 `);
 

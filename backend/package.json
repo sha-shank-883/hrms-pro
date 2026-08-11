@@ -9,7 +9,10 @@
     "migrate:chat-channels": "node src/scripts/add_chat_channels_tables.js",
     "dev": "nodemon src/server.js",
     "create-tenant": "node src/scripts/createTenant.js",
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "jest --detectOpenHandles",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "lint": "eslint src/ --ext .js",
     "update-templates": "node src/scripts/add_email_templates_table.js"
   },
   "keywords": [],
@@ -17,6 +20,7 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "axios": "^1.13.1",
     "bcryptjs": "^3.0.2",
     "compression": "^1.8.1",
@@ -33,10 +37,15 @@
     "pdf-parse": "^2.4.5",
     "pg": "^8.16.3",
     "qrcode": "^1.5.4",
+    "slugify": "^1.6.9",
     "socket.io": "^4.8.1",
     "speakeasy": "^2.0.0"
   },
   "devDependencies": {
-    "nodemon": "^3.1.14"
+    "jest": "^30.4.2",
+    "nodemon": "^3.1.14",
+    "socket.io-client": "^4.8.3",
+    "supertest": "^7.2.2",
+    "tslib": "^2.8.1"
   }
 }

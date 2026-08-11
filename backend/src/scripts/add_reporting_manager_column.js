@@ -11,7 +11,8 @@ const updateSchema = async () => {
         const schemasRes = await client.query(`
       SELECT schema_name 
       FROM information_schema.schemata 
-      WHERE schema_name NOT IN ('information_schema', 'pg_catalog', 'pg_toast')
+      WHERE schema_name IN ('public', 'shared')
+         OR schema_name LIKE 'tenant\\_%'
     `);
 
         const schemas = schemasRes.rows.map(r => r.schema_name);
@@ -38,17 +39,11 @@ const updateSchema = async () => {
         `, [schema]);
 
                 if (columnCheck.rows.length === 0) {
-                    
                     await client.query(`
             ALTER TABLE "${schema}".employees 
             ADD COLUMN reporting_manager_id INTEGER REFERENCES "${schema}".employees(employee_id)
           `);
-                    
-                } else {
-                    
                 }
-            } else {
-                
             }
         }
 

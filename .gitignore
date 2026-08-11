@@ -10,20 +10,39 @@ coverage/
 build/
 dist/
 
-# Misc
-.DS_Store
+# Environment files
 .env
+.env.*
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
-*.txt
-*.log
+
+# Uploads (local storage)
+uploads/*
+!uploads/.gitkeep
 
 # Logs
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Expo / React Native
+.expo/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+
+# Database backups
+*.sql
+
+# Misc
+.DS_Store
+*.txt
 
 # Editors
 .idea/

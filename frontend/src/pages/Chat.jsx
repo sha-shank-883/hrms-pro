@@ -48,9 +48,11 @@ const Chat = () => {
   useEffect(() => {
     // Get tenant ID from localStorage
     const tenantId = localStorage.getItem('tenant_id') || 'tenant_default';
+    const apiUrl = import.meta.env.VITE_API_URL || '/api';
+    const socketUrl = apiUrl.replace('/api', '');
 
     // Initialize Socket.io connection
-    socketRef.current = io('http://localhost:5001', {
+    socketRef.current = io(socketUrl, {
       withCredentials: true,
       query: {
         tenantId: tenantId
@@ -723,28 +725,19 @@ const Chat = () => {
           <img
             src={msg.attachment_url}
             alt="attachment"
-            style={{
-              maxWidth: '250px',
-              maxHeight: '250px',
-              borderRadius: '0.5rem',
-              marginTop: '0.5rem',
-              cursor: 'pointer'
-            }}
+            className="max-w-[250px] max-h-[250px] rounded-lg mt-2 cursor-pointer"
           />
         </a>
       );
     } else if (isVideo) {
       return (
-        <video
-          controls
-          style={{ maxWidth: '300px', borderRadius: '0.5rem', marginTop: '0.5rem' }}
-        >
+        <video controls className="max-w-[300px] rounded-lg mt-2">
           <source src={msg.attachment_url} type={msg.attachment_type} />
         </video>
       );
     } else if (isAudio) {
       return (
-        <audio controls style={{ marginTop: '0.5rem', width: '250px' }}>
+        <audio controls className="mt-2 w-[250px]">
           <source src={msg.attachment_url} type={msg.attachment_type} />
         </audio>
       );
@@ -754,17 +747,7 @@ const Chat = () => {
           href={msg.attachment_url}
           target="_blank"
           rel="noopener noreferrer"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            marginTop: '0.5rem',
-            padding: '0.5rem',
-            background: 'rgba(0,0,0,0.1)',
-            borderRadius: '0.375rem',
-            textDecoration: 'none',
-            color: 'inherit'
-          }}
+          className="flex items-center gap-2 mt-2 p-2 bg-black/10 rounded text-inherit no-underline"
         >
           <span><i className="fas fa-paperclip"></i></span>
           <span>{msg.attachment_name || 'Download File'}</span>
@@ -776,32 +759,30 @@ const Chat = () => {
   if (loading) return <div className="loading">Loading...</div>;
 
   return (
-    <div style={{ height: '80vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', maxHeight: '100vh' }}>
-      {error && <div className="error" style={{ margin: '1rem', padding: '1rem', backgroundColor: '#fee2e2', borderRadius: '0.375rem' }}>{error}</div>}
+    <div className="h-[80vh] flex flex-col overflow-hidden max-h-screen">
+      {error && <div className="error m-4 p-4 bg-red-50 rounded">{error}</div>}
 
-      <div style={{ flex: 1, display: 'flex', overflow: 'hidden', maxHeight: 'calc(100vh - 100px)' }}>
+      <div className="flex-1 flex overflow-hidden">
         {/* Sidebar - Conversations List */}
-        <div style={{ width: '320px', borderRight: '1px solid #e5e7eb', display: 'flex', flexDirection: 'column', background: '#ffffff' }}>
-          <div style={{ padding: '1.5rem', borderBottom: '1px solid #e5e7eb' }}>
-            <h3 style={{ marginBottom: '1rem', fontSize: '1.125rem', fontWeight: '600', color: '#1f2937' }}>Conversations</h3>
+        <div className="w-80 border-r border-neutral-200 flex flex-col bg-white">
+          <div className="p-6 border-b border-neutral-200">
+            <h3 className="mb-4 text-lg font-semibold text-neutral-900">Conversations</h3>
             <details>
-              <summary style={{ cursor: 'pointer', color: '#3b82f6', marginBottom: '0.5rem', fontWeight: '500' }}>Start New Chat</summary>
+              <summary className="cursor-pointer text-primary-500 mb-2 font-medium">Start New Chat</summary>
               {/* Search Input */}
-              <div style={{ marginBottom: '1rem' }}>
-                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+              <div className="mb-4">
+                <div className="flex gap-2 items-center">
                   <input
                     type="text"
                     placeholder="Search by name, email, or department..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="form-input"
-                    style={{ flex: 1, fontSize: '0.875rem', padding: '0.5rem', borderRadius: '0.375rem', border: '1px solid #d1d5db' }}
+                    className="form-input flex-1 text-sm p-2 rounded border border-neutral-300"
                   />
                   {searchTerm && (
                     <button
                       onClick={clearSearch}
-                      className="btn btn-outline"
-                      style={{ padding: '0.5rem', fontSize: '0.875rem', borderRadius: '0.375rem', border: '1px solid #d1d5db', background: 'white' }}
+                      className="btn btn-outline p-2 text-sm rounded border border-neutral-300 bg-white"
                     >
                       Clear
                     </button>
@@ -809,10 +790,10 @@ const Chat = () => {
                 </div>
               </div>
 
-              <div style={{ maxHeight: '200px', overflowY: 'auto', marginTop: '0.5rem', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+              <div className="max-h-[200px] overflow-y-auto mt-2" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                 <style>{`::-webkit-scrollbar { display: none; }`}</style>
-                {filteredEmployees.length === 0 ? (
-                  <div style={{ padding: '0.5rem', color: '#6b7280', fontStyle: 'italic' }}>
+                  {filteredEmployees.length === 0 ? (
+                  <div className="p-2 text-neutral-500 italic">
                     {searchTerm ? 'No employees found matching your search' : 'No employees available'}
                   </div>
                 ) : (
@@ -820,39 +801,27 @@ const Chat = () => {
                     <div
                       key={emp.employee_id}
                       onClick={() => startNewChat(emp)}
-                      style={{
-                        padding: '0.75rem',
-                        cursor: 'pointer',
-                        borderRadius: '0.5rem',
-                        marginBottom: '0.25rem',
-                        backgroundColor: selectedUser?.employee_id === emp.employee_id ? '#eff6ff' : 'transparent',
-                        border: selectedUser?.employee_id === emp.employee_id ? '1px solid #3b82f6' : '1px solid transparent'
-                      }}
-                      className="hover:bg-gray-100"
+                      className={`p-3 cursor-pointer rounded-lg mb-1 hover:bg-gray-100 ${selectedUser?.employee_id === emp.employee_id ? 'bg-blue-50 border border-primary-500' : 'border border-transparent'}`}
                     >
-                      <div style={{ fontWeight: '500', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <div style={{ position: 'relative' }}>
-                          <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: '600', fontSize: '0.75rem' }}>
+                      <div className="font-medium flex items-center gap-2">
+                        <div className="relative">
+                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#667eea] to-[#764ba2] flex items-center justify-center text-white font-semibold text-xs">
                             {emp.first_name?.charAt(0)}{emp.last_name?.charAt(0)}
                           </div>
                           {onlineUsers.has(emp.user_id) && (
-                            <div style={{ position: 'absolute', bottom: '0', right: '0', width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#10b981', border: '1px solid white' }}></div>
+                            <div className="absolute bottom-0 right-0 w-2 h-2 rounded-full bg-green-500 border border-white"></div>
                           )}
                         </div>
                         <div>
                           <div>{emp.first_name} {emp.last_name}</div>
                           {emp.department_name && (
-                            <span style={{
-                              fontWeight: 'normal',
-                              fontSize: '0.75rem',
-                              color: '#6b7280'
-                            }}>
+                            <span className="font-normal text-xs text-neutral-500">
                               {emp.department_name}
                             </span>
                           )}
                         </div>
                       </div>
-                      <div style={{ fontSize: '0.75rem', color: '#6b7280', marginLeft: '2.5rem' }}>
+                      <div className="text-xs text-neutral-500 ml-10">
                         {emp.email}
                         {emp.position && ` • ${emp.position}`}
                       </div>
@@ -863,10 +832,10 @@ const Chat = () => {
             </details>
           </div>
 
-          <div style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+          <div className="flex-1 overflow-y-auto" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
             <style>{`::-webkit-scrollbar { display: none; }`}</style>
             {conversations.length === 0 ? (
-              <div style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>
+              <div className="p-8 text-center text-neutral-500">
                 No conversations yet. Start a new chat!
               </div>
             ) : (
@@ -880,58 +849,42 @@ const Chat = () => {
                 <div
                   key={conv.other_user_id}
                   onClick={() => selectConversation(conv)}
-                  style={{
-                    padding: '1rem',
-                    cursor: 'pointer',
-                    borderBottom: '1px solid #f3f4f6',
-                    backgroundColor: selectedUser?.user_id === conv.other_user_id ? '#eff6ff' : 'white',
-                    position: 'relative',
-                    borderLeft: selectedUser?.user_id === conv.other_user_id ? '3px solid #3b82f6' : '3px solid transparent'
-                  }}
+                  className={`p-4 cursor-pointer border-b border-neutral-100 relative ${selectedUser?.user_id === conv.other_user_id ? 'bg-blue-50 border-l-[3px] border-l-primary-500' : 'bg-white border-l-[3px] border-l-transparent'}`}
                 >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '0.5rem' }}>
-                    <div style={{ fontWeight: '600', flex: 1, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <div style={{ position: 'relative' }}>
-                        <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: '600', fontSize: '0.75rem' }}>
+                  <div className="flex justify-between items-start mb-2">
+                    <div className="font-semibold flex-1 flex items-center gap-2">
+                      <div className="relative">
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#667eea] to-[#764ba2] flex items-center justify-center text-white font-semibold text-xs">
                           {conv.other_user_first_name ? conv.other_user_first_name.charAt(0) : (conv.other_user_email?.split('@')[0]?.charAt(0)?.toUpperCase() || 'U')}
                         </div>
                         {onlineUsers.has(conv.other_user_id) && (
-                          <div style={{ position: 'absolute', bottom: '0', right: '0', width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#10b981', border: '1px solid white' }}></div>
+                          <div className="absolute bottom-0 right-0 w-2 h-2 rounded-full bg-green-500 border border-white"></div>
                         )}
                       </div>
                       <div>
                         {conv.other_user_first_name ? `${conv.other_user_first_name} ${conv.other_user_last_name}` : (conv.other_user_email?.split('@')[0] || 'User')}
                       </div>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                    <div className="flex items-center gap-1">
                       {conv.unread_count > 0 && (
-                        <span className="badge badge-danger" style={{ fontSize: '0.7rem', minWidth: '20px', backgroundColor: '#ef4444', color: 'white', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{conv.unread_count}</span>
+                        <span className="badge badge-danger text-[0.7rem] min-w-[20px] bg-red-500 text-white rounded-full flex items-center justify-center">{conv.unread_count}</span>
                       )}
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
                           deleteConversation(conv.other_user_id);
                         }}
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          cursor: 'pointer',
-                          fontSize: '0.9rem',
-                          padding: '0.1rem',
-                          color: '#9ca3af'
-                        }}
+                        className="bg-transparent border-none cursor-pointer text-sm p-0.5 text-neutral-400 hover:text-red-500"
                         title="Delete conversation"
-                        onMouseEnter={(e) => e.target.style.color = '#ef4444'}
-                        onMouseLeave={(e) => e.target.style.color = '#9ca3af'}
                       >
                         <i className="fas fa-trash"></i>
                       </button>
                     </div>
                   </div>
-                  <div style={{ fontSize: '0.875rem', color: '#6b7280', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginLeft: '2.5rem' }}>
+                  <div className="text-sm text-neutral-500 overflow-hidden text-ellipsis whitespace-nowrap ml-10">
                     {conv.last_message}
                   </div>
-                  <div style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: '0.25rem', marginLeft: '2.5rem' }}>
+                  <div className="text-xs text-neutral-400 mt-1 ml-10">
                     {new Date(conv.last_message_time).toLocaleString()}
                   </div>
                 </div>
@@ -942,27 +895,26 @@ const Chat = () => {
         </div>
 
         {/* Chat Area */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#f9fafb', maxHeight: '100%', height: '100%' }}>
+        <div className="flex-1 flex flex-col bg-neutral-50 max-h-full h-full">
           {selectedUser ? (
             <>
               {/* Chat Header */}
-              <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'white', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                  <div style={{ position: 'relative' }}>
-                    <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: '600' }}>
+              <div className="px-6 py-4 border-b border-neutral-200 flex justify-between items-center bg-white shadow-sm">
+                <div className="flex items-center gap-3">
+                  <div className="relative">
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#667eea] to-[#764ba2] flex items-center justify-center text-white font-semibold">
                       {selectedUser.first_name?.charAt(0)}{selectedUser.last_name?.charAt(0)}
                     </div>
-                    <div style={{ position: 'absolute', bottom: 0, right: 0, width: '12px', height: '12px', borderRadius: '50%', backgroundColor: onlineUsers.has(selectedUser.user_id) ? '#10b981' : '#6b7280', border: '2px solid white' }} />
+                    <div className="absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white" style={{ backgroundColor: onlineUsers.has(selectedUser.user_id) ? '#10b981' : '#6b7280' }} />
                   </div>
                   <div>
-                    <h3 style={{ marginBottom: '0.125rem', fontSize: '1rem', fontWeight: '600' }}>{selectedUser.first_name} {selectedUser.last_name}</h3>
-                    <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>{onlineUsers.has(selectedUser.user_id) ? 'Online' : 'Offline'}</div>
+                    <h3 className="mb-0.5 text-base font-semibold">{selectedUser.first_name} {selectedUser.last_name}</h3>
+                    <div className="text-xs text-neutral-500">{onlineUsers.has(selectedUser.user_id) ? 'Online' : 'Offline'}</div>
                   </div>
                 </div>
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <div className="flex gap-2">
                   <button
-                    className="btn btn-outline"
-                    style={{ padding: '0.5rem', fontSize: '1.125rem', border: '1px solid #e5e7eb', background: 'white', borderRadius: '0.375rem' }}
+                    className="btn btn-outline p-2 text-lg border border-neutral-200 bg-white rounded"
                     onClick={startVoiceCall}
                     title="Voice Call"
                     disabled={isInCall}
@@ -970,8 +922,7 @@ const Chat = () => {
                     <i className="fas fa-phone"></i>
                   </button>
                   <button
-                    className="btn btn-outline"
-                    style={{ padding: '0.5rem', fontSize: '1.125rem', border: '1px solid #e5e7eb', background: 'white', borderRadius: '0.375rem' }}
+                    className="btn btn-outline p-2 text-lg border border-neutral-200 bg-white rounded"
                     onClick={startVideoCall}
                     title="Video Call"
                     disabled={isInCall}
@@ -979,8 +930,7 @@ const Chat = () => {
                     <i className="fas fa-video"></i>
                   </button>
                   <button
-                    className="btn btn-outline"
-                    style={{ padding: '0.5rem', fontSize: '1.125rem', border: '1px solid #e5e7eb', background: 'white', borderRadius: '0.375rem' }}
+                    className="btn btn-outline p-2 text-lg border border-neutral-200 bg-white rounded"
                     onClick={startScreenShare}
                     title="Screen Share"
                     disabled={isInCall}
@@ -988,12 +938,9 @@ const Chat = () => {
                     <i className="fas fa-desktop"></i>
                   </button>
                   <button
-                    className="btn btn-outline"
-                    style={{ padding: '0.5rem', fontSize: '1.125rem', border: '1px solid #e5e7eb', background: 'white', color: '#9ca3af', borderRadius: '0.375rem' }}
+                    className="btn btn-outline p-2 text-lg border border-neutral-200 bg-white rounded text-neutral-400 hover:text-red-500"
                     onClick={() => deleteConversation(selectedUser.user_id)}
                     title="Delete Conversation"
-                    onMouseEnter={(e) => e.target.style.color = '#ef4444'}
-                    onMouseLeave={(e) => e.target.style.color = '#9ca3af'}
                   >
                     <i className="fas fa-trash"></i>
                   </button>
@@ -1002,89 +949,37 @@ const Chat = () => {
 
               {/* Video Call Area */}
               {isInCall && (
-                <div style={{ padding: '1rem', background: '#000', position: 'relative', height: '400px' }}>
-                  <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+                <div className="p-4 bg-black relative" style={{ height: '400px' }}>
+                  <div className="relative w-full h-full">
                     {/* Remote Video/Screen */}
                     <video
                       ref={remoteVideoRef}
                       autoPlay
                       playsInline
-                      style={{
-                        width: '100%',
-                        height: '100%',
-                        objectFit: callStatus === 'screen' ? 'contain' : 'cover',
-                        borderRadius: '0.5rem',
-                        backgroundColor: '#000'
-                      }}
+                      className={`w-full h-full rounded-lg bg-black ${callStatus === 'screen' ? 'object-contain' : 'object-cover'}`}
                     />
-
                     {/* No remote stream message */}
                     {!remoteStream && (
-                      <div style={{
-                        position: 'absolute',
-                        top: '50%',
-                        left: '50%',
-                        transform: 'translate(-50%, -50%)',
-                        color: 'white',
-                        textAlign: 'center'
-                      }}>
+                      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-white text-center">
                         <div className="spinner-border text-light mb-2" role="status"></div>
                         <div>Waiting for connection...</div>
                       </div>
                     )}
-
                     {/* Local Video Overlay */}
-                    <div style={{
-                      position: 'absolute',
-                      bottom: '1rem',
-                      right: '1rem',
-                      width: '150px',
-                      height: '100px',
-                      borderRadius: '0.5rem',
-                      overflow: 'hidden',
-                      boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
-                      border: '2px solid white'
-                    }}>
+                    <div className="absolute bottom-4 right-4 rounded-lg overflow-hidden shadow-md border-2 border-white" style={{ width: '150px', height: '100px' }}>
                       <video
                         ref={localVideoRef}
                         autoPlay
                         playsInline
                         muted
-                        style={{
-                          width: '100%',
-                          height: '100%',
-                          objectFit: 'cover',
-                          backgroundColor: '#333'
-                        }}
+                        className="w-full h-full object-cover bg-[#333]"
                       />
                     </div>
-
                     {/* Call Controls */}
-                    <div style={{
-                      position: 'absolute',
-                      bottom: '1rem',
-                      left: '50%',
-                      transform: 'translateX(-50%)',
-                      display: 'flex',
-                      gap: '1rem',
-                      zIndex: 10
-                    }}>
+                    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-4 z-10">
                       <button
                         onClick={endCall}
-                        className="btn btn-danger"
-                        style={{
-                          width: '50px',
-                          height: '50px',
-                          borderRadius: '50%',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontSize: '1.25rem',
-                          backgroundColor: '#ef4444',
-                          color: 'white',
-                          border: 'none',
-                          cursor: 'pointer'
-                        }}
+                        className="btn btn-danger w-[50px] h-[50px] rounded-full flex items-center justify-center text-xl bg-red-500 text-white border-none cursor-pointer"
                       >
                         <i className="fas fa-phone-slash"></i>
                       </button>
@@ -1094,13 +989,12 @@ const Chat = () => {
               )}
 
               {/* Messages Area */}
-              <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-4">
                 {hasMoreMessages && (
-                  <div style={{ textAlign: 'center', marginBottom: '1rem' }}>
+                  <div className="text-center mb-4">
                     <button
                       onClick={loadMoreMessages}
-                      className="btn btn-sm btn-outline"
-                      style={{ padding: '0.25rem 0.75rem', fontSize: '0.75rem', borderRadius: '1rem', border: '1px solid #d1d5db', background: 'white' }}
+                      className="btn btn-sm btn-outline px-3 py-1 text-xs rounded-full border border-neutral-300 bg-white"
                     >
                       Load older messages
                     </button>
@@ -1108,8 +1002,8 @@ const Chat = () => {
                 )}
 
                 {messages.length === 0 ? (
-                  <div style={{ textAlign: 'center', color: '#9ca3af', marginTop: '2rem' }}>
-                    <div style={{ fontSize: '3rem', marginBottom: '1rem', opacity: 0.5 }}>💬</div>
+                  <div className="text-center text-neutral-400 mt-8">
+                    <div className="text-5xl mb-4 opacity-50">💬</div>
                     <p>No messages yet. Say hello!</p>
                   </div>
                 ) : (
@@ -1120,46 +1014,37 @@ const Chat = () => {
                     return (
                       <div
                         key={msg.message_id || index}
-                        style={{
-                          display: 'flex',
-                          justifyContent: isOwn ? 'flex-end' : 'flex-start',
-                          marginBottom: '0.5rem'
-                        }}
+                        className={`flex mb-2 ${isOwn ? 'justify-end' : 'justify-start'}`}
                       >
                         {!isOwn && (
-                          <div style={{ width: '32px', marginRight: '0.5rem', display: 'flex', alignItems: 'flex-end' }}>
+                          <div className="w-8 mr-2 flex items-end">
                             {showAvatar ? (
-                              <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: '600', fontSize: '0.75rem' }}>
+                              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#667eea] to-[#764ba2] flex items-center justify-center text-white font-semibold text-xs">
                                 {selectedUser.first_name?.charAt(0)}{selectedUser.last_name?.charAt(0)}
                               </div>
-                            ) : <div style={{ width: '32px' }} />}
+                            ) : <div className="w-8" />}
                           </div>
                         )}
 
-                        <div style={{ maxWidth: '70%' }}>
+                        <div className="max-w-[70%]">
                           <div
-                            style={{
-                              padding: '0.75rem 1rem',
-                              borderRadius: '1rem',
-                              borderTopRightRadius: isOwn ? '0' : '1rem',
-                              borderTopLeftRadius: isOwn ? '1rem' : '0',
-                              backgroundColor: isOwn ? '#3b82f6' : 'white',
-                              color: isOwn ? 'white' : '#1f2937',
-                              boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
-                              position: 'relative'
-                            }}
+                            className={`px-4 py-3 shadow-sm relative rounded-2xl ${
+                              isOwn
+                                ? 'rounded-tr-none bg-primary-500 text-white'
+                                : 'rounded-tl-none bg-white text-neutral-900'
+                            }`}
                           >
                             {msg.message}
                             {renderAttachment(msg)}
                           </div>
-                          <div style={{ fontSize: '0.75rem', opacity: 0.8, marginTop: '0.25rem', textAlign: 'right', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '4px' }}>
+                          <div className="text-xs opacity-80 mt-1 text-right flex items-center justify-end gap-1">
                             {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                             {msg.sender_id === user.userId && (
                               <span>
                                 {msg.is_read ? (
-                                  <i className="fas fa-check-double" style={{ color: '#60a5fa' }} title="Read"></i>
+                                  <i className="fas fa-check-double text-blue-400" title="Read"></i>
                                 ) : (
-                                  <i className="fas fa-check" style={{ color: '#9ca3af' }} title="Sent"></i>
+                                  <i className="fas fa-check text-neutral-400" title="Sent"></i>
                                 )}
                               </span>
                             )}
@@ -1173,55 +1058,53 @@ const Chat = () => {
               </div>
 
               {/* Input Area */}
-              <div style={{ padding: '1rem', borderTop: '1px solid #e5e7eb', background: 'white' }}>
+              <div className="p-4 border-t border-neutral-200 bg-white">
                 {uploading && (
-                  <div style={{ marginBottom: '0.5rem', fontSize: '0.875rem', color: '#3b82f6' }}>
+                  <div className="mb-2 text-sm text-primary-500">
                     Uploading file...
                   </div>
                 )}
                 {selectedFile && (
-                  <div style={{ marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem', backgroundColor: '#f3f4f6', borderRadius: '0.375rem', fontSize: '0.875rem' }}>
+                  <div className="mb-2 flex items-center gap-2 p-2 bg-neutral-100 rounded text-sm">
                     <i className="fas fa-file"></i>
-                    <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{selectedFile.name}</span>
-                    <button onClick={removeSelectedFile} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444' }}>
+                    <span className="flex-1 overflow-hidden text-ellipsis whitespace-nowrap">{selectedFile.name}</span>
+                    <button onClick={removeSelectedFile} className="bg-transparent border-none cursor-pointer text-red-500">
                       <i className="fas fa-times"></i>
                     </button>
                   </div>
                 )}
 
-                <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-end' }}>
-                  <div style={{ position: 'relative' }}>
+                <div className="flex gap-3 items-end">
+                  <div className="relative">
                     <button
-                      className="btn btn-outline"
-                      style={{ padding: '0.75rem', borderRadius: '50%', border: '1px solid #d1d5db' }}
+                      className="btn btn-outline p-3 rounded-full border border-neutral-300"
                       onClick={() => setShowEmojiPicker(!showEmojiPicker)}
                     >
                       <i className="far fa-smile"></i>
                     </button>
                     {showEmojiPicker && (
-                      <div style={{ position: 'absolute', bottom: '100%', left: '0', marginBottom: '0.5rem', zIndex: 50 }}>
+                      <div className="absolute bottom-full left-0 mb-2 z-50">
                         <EmojiPicker onEmojiClick={onEmojiClick} />
                       </div>
                     )}
                   </div>
 
-                  <div style={{ position: 'relative' }}>
+                  <div className="relative">
                     <input
                       type="file"
                       ref={fileInputRef}
                       onChange={handleFileSelect}
-                      style={{ display: 'none' }}
+                      className="hidden"
                     />
                     <button
-                      className="btn btn-outline"
-                      style={{ padding: '0.75rem', borderRadius: '50%', border: '1px solid #d1d5db' }}
+                      className="btn btn-outline p-3 rounded-full border border-neutral-300"
                       onClick={() => fileInputRef.current?.click()}
                     >
                       <i className="fas fa-paperclip"></i>
                     </button>
                   </div>
 
-                  <form onSubmit={handleSendMessage} style={{ flex: 1, display: 'flex', gap: '0.75rem' }}>
+                  <form onSubmit={handleSendMessage} className="flex-1 flex gap-3">
                     <input
                       type="text"
                       value={newMessage}
@@ -1230,13 +1113,11 @@ const Chat = () => {
                         handleTyping();
                       }}
                       placeholder="Type a message..."
-                      className="form-input"
-                      style={{ flex: 1, padding: '0.75rem', borderRadius: '1.5rem', border: '1px solid #d1d5db', outline: 'none' }}
+                      className="form-input flex-1 p-3 rounded-3xl border border-neutral-300 outline-none"
                     />
                     <button
                       type="submit"
-                      className="btn btn-primary"
-                      style={{ padding: '0.75rem', borderRadius: '50%', width: '48px', height: '48px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#3b82f6', color: 'white', border: 'none' }}
+                      className="btn btn-primary p-3 rounded-full w-12 h-12 flex items-center justify-center bg-primary-500 text-white border-none"
                       disabled={(!newMessage.trim() && !selectedFile) || uploading}
                     >
                       <i className="fas fa-paper-plane"></i>
@@ -1246,11 +1127,11 @@ const Chat = () => {
               </div>
             </>
           ) : (
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#9ca3af' }}>
-              <div style={{ width: '80px', height: '80px', borderRadius: '50%', backgroundColor: '#f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1.5rem' }}>
-                <i className="fas fa-comments" style={{ fontSize: '2.5rem', color: '#d1d5db' }}></i>
+            <div className="flex-1 flex flex-col items-center justify-center text-neutral-400">
+              <div className="w-20 h-20 rounded-full bg-neutral-100 flex items-center justify-center mb-6">
+                <i className="fas fa-comments text-4xl text-neutral-300"></i>
               </div>
-              <h3 style={{ fontSize: '1.25rem', fontWeight: '600', color: '#374151', marginBottom: '0.5rem' }}>Select a conversation</h3>
+              <h3 className="text-xl font-semibold text-neutral-700 mb-2">Select a conversation</h3>
               <p>Choose a contact from the left to start chatting</p>
             </div>
           )}

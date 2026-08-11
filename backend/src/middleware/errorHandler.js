@@ -1,8 +1,13 @@
-// Global error handler middleware
-const errorHandler = (err, req, res, next) => {
-  console.error('Error:', err);
+const { AppError } = require('../utils/errors');
 
-  // Database errors
+const errorHandler = (err, req, res, next) => {
+  if (err.isOperational) {
+    return res.status(err.statusCode).json({
+      success: false,
+      message: err.message,
+    });
+  }
+
   if (err.code === '23505') {
     return res.status(409).json({
       success: false,
@@ -17,7 +22,6 @@ const errorHandler = (err, req, res, next) => {
     });
   }
 
-  // JWT errors
   if (err.name === 'JsonWebTokenError') {
     return res.status(401).json({
       success: false,
@@ -32,7 +36,6 @@ const errorHandler = (err, req, res, next) => {
     });
   }
 
-  // Validation errors
   if (err.name === 'ValidationError') {
     return res.status(400).json({
       success: false,
@@ -40,7 +43,8 @@ const errorHandler = (err, req, res, next) => {
     });
   }
 
-  // Default error
+  console.error('Unhandled error:', err);
+
   res.status(err.statusCode || 500).json({
     success: false,
     message: err.message || 'Internal server error',
@@ -48,7 +52,6 @@ const errorHandler = (err, req, res, next) => {
   });
 };
 
-// 404 handler
 const notFound = (req, res) => {
   res.status(404).json({
     success: false,

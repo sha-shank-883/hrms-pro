@@ -6,6 +6,12 @@ const { authenticateToken: protect, authorizeRole: authorize } = require('../mid
 // Public route for demo sign up
 router.post('/demo', leadController.applyForDemo);
 
+// Public route for lead magnet download
+router.post('/lead-magnet', leadController.downloadLeadMagnet);
+
+// Public route for contact form inquiry
+router.post('/contact', leadController.submitContactInquiry);
+
 // Protected Admin Route to view all leads
 // Only accessible by superadmin or admin on the default tenant (if applicable)
 router.get('/', protect, authorize('admin', 'superadmin'), leadController.getAllLeads);

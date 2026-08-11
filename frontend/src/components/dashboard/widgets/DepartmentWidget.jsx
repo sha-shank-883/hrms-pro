@@ -112,7 +112,7 @@ const DepartmentWidget = memo(({ chartType, onToggle, onSettingsClick, isSetting
                                 />
                             </div>
                         </div>
-                        <p style={{ fontSize: '0.65rem', color: '#9CA3AF', fontStyle: 'italic', marginTop: '0.5rem' }}>
+                        <p className="text-xs text-neutral-400 italic mt-2">
                             Filters based on employee joining date.
                         </p>
                     </div>
@@ -173,12 +173,12 @@ const DepartmentWidget = memo(({ chartType, onToggle, onSettingsClick, isSetting
                                                 </div>
                                             </td>
                                             <td style={{ textAlign: 'right' }}>
-                                                <span style={{ fontWeight: 700, background: '#f3f4f6', padding: '0.25rem 0.5rem', borderRadius: '0.25rem' }}>{entry.count}</span>
+                                                <span className="font-bold bg-gray-100 px-2 py-1 rounded">{entry.count}</span>
                                             </td>
                                             <td style={{ textAlign: 'right', width: '33%' }}>
                                                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '0.75rem' }}>
-                                                    <span style={{ fontSize: '0.75rem', fontWeight: 500, color: '#6b7280', width: '3rem', textAlign: 'right' }}>{percent}%</span>
-                                                    <div style={{ width: '6rem', height: '0.5rem', background: '#f3f4f6', borderRadius: '9999px', overflow: 'hidden' }}>
+                                                    <span className="text-xs font-medium text-gray-500 w-12 text-right">{percent}%</span>
+                                                    <div className="h-2 w-24 bg-gray-100 rounded-full overflow-hidden">
                                                         <div
                                                             style={{
                                                                 height: '100%',
@@ -230,10 +230,8 @@ const DepartmentWidget = memo(({ chartType, onToggle, onSettingsClick, isSetting
                                 <Tooltip
                                     formatter={(value) => [`${value} Employees`, 'Count']}
                                     contentStyle={{
-                                        backgroundColor: '#fff',
                                         borderRadius: '8px',
-                                        border: 'none',
-                                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                                        border: 'none'
                                     }}
                                 />
                                 <Legend

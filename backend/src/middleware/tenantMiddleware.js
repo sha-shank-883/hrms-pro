@@ -1,12 +1,39 @@
 const { tenantStorage } = require('../config/database');
 const Tenant = require('../models/tenantModel');
 
+// Simple in-memory tenant cache (TTL: 5 minutes)
+const tenantCache = new Map();
+const CACHE_TTL = 5 * 60 * 1000;
+
+const getTenantFromCache = (tenantId) => {
+  const entry = tenantCache.get(tenantId);
+  if (entry && Date.now() - entry.timestamp < CACHE_TTL) {
+    return entry.tenant;
+  }
+  return null;
+};
+
+const setTenantCache = (tenantId, tenant) => {
+  tenantCache.set(tenantId, { tenant, timestamp: Date.now() });
+};
+
 const tenantMiddleware = async (req, res, next) => {
     const tenantId = req.headers['x-tenant-id'];
 
-    // Public paths that do not require a tenant ID explicitly
-    const publicPaths = ['/leads/demo', '/website-settings', '/website', '/cms', '/setup-db', '/webhooks/biometrics'];
-    const isPublic = publicPaths.some(p => req.path.startsWith(p));
+  // Public paths that do not require a tenant ID explicitly
+  const publicPaths = [
+    '/api/leads/demo',
+    '/api/leads/lead-magnet',
+    '/api/leads/contact',
+    '/api/website-settings',
+    '/api/website',
+    '/api/cms',
+    '/api/blog',
+    '/api/setup-db',
+    '/api/webhooks/biometrics',
+    '/api/resources'
+  ];
+  const isPublic = publicPaths.some(p => req.originalUrl.startsWith(p));
 
     if (!tenantId) {
         if (isPublic) {
@@ -18,12 +45,17 @@ const tenantMiddleware = async (req, res, next) => {
     }
 
     try {
-        // Validate tenant exists
-        // Note: We might want to cache this to avoid DB hit on every request
-        const tenant = await Tenant.findById(tenantId);
+        // Check cache first to avoid DB hit on every request
+        let tenant = getTenantFromCache(tenantId);
 
         if (!tenant) {
-            return res.status(404).json({ error: 'Tenant not found' });
+            tenant = await Tenant.findById(tenantId);
+
+            if (!tenant) {
+                return res.status(404).json({ error: 'Tenant not found' });
+            }
+
+            setTenantCache(tenantId, tenant);
         }
 
         if (tenant.status !== 'active') {
@@ -33,16 +65,13 @@ const tenantMiddleware = async (req, res, next) => {
             });
         }
 
-        // Wrap the next() call in the AsyncLocalStorage run context
-        // This ensures that any DB queries triggered by next() will have access to this tenantId
         tenantStorage.run(tenantId, () => {
-            req.tenant = tenant; // Attach tenant info to request for convenience
+            req.tenant = tenant;
             next();
         });
     } catch (error) {
         console.error('Tenant middleware error:', error);
 
-        // Write to error log file for debugging
         try {
             const fs = require('fs');
             const path = require('path');

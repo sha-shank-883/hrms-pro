@@ -4,7 +4,8 @@ import { appStorage } from '../utils/storage';
 // Replace this with the live backend URL when deploying
 // For local Android emulator, use http://10.0.2.2:5001/api
 // For physical devices on the same WiFi, use your local IP e.g., http://192.168.1.5:5001/api
-export const API_URL = 'http://192.168.29.184:5001/api';
+// Set EXPO_PUBLIC_API_URL env var for production
+export const API_URL = process.env.EXPO_PUBLIC_API_URL || '';
 
 const api = axios.create({
   baseURL: API_URL,
@@ -29,7 +30,7 @@ api.interceptors.request.use(
   async (config) => {
     const token = await appStorage.getItem('token');
     const tenantId = await appStorage.getItem('tenantId');
-    
+
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -138,7 +139,23 @@ export const attendanceService = {
 
 export const payrollService = {
   getPayroll: () => api.get('/payroll'),
-  getPayslips: (empId) => api.get(`/payroll/payslips${empId ? `/${empId}` : ''}`),
+  getMyPayslips: () => api.get('/payroll/my-payslips'),
+  getPayslipV2: (id) => api.get(`/payslips/${id}`),
+  downloadPayslipPdf: async (id) => {
+    const token = await appStorage.getItem('token');
+    const tenantId = await appStorage.getItem('tenantId');
+    const baseUrl = process.env.EXPO_PUBLIC_API_URL || '';
+    const response = await fetch(`${baseUrl}/payslips/${id}/pdf`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'x-tenant-id': tenantId || 'tenant_default',
+      },
+    });
+    if (!response.ok) throw new Error('Download failed');
+    return response;
+  },
+  queuePayslipEmail: (id) => api.post(`/payslips/${id}/email`),
+  verifyPayslip: (id) => api.get(`/payslips/${id}/verify`),
 };
 
 export const settingsService = {
@@ -193,6 +210,11 @@ export const chatService = {
   createChannel: (data) => api.post('/chat/channels', data),
   joinChannel: (id) => api.post(`/chat/channels/${id}/join`),
   getChannelMessages: (id, params = {}) => api.get(`/chat/channels/${id}/messages`, { params }),
+  uploadChatFile: (formData) => api.post('/upload/chat', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }),
+  deleteMessage: (messageId) => api.delete(`/chat/messages/${messageId}`),
+  editMessage: (messageId, message) => api.put(`/chat/messages/${messageId}`, { message }),
 };
 
 export const auditService = {
@@ -225,13 +247,19 @@ export const tenantService = {
   getBiometricDevices: () => api.get('/tenants/biometric-devices/all'),
 };
 
+export const mobileConfigService = {
+  getPublicConfig: () => api.get('/mobile-config/public'),
+  getAllConfigs: () => api.get('/mobile-config/all'),
+  updateConfig: (key, data) => api.put(`/mobile-config/${key}`, data),
+};
+
 // Utility function to handle API errors consistently
 export const handleApiError = (error) => {
   const message = error.response?.data?.message || error.response?.data?.error || error.message || 'An error occurred';
   const status = error.response?.status;
-  
+
   let userMessage = message;
-  
+
   if (status === 400) {
     userMessage = 'Invalid request. Please check your input.';
   } else if (status === 401) {
@@ -247,7 +275,7 @@ export const handleApiError = (error) => {
   } else if (status === 500) {
     userMessage = 'Server error. Please try again later.';
   }
-  
+
   return {
     message: userMessage,
     status,

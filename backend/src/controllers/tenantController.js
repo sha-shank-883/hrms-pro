@@ -1,324 +1,210 @@
-const { pool, query } = require('../config/database');
+const { pool, query, transaction } = require('../config/database');
 const Tenant = require('../models/tenantModel');
 const bcrypt = require('bcryptjs');
 const fs = require('fs');
 const path = require('path');
-
-const createTenant = async (req, res) => {
-    const client = await pool.connect();
-    try {
-        const { tenantId, name, adminEmail, adminPassword } = req.body;
-
-        if (!tenantId || !name || !adminEmail || !adminPassword) {
-            return res.status(400).json({ error: 'All fields are required' });
-        }
-
-        // 1. Check if tenant already exists
-        const existingTenant = await Tenant.findById(tenantId);
-        if (existingTenant) {
-            return res.status(400).json({ error: 'Tenant ID already exists' });
-        }
-
-        // Start transaction
-        await client.query('BEGIN');
-
-        // 2. Create Schema
-        // Sanitize tenantId to ensure it's safe for SQL identifier (basic check)
-        if (!/^[a-z0-9_]+$/.test(tenantId)) {
-            throw new Error('Invalid tenant ID format. Use lowercase letters, numbers, and underscores only.');
-        }
-
-        await client.query(`CREATE SCHEMA IF NOT EXISTS "${tenantId}"`);
-
-        // 3. Run Tenant Schema Script
-        const schemaPath = path.join(__dirname, '../config/tenant_schema.sql');
-        const schemaSql = fs.readFileSync(schemaPath, 'utf8');
-
-        // Set search path to new tenant schema
-        await client.query(`SET search_path TO "${tenantId}"`);
-
-        // Execute schema creation
-        await client.query(schemaSql);
-
-        // 4. Create Admin User
-        const salt = await bcrypt.genSalt(10);
-        const hashedPassword = await bcrypt.hash(adminPassword, salt);
-
-        await client.query(
-            `INSERT INTO users (email, password_hash, role) VALUES ($1, $2, 'admin')`,
-            [adminEmail, hashedPassword]
-        );
-
-        // 5. Register in Shared Schema
-        // We need to switch back to public/shared context or just use fully qualified name
-        // Tenant.create uses 'shared.tenants', so it should be fine if we just call it, 
-        // but Tenant.create uses the 'query' helper which might use the AsyncLocalStorage tenant.
-        // Since we are in a request that might be authenticated as 'default' tenant admin, 
-        // the 'query' helper might be pointing to 'default'.
-        // However, Tenant.create explicitly writes to 'shared.tenants'.
-
-        // Let's use the client we have for the transaction to be safe and consistent.
-        await client.query(
-            `INSERT INTO shared.tenants (tenant_id, name, status) VALUES ($1, $2, 'active')`,
-            [tenantId, name]
-        );
-
-        await client.query('COMMIT');
-
-        res.status(201).json({ message: 'Tenant created successfully', tenantId });
-    } catch (error) {
-        await client.query('ROLLBACK');
-        console.error('Error creating tenant:', error);
-        res.status(500).json({ error: error.message || 'Internal server error' });
-    } finally {
-        client.release();
-    }
-};
-
-const getAllTenants = async (req, res) => {
-    try {
-        const tenants = await Tenant.findAll();
-        res.json(tenants);
-    } catch (error) {
-        console.error('Error fetching tenants:', error);
-        res.status(500).json({ error: 'Internal server error' });
-    }
-};
-
 const speakeasy = require('speakeasy');
+const asyncHandler = require('../utils/asyncHandler');
+const { NotFoundError, UnauthorizedError, ForbiddenError, ValidationError, ConflictError, AppError } = require('../utils/errors');
 
-// ... existing imports
+const createTenant = asyncHandler(async (req, res) => {
+  const { tenantId, name, adminEmail, adminPassword } = req.body;
 
-const updateTenant = async (req, res) => {
-    const client = await pool.connect();
-    try {
-        const { tenantId } = req.params;
-        const updates = req.body;
-        const { adminEmail, ...tenantUpdates } = updates;
+  if (!tenantId || !name || !adminEmail || !adminPassword) {
+    throw new ValidationError('All fields are required');
+  }
 
-        // Prevent updating tenant_id
-        delete tenantUpdates.tenantId;
-        delete tenantUpdates.tenant_id;
+  if (!/^[a-z0-9_]+$/.test(tenantId)) {
+    throw new ValidationError('Invalid tenant ID format. Use lowercase letters, numbers, and underscores only.');
+  }
 
-        await client.query('BEGIN');
+  const existingTenant = await Tenant.findById(tenantId);
+  if (existingTenant) {
+    throw new ValidationError('Tenant ID already exists');
+  }
 
-        // 1. Update shared.tenants details
-        const allowedFields = ['name', 'status', 'domain', 'db_name', 'subscription_plan', 'subscription_expiry'];
-        const filteredUpdates = {};
+  await transaction(async (client) => {
+    await client.query(`CREATE SCHEMA IF NOT EXISTS "${tenantId}"`);
 
-        Object.keys(tenantUpdates).forEach(key => {
-            if (allowedFields.includes(key)) {
-                // Fix for empty timestamp error
-                if (key === 'subscription_expiry' && tenantUpdates[key] === '') {
-                    filteredUpdates[key] = null;
-                } else {
-                    filteredUpdates[key] = tenantUpdates[key];
-                }
-            }
-        });
+    const schemaPath = path.join(__dirname, '../config/tenant_schema.sql');
+    const schemaSql = fs.readFileSync(schemaPath, 'utf8');
 
-        if (Object.keys(filteredUpdates).length > 0) {
-            const updatedTenant = await Tenant.update(tenantId, filteredUpdates);
-            if (!updatedTenant) {
-                await client.query('ROLLBACK');
-                return res.status(404).json({ error: 'Tenant not found' });
-            }
+    await client.query(`SET search_path TO "${tenantId}"`);
+    await client.query(schemaSql);
+
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(adminPassword, salt);
+
+    await client.query(
+      `INSERT INTO users (email, password_hash, role) VALUES ($1, $2, 'admin')`,
+      [adminEmail, hashedPassword]
+    );
+
+    await client.query(
+      `INSERT INTO shared.tenants (tenant_id, name, status) VALUES ($1, $2, 'active')`,
+      [tenantId, name]
+    );
+  });
+
+  res.status(201).json({ message: 'Tenant created successfully', tenantId });
+});
+
+const getAllTenants = asyncHandler(async (req, res) => {
+  const tenants = await Tenant.findAll();
+  res.json(tenants);
+});
+
+const updateTenant = asyncHandler(async (req, res) => {
+  const { tenantId } = req.params;
+  const updates = req.body;
+  const { adminEmail, ...tenantUpdates } = updates;
+
+  delete tenantUpdates.tenantId;
+  delete tenantUpdates.tenant_id;
+
+  await transaction(async (client) => {
+    const allowedFields = ['name', 'status', 'domain', 'db_name', 'subscription_plan', 'subscription_expiry'];
+    const filteredUpdates = {};
+
+    Object.keys(tenantUpdates).forEach(key => {
+      if (allowedFields.includes(key)) {
+        if (key === 'subscription_expiry' && tenantUpdates[key] === '') {
+          filteredUpdates[key] = null;
+        } else {
+          filteredUpdates[key] = tenantUpdates[key];
         }
+      }
+    });
 
-        // 2. Update Admin Email if provided
-        if (adminEmail) {
-            // Switch to tenant schema
-            await client.query(`SET search_path TO "${tenantId}"`);
-
-            // Update admin email
-            await client.query(
-                `UPDATE users SET email = $1 WHERE role = 'admin'`,
-                [adminEmail]
-            );
-        }
-
-        await client.query('COMMIT');
-        res.json({ message: 'Tenant updated successfully' });
-    } catch (error) {
-        await client.query('ROLLBACK');
-        console.error('Error updating tenant:', error);
-        res.status(500).json({ error: 'Internal server error' });
-    } finally {
-        client.release();
+    if (Object.keys(filteredUpdates).length > 0) {
+      const updatedTenant = await Tenant.update(tenantId, filteredUpdates);
+      if (!updatedTenant) {
+        throw new NotFoundError('Tenant not found');
+      }
     }
-};
 
-const resetTenantAdminPassword = async (req, res) => {
-    const client = await pool.connect();
-    try {
-        const { tenantId } = req.params;
-        const { newPassword } = req.body;
-
-        if (!newPassword || newPassword.length < 6) {
-            return res.status(400).json({ error: 'Password must be at least 6 characters' });
-        }
-
-        // 1. Verify tenant exists
-        const tenant = await Tenant.findById(tenantId);
-        if (!tenant) {
-            return res.status(404).json({ error: 'Tenant not found' });
-        }
-
-        // 2. Switch to tenant schema
-        await client.query(`SET search_path TO "${tenantId}"`);
-
-        // 3. Find admin user (assuming role 'admin')
-        const salt = await bcrypt.genSalt(10);
-        const hashedPassword = await bcrypt.hash(newPassword, salt);
-
-        const result = await client.query(
-            `UPDATE users SET password_hash = $1 WHERE role = 'admin' RETURNING email`,
-            [hashedPassword]
-        );
-
-        if (result.rows.length === 0) {
-            return res.status(404).json({ error: 'No admin user found for this tenant' });
-        }
-
-        res.json({ message: 'Tenant admin password reset successfully', updatedAdmins: result.rows.map(r => r.email) });
-
-    } catch (error) {
-        console.error('Error resetting tenant password:', error);
-        res.status(500).json({ error: error.message || 'Internal server error' });
-    } finally {
-        client.release();
+    if (adminEmail) {
+      await client.query(`SET search_path TO "${tenantId}"`);
+      await client.query(
+        `UPDATE users SET email = $1 WHERE role = 'admin'`,
+        [adminEmail]
+      );
     }
-};
+  });
 
-const deleteTenant = async (req, res) => {
-    const client = await pool.connect();
-    try {
-        const { tenantId } = req.params;
-        const userId = req.user.userId; // Super Admin ID
+  res.json({ message: 'Tenant updated successfully' });
+});
 
-        let twoFactorToken = req.body.twoFactorToken;
-        // Also check headers, as DELETE with body is sometimes problematic
-        if (!twoFactorToken && req.headers['x-2fa-token']) {
-            twoFactorToken = req.headers['x-2fa-token'];
-        }
+const resetTenantAdminPassword = asyncHandler(async (req, res) => {
+  const { tenantId } = req.params;
+  const { newPassword } = req.body;
 
-        if (!twoFactorToken) {
-            return res.status(400).json({ error: '2FA token is required' });
-        }
+  if (!newPassword || newPassword.length < 6) {
+    throw new ValidationError('Password must be at least 6 characters');
+  }
 
-        // 1. Verify Super Admin 2FA
-        // We need to get the secret from the current user (Super Admin)
-        // Since we are in the context of 'tenant_default' (enforced by middleware), we can query users table directly?
-        // Wait, the connection might be in 'public' or 'tenant_default' depending on previous middleware.
-        // The 'authenticateToken' middleware sets req.user but doesn't necessarily set search_path.
-        // The 'tenantMiddleware' sets search_path based on header.
-        // For Super Admin actions, we expect them to be on 'tenant_default'.
+  const tenant = await Tenant.findById(tenantId);
+  if (!tenant) {
+    throw new NotFoundError('Tenant not found');
+  }
 
-        // Let's explicitly check 'tenant_default' for the user's secret
-        await client.query(`SET search_path TO "tenant_default"`);
-        const userRes = await client.query('SELECT two_factor_secret FROM users WHERE user_id = $1', [userId]);
+  const salt = await bcrypt.genSalt(10);
+  const hashedPassword = await bcrypt.hash(newPassword, salt);
 
-        if (userRes.rows.length === 0) {
-            return res.status(404).json({ error: 'Super Admin user not found' });
-        }
+  const result = await query(
+    `UPDATE "${tenantId}".users SET password_hash = $1 WHERE role = 'admin' RETURNING email`,
+    [hashedPassword]
+  );
 
-        const { two_factor_secret } = userRes.rows[0];
-        if (!two_factor_secret) {
-            return res.status(400).json({ error: '2FA is not enabled for Super Admin. Please enable it first.' });
-        }
+  if (result.rows.length === 0) {
+    throw new NotFoundError('No admin user found for this tenant');
+  }
 
-        const verified = speakeasy.totp.verify({
-            secret: two_factor_secret,
-            encoding: 'base32',
-            token: twoFactorToken
-        });
+  res.json({ message: 'Tenant admin password reset successfully', updatedAdmins: result.rows.map(r => r.email) });
+});
 
-        if (!verified) {
-            return res.status(401).json({ error: 'Invalid 2FA token' });
-        }
+const deleteTenant = asyncHandler(async (req, res) => {
+  const { tenantId } = req.params;
+  const userId = req.user.userId;
 
-        // 2. Proceed with Deletion
-        await client.query('BEGIN');
+  let twoFactorToken = req.body.twoFactorToken;
+  if (!twoFactorToken && req.headers['x-2fa-token']) {
+    twoFactorToken = req.headers['x-2fa-token'];
+  }
 
-        // Drop Schema
-        await client.query(`DROP SCHEMA IF EXISTS "${tenantId}" CASCADE`);
+  if (!twoFactorToken) {
+    throw new ValidationError('2FA token is required');
+  }
 
-        // Remove from shared.tenants
-        // Need to switch back to public/shared context? 
-        // shared.tenants is accessible from anywhere if qualified.
-        await client.query(`DELETE FROM shared.tenants WHERE tenant_id = $1`, [tenantId]);
+  const userRes = await query(`SELECT two_factor_secret FROM users WHERE user_id = $1`, [userId]);
+  if (userRes.rows.length === 0) {
+    throw new NotFoundError('Super Admin user not found');
+  }
 
-        await client.query('COMMIT');
-        res.json({ message: 'Tenant deleted successfully' });
+  const { two_factor_secret } = userRes.rows[0];
+  if (!two_factor_secret) {
+    throw new ValidationError('2FA is not enabled for Super Admin. Please enable it first.');
+  }
 
-    } catch (error) {
-        await client.query('ROLLBACK');
-        console.error('Error deleting tenant:', error);
-        res.status(500).json({ error: error.message || 'Internal server error' });
-    } finally {
-        client.release();
-    }
-};
+  const verified = speakeasy.totp.verify({
+    secret: two_factor_secret,
+    encoding: 'base32',
+    token: twoFactorToken
+  });
 
-const getBiometricDevices = async (req, res) => {
-    try {
-        const result = await pool.query(`
-            SELECT bd.id, bd.tenant_id, bd.serial_number, bd.brand, bd.status, bd.last_ping, bd.created_at, t.name as tenant_name
-            FROM shared.biometric_devices bd
-            LEFT JOIN shared.tenants t ON bd.tenant_id = t.tenant_id
-            ORDER BY bd.created_at DESC
-        `);
-        res.json(result.rows);
-    } catch (error) {
-        console.error('Error fetching biometric devices:', error);
-        res.status(500).json({ error: 'Internal server error' });
-    }
-};
+  if (!verified) {
+    throw new UnauthorizedError('Invalid 2FA token');
+  }
 
-const registerBiometricDevice = async (req, res) => {
-    try {
-        const { tenantId, serialNumber, brand } = req.body;
+  await transaction(async (client) => {
+    await client.query(`DROP SCHEMA IF EXISTS "${tenantId}" CASCADE`);
+    await client.query(`DELETE FROM shared.tenants WHERE tenant_id = $1`, [tenantId]);
+  });
 
-        if (!tenantId || !serialNumber || !brand) {
-            return res.status(400).json({ error: 'Tenant ID, Serial Number, and Brand are required' });
-        }
+  res.json({ message: 'Tenant deleted successfully' });
+});
 
-        const result = await pool.query(
-            `INSERT INTO shared.biometric_devices (tenant_id, serial_number, brand) 
-             VALUES ($1, $2, $3) RETURNING *`,
-            [tenantId, serialNumber, brand]
-        );
+const getBiometricDevices = asyncHandler(async (req, res) => {
+  const result = await pool.query(`
+    SELECT bd.id, bd.tenant_id, bd.serial_number, bd.brand, bd.status, bd.last_ping, bd.created_at, t.name as tenant_name
+    FROM shared.biometric_devices bd
+    LEFT JOIN shared.tenants t ON bd.tenant_id = t.tenant_id
+    ORDER BY bd.created_at DESC
+  `);
+  res.json(result.rows);
+});
 
-        res.status(201).json({ message: 'Device registered successfully', device: result.rows[0] });
-    } catch (error) {
-        console.error('Error registering biometric device:', error);
-        if (error.code === '23505') { // Unique violation
-            return res.status(400).json({ error: 'Device serial number already registered' });
-        }
-        res.status(500).json({ error: 'Internal server error' });
-    }
-};
+const registerBiometricDevice = asyncHandler(async (req, res) => {
+  const { tenantId, serialNumber, brand } = req.body;
 
-const deleteBiometricDevice = async (req, res) => {
-    try {
-        const { serialNumber } = req.params;
-        const result = await pool.query(
-            `DELETE FROM shared.biometric_devices WHERE serial_number = $1 RETURNING id`,
-            [serialNumber]
-        );
+  if (!tenantId || !serialNumber || !brand) {
+    throw new ValidationError('Tenant ID, Serial Number, and Brand are required');
+  }
 
-        if (result.rowCount === 0) {
-            return res.status(404).json({ error: 'Device not found' });
-        }
+  const result = await pool.query(
+    `INSERT INTO shared.biometric_devices (tenant_id, serial_number, brand)
+     VALUES ($1, $2, $3) RETURNING *`,
+    [tenantId, serialNumber, brand]
+  );
 
-        res.json({ message: 'Device deleted successfully' });
-    } catch (error) {
-        console.error('Error deleting biometric device:', error);
-        res.status(500).json({ error: 'Internal server error' });
-    }
-};
+  res.status(201).json({ message: 'Device registered successfully', device: result.rows[0] });
+});
 
-module.exports = { 
-    createTenant, getAllTenants, updateTenant, resetTenantAdminPassword, deleteTenant,
-    getBiometricDevices, registerBiometricDevice, deleteBiometricDevice 
+const deleteBiometricDevice = asyncHandler(async (req, res) => {
+  const { serialNumber } = req.params;
+  const result = await pool.query(
+    `DELETE FROM shared.biometric_devices WHERE serial_number = $1 RETURNING id`,
+    [serialNumber]
+  );
+
+  if (result.rowCount === 0) {
+    throw new NotFoundError('Device not found');
+  }
+
+  res.json({ message: 'Device deleted successfully' });
+});
+
+module.exports = {
+  createTenant, getAllTenants, updateTenant, resetTenantAdminPassword, deleteTenant,
+  getBiometricDevices, registerBiometricDevice, deleteBiometricDevice
 };

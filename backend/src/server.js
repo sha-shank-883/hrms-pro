@@ -6,7 +6,6 @@ const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 const http = require('http');
 const socketIo = require('socket.io');
-const jwt = require('jsonwebtoken');
 require('dotenv').config();
 
 const { pool, query, tenantStorage } = require('./config/database');
@@ -14,10 +13,10 @@ const { errorHandler, notFound } = require('./middleware/errorHandler');
 const { sanitizeBody } = require('./middleware/validate');
 const fs = require('fs');
 const path = require('path');
-const { encrypt, decrypt } = require('./utils/crypto');
 
 // Import routes
 const authRoutes = require('./routes/authRoutes');
+const emailQueueService = require('./services/emailQueueService');
 const departmentRoutes = require('./routes/departmentRoutes');
 const employeeRoutes = require('./routes/employeeRoutes');
 const attendanceRoutes = require('./routes/attendanceRoutes');
@@ -34,60 +33,75 @@ const emailTemplateRoutes = require('./routes/emailTemplateRoutes');
 const performanceRoutes = require('./routes/performanceRoutes');
 const tenantRoutes = require('./routes/tenantRoutes');
 const searchRoutes = require('./routes/searchRoutes');
+const mobileConfigRoutes = require('./routes/mobileConfigRoutes');
+const supportRoutes = require('./routes/supportRoutes');
+const { setupSocketHandlers } = require('./socket');
 
 // Initialize express app
 const app = express();
 const server = http.createServer(app);
 
 // Initialize Socket.IO
-// Initialize Socket.IO
 const io = socketIo(server, {
   cors: {
-    origin: true,
+    origin: process.env.NODE_ENV === 'production'
+      ? process.env.FRONTEND_URL || 'https://app.hrmspro.online'
+      : true,
     methods: ['GET', 'POST'],
     credentials: true,
   },
 });
 
-// Rate limiting (skip for unauthenticated settings calls)
+// Rate limiting
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 1000, // limit each IP to 1000 requests per windowMs
+  windowMs: 15 * 60 * 1000,
+  max: 1000,
   message: 'Too many requests from this IP, please try again later.',
   standardHeaders: true,
   legacyHeaders: false,
   skip: (req) => {
-    // Skip rate limiting for settings endpoint when unauthenticated
     return req.path === '/settings' && !req.headers.authorization;
   }
 });
 
+const connectedUsers = new Map(); // userId -> Set of socketIds
+
 // Middleware to attach io to req
 app.use((req, res, next) => {
   req.io = io;
+  req.connectedUsers = connectedUsers;
   next();
 });
+
+app.set('io', io);
+app.set('connectedUsers', connectedUsers);
 
 // Middleware
 app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" },
   crossOriginEmbedderPolicy: false
-})); // Security headers
-app.use(compression()); // Compress responses
+}));
+app.use(compression());
 app.use(cors({
-  origin: true,
+  origin: process.env.NODE_ENV === 'production'
+    ? process.env.FRONTEND_URL || 'https://app.hrmspro.online'
+    : true,
   credentials: true,
 }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-app.use(morgan('dev')); // Logging
-app.use(sanitizeBody); // Input sanitization
-// app.use('/api/', limiter); // Rate limiting - DISABLED for development
+app.use(morgan('dev'));
+app.use(sanitizeBody);
+app.use('/api/', limiter);
 
 // ONE-OFF DATABASE SETUP ROUTE (For Render deployment)
 app.get('/api/setup-db', async (req, res) => {
   const setupPassword = req.headers['x-setup-password'] || req.query.password;
-  const envPassword = process.env.SETUP_PASSWORD || 'ChangeMe123'; // Default placeholder
+  const envPassword = process.env.SETUP_PASSWORD;
+
+  if (process.env.NODE_ENV === 'production' && !envPassword) {
+    return res.status(500).json({ success: false, message: 'SETUP_PASSWORD environment variable must be set in production' });
+  }
 
   if (process.env.NODE_ENV === 'production' && setupPassword !== envPassword) {
     return res.status(401).json({ success: false, message: 'Unauthorized: Setup password required in production' });
@@ -117,6 +131,8 @@ app.get('/api/setup-db', async (req, res) => {
         header_links JSONB DEFAULT '[]',
         footer_columns JSONB DEFAULT '[]',
         sections JSONB DEFAULT '[]',
+        custom_css TEXT,
+        custom_js TEXT,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
       
@@ -129,6 +145,9 @@ app.get('/api/setup-db', async (req, res) => {
         meta_title VARCHAR(255),
         meta_description TEXT,
         published_status VARCHAR(50) DEFAULT 'published',
+        layout_template VARCHAR(50) DEFAULT 'default',
+        custom_css TEXT,
+        custom_js TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
@@ -142,6 +161,15 @@ app.get('/api/setup-db', async (req, res) => {
         last_ping TIMESTAMP,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
+      CREATE TABLE IF NOT EXISTS shared.app_configs (
+        id SERIAL PRIMARY KEY,
+        config_key TEXT UNIQUE NOT NULL,
+        config_value JSONB NOT NULL,
+        category TEXT,
+        is_public BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
     `);
 
     // Ensure at least one row exists in website_settings
@@ -152,6 +180,32 @@ app.get('/api/setup-db', async (req, res) => {
         VALUES ('#16a34a', 'Inter', '[]')
       `);
       console.log('✅ Initial website settings record created.');
+    }
+
+    // Seed default CMS pages if empty
+    const cmsCount = await client.query('SELECT COUNT(*) FROM shared.cms_pages');
+    if (parseInt(cmsCount.rows[0].count) === 0) {
+      const defaultPages = [
+        { slug: 'features', title: 'Features', content_html: '<section class="py-24 px-6 max-w-7xl mx-auto text-center"><h1 class="text-5xl font-bold mb-6">All-in-One HR Platform</h1><p class="text-xl text-neutral-600 max-w-3xl mx-auto mb-12">From hiring to retirement, manage every aspect of the employee lifecycle with a single, integrated platform.</p><div class="grid md:grid-cols-3 gap-8 text-left"><div class="p-8 rounded-2xl border border-neutral-100 shadow-sm"><h3 class="text-xl font-bold mb-3">Core HR</h3><p class="text-neutral-600">Centralized employee database, document management, and organizational charting.</p></div><div class="p-8 rounded-2xl border border-neutral-100 shadow-sm"><h3 class="text-xl font-bold mb-3">Payroll</h3><p class="text-neutral-600">Automated payroll processing with tax calculations, deductions, and compliance.</p></div><div class="p-8 rounded-2xl border border-neutral-100 shadow-sm"><h3 class="text-xl font-bold mb-3">Time & Attendance</h3><p class="text-neutral-600">GPS geo-fencing, biometric verification, and shift management.</p></div></div></section>', meta_title: 'HRMS Features' },
+        { slug: 'pricing', title: 'Pricing', content_html: '<section class="py-24 px-6 max-w-7xl mx-auto text-center"><h1 class="text-5xl font-bold mb-6">Simple, Transparent Pricing</h1><p class="text-xl text-neutral-600 max-w-2xl mx-auto mb-16">Choose the plan that fits your team. All plans include a 14-day free trial.</p><div class="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto"><div class="bg-white p-8 rounded-2xl border border-neutral-200 shadow-sm text-left"><h3 class="text-xl font-bold mb-2">Starter</h3><p class="text-4xl font-extrabold mb-6">$29<span class="text-base text-neutral-500 font-medium">/month</span></p><ul class="space-y-3 mb-8"><li class="flex items-center gap-2"><svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg> Up to 50 employees</li><li class="flex items-center gap-2"><svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg> Core HR & Payroll</li><li class="flex items-center gap-2"><svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg> Time Tracking</li><li class="flex items-center gap-2"><svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg> Email Support</li></ul><a href="/demo" class="block w-full py-3 bg-primary-500 hover:bg-primary-600 text-white font-semibold text-center rounded-xl transition-colors">Get Started</a></div><div class="bg-white p-8 rounded-2xl border-2 border-primary-500 shadow-xl scale-105 text-left relative"><div class="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-primary-500 text-white px-4 py-1 rounded-full text-sm font-bold">Most Popular</div><h3 class="text-xl font-bold mb-2">Business</h3><p class="text-4xl font-extrabold mb-6">$79<span class="text-base text-neutral-500 font-medium">/month</span></p><ul class="space-y-3 mb-8"><li class="flex items-center gap-2"><svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg> Up to 200 employees</li><li class="flex items-center gap-2"><svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg> Everything in Starter</li><li class="flex items-center gap-2"><svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg> Performance Management</li><li class="flex items-center gap-2"><svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg> Advanced Analytics</li><li class="flex items-center gap-2"><svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg> Priority Support</li></ul><a href="/demo" class="block w-full py-3 bg-primary-500 hover:bg-primary-600 text-white font-semibold text-center rounded-xl transition-colors">Get Started</a></div><div class="bg-white p-8 rounded-2xl border border-neutral-200 shadow-sm text-left"><h3 class="text-xl font-bold mb-2">Enterprise</h3><p class="text-4xl font-extrabold mb-6">Custom</p><ul class="space-y-3 mb-8"><li class="flex items-center gap-2"><svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg> Unlimited employees</li><li class="flex items-center gap-2"><svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg> Everything in Business</li><li class="flex items-center gap-2"><svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg> Dedicated Account Manager</li><li class="flex items-center gap-2"><svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg> Custom Integrations</li><li class="flex items-center gap-2"><svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg> SLA Guarantee</li></ul><a href="/demo" class="block w-full py-3 border border-neutral-200 text-neutral-800 font-semibold text-center rounded-xl hover:bg-neutral-50 transition-colors">Contact Sales</a></div></div></section>', meta_title: 'Pricing - HRMS Pro' },
+        { slug: 'about', title: 'About Us', content_html: '<section class="py-24 px-6 max-w-4xl mx-auto"><h1 class="text-5xl font-bold mb-6 text-center">About HRMS Pro</h1><p class="text-xl text-neutral-600 text-center max-w-2xl mx-auto mb-16">We are on a mission to make HR management seamless, accessible, and delightful for every organization.</p><div class="prose prose-lg max-w-none"><p>Founded in 2024, HRMS Pro was built by HR professionals and engineers who experienced firsthand the pain of managing people with outdated, disconnected tools. We believed there had to be a better way.</p><p>Today, HRMS Pro serves hundreds of organizations worldwide, helping them automate payroll, streamline attendance tracking, manage performance, and build stronger workplace cultures.</p><p>Our team is distributed across the globe, united by a shared passion for creating technology that makes work better for everyone.</p></div></section>', meta_title: 'About HRMS Pro' },
+        { slug: 'contact', title: 'Contact Us', content_html: '<section class="py-24 px-6 max-w-4xl mx-auto"><h1 class="text-5xl font-bold mb-6 text-center">Get in Touch</h1><p class="text-xl text-neutral-600 text-center max-w-2xl mx-auto mb-16">Have questions? Our team is ready to help.</p><div class="grid md:grid-cols-2 gap-12"><div><h3 class="text-lg font-bold mb-4">Contact Information</h3><p class="text-neutral-600 mb-2">Email: hello@hrmspro.online</p><p class="text-neutral-600 mb-2">Phone: +1 (555) 123-4567</p><p class="text-neutral-600">Address: 100 Tech Lane, Suite 200, San Francisco, CA 94105</p></div><div><h3 class="text-lg font-bold mb-4">Sales Inquiries</h3><p class="text-neutral-600 mb-6">Interested in HRMS Pro for your organization? Request a personalized demo.</p><a href="/demo" class="inline-flex py-3 px-6 bg-primary-500 hover:bg-primary-600 text-white font-semibold rounded-xl transition-colors">Request a Demo</a></div></div></section>', meta_title: 'Contact HRMS Pro' },
+        { slug: 'faq', title: 'FAQ', content_html: '<section class="py-24 px-6 max-w-3xl mx-auto"><h1 class="text-5xl font-bold mb-6 text-center">Frequently Asked Questions</h1><p class="text-xl text-neutral-600 text-center max-w-2xl mx-auto mb-16">Everything you need to know about HRMS Pro.</p><div class="space-y-8"><div><h3 class="text-lg font-bold mb-2">How does the free trial work?</h3><p class="text-neutral-600">You get full access to all features for 14 days. No credit card required.</p></div><div><h3 class="text-lg font-bold mb-2">Can I import data from my current system?</h3><p class="text-neutral-600">Yes, we support CSV/Excel imports and provide guided migration support.</p></div><div><h3 class="text-lg font-bold mb-2">Is my data secure?</h3><p class="text-neutral-600">Absolutely. We use encryption at rest and in transit, and we are SOC 2 Type II certified.</p></div><div><h3 class="text-lg font-bold mb-2">What support options are available?</h3><p class="text-neutral-600">All plans include email support. Business plans include priority support, and Enterprise plans include a dedicated account manager.</p></div></div></section>', meta_title: 'FAQ - HRMS Pro' },
+        { slug: 'privacy', title: 'Privacy Policy', content_html: '<section class="py-24 px-6 max-w-4xl mx-auto prose prose-lg max-w-none"><h1>Privacy Policy</h1><p>Last updated: January 1, 2026</p><p>HRMS Pro ("we," "our," or "us") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information.</p><h2>Information We Collect</h2><p>We collect information that you provide directly to us, including name, email address, company name, and payment information when you create an account or request a demo.</p><h2>How We Use Your Information</h2><p>We use the information we collect to provide, maintain, and improve our services, to process transactions, to send technical notices and support messages, and to respond to your comments and questions.</p><h2>Data Security</h2><p>We implement appropriate technical and organizational security measures to protect your personal information.</p><h2>Contact Us</h2><p>If you have questions about this Privacy Policy, please contact us at hello@hrmspro.online.</p></section>', meta_title: 'Privacy Policy' },
+        { slug: 'terms', title: 'Terms of Service', content_html: '<section class="py-24 px-6 max-w-4xl mx-auto prose prose-lg max-w-none"><h1>Terms of Service</h1><p>Last updated: January 1, 2026</p><h2>Acceptance of Terms</h2><p>By accessing or using HRMS Pro, you agree to be bound by these Terms of Service.</p><h2>Description of Service</h2><p>HRMS Pro provides a human resources management platform including payroll, attendance tracking, performance management, and related services.</p><h2>User Obligations</h2><p>You are responsible for maintaining the confidentiality of your account credentials and for all activities that occur under your account.</p><h2>Limitation of Liability</h2><p>HRMS Pro shall not be liable for any indirect, incidental, special, consequential, or punitive damages.</p></section>', meta_title: 'Terms of Service' },
+        { slug: 'careers', title: 'Careers', content_html: '<section class="py-24 px-6 max-w-4xl mx-auto text-center"><h1 class="text-5xl font-bold mb-6">Join Our Team</h1><p class="text-xl text-neutral-600 max-w-2xl mx-auto mb-16">Help us build the future of HR technology. We are always looking for talented people who share our values.</p><div class="space-y-6 text-left max-w-2xl mx-auto"><div class="p-6 rounded-2xl border border-neutral-100 shadow-sm"><h3 class="text-lg font-bold mb-1">Senior Software Engineer</h3><p class="text-sm text-neutral-500 mb-3">Remote / Full-time</p><p class="text-neutral-600 text-sm">Build and scale our core platform using Node.js, React, and PostgreSQL.</p></div><div class="p-6 rounded-2xl border border-neutral-100 shadow-sm"><h3 class="text-lg font-bold mb-1">Product Designer</h3><p class="text-sm text-neutral-500 mb-3">Remote / Full-time</p><p class="text-neutral-600 text-sm">Design intuitive experiences that make HR management delightful.</p></div><div class="p-6 rounded-2xl border border-neutral-100 shadow-sm"><h3 class="text-lg font-bold mb-1">Customer Success Manager</h3><p class="text-sm text-neutral-500 mb-3">Remote / Full-time</p><p class="text-neutral-600 text-sm">Help our customers get the most out of the HRMS Pro platform.</p></div></div></section>', meta_title: 'Careers - HRMS Pro' },
+        { slug: 'integrations', title: 'Integrations', content_html: '<section class="py-24 px-6 max-w-4xl mx-auto text-center"><h1 class="text-5xl font-bold mb-6">Integrations</h1><p class="text-xl text-neutral-600 max-w-2xl mx-auto mb-16">Connect HRMS Pro with the tools you already use.</p><div class="grid md:grid-cols-3 gap-6 text-left max-w-4xl mx-auto"><div class="p-6 rounded-2xl border border-neutral-100 shadow-sm"><h3 class="font-bold mb-2">Slack</h3><p class="text-sm text-neutral-600">Get notifications and approve requests directly from Slack.</p></div><div class="p-6 rounded-2xl border border-neutral-100 shadow-sm"><h3 class="font-bold mb-2">Google Workspace</h3><p class="text-sm text-neutral-600">Sync employee data and calendars with Google.</p></div><div class="p-6 rounded-2xl border border-neutral-100 shadow-sm"><h3 class="font-bold mb-2">QuickBooks</h3><p class="text-sm text-neutral-600">Sync payroll data with QuickBooks accounting.</p></div></div></section>', meta_title: 'Integrations - HRMS Pro' },
+        { slug: 'case-studies', title: 'Case Studies', content_html: '<section class="py-24 px-6 max-w-4xl mx-auto text-center"><h1 class="text-5xl font-bold mb-6">Case Studies</h1><p class="text-xl text-neutral-600 max-w-2xl mx-auto mb-16">See how organizations are transforming their HR operations with HRMS Pro.</p><div class="space-y-8 text-left max-w-3xl mx-auto"><div class="p-8 rounded-2xl border border-neutral-100 shadow-sm"><h3 class="text-xl font-bold mb-2">Acme Corp</h3><p class="text-sm text-neutral-500 mb-3">500 employees | Technology</p><p class="text-neutral-600">"HRMS Pro reduced our payroll processing time from 3 days to 2 hours. The automation has been a game-changer for our finance team."</p></div><div class="p-8 rounded-2xl border border-neutral-100 shadow-sm"><h3 class="text-xl font-bold mb-2">Globex Inc.</h3><p class="text-sm text-neutral-500 mb-3">200 employees | Manufacturing</p><p class="text-neutral-600">"The geo-fencing attendance system eliminated buddy punching and saved us thousands in lost productivity."</p></div></div></section>', meta_title: 'Case Studies - HRMS Pro' },
+        { slug: 'docs', title: 'API Documentation', content_html: '<section class="py-24 px-6 max-w-4xl mx-auto prose prose-lg max-w-none"><h1>API Documentation</h1><p>Welcome to the HRMS Pro API. Our RESTful API allows you to integrate HRMS Pro with your existing tools and workflows.</p><h2>Authentication</h2><p>All API requests require a valid JWT token in the Authorization header.</p><h2>Base URL</h2><pre class="bg-neutral-100 p-4 rounded-lg">https://api.hrmspro.online/api</pre><h2>Rate Limiting</h2><p>API requests are limited to 1000 requests per 15 minutes per IP.</p><p>For detailed API documentation, please contact our support team.</p></section>', meta_title: 'API Docs - HRMS Pro' },
+        { slug: 'partners', title: 'Partner Program', content_html: '<section class="py-24 px-6 max-w-4xl mx-auto text-center"><h1 class="text-5xl font-bold mb-6">Partner Program</h1><p class="text-xl text-neutral-600 max-w-2xl mx-auto mb-8">Join the HRMS Pro Partner Program and grow your business while helping clients transform their HR operations.</p><a href="/demo" class="inline-flex py-3 px-8 bg-primary-500 hover:bg-primary-600 text-white font-semibold rounded-xl transition-colors">Become a Partner</a></section>', meta_title: 'Partners - HRMS Pro' },
+      ];
+      for (const page of defaultPages) {
+        await client.query(
+          `INSERT INTO shared.cms_pages (slug, title, content_html, meta_title, published_status) VALUES ($1, $2, $3, $4, 'published') ON CONFLICT (slug) DO NOTHING`,
+          [page.slug, page.title, page.content_html, page.meta_title]
+        );
+      }
+      console.log(`✅ ${defaultPages.length} default CMS pages seeded.`);
     }
     console.log('✅ Global CMS tables and records verified.');
 
@@ -265,6 +319,9 @@ app.use('/api/attendance', attendanceRoutes);
 app.use('/api/leaves', leaveRoutes);
 app.use('/api/tasks', taskRoutes);
 app.use('/api/payroll', payrollRoutes);
+app.use('/api/payroll-runs', require('./routes/payrollRunRoutes'));
+app.use('/api/payslip-templates', require('./routes/payslipTemplateRoutes'));
+app.use('/api/payslips', require('./routes/payslipRoutes'));
 app.use('/api/recruitment', recruitmentRoutes);
 app.use('/api/documents', documentRoutes);
 app.use('/api/chat', chatRoutes);
@@ -279,341 +336,20 @@ app.use('/api/holidays', require('./routes/holidayRoutes'));
 app.use('/api/shifts', require('./routes/shiftRoutes'));
 app.use('/api/email-templates', emailTemplateRoutes);
 app.use('/api/search', searchRoutes);
+app.use('/api/mobile-config', mobileConfigRoutes);
 app.use('/api/cms', require('./routes/cmsRoutes'));
+app.use('/api/blog', require('./routes/blogRoutes'));
 app.use('/api/leads', require('./routes/leadRoutes'));
+app.use('/api/website', require('./routes/websiteRoutes'));
 app.use('/api/website-settings', require('./routes/websiteSettingsRoutes'));
+app.use('/api/resources', require('./routes/resourceRoutes'));
 app.use('/api/webhooks/biometrics', express.text({ type: '*/*' }), require('./routes/biometricRoutes'));
+app.use('/api/support', supportRoutes);
+app.use('/api/email-queue', require('./routes/emailQueueRoutes'));
+app.use('/api/export', require('./routes/exportRoutes'));
 
-const connectedUsers = new Map(); // userId -> Set of socketIds
 
-const broadcastOnlineUsers = () => {
-  const onlineUserIds = Array.from(connectedUsers.keys());
-  io.emit('update_online_users', onlineUserIds);
-};
-
-io.on('connection', (socket) => {
-  // Get tenant ID from handshake
-  const tenantId = socket.handshake.query.tenantId || 'tenant_default';
-  socket.tenantId = tenantId;
-  socket.join(tenantId); // Join tenant-specific room
-  console.log(`New client connected: ${socket.id} (Tenant: ${tenantId})`);
-
-  // User joins with their user ID & Token for authentication
-  socket.on('join', (data) => {
-    if (!data) return;
-    // Support both object and direct userId for backwards compatibility (temporary)
-    const { userId, token } = (data && typeof data === 'object') ? data : { userId: data, token: null };
-
-    tenantStorage.run(socket.tenantId, async () => {
-      try {
-        console.log(`[SOCKET] Join request: user ${userId}, socket ${socket.id}, tenant ${socket.tenantId}`);
-        
-        if (!userId) {
-          console.error('[SOCKET] Join attempt without userId');
-          return;
-        }
-
-        // Security: Verify token matches the userId
-        if (token) {
-          try {
-            const decoded = jwt.verify(token, process.env.JWT_SECRET);
-            if (decoded.userId !== parseInt(userId) && decoded.userId !== userId) {
-              console.error(`[SOCKET] Security Violation: User ${decoded.userId} attempted to join as ${userId}`);
-              socket.emit('error', { message: 'Authentication mismatch: Token does not match requested User ID' });
-              return;
-            }
-          } catch (err) {
-            console.error('[SOCKET] Invalid token during join:', err.message);
-            socket.emit('error', { message: 'Invalid or expired authentication token' });
-            return;
-          }
-        } else if (process.env.NODE_ENV === 'production') {
-          console.error('[SOCKET] Unauthenticated join attempt in production');
-          socket.emit('error', { message: 'Authentication required for chat' });
-          return;
-        }
-
-        // Concurrency: Add socketId to Set
-        if (!connectedUsers.has(userId)) {
-          connectedUsers.set(userId, new Set());
-        }
-        connectedUsers.get(userId).add(socket.id);
-        
-        socket.userId = userId;
-        console.log(`[SOCKET] User ${userId} joined successfully. Active sockets for user: ${connectedUsers.get(userId).size}`);
-        broadcastOnlineUsers();
-      } catch (error) {
-        console.error('[SOCKET] Error in join event:', error);
-      }
-    });
-  });
-
-  // Send message
-  socket.on('send_message', (data) => {
-    if (!data) return;
-    tenantStorage.run(socket.tenantId, async () => {
-      console.log('[SOCKET] Received send_message event:', JSON.stringify(data));
-      const { receiver_id, message, attachment_url, attachment_type, attachment_name } = data;
-      const sender_id = socket.userId; // Get sender_id from the authenticated socket connection
-
-      console.log(`[SOCKET] Processing message from sender_id: ${sender_id} to receiver_id: ${receiver_id} (Tenant: ${socket.tenantId})`);
-
-      if (!sender_id) {
-        console.error('[SOCKET] Sender ID not found in socket. User might not have joined.');
-        socket.emit('error', { message: 'Authentication error: Please reconnect.' });
-        return;
-      }
-
-      const userSockets = connectedUsers.get(receiver_id);
-
-      // Basic validation
-      if (!receiver_id || (!message && !attachment_url)) {
-        console.error('Invalid message data:', { receiver_id, message, attachment_url });
-        socket.emit('error', { message: 'Invalid message data' });
-        return;
-      }
-
-      // TODO: Implement message encryption before saving to database
-      // For now, saving message to database
-      const encryptedMessage = encrypt(message);
-      query(
-        `INSERT INTO chat_messages (sender_id, receiver_id, message, attachment_url, attachment_type, attachment_name) 
-         VALUES ($1, $2, $3, $4, $5, $6) RETURNING message_id, created_at`,
-        [sender_id, receiver_id, encryptedMessage, attachment_url || null, attachment_type || null, attachment_name || null]
-      ).then(result => {
-        const { message_id, created_at } = result.rows[0];
-
-        // Prepare message data for transmission
-        const messageData = {
-          message_id,
-          sender_id,
-          receiver_id,
-          message: message, // Send decrypted message to recipient over WSS
-          created_at,
-          attachment_url,
-          attachment_type,
-          attachment_name
-        };
-
-        // Send to receiver if connected
-        const receiverSockets = connectedUsers.get(receiver_id);
-        if (receiverSockets && receiverSockets.size > 0) {
-          console.log(`Sending message to receiver ${receiver_id} via ${receiverSockets.size} sockets`);
-          receiverSockets.forEach(sId => {
-            io.to(sId).emit('receive_message', messageData);
-          });
-        } else {
-          console.log(`Receiver ${receiver_id} not connected or not found`);
-        }
-
-        // Send back to sender for real-time UI update
-        socket.emit('receive_message', messageData);
-
-      }).catch(error => {
-        console.error('Error saving message to database:', error);
-        socket.emit('error', { message: 'Failed to send message' });
-      });
-    });
-  });
-
-  // Mark messages as read
-  socket.on('mark_read', (data) => {
-    if (!data) return;
-    tenantStorage.run(socket.tenantId, async () => {
-      const { sender_id } = data; // The user whose messages I am reading (the other person)
-      const receiver_id = socket.userId; // Me
-
-      if (!sender_id) return;
-
-      try {
-        await query(
-          `UPDATE chat_messages SET is_read = true WHERE sender_id = $1 AND receiver_id = $2 AND is_read = false`,
-          [sender_id, receiver_id]
-        );
-
-        // Notify the sender that I read their messages
-        const senderSockets = connectedUsers.get(sender_id);
-        if (senderSockets) {
-          senderSockets.forEach(sId => {
-            io.to(sId).emit('messages_read', {
-              reader_id: receiver_id
-            });
-          });
-        }
-      } catch (error) {
-        console.error('Error marking messages as read:', error);
-      }
-    });
-  });
-
-  // Typing indicator
-  socket.on('typing', (data) => {
-    const { receiver_id, sender_id } = data;
-    const receiverSockets = connectedUsers.get(receiver_id);
-
-    if (receiverSockets) {
-      receiverSockets.forEach(sId => {
-        io.to(sId).emit('user_typing', { sender_id });
-      });
-    }
-  });
-
-  // Stop typing
-  socket.on('stop_typing', (data) => {
-    const { receiver_id, sender_id } = data;
-    const receiverSockets = connectedUsers.get(receiver_id);
-
-    if (receiverSockets) {
-      receiverSockets.forEach(sId => {
-        io.to(sId).emit('user_stop_typing', { sender_id });
-      });
-    }
-  });
-
-  // Message reactions
-  socket.on('message_reaction', (data) => {
-    const { messageId, reaction, userId } = data;
-    // Broadcast to all connected users who might be in the conversation
-    // The frontend will filter based on whether they're viewing the conversation
-    io.emit('message_reaction', { messageId, reaction, userId });
-  });
-
-  // WebRTC Signaling for calls
-  socket.on('initiate_call', (data) => {
-    const { receiver_id, caller_id, caller_name, callType, offer } = data;
-    const receiverSockets = connectedUsers.get(receiver_id);
-
-    if (receiverSockets) {
-      receiverSockets.forEach(sId => {
-        io.to(sId).emit('call_initiated', {
-          caller_id,
-          caller_name,
-          callType,
-          offer
-        });
-      });
-    }
-  });
-
-  socket.on('accept_call', (data) => {
-    const { caller_id, answer } = data;
-    const callerSockets = connectedUsers.get(caller_id);
-
-    if (callerSockets) {
-      callerSockets.forEach(sId => {
-        io.to(sId).emit('call_accepted', { answer });
-      });
-    }
-  });
-
-  socket.on('reject_call', (data) => {
-    const { caller_id } = data;
-    const callerSockets = connectedUsers.get(caller_id);
-
-    if (callerSockets) {
-      callerSockets.forEach(sId => {
-        io.to(sId).emit('call_rejected');
-      });
-    }
-  });
-
-  socket.on('ice_candidate', (data) => {
-    const { receiver_id, candidate } = data;
-    const receiverSockets = connectedUsers.get(receiver_id);
-
-    if (receiverSockets) {
-      receiverSockets.forEach(sId => {
-        io.to(sId).emit('ice_candidate', { candidate });
-      });
-    }
-  });
-
-  socket.on('end_call', (data) => {
-    const { receiver_id } = data;
-    const receiverSockets = connectedUsers.get(receiver_id);
-
-    if (receiverSockets) {
-      receiverSockets.forEach(sId => {
-        io.to(sId).emit('call_ended');
-      });
-    }
-  });
-
-  // Join Channel
-  socket.on('join_channel', (data) => {
-    if (!data || !data.channel_id) return;
-    const roomName = `channel_${data.channel_id}`;
-    socket.join(roomName);
-    console.log(`[SOCKET] User ${socket.userId} joined channel ${data.channel_id}`);
-  });
-
-  // Leave Channel
-  socket.on('leave_channel', (data) => {
-    if (!data || !data.channel_id) return;
-    const roomName = `channel_${data.channel_id}`;
-    socket.leave(roomName);
-    console.log(`[SOCKET] User ${socket.userId} left channel ${data.channel_id}`);
-  });
-
-  // Send Channel Message
-  socket.on('send_channel_message', (data) => {
-    if (!data || !data.channel_id || !data.message) return;
-    
-    tenantStorage.run(socket.tenantId, async () => {
-      try {
-        const sender_id = socket.userId;
-        if (!sender_id) return;
-
-        const { channel_id, message, attachment_url, attachment_type, attachment_name } = data;
-        
-        // TODO: Save to DB via chatController (can't directly require circular dependency here, so query directly or wait for REST API integration)
-        const encryptedMessage = encrypt(message);
-        const result = await query(
-          `INSERT INTO chat_messages (sender_id, channel_id, message, attachment_url, attachment_type, attachment_name) 
-           VALUES ($1, $2, $3, $4, $5, $6) RETURNING message_id, created_at`,
-          [sender_id, channel_id, encryptedMessage, attachment_url || null, attachment_type || null, attachment_name || null]
-        );
-
-        const { message_id, created_at } = result.rows[0];
-
-        const messageData = {
-          message_id,
-          sender_id,
-          channel_id,
-          message: message, // Decrypted message for real-time UI
-          created_at,
-          attachment_url,
-          attachment_type,
-          attachment_name
-        };
-
-        // Broadcast to everyone in the room
-        io.to(`channel_${channel_id}`).emit('receive_channel_message', messageData);
-        console.log(`[SOCKET] Broadcasted message to channel_${channel_id}`);
-      } catch (error) {
-        console.error('[SOCKET] Error saving channel message:', error);
-        socket.emit('error', { message: 'Failed to send channel message' });
-      }
-    });
-  });
-
-  // Disconnect
-  socket.on('disconnect', () => {
-    if (socket.userId && connectedUsers.has(socket.userId)) {
-      const userSockets = connectedUsers.get(socket.userId);
-      userSockets.delete(socket.id);
-      
-      if (userSockets.size === 0) {
-        connectedUsers.delete(socket.userId);
-        console.log(`User ${socket.userId} fully disconnected (no active tabs)`);
-        broadcastOnlineUsers();
-      } else {
-        console.log(`Socket ${socket.id} closed for user ${socket.userId}. Remaining tabs: ${userSockets.size}`);
-      }
-    }
-    console.log('Client disconnected:', socket.id);
-  });
-});
+setupSocketHandlers(io, connectedUsers);
 
 // 404 handler
 app.use(notFound);
@@ -622,31 +358,35 @@ app.use(notFound);
 app.use(errorHandler);
 
 // Start server
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5001;
 
-server.listen(PORT, () => {
-  console.log('');
-  console.log('🚀 ============================================');
-  console.log(`   HRMS Pro Server Running`);
-  console.log('   ============================================');
-  console.log(`   📍 Server: http://localhost:${PORT}`);
-  console.log(`   🔧 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`   📊 Database: PostgreSQL`);
-  console.log(`   💬 WebSocket: Enabled`);
-  console.log('   ============================================');
-  console.log('');
-});
+if (process.env.NODE_ENV !== 'test') {
+  server.listen(PORT, () => {
+    console.log('');
+    console.log('🚀 ============================================');
+    console.log(`   HRMS Pro Server Running`);
+    console.log('   ============================================');
+    console.log(`   📍 Server: http://localhost:${PORT}`);
+    console.log(`   🔧 Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`   📊 Database: PostgreSQL`);
+    console.log(`   💬 WebSocket: Enabled`);
+    console.log('   ============================================');
+    console.log('');
 
-// Handle server startup errors (like EADDRINUSE)
-server.on('error', (error) => {
-  if (error.code === 'EADDRINUSE') {
-    console.error(`❌ FATAL ERROR: Port ${PORT} is already in use.`);
-    console.error('   Please kill the process holding the port or use a different PORT.');
-    process.exit(1);
-  } else {
-    console.error('❌ Server error:', error);
-  }
-});
+    emailQueueService.startWorker();
+  });
+
+  // Handle server startup errors (like EADDRINUSE)
+  server.on('error', (error) => {
+    if (error.code === 'EADDRINUSE') {
+      console.error(`❌ FATAL ERROR: Port ${PORT} is already in use.`);
+      console.error('   Please kill the process holding the port or use a different PORT.');
+      process.exit(1);
+    } else {
+      console.error('❌ Server error:', error);
+    }
+  });
+}
 
 // Graceful shutdown function
 const shutdown = (signal) => {

@@ -1,0 +1,78 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: hrms_db
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        cache-dependency-path: |
+          backend/package-lock.json
+          frontend/package-lock.json
+          mobile/package-lock.json
+
+    - name: Install Backend Dependencies
+      working-directory: backend
+      run: npm ci
+
+    - name: Backend Syntax Check
+      working-directory: backend
+      run: node -e "
+        const files = [
+          'src/server.js',
+          'src/config/database.js',
+          'src/middleware/errorHandler.js',
+          'src/utils/asyncHandler.js',
+          'src/utils/errors.js'
+        ];
+        files.forEach(f => { try { require('./' + f); console.log('OK: ' + f); } catch(e) { console.error('FAIL: ' + f, e.message); process.exit(1); } });
+      "
+
+    - name: Backend Lint (ESLint)
+      working-directory: backend
+      continue-on-error: true
+      run: |
+        npx eslint src/ --ext .js || echo "Lint issues found (non-blocking)"
+
+    - name: Install Frontend Dependencies
+      working-directory: frontend
+      run: npm ci
+
+    - name: Frontend Build
+      working-directory: frontend
+      run: npm run build
+
+    - name: Install Mobile Dependencies
+      working-directory: mobile
+      run: npm ci
+
+    - name: Mobile TypeScript Check
+      working-directory: mobile
+      run: npx tsc --noEmit --strict 2>&1 || echo "TypeScript issues found (non-blocking)"

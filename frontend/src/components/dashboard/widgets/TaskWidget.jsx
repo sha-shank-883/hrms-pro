@@ -230,14 +230,14 @@ const TaskWidget = React.memo(({ chartType = 'pie', onToggle, onSettingsClick, i
                 {loading && (
                     <div className="loading-overlay">
                         <div className="loading-spinner"></div>
-                        <span style={{ fontSize: '0.75rem', marginTop: '0.5rem', color: '#4F46E5', fontWeight: 500 }}>Updating...</span>
+                        <span className="text-xs mt-2 text-indigo-600 font-medium">Updating...</span>
                     </div>
                 )}
 
                 {!loading && !hasData && (
-                    <div className="loading-overlay" style={{ background: 'white' }}>
-                        <span style={{ color: '#9CA3AF', marginBottom: '0.5rem' }}>No data available</span>
-                        <span style={{ fontSize: '0.75rem', color: '#D1D5DB' }}>Try adjusting filters or creating tasks</span>
+                    <div className="loading-overlay bg-white">
+                        <span className="text-neutral-400 mb-2">No data available</span>
+                        <span className="text-xs text-neutral-300">Try adjusting filters or creating tasks</span>
                     </div>
                 )}
 
@@ -267,7 +267,7 @@ const TaskWidget = React.memo(({ chartType = 'pie', onToggle, onSettingsClick, i
                                     verticalAlign="bottom"
                                     height={36}
                                     iconType="circle"
-                                    formatter={(value) => <span style={{ fontSize: '0.75rem', color: '#4B5563', marginLeft: '4px' }}>{value}</span>}
+                                    formatter={(value) => <span className="text-xs text-gray-600 ml-1">{value}</span>}
                                 />
                             </PieChart>
                         ) : (

@@ -1,38 +1,34 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
+import { AnimatedSection } from '../../components/common/AnimatedSection';
+import SEO from '../../components/common/SEO';
+
+const features = [
+  'Instant auto-provisioning of your demo environment',
+  'Full access to all features including payroll and analytics',
+  'Pre-loaded sample data to explore immediately',
+  'Invite up to 5 team members to evaluate together',
+  'Free onboarding call with a product specialist',
+];
 
 const Demo = () => {
-  const navigate = useNavigate();
-  const { login } = useAuth(); // Assuming login function can accept token directly or we just handle storage
   const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    company_name: "",
-    phone: "",
-    password: ""
+    name: '', email: '', company_name: '', phone: '', password: '', employees: '1-50', job_title: '',
   });
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setError("");
-
+    setError('');
     try {
-      const res = await api.post("/leads/demo", formData);
-
-      if (res.data.success) {
-        setSuccess(true);
-      } else {
-        setError(res.data.message || "Failed to submit demo request.");
-      }
+      const res = await api.post('/leads/demo', formData);
+      if (res.data.success) setSuccess(true);
+      else setError(res.data.message || 'Failed to submit demo request.');
     } catch (err) {
-      console.error(err);
-      setError(err.response?.data?.message || "Network error. Please ensure the backend is running.");
+      setError(err.response?.data?.message || 'Network error. Please check your connection.');
     } finally {
       setLoading(false);
     }
@@ -40,136 +36,121 @@ const Demo = () => {
 
   if (success) {
     return (
-      <div className="min-h-screen bg-zinc-50 pt-32 pb-32 px-4 flex justify-center">
-        <div className="max-w-md w-full bg-white p-10 rounded-3xl shadow-xl border border-neutral-100 text-center">
-          <div className="w-20 h-20 bg-primary-100 text-primary-500 rounded-full flex items-center justify-center mx-auto mb-6">
-            <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path></svg>
+      <div className="min-h-screen pt-24 pb-32 px-6 flex justify-center items-start bg-gray-50 dark:bg-gray-950">
+        <AnimatedSection className="max-w-lg w-full bg-white dark:bg-gray-900 p-10 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-800 text-center">
+          <div className="w-20 h-20 rounded-2xl bg-green-50 dark:bg-green-500/10 flex items-center justify-center mx-auto mb-6">
+            <svg className="w-10 h-10 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+            </svg>
           </div>
-          <h2 className="text-3xl font-bold text-neutral-900 mb-4">Request Received!</h2>
-          <p className="text-neutral-600 mb-8">
-            Thank you for your interest in HRMS Pro! Your demo request has been submitted successfully and is currently pending review.
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">Demo Request Received!</h2>
+          <p className="text-gray-500 dark:text-gray-400 mb-6">
+            Thank you for your interest! We are setting up your personalized demo environment. You will receive an email with your login credentials within the next 15 minutes.
           </p>
-          <div className="flex items-center justify-center gap-2 text-primary-600 font-medium">
-            We will email you with your login credentials shortly.
-          </div>
-        </div>
+          <p className="text-sm text-indigo-600 dark:text-indigo-400 font-medium">
+            Check your inbox (and spam folder) for your confirmation email.
+          </p>
+        </AnimatedSection>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-zinc-50 pt-24 pb-32 px-4 sm:px-6 lg:px-8 flex items-center justify-center">
-      <div className="max-w-5xl w-full grid md:grid-cols-2 gap-12 items-center">
-        
-        {/* Left Side: Copy */}
-        <div>
-          <h1 className="text-4xl md:text-5xl font-extrabold text-neutral-900 mb-6">
-            Try HRMS Pro for free.
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 pt-24 pb-24 px-6">
+      <SEO
+        title="Get a Demo"
+        description="Try HRMS Pro free for 14 days. Get instant access to a fully-functional HRMS environment. No credit card required, no commitment."
+      />
+      <div className="max-w-6xl mx-auto grid lg:grid-cols-2 gap-12 items-start">
+        <div className="lg:sticky lg:top-28">
+          <span className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 uppercase tracking-widest">
+            Get Started
+          </span>
+          <h1 className="mt-4 text-4xl sm:text-5xl lg:text-6xl font-black text-gray-900 dark:text-white leading-tight mb-6">
+            Try HRMS Pro free for 14 days
           </h1>
-          <p className="text-xl text-neutral-600 mb-8">
-            Get instant access to your own fully-functional HRMS environment. No credit card required.
+          <p className="text-lg text-gray-500 dark:text-gray-400 mb-8 leading-relaxed">
+            Get instant access to a fully-functional HRMS environment. No credit card required, no commitment.
           </p>
-          <ul className="space-y-4">
-            <li className="flex items-center gap-3 text-neutral-700 font-medium">
-              <svg className="w-6 h-6 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
-              Instant auto-provisioning
-            </li>
-            <li className="flex items-center gap-3 text-neutral-700 font-medium">
-              <svg className="w-6 h-6 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
-              Full access to all Pro features
-            </li>
-            <li className="flex items-center gap-3 text-neutral-700 font-medium">
-              <svg className="w-6 h-6 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
-              Invite unlimited team members
-            </li>
-          </ul>
+
+          <div className="space-y-5">
+            {features.map((item, i) => (
+              <div key={i} className="flex items-start gap-3">
+                <div className="w-6 h-6 rounded-full bg-indigo-100 dark:bg-indigo-500/20 flex items-center justify-center shrink-0 mt-0.5">
+                  <svg className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <span className="text-sm text-gray-500 dark:text-gray-400">{item}</span>
+              </div>
+            ))}
+          </div>
         </div>
 
-        {/* Right Side: Form */}
-        <div className="bg-white p-8 lg:p-10 rounded-3xl shadow-xl border border-neutral-100">
-          <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="bg-white dark:bg-gray-900 p-8 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-800">
+          <form onSubmit={handleSubmit} className="space-y-5">
             {error && (
-              <div className="p-4 bg-red-50 text-red-600 rounded-xl text-sm font-medium border border-red-100">
+              <div className="p-4 bg-red-50 dark:bg-red-500/10 border border-red-100 dark:border-red-500/20 rounded-xl text-sm text-red-600 dark:text-red-400 font-medium">
                 {error}
               </div>
             )}
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-1">Full Name</label>
-                <input 
-                  required 
-                  type="text" 
-                  className="w-full px-4 py-3 rounded-xl border border-neutral-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-shadow"
-                  placeholder="John Doe"
-                  value={formData.name}
-                  onChange={e => setFormData({...formData, name: e.target.value})}
-                />
+
+            <div className="grid sm:grid-cols-2 gap-5">
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Full Name *</label>
+                <input required type="text" className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white placeholder:text-gray-400 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent" placeholder="John Doe" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-1">Company Name</label>
-                <input 
-                  required 
-                  type="text" 
-                  className="w-full px-4 py-3 rounded-xl border border-neutral-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-shadow"
-                  placeholder="Acme Corp"
-                  value={formData.company_name}
-                  onChange={e => setFormData({...formData, company_name: e.target.value})}
-                />
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Company *</label>
+                <input required type="text" className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white placeholder:text-gray-400 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent" placeholder="Acme Corp" value={formData.company_name} onChange={e => setFormData({ ...formData, company_name: e.target.value })} />
               </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-1">Work Email</label>
-              <input 
-                required 
-                type="email" 
-                className="w-full px-4 py-3 rounded-xl border border-neutral-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-shadow"
-                placeholder="john@acme.com"
-                value={formData.email}
-                onChange={e => setFormData({...formData, email: e.target.value})}
-              />
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Work Email *</label>
+              <input required type="email" className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white placeholder:text-gray-400 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent" placeholder="john@company.com" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} />
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-1">Phone Number (Optional)</label>
-              <input 
-                type="tel" 
-                className="w-full px-4 py-3 rounded-xl border border-neutral-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-shadow"
-                placeholder="+1 (555) 000-0000"
-                value={formData.phone}
-                onChange={e => setFormData({...formData, phone: e.target.value})}
-              />
+            <div className="grid sm:grid-cols-2 gap-5">
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Phone</label>
+                <input type="tel" className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white placeholder:text-gray-400 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent" placeholder="+1 (555) 000-0000" value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Employees</label>
+                <select className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent appearance-none" value={formData.employees} onChange={e => setFormData({ ...formData, employees: e.target.value })}>
+                  <option>1-50</option>
+                  <option>51-200</option>
+                  <option>201-500</option>
+                  <option>501-1000</option>
+                  <option>1000+</option>
+                </select>
+              </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-1">Create Admin Password</label>
-              <input 
-                required 
-                type="password" 
-                className="w-full px-4 py-3 rounded-xl border border-neutral-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-shadow"
-                placeholder="••••••••"
-                value={formData.password}
-                onChange={e => setFormData({...formData, password: e.target.value})}
-              />
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Job Title</label>
+              <input type="text" className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white placeholder:text-gray-400 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent" placeholder="HR Director" value={formData.job_title} onChange={e => setFormData({ ...formData, job_title: e.target.value })} />
             </div>
 
-            <button 
-              type="submit" 
-              disabled={loading}
-              className="w-full bg-primary-500 hover:bg-primary-600 text-white font-bold py-4 rounded-xl text-lg transition-transform hover:scale-[1.02] shadow-lg disabled:opacity-70 disabled:hover:scale-100 flex justify-center items-center"
-            >
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Create Password *</label>
+              <input required type="password" className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white placeholder:text-gray-400 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent" placeholder="Min. 8 characters" value={formData.password} onChange={e => setFormData({ ...formData, password: e.target.value })} />
+            </div>
+
+            <button type="submit" disabled={loading} className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm rounded-xl shadow-sm transition-all duration-200 disabled:opacity-50 flex items-center justify-center gap-2">
               {loading ? (
-                <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                 </svg>
-              ) : (
-                "Get Started Free"
-              )}
+              ) : 'Start Free Trial'}
             </button>
-            <p className="text-center text-xs text-neutral-500 mt-4">
-              By clicking "Get Started Free", you agree to our Terms of Service and Privacy Policy.
+
+            <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
+              By clicking "Start Free Trial", you agree to our{' '}
+              <a href="/terms" className="text-indigo-600 dark:text-indigo-400 hover:underline">Terms of Service</a> and{' '}
+              <a href="/privacy" className="text-indigo-600 dark:text-indigo-400 hover:underline">Privacy Policy</a>.
             </p>
           </form>
         </div>

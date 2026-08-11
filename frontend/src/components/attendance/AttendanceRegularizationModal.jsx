@@ -45,15 +45,8 @@ const AttendanceRegularizationModal = ({ isOpen, onClose, date, employeeId, onSu
             backgroundColor: 'rgba(0, 0, 0, 0.5)',
             backdropFilter: 'blur(4px)'
         }}>
-            <div style={{
-                backgroundColor: 'white',
-                borderRadius: '0.75rem',
-                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-                width: '100%',
-                maxWidth: '28rem',
-                overflow: 'hidden',
-                animation: 'fade-in 0.2s ease-out'
-            }}>
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden"
+              style={{ animation: 'fade-in 0.2s ease-out' }}>
                 <div style={{
                     padding: '1.5rem',
                     borderBottom: '1px solid var(--neutral-100)',

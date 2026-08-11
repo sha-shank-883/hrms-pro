@@ -23,32 +23,17 @@ const ProtectedRoute = ({ children, allowedRoles = [], allowedPermissions = [] }
 
   if (!hasRole && !hasPermissionOverride) {
     return (
-      <div style={{ 
-        padding: '2rem', 
-        textAlign: 'center',
-        background: '#fee2e2',
-        borderRadius: '0.5rem',
-        margin: '2rem'
-      }}>
-        <h2 style={{ color: '#991b1b', marginBottom: '1rem' }}>🚫 Access Denied</h2>
-        <p style={{ color: '#7f1d1d' }}>
+      <div className="p-8 text-center bg-red-50 rounded-lg m-8">
+        <h2 className="text-red-800 mb-4">🚫 Access Denied</h2>
+        <p className="text-red-900">
           You don't have permission to access this page.
         </p>
-        <p style={{ color: '#7f1d1d', marginTop: '0.5rem' }}>
+        <p className="text-red-900 mt-2">
           This module is restricted to {allowedRoles.join(', ')} users only.
         </p>
-        <button 
+        <button
           onClick={() => window.history.back()}
-          style={{
-            marginTop: '1.5rem',
-            padding: '0.75rem 1.5rem',
-            background: '#dc2626',
-            color: 'white',
-            border: 'none',
-            borderRadius: '0.5rem',
-            cursor: 'pointer',
-            fontWeight: '600'
-          }}
+          className="mt-6 px-6 py-3 bg-red-600 text-white border-none rounded-lg cursor-pointer font-semibold hover:bg-red-700"
         >
           Go Back
         </button>

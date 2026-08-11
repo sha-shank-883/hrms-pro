@@ -9,6 +9,32 @@
     --profile-border: #e5e7eb;
 }
 
+.dark {
+    --profile-primary: #818cf8;
+    --profile-secondary: #a5b4fc;
+    --profile-bg: #0f172a;
+    --profile-card-bg: #1e293b;
+    --profile-text: #f1f5f9;
+    --profile-text-muted: #94a3b8;
+    --profile-border: #334155;
+}
+
+.dark .profile-card {
+    background: #1e293b;
+    border-color: #334155;
+}
+
+.dark .profile-avatar {
+    background: #334155;
+    color: #64748b;
+    border-color: #1e293b;
+}
+
+.dark .digital-id-card {
+    background: linear-gradient(135deg, #1e293b 0%, #1a202c 100%);
+    border-color: #334155;
+}
+
 .profile-page {
     padding-bottom: 2rem;
     font-family: 'Inter', sans-serif;

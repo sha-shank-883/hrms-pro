@@ -8,7 +8,8 @@ import {
     CheckCircleIcon,
     XCircleIcon,
     ShieldCheckIcon,
-    ExclamationTriangleIcon
+    ExclamationTriangleIcon,
+    DevicePhoneMobileIcon
 } from '@heroicons/react/24/outline';
 
 const SuperAdmin = () => {
@@ -139,13 +140,22 @@ const SuperAdmin = () => {
                     <h1 className="page-title">SaaS Super Admin</h1>
                     <p className="mt-1 text-neutral-600">Manage tenants and subscriptions</p>
                 </div>
-                <button
-                    onClick={() => setShowModal(true)}
-                    className="btn btn-primary"
-                >
-                    <PlusIcon className="w-5 h-5 mr-2" />
-                    Create Tenant
-                </button>
+                <div className="flex gap-3">
+                    <button
+                        onClick={() => window.location.href = '/dashboard/super-admin/mobile-config'}
+                        className="btn btn-secondary"
+                    >
+                        <DevicePhoneMobileIcon className="w-5 h-5 mr-2" />
+                        Mobile Config
+                    </button>
+                    <button
+                        onClick={() => setShowModal(true)}
+                        className="btn btn-primary"
+                    >
+                        <PlusIcon className="w-5 h-5 mr-2" />
+                        Create Tenant
+                    </button>
+                </div>
             </div>
 
             {/* Stats Cards */}

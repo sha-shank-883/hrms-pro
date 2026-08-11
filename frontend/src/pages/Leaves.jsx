@@ -414,7 +414,7 @@ const Leaves = () => {
   const leaveTypes = ['Sick Leave', 'Casual Leave', 'Vacation', 'Maternity Leave', 'Paternity Leave'];
 
   return (
-    <div className="w-full" style={{ paddingBottom: '2rem' }}>
+    <div className="w-full pb-8">
       {/* Page Header */}
       <div className="page-header">
         <div>
@@ -491,7 +491,7 @@ const Leaves = () => {
                   <div className="bg-primary-50 text-primary-600 rounded-lg border border-primary-50 p-2">
                     <FaHourglassHalf size={16} />
                   </div>
-                  <span className="text-xs font-bold uppercase tracking-wide text-neutral-400" style={{ fontSize: '10px' }}>Pending</span>
+                  <span className="text-[10px] font-bold uppercase tracking-wide text-neutral-400">Pending</span>
                 </div>
                 <div className="mb-1">
                   <h3 className="text-2xl font-bold text-neutral-900 tracking-tight">{leaveStatistics.pending_requests}</h3>
@@ -504,7 +504,7 @@ const Leaves = () => {
                   <div className="bg-success-50 text-success rounded-lg border border-success-50 p-2">
                     <FaCheckCircle size={16} />
                   </div>
-                  <span className="text-xs font-bold uppercase tracking-wide text-neutral-400" style={{ fontSize: '10px' }}>Approved</span>
+                  <span className="text-[10px] font-bold uppercase tracking-wide text-neutral-400">Approved</span>
                 </div>
                 <div className="mb-1">
                   <h3 className="text-2xl font-bold text-neutral-900 tracking-tight">{leaveStatistics.approved_requests}</h3>
@@ -517,7 +517,7 @@ const Leaves = () => {
                   <div className="bg-danger-50 text-danger rounded-lg border border-danger-50 p-2">
                     <FaTimesCircle size={16} />
                   </div>
-                  <span className="text-xs font-bold uppercase tracking-wide text-neutral-400" style={{ fontSize: '10px' }}>Rejected</span>
+                  <span className="text-[10px] font-bold uppercase tracking-wide text-neutral-400">Rejected</span>
                 </div>
                 <div className="mb-1">
                   <h3 className="text-2xl font-bold text-neutral-900 tracking-tight">{leaveStatistics.rejected_requests}</h3>
@@ -530,7 +530,7 @@ const Leaves = () => {
                   <div className="bg-neutral-100 text-neutral-600 rounded-lg border border-neutral-200 p-2">
                     <FaListAlt size={16} />
                   </div>
-                  <span className="text-xs font-bold uppercase tracking-wide text-neutral-400" style={{ fontSize: '10px' }}>Total</span>
+                  <span className="text-[10px] font-bold uppercase tracking-wide text-neutral-400">Total</span>
                 </div>
                 <div className="mb-1">
                   <h3 className="text-2xl font-bold text-neutral-900 tracking-tight">{leaveStatistics.total_requests}</h3>
@@ -711,7 +711,7 @@ const Leaves = () => {
 
             {/* Pagination Controls */}
             {pagination.totalPages > 1 && (
-              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', marginTop: '2rem', gap: '0.5rem' }}>
+              <div className="flex justify-center items-center mt-8 gap-2">
                 <button
                   className="btn btn-secondary"
                   onClick={() => handlePageChange(pagination.currentPage - 1)}
@@ -1239,7 +1239,7 @@ const Leaves = () => {
             </div>
 
             <div className="card p-4 hover:shadow-md transition-shadow">
-              <h3 className="text-lg font-bold text-neutral-800 mb-4 flex items-center gap-2"><FaGift style={{ color: '#a855f7' }} /> Compensatory Off <span className="text-xs text-neutral-400 font-normal ml-auto">(Comp-Off)</span></h3>
+              <h3 className="text-lg font-bold text-neutral-800 mb-4 flex items-center gap-2"><FaGift className="text-accent-violet" /> Compensatory Off <span className="text-xs text-neutral-400 font-normal ml-auto">(Comp-Off)</span></h3>
               <p className="text-sm text-neutral-600 mb-4 h-10">Granted for working on weekends or holidays with approval.</p>
               <div className="bg-neutral-50 p-3 rounded-lg border border-neutral-100">
                 <div className="flex justify-between text-sm mb-2 text-neutral-700"><span>Validity:</span> <strong className="text-neutral-900">60 Days</strong></div>

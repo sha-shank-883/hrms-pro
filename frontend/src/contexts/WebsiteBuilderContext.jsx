@@ -53,16 +53,44 @@ const extractFromFooterConfig = (cfg) => {
   return [];
 };
 
+const flattenParams = (parameters) => {
+  const vars = {};
+  if (!parameters || typeof parameters !== 'object') return vars;
+  for (const [group, entries] of Object.entries(parameters)) {
+    if (entries && typeof entries === 'object' && !Array.isArray(entries)) {
+      for (const [key, value] of Object.entries(entries)) {
+        if (value !== undefined && value !== null) vars[`--${group}-${key.replace(/_/g, '-')}`] = String(value);
+      }
+    } else if (entries !== undefined && entries !== null) {
+      vars[`--${group}`] = String(entries);
+    }
+  }
+  return vars;
+};
+
 export const WebsiteBuilderProvider = ({ children }) => {
   const [settings, setSettings] = useState(defaultSettings);
+  const [labels, setLabels] = useState({});
+  const [themeParams, setThemeParams] = useState({});
   const [loading, setLoading] = useState(true);
+
+  const applyThemeVariables = useCallback((params) => {
+    if (!params || Object.keys(params).length === 0) return;
+    const root = document.documentElement;
+    Object.entries(params).forEach(([key, value]) => root.style.setProperty(key, value));
+  }, []);
 
   const fetchSettings = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await api.get('/website/global-settings/public');
-      if (res.data.success && res.data.data) {
-        const raw = res.data.data;
+      const [gsRes, themeRes, labelRes] = await Promise.all([
+        api.get('/website/global-settings/public'),
+        api.get('/website/themes/active'),
+        api.get('/website/labels/public'),
+      ]);
+
+      if (gsRes.data.success && gsRes.data.data) {
+        const raw = gsRes.data.data;
         const mapped = {
           ...defaultSettings,
           company_name: raw.company_name || defaultSettings.company_name,
@@ -86,12 +114,22 @@ export const WebsiteBuilderProvider = ({ children }) => {
       } else {
         await fallbackFetch();
       }
+
+      if (themeRes.data?.success && themeRes.data?.data?.parameters) {
+        const vars = flattenParams(themeRes.data.data.parameters);
+        setThemeParams(vars);
+        applyThemeVariables(vars);
+      }
+
+      if (labelRes.data?.success && labelRes.data?.data) {
+        setLabels(labelRes.data.data);
+      }
     } catch {
       await fallbackFetch();
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [applyThemeVariables]);
 
   const fallbackFetch = useCallback(async () => {
     try {
@@ -148,8 +186,13 @@ export const WebsiteBuilderProvider = ({ children }) => {
     return `${API_BASE}${url}`;
   };
 
+  const t = useCallback((key, fallback) => {
+    if (labels[key] !== undefined) return labels[key];
+    return fallback ?? key;
+  }, [labels]);
+
   return (
-    <WebsiteBuilderContext.Provider value={{ settings, loading, displayImageUrl, refreshSettings: fetchSettings }}>
+    <WebsiteBuilderContext.Provider value={{ settings, labels, themeParams, loading, displayImageUrl, refreshSettings: fetchSettings, t }}>
       {children}
     </WebsiteBuilderContext.Provider>
   );

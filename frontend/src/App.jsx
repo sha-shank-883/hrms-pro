@@ -52,6 +52,7 @@ import EmailTemplates from './pages/EmailTemplates';
 import SendEmail from './pages/SendEmail';
 import Layout from './components/Layout';
 import PublicLayout from './components/layout/PublicLayout';
+import { WebsiteBuilderProvider } from './contexts/WebsiteBuilderContext';
 import Home from './pages/marketing/Home';
 import Demo from './pages/marketing/Demo';
 import Features from './pages/marketing/Features';
@@ -122,23 +123,27 @@ function App() {
                 <Route path="/reset-password/:token" element={<ResetPassword />} />
 
                 {/* Public Marketing Routes */}
-                <Route element={<PublicLayout />}>
-                  <Route path="/" element={<Home />} />
-                  <Route path="/demo" element={<Demo />} />
-                  <Route path="/features" element={<Features />} />
-                  <Route path="/pricing" element={<Pricing />} />
-                  <Route path="/about" element={<About />} />
-                  <Route path="/contact" element={<Contact />} />
-                  <Route path="/blog" element={<Blog />} />
-                  <Route path="/resources" element={<ResourcesMarket />} />
-                  <Route path="/blog/:id" element={<BlogPost />} />
-                  <Route path="/privacy" element={<Privacy />} />
-                  <Route path="/terms" element={<Terms />} />
-                  <Route path="/faq" element={<FAQPage />} />
-                  <Route path="/vs-bamboohr" element={<VsBambooHR />} />
-                  <Route path="/vs-gusto" element={<VsGusto />} />
-                  <Route path="/vs-rippling" element={<VsRippling />} />
-                </Route>
+                <Route element={
+                  <WebsiteBuilderProvider>
+                    <PublicLayout />
+                  </WebsiteBuilderProvider>
+                }>
+                    <Route path="/" element={<Home />} />
+                    <Route path="/demo" element={<Demo />} />
+                    <Route path="/features" element={<Features />} />
+                    <Route path="/pricing" element={<Pricing />} />
+                    <Route path="/about" element={<About />} />
+                    <Route path="/contact" element={<Contact />} />
+                    <Route path="/blog" element={<Blog />} />
+                    <Route path="/resources" element={<ResourcesMarket />} />
+                    <Route path="/blog/:id" element={<BlogPost />} />
+                    <Route path="/privacy" element={<Privacy />} />
+                    <Route path="/terms" element={<Terms />} />
+                    <Route path="/faq" element={<FAQPage />} />
+                    <Route path="/vs-bamboohr" element={<VsBambooHR />} />
+                    <Route path="/vs-gusto" element={<VsGusto />} />
+                    <Route path="/vs-rippling" element={<VsRippling />} />
+                  </Route>
                 <Route path="*" element={<NotFound />} />
 
                 {/* Protected Dashboard Routes */}

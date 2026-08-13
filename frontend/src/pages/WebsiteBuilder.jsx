@@ -1414,20 +1414,51 @@ const WebsiteBuilder = () => {
       {/* ──────────────── TAB 7: GLOBAL & MEDIA ──────────────── */}
       {activeTab === 'global' && (
         <div className="space-y-6">
-          <form onSubmit={e => { e.preventDefault(); handleSaveNavAndFooter(); }} className="bg-white dark:bg-gray-900 p-6 rounded-2xl border border-gray-100 dark:border-gray-800 space-y-4">
-            <h2 className="text-lg font-bold text-gray-900 dark:text-white">Global Company Settings</h2>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-semibold mb-1">Company Name</label>
-                <input type="text" value={globalSettings.company_name} onChange={e => setGlobalSettings({ ...globalSettings, company_name: e.target.value })} className="w-full px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 dark:bg-gray-800 text-sm" />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold mb-1">Tagline</label>
-                <input type="text" value={globalSettings.tagline} onChange={e => setGlobalSettings({ ...globalSettings, tagline: e.target.value })} className="w-full px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 dark:bg-gray-800 text-sm" />
+          <form onSubmit={e => { e.preventDefault(); handleSaveNavAndFooter(); }} className="bg-white dark:bg-gray-900 p-8 rounded-2xl border border-gray-100 dark:border-gray-800 space-y-6">
+            <div>
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white">Global Company & Contact Settings</h2>
+              <p className="text-xs text-gray-500 mt-1">Changes made here automatically update your footer, contact page, and header across the entire website.</p>
+            </div>
+
+            {/* Company Basics */}
+            <div className="space-y-4 pt-2">
+              <h3 className="text-xs font-bold text-primary-600 uppercase tracking-widest">1. Company Identity</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Company Name</label>
+                  <input type="text" value={globalSettings.company_name || ''} onChange={e => setGlobalSettings({ ...globalSettings, company_name: e.target.value })} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 dark:bg-gray-800 text-sm font-semibold" placeholder="HRMS Pro" />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Brand Tagline</label>
+                  <input type="text" value={globalSettings.tagline || ''} onChange={e => setGlobalSettings({ ...globalSettings, tagline: e.target.value })} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 dark:bg-gray-800 text-sm" placeholder="Modern HR management platform" />
+                </div>
               </div>
             </div>
-            <div className="flex justify-end pt-2">
-              <button type="submit" className="px-5 py-2.5 bg-primary-600 text-white text-sm font-semibold rounded-xl">Save Settings</button>
+
+            {/* Contact Details */}
+            <div className="space-y-4 pt-4 border-t border-gray-100 dark:border-gray-800">
+              <h3 className="text-xs font-bold text-primary-600 uppercase tracking-widest">2. Official Contact Information</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Official Support Email</label>
+                  <input type="email" value={globalSettings.contact_email || ''} onChange={e => setGlobalSettings({ ...globalSettings, contact_email: e.target.value })} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 dark:bg-gray-800 text-sm font-medium" placeholder="info@hrmspro.online" />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Official Phone Number</label>
+                  <input type="text" value={globalSettings.contact_phone || ''} onChange={e => setGlobalSettings({ ...globalSettings, contact_phone: e.target.value })} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 dark:bg-gray-800 text-sm font-medium" placeholder="+91 8881781203" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Office Physical Address</label>
+                <input type="text" value={globalSettings.contact_address || ''} onChange={e => setGlobalSettings({ ...globalSettings, contact_address: e.target.value })} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 dark:bg-gray-800 text-sm font-medium" placeholder="Sector 4, Noida, India, 201301" />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between pt-6 border-t border-gray-100 dark:border-gray-800">
+              <p className="text-xs text-gray-400">All changes take effect immediately across all public marketing pages.</p>
+              <button type="submit" className="px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white text-sm font-bold rounded-xl shadow-md shadow-primary-500/20 transition-all flex items-center gap-2">
+                <CheckIcon className="w-4 h-4" /> Save Global Contact Details
+              </button>
             </div>
           </form>
         </div>

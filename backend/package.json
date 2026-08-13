@@ -4,7 +4,7 @@
   "description": "",
   "main": "src/server.js",
   "scripts": {
-    "start": "node src/scripts/setupMultiTenancy.js && node src/scripts/add_reporting_manager_column.js && node src/scripts/add_email_templates_table.js && node src/scripts/add_shift_tables.js && node src/scripts/expand_website_settings.js && node src/scripts/add_dynamic_sections.js && node src/scripts/upgrade_biometrics.js && node src/scripts/add_chat_channels_tables.js && node src/scripts/seed_production_snapshot.js && node src/server.js",
+    "start": "node src/scripts/setupMultiTenancy.js && node src/scripts/add_reporting_manager_column.js && node src/scripts/add_email_templates_table.js && node src/scripts/add_shift_tables.js && node src/scripts/expand_website_settings.js && node src/scripts/add_dynamic_sections.js && node src/scripts/create_website_builder.js && node src/scripts/create_dynamic_website_tables.js && node src/scripts/upgrade_biometrics.js && node src/scripts/add_chat_channels_tables.js && node src/scripts/seed_production_snapshot.js && node src/server.js",
     "migrate:biometrics": "node src/scripts/upgrade_biometrics.js",
     "migrate:chat-channels": "node src/scripts/add_chat_channels_tables.js",
     "dev": "nodemon src/server.js",

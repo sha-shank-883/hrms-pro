@@ -1,17 +1,11 @@
 const { pool } = require('../config/database');
 
 async function run() {
-  console.log('Creating website builder tables...');
-
-  // Drop existing to ensure clean schema
-  await pool.query(`DROP TABLE IF EXISTS shared.website_sections CASCADE`);
-  await pool.query(`DROP TABLE IF EXISTS shared.website_media CASCADE`);
-  await pool.query(`DROP TABLE IF EXISTS shared.website_pages CASCADE`);
-  await pool.query(`DROP TABLE IF EXISTS shared.website_global_settings CASCADE`);
+  console.log('Ensuring website builder tables exist in shared schema...');
 
   // 1. Website Pages
   await pool.query(`
-    CREATE TABLE shared.website_pages (
+    CREATE TABLE IF NOT EXISTS shared.website_pages (
       id SERIAL PRIMARY KEY,
       slug VARCHAR(255) UNIQUE NOT NULL,
       title VARCHAR(512) NOT NULL,
@@ -33,7 +27,7 @@ async function run() {
 
   // 2. Website Sections
   await pool.query(`
-    CREATE TABLE shared.website_sections (
+    CREATE TABLE IF NOT EXISTS shared.website_sections (
       id SERIAL PRIMARY KEY,
       page_id INTEGER REFERENCES shared.website_pages(id) ON DELETE CASCADE,
       section_type VARCHAR(100) NOT NULL,
@@ -56,7 +50,7 @@ async function run() {
 
   // 3. Website Media Library
   await pool.query(`
-    CREATE TABLE shared.website_media (
+    CREATE TABLE IF NOT EXISTS shared.website_media (
       id SERIAL PRIMARY KEY,
       filename VARCHAR(255) NOT NULL,
       original_name VARCHAR(255) NOT NULL,
@@ -72,7 +66,7 @@ async function run() {
 
   // 4. Website Global Settings
   await pool.query(`
-    CREATE TABLE shared.website_global_settings (
+    CREATE TABLE IF NOT EXISTS shared.website_global_settings (
       id SERIAL PRIMARY KEY,
       company_name VARCHAR(255) DEFAULT 'HRMS Pro',
       tagline TEXT DEFAULT 'Modern HR platform for growing businesses.',

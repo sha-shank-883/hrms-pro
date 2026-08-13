@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { tenantService } from '../services';
 import { useAuth } from '../context/AuthContext';
 import {
@@ -9,7 +9,11 @@ import {
     XCircleIcon,
     ShieldCheckIcon,
     ExclamationTriangleIcon,
-    DevicePhoneMobileIcon
+    DevicePhoneMobileIcon,
+    ArrowRightOnRectangleIcon,
+    ArrowDownTrayIcon,
+    ArrowUpTrayIcon,
+    CloudArrowUpIcon
 } from '@heroicons/react/24/outline';
 
 const SuperAdmin = () => {
@@ -77,6 +81,9 @@ const SuperAdmin = () => {
     const [resetPasswordData, setResetPasswordData] = useState('');
 
     const [twoFactorToken, setTwoFactorToken] = useState('');
+    const [restoreModal, setRestoreModal] = useState({ show: false, result: null, loading: false, targetTenant: null });
+    const restoreFileInputRef = useRef(null);
+    const [restoreTargetTenant, setRestoreTargetTenant] = useState(null);
 
     const openManageModal = (tenant) => {
         setManageModal({ show: true, tenant, tab: 'overview' });
@@ -133,7 +140,96 @@ const SuperAdmin = () => {
         }
     };
 
+    const handleImpersonate = async (tenantId) => {
+        try {
+            setError('');
+            setSuccess('');
+            
+            // Backup current super admin credentials
+            const currentToken = localStorage.getItem('token');
+            const currentUser = localStorage.getItem('user');
+            const currentTenant = localStorage.getItem('tenant_id');
+
+            if (currentToken && currentTenant) {
+                sessionStorage.setItem('originalSuperAdminAuth', JSON.stringify({
+                    token: currentToken,
+                    user: currentUser ? JSON.parse(currentUser) : null,
+                    tenantId: currentTenant
+                }));
+            }
+
+            const res = await tenantService.impersonate(tenantId);
+            if (res.success && res.data) {
+                localStorage.setItem('token', res.data.token);
+                localStorage.setItem('user', JSON.stringify(res.data.user));
+                localStorage.setItem('tenant_id', res.data.tenantId);
+                
+                window.location.href = '/dashboard';
+            }
+        } catch (err) {
+            console.error('Impersonation error:', err);
+            setError(err.response?.data?.error || err.response?.data?.message || 'Failed to impersonate tenant admin');
+        }
+    };
+
+    const handleRestoreBackup = (tenant) => {
+        setRestoreTargetTenant(tenant);
+        restoreFileInputRef.current.value = '';
+        restoreFileInputRef.current.click();
+    };
+
+    const handleRestoreFileSelected = async (e) => {
+        const file = e.target.files[0];
+        if (!file || !restoreTargetTenant) return;
+
+        const tenant = restoreTargetTenant;
+
+        if (!window.confirm(
+            `⚠️ RESTORE TENANT: "${tenant.name}"\n\n` +
+            `This will COMPLETELY REPLACE all data for tenant "${tenant.name}" with the backup file.\n\n` +
+            `The existing schema will be dropped and recreated.\n\n` +
+            `Are you absolutely sure you want to continue?`
+        )) return;
+
+        setRestoreModal({ show: true, result: null, loading: true, targetTenant: tenant });
+
+        try {
+            const text = await file.text();
+            const backupJson = JSON.parse(text);
+
+            const result = await tenantService.restore(tenant.tenant_id, backupJson);
+            setRestoreModal({ show: true, result, loading: false, targetTenant: tenant });
+            fetchTenants();
+        } catch (err) {
+            const errMsg = err.response?.data?.error || err.message || 'Restore failed';
+            setRestoreModal({
+                show: true,
+                result: { error: errMsg },
+                loading: false,
+                targetTenant: tenant
+            });
+        }
+    };
+
+    const handleDownloadBackup = async (tenant) => {
+        try {
+            const response = await tenantService.backup(tenant.tenant_id);
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = `backup_${tenant.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+        } catch (err) {
+            console.error('Backup failed:', err);
+            alert('Failed to download backup');
+        }
+    };
+
     return (
+        <>
         <div className="w-full pb-8">
             <div className="page-header">
                 <div>
@@ -166,8 +262,8 @@ const SuperAdmin = () => {
                             <p className="text-sm font-medium text-neutral-500">Total Tenants</p>
                             <p className="text-2xl font-bold text-neutral-900 mt-1">{tenants.length}</p>
                         </div>
-                        <div className="p-3 bg-indigo-50 rounded-lg">
-                            <BuildingOffice2Icon className="w-6 h-6 text-indigo-600" />
+                        <div className="p-3 bg-primary-50 rounded-lg">
+                            <BuildingOffice2Icon className="w-6 h-6 text-primary-600" />
                         </div>
                     </div>
                 </div>
@@ -254,12 +350,44 @@ const SuperAdmin = () => {
                                             {new Date(tenant.created_at).toLocaleDateString()}
                                         </td>
                                         <td className="text-right">
-                                            <button
-                                                className="btn btn-secondary text-xs px-3 py-1.5"
-                                                onClick={() => openManageModal(tenant)}
-                                            >
-                                                Manage
-                                            </button>
+                                             <div className="flex justify-end gap-2">
+                                                 {tenant.tenant_id !== 'tenant_default' && (
+                                                     <>
+                                                     <button
+                                                         className="btn btn-secondary text-xs px-3 py-1.5 flex items-center gap-1 hover:bg-neutral-100"
+                                                         onClick={() => handleDownloadBackup(tenant)}
+                                                         title="Download full JSON backup — includes ALL tenant tables"
+                                                     >
+                                                         <ArrowDownTrayIcon className="w-4 h-4 text-neutral-500" />
+                                                         Backup
+                                                     </button>
+                                                     <button
+                                                         className="btn btn-secondary text-xs px-3 py-1.5 flex items-center gap-1 hover:bg-amber-50 hover:text-amber-700 hover:border-amber-300"
+                                                         onClick={() => handleRestoreBackup(tenant)}
+                                                         title="Restore tenant from a backup JSON file"
+                                                     >
+                                                         <ArrowUpTrayIcon className="w-4 h-4" />
+                                                         Restore
+                                                     </button>
+                                                     </>
+                                                 )}
+                                                 {tenant.tenant_id !== 'tenant_default' && tenant.status === 'active' && (
+                                                     <button
+                                                         className="btn btn-primary text-xs px-3 py-1.5 flex items-center gap-1 bg-primary-600 hover:bg-primary-700 text-white"
+                                                         onClick={() => handleImpersonate(tenant.tenant_id)}
+                                                         title="Log in as this tenant's admin"
+                                                     >
+                                                         <ArrowRightOnRectangleIcon className="w-4 h-4" />
+                                                         Login as Admin
+                                                     </button>
+                                                 )}
+                                                 <button
+                                                     className="btn btn-secondary text-xs px-3 py-1.5"
+                                                     onClick={() => openManageModal(tenant)}
+                                                 >
+                                                     Manage
+                                                 </button>
+                                             </div>
                                         </td>
                                     </tr>
                                 ))
@@ -527,6 +655,140 @@ const SuperAdmin = () => {
                 </div>
             )}
         </div>
+
+        {/* Hidden file input for restore */}
+            <input
+                type="file"
+                accept=".json,application/json"
+                ref={restoreFileInputRef}
+                style={{ display: 'none' }}
+                onChange={handleRestoreFileSelected}
+            />
+
+            {/* Restore Result Modal */}
+            {restoreModal.show && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
+                        <div className={`px-6 py-4 border-b border-neutral-100 flex justify-between items-center ${
+                            restoreModal.loading ? 'bg-blue-50' :
+                            restoreModal.result?.error ? 'bg-red-50' : 'bg-emerald-50'
+                        }`}>
+                            <h3 className="text-lg font-bold text-neutral-800 flex items-center gap-2">
+                                {restoreModal.loading ? (
+                                    <>
+                                        <svg className="animate-spin w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                                        </svg>
+                                        Restoring Tenant...
+                                    </>
+                                ) : restoreModal.result?.error ? (
+                                    <>
+                                        <ExclamationTriangleIcon className="w-5 h-5 text-red-600" />
+                                        Restore Failed
+                                    </>
+                                ) : (
+                                    <>
+                                        <CheckCircleIcon className="w-5 h-5 text-emerald-600" />
+                                        Restore Completed
+                                    </>
+                                )}
+                            </h3>
+                            {!restoreModal.loading && (
+                                <button
+                                    onClick={() => setRestoreModal({ show: false, result: null, loading: false, targetTenant: null })}
+                                    className="text-neutral-400 hover:text-neutral-600"
+                                >
+                                    <XCircleIcon className="w-6 h-6" />
+                                </button>
+                            )}
+                        </div>
+
+                        <div className="p-6">
+                            {restoreModal.loading && (
+                                <div className="text-center py-8">
+                                    <p className="text-neutral-600 mt-3">
+                                        Restoring <strong>{restoreModal.targetTenant?.name}</strong>...
+                                        <br />
+                                        <span className="text-sm text-neutral-400">This may take a minute for large datasets.</span>
+                                    </p>
+                                </div>
+                            )}
+
+                            {!restoreModal.loading && restoreModal.result?.error && (
+                                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                                    <p className="text-red-700 font-medium mb-1">Error</p>
+                                    <p className="text-red-600 text-sm font-mono">{restoreModal.result.error}</p>
+                                </div>
+                            )}
+
+                            {!restoreModal.loading && restoreModal.result && !restoreModal.result.error && (
+                                <>
+                                    <div className="mb-4 p-3 bg-emerald-50 border border-emerald-200 rounded-lg">
+                                        <p className="text-emerald-800 font-semibold">
+                                            ✅ {restoreModal.result.company_name} restored successfully
+                                        </p>
+                                        <p className="text-emerald-600 text-sm mt-1">
+                                            {restoreModal.result.total_restored?.toLocaleString()} rows restored
+                                            &nbsp;•&nbsp; Backup date: {new Date(restoreModal.result.original_backup_date).toLocaleDateString()}
+                                        </p>
+                                    </div>
+
+                                    <div className="max-h-64 overflow-y-auto">
+                                        <table className="w-full text-sm">
+                                            <thead>
+                                                <tr className="border-b border-neutral-100">
+                                                    <th className="text-left py-2 font-semibold text-neutral-600">Table</th>
+                                                    <th className="text-right py-2 font-semibold text-neutral-600">Rows Restored</th>
+                                                    <th className="text-right py-2 font-semibold text-neutral-600">Status</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {restoreModal.result.restored_tables?.map(t => (
+                                                    <tr key={t.table} className="border-b border-neutral-50">
+                                                        <td className="py-1.5 font-mono text-neutral-700">{t.table}</td>
+                                                        <td className="py-1.5 text-right text-neutral-600">{t.rows}</td>
+                                                        <td className="py-1.5 text-right">
+                                                            <span className="text-emerald-600 text-xs font-medium">✓ OK</span>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                                {restoreModal.result.failed_tables?.map(t => (
+                                                    <tr key={t.table} className="border-b border-red-50 bg-red-50/30">
+                                                        <td className="py-1.5 font-mono text-red-700">{t.table}</td>
+                                                        <td className="py-1.5 text-right text-neutral-400">—</td>
+                                                        <td className="py-1.5 text-right">
+                                                            <span className="text-red-600 text-xs font-medium" title={t.error}>✗ Failed</span>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+
+                                    {restoreModal.result.failed_tables?.length > 0 && (
+                                        <div className="mt-3 p-2 bg-amber-50 border border-amber-200 rounded text-sm text-amber-700">
+                                            ⚠️ {restoreModal.result.failed_tables.length} table(s) had errors. This is usually caused by foreign key constraints on tables with no data.
+                                        </div>
+                                    )}
+                                </>
+                            )}
+                        </div>
+
+                        {!restoreModal.loading && (
+                            <div className="px-6 py-4 border-t border-neutral-100 flex justify-end gap-3">
+                                <button
+                                    onClick={() => setRestoreModal({ show: false, result: null, loading: false, targetTenant: null })}
+                                    className="btn btn-secondary"
+                                >
+                                    Close
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+        </>
     );
 };
 

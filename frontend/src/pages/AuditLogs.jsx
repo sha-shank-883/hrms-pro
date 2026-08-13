@@ -60,7 +60,7 @@ const AuditLogs = () => {
         if (action.includes('DELETE')) return 'text-red-600';
         if (action.includes('CREATE')) return 'text-green-600';
         if (action.includes('UPDATE')) return 'text-blue-600';
-        if (action.includes('LOGIN')) return 'text-purple-600';
+        if (action.includes('LOGIN')) return 'text-secondary-600';
         return 'text-gray-600';
     };
 
@@ -148,13 +148,13 @@ const AuditLogs = () => {
                             {loading ? (
                                 <tr>
                                     <td colSpan="6" className="text-center py-8">
-                                        <div className="flex justify-center"><div className="w-6 h-6 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin"></div></div>
+                                        <div className="flex justify-center"><div className="w-6 h-6 border-2 border-primary-600 border-t-transparent rounded-full animate-spin"></div></div>
                                     </td>
                                 </tr>
                             ) : logs.length > 0 ? (
                                 logs.map(log => (
                                     <React.Fragment key={log.log_id}>
-                                        <tr className={expandedLog === log.log_id ? 'bg-indigo-50/50' : ''}>
+                                        <tr className={expandedLog === log.log_id ? 'bg-primary-50/50' : ''}>
                                             <td className="whitespace-nowrap text-gray-600 font-mono text-xs">{formatDate(log.created_at)}</td>
                                             <td>
                                                 {log.first_name ? (
@@ -190,7 +190,7 @@ const AuditLogs = () => {
                                         </tr>
                                         {expandedLog === log.log_id && (
                                             <tr>
-                                                <td colSpan="6" className="p-0 border-b border-indigo-100 bg-gray-50">
+                                                <td colSpan="6" className="p-0 border-b border-primary-100 bg-gray-50">
                                                     <div className="p-4 flex gap-6">
                                                         <div className="flex-1">
                                                             <h4 className="text-xs font-bold uppercase text-gray-500 mb-2 flex items-center gap-2">

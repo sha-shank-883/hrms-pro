@@ -52,7 +52,7 @@ const RequestNotificationsWidget = memo(({ limit = 10 }) => {
                         time: t.created_at,
                         status: t.status,
                         icon: <FaTasks />,
-                        color: 'bg-blue-100 text-blue-600'
+                        color: 'bg-primary-100 text-blue-600'
                     })));
                 }
 
@@ -116,7 +116,7 @@ const RequestNotificationsWidget = memo(({ limit = 10 }) => {
                         message: notif.message,
                         time: new Date().toISOString(),
                         icon: <FaTasks />,
-                        color: 'bg-blue-100 text-blue-600'
+                        color: 'bg-primary-100 text-blue-600'
                     };
                     break;
                 case 'TASK_UPDATE':
@@ -128,7 +128,7 @@ const RequestNotificationsWidget = memo(({ limit = 10 }) => {
                         message: notif.message,
                         time: new Date().toISOString(),
                         icon: <FaInfoCircle />,
-                        color: 'bg-indigo-100 text-indigo-600'
+                        color: 'bg-primary-100 text-primary-600'
                     };
                     break;
                 case 'ATTENDANCE_LOG':

@@ -230,7 +230,7 @@ const TaskWidget = React.memo(({ chartType = 'pie', onToggle, onSettingsClick, i
                 {loading && (
                     <div className="loading-overlay">
                         <div className="loading-spinner"></div>
-                        <span className="text-xs mt-2 text-indigo-600 font-medium">Updating...</span>
+                        <span className="text-xs mt-2 text-primary-600 font-medium">Updating...</span>
                     </div>
                 )}
 

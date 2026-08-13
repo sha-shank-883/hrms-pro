@@ -146,7 +146,7 @@ const ClockInWidget = ({ employeeData }) => {
     return (
         <div className="bg-white rounded-2xl shadow-sm border border-neutral-100 h-full flex flex-col justify-between overflow-hidden relative">
             {/* Header */}
-            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-400 to-indigo-600"></div>
+            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary-400 to-secondary-600"></div>
             <div className="p-6 pb-0 flex justify-between items-start">
                 <div>
                     <h3 className="text-lg font-bold text-neutral-900 tracking-tight flex items-center gap-2">

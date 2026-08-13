@@ -36,7 +36,7 @@ const LeaveBalanceWidget = ({ employeeData }) => {
                 setBalances([
                     { type: 'Sick Leave', available: response.data.sick_leave || 0, total: 10, color: 'bg-green-500' },
                     { type: 'Casual Leave', available: response.data.casual_leave || 0, total: 12, color: 'bg-yellow-500' },
-                    { type: 'Earned Leave', available: response.data.earned_leave || 0, total: 20, color: 'bg-blue-500' }
+                    { type: 'Earned Leave', available: response.data.earned_leave || 0, total: 20, color: 'bg-primary-500' }
                 ]);
             }
         } catch (error) {
@@ -50,7 +50,7 @@ const LeaveBalanceWidget = ({ employeeData }) => {
         switch (type) {
             case 'Sick Leave': return 'bg-green-500';
             case 'Casual Leave': return 'bg-yellow-500';
-            case 'Earned Leave': return 'bg-blue-500';
+            case 'Earned Leave': return 'bg-primary-500';
             default: return 'bg-gray-500';
         }
     };

@@ -20,9 +20,9 @@ import { useAuth } from '../context/AuthContext';
 
 const STATUS_CONFIG = {
   draft: { label: 'Draft', bg: 'bg-gray-100 text-gray-700', dot: 'bg-gray-400' },
-  finalized: { label: 'Finalized', bg: 'bg-blue-100 text-blue-700', dot: 'bg-blue-500' },
+  finalized: { label: 'Finalized', bg: 'bg-primary-100 text-blue-700', dot: 'bg-primary-500' },
   paid: { label: 'Paid', bg: 'bg-green-100 text-green-700', dot: 'bg-green-500' },
-  archived: { label: 'Archived', bg: 'bg-purple-100 text-purple-700', dot: 'bg-purple-500' }
+  archived: { label: 'Archived', bg: 'bg-secondary-100 text-secondary-700', dot: 'bg-secondary-500' }
 };
 
 const StatusBadge = ({ status }) => {
@@ -320,7 +320,7 @@ const PayrollRuns = () => {
                           <>
                             <button onClick={() => performAction(run.run_id, 'finalize', 'finalized')}
                               disabled={actionLoading === `finalize-${run.run_id}`}
-                              className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg transition-all disabled:opacity-50 flex items-center gap-1.5">
+                              className="px-3 py-1.5 bg-primary-600 hover:bg-primary-700 text-white text-xs font-semibold rounded-lg transition-all disabled:opacity-50 flex items-center gap-1.5">
                               {actionLoading === `finalize-${run.run_id}` ? <FaSpinner className="animate-spin" /> : <FaCheckCircle />} Finalize
                             </button>
                             <button onClick={() => performAction(run.run_id, 'delete', 'deleted')}
@@ -340,7 +340,7 @@ const PayrollRuns = () => {
                         {(run.status === 'finalized' || run.status === 'paid') && (
                           <button onClick={() => performAction(run.run_id, 'archive', 'archived')}
                             disabled={actionLoading === `archive-${run.run_id}`}
-                            className="px-3 py-1.5 bg-purple-100 hover:bg-purple-200 text-purple-700 text-xs font-semibold rounded-lg transition-all disabled:opacity-50 flex items-center gap-1.5">
+                            className="px-3 py-1.5 bg-secondary-100 hover:bg-secondary-200 text-secondary-700 text-xs font-semibold rounded-lg transition-all disabled:opacity-50 flex items-center gap-1.5">
                             {actionLoading === `archive-${run.run_id}` ? <FaSpinner className="animate-spin" /> : <FaArchive />} Archive
                           </button>
                         )}

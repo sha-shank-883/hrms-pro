@@ -6,7 +6,7 @@ const fs = require('fs');
 const { body } = require('express-validator');
 const { validate } = require('../middleware/validate');
 const { getSettings, updateSettings } = require('../controllers/websiteSettingsController');
-const { authenticateToken: protect, authorizeRole: authorizeRoles } = require('../middleware/auth');
+const { authenticateToken: protect, authorizeRole: authorizeRoles, requireSuperAdmin } = require('../middleware/auth');
 
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -53,7 +53,7 @@ const updateValidation = [
 
 router.get('/', getSettings);
 
-router.put('/', protect, authorizeRoles('admin'), upload.fields([
+router.put('/', protect, authorizeRoles('admin'), requireSuperAdmin, upload.fields([
   { name: 'hero_image', maxCount: 1 },
   { name: 'logo', maxCount: 1 }
 ]), updateValidation, validate, updateSettings);

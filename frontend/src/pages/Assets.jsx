@@ -232,7 +232,7 @@ const Assets = () => {
                                 <tr key={asset.asset_id}>
                                     <td>
                                         <div className="flex items-center gap-3">
-                                            <div className="p-2 bg-indigo-50 text-indigo-600 rounded-lg">
+                                            <div className="p-2 bg-primary-50 text-primary-600 rounded-lg">
                                                 <FaLaptop />
                                             </div>
                                             <div>

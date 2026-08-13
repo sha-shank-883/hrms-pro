@@ -105,10 +105,10 @@ const AVAILABLE_FIELDS = [
 ];
 
 const SECTION_COLORS = {
-  details: 'bg-blue-50 border-blue-200 text-blue-700',
+  details: 'bg-primary-50 border-primary-200 text-blue-700',
   earnings: 'bg-green-50 border-green-200 text-green-700',
   deductions: 'bg-red-50 border-red-200 text-red-700',
-  summary: 'bg-purple-50 border-purple-200 text-purple-700'
+  summary: 'bg-secondary-50 border-secondary-200 text-secondary-700'
 };
 
 const SectionBadge = ({ section }) => {

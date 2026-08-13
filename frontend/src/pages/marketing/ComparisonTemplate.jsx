@@ -7,8 +7,10 @@ import {
 } from '@heroicons/react/24/outline';
 import { PageWrapper, AnimatedSection, AnimatedItem } from '../../components/common/AnimatedSection';
 import SEO from '../../components/common/SEO';
+import { useWebsiteBuilder } from '../../contexts/WebsiteBuilderContext';
 
 const ComparisonTemplate = ({ competitor, data }) => {
+  const { t } = useWebsiteBuilder();
   if (!data) return null;
 
   return (
@@ -17,14 +19,14 @@ const ComparisonTemplate = ({ competitor, data }) => {
 
       {/* Hero */}
       <section className="relative pt-28 pb-20 lg:pt-36 lg:pb-28 overflow-hidden bg-gradient-to-b from-gray-50 via-white to-white dark:from-gray-950 dark:via-gray-900 dark:to-gray-900">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-indigo-50/60 via-transparent to-transparent dark:from-indigo-500/5" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-primary-50/60 via-transparent to-transparent dark:from-primary-500/5" />
         <div className="max-w-7xl mx-auto px-6 lg:px-8 relative">
           <motion.div initial="hidden" animate="visible" className="max-w-4xl mx-auto text-center">
             <motion.div
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5 }}
-              className="inline-flex items-center gap-2 px-4 py-1.5 bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-100 dark:border-indigo-500/20 rounded-full text-xs font-semibold text-indigo-600 dark:text-indigo-400 mb-8"
+              className="inline-flex items-center gap-2 px-4 py-1.5 bg-primary-50 dark:bg-primary-500/10 border border-primary-100 dark:border-primary-500/20 rounded-full text-xs font-semibold text-primary-600 dark:text-primary-500 mb-8"
             >
               <SparklesIcon className="w-3.5 h-3.5" />
               Comparison Guide
@@ -51,14 +53,14 @@ const ComparisonTemplate = ({ competitor, data }) => {
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
+              transition={{ duration: 0.6, delay: 0.2 }}
               className="flex flex-col sm:flex-row items-center justify-center gap-4"
             >
               <Link
                 to="/demo"
-                className="inline-flex items-center gap-2 px-8 py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm rounded-xl shadow-lg shadow-indigo-500/25 hover:shadow-xl transition-all w-full sm:w-auto justify-center"
+                className="inline-flex items-center gap-2 px-8 py-4 bg-primary-600 hover:bg-primary-700 text-white font-semibold text-sm rounded-xl shadow-lg shadow-primary-500/25 transition-all"
               >
-                Try HRMS Pro Free
+                {t('compare.try_free', 'Try HRMS Pro Free')}
                 <ArrowRightIcon className="w-4 h-4" />
               </Link>
               <Link
@@ -76,7 +78,7 @@ const ComparisonTemplate = ({ competitor, data }) => {
       <section className="py-24 lg:py-32 bg-white dark:bg-gray-950 border-t border-gray-100 dark:border-gray-800">
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
           <AnimatedSection className="text-center max-w-3xl mx-auto mb-16">
-            <span className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 uppercase tracking-widest">Why HRMS Pro</span>
+            <span className="text-xs font-semibold text-primary-600 dark:text-primary-500 uppercase tracking-widest">Why HRMS Pro</span>
             <h2 className="mt-4 text-4xl lg:text-5xl font-black text-gray-900 dark:text-white tracking-tight">
               {data.name} falls short. Here&apos;s where HRMS Pro excels.
             </h2>
@@ -86,8 +88,8 @@ const ComparisonTemplate = ({ competitor, data }) => {
              {data.advantages.map((item, idx) => (
                <AnimatedItem key={item.title} delay={idx * 0.06}>
                  <div className="group p-8 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-3xl h-full hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300">
-                   <div className="w-14 h-14 rounded-2xl bg-gray-50 dark:bg-gray-800 flex items-center justify-center mb-5 text-2xl group-hover:bg-indigo-50 dark:group-hover:bg-indigo-500/10 transition-colors">
-                     {item.icon || <CheckIcon className="w-7 h-7 text-indigo-600 dark:text-indigo-400" />}
+                   <div className="w-14 h-14 rounded-2xl bg-gray-50 dark:bg-gray-800 flex items-center justify-center mb-5 text-2xl group-hover:bg-primary-50 dark:group-hover:bg-primary-500/10 transition-colors">
+                     {item.icon || <CheckIcon className="w-7 h-7 text-primary-600 dark:text-primary-500" />}
                    </div>
                    <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-3">{item.title}</h3>
                    <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">{item.desc}</p>
@@ -102,7 +104,7 @@ const ComparisonTemplate = ({ competitor, data }) => {
       <section className="py-24 lg:py-32 bg-gray-50 dark:bg-gray-900/50">
         <div className="max-w-5xl mx-auto px-6 lg:px-8">
           <AnimatedSection className="text-center max-w-3xl mx-auto mb-16">
-            <span className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 uppercase tracking-widest">Feature Comparison</span>
+            <span className="text-xs font-semibold text-primary-600 dark:text-primary-500 uppercase tracking-widest">Feature Comparison</span>
             <h2 className="mt-4 text-4xl lg:text-5xl font-black text-gray-900 dark:text-white tracking-tight">
               Side-by-side feature comparison
             </h2>
@@ -111,7 +113,7 @@ const ComparisonTemplate = ({ competitor, data }) => {
           <div className="bg-white dark:bg-gray-900 rounded-3xl border border-gray-100 dark:border-gray-800 overflow-hidden shadow-sm">
             <div className="grid grid-cols-3 gap-4 p-6 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800">
               <div className="text-sm font-bold text-gray-900 dark:text-white">Feature</div>
-              <div className="text-sm font-bold text-indigo-600 dark:text-indigo-400 text-center">HRMS Pro</div>
+              <div className="text-sm font-bold text-primary-600 dark:text-primary-500 text-center">HRMS Pro</div>
               <div className="text-sm font-bold text-gray-500 dark:text-gray-400 text-center">{data.name}</div>
             </div>
             {data.features.map(([feature, us, them], idx) => (
@@ -119,7 +121,7 @@ const ComparisonTemplate = ({ competitor, data }) => {
                 <div className="text-sm text-gray-700 dark:text-gray-300 font-medium">{feature}</div>
                 <div className="flex justify-center">
                   {us ? (
-                    <CheckIcon className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                    <CheckIcon className="w-5 h-5 text-primary-600 dark:text-primary-500" />
                   ) : (
                     <XMarkIcon className="w-5 h-5 text-gray-300 dark:text-gray-600" />
                   )}
@@ -138,9 +140,9 @@ const ComparisonTemplate = ({ competitor, data }) => {
           {/* Pricing Comparison */}
           <div className="mt-12 grid md:grid-cols-2 gap-8">
             <AnimatedItem delay={0.1}>
-              <div className="p-8 bg-white dark:bg-gray-900 border-2 border-indigo-500 dark:border-indigo-400 rounded-3xl shadow-xl shadow-indigo-500/10 relative">
-                <div className="absolute -top-3 left-8 px-4 py-1 bg-indigo-600 text-white text-xs font-bold rounded-lg">Best Value</div>
-                <p className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 uppercase tracking-widest mb-2">HRMS Pro</p>
+              <div className="p-8 bg-white dark:bg-gray-900 border-2 border-primary-500 dark:border-primary-400 rounded-3xl shadow-xl shadow-primary-500/10 relative">
+                <div className="absolute -top-3 left-8 px-4 py-1 bg-primary-600 text-white text-xs font-bold rounded-lg">Best Value</div>
+                <p className="text-xs font-semibold text-primary-600 dark:text-primary-500 uppercase tracking-widest mb-2">HRMS Pro</p>
                 <p className="text-3xl font-black text-gray-900 dark:text-white mb-4">{data.pricingUs}</p>
                 <p className="text-sm text-gray-500 dark:text-gray-400">All features included. No hidden fees.</p>
               </div>
@@ -157,7 +159,7 @@ const ComparisonTemplate = ({ competitor, data }) => {
       </section>
 
       {/* Testimonial / Trust */}
-      <section className="py-16 bg-indigo-600 dark:bg-indigo-700">
+      <section className="py-16 bg-primary-600 dark:bg-primary-700">
         <div className="max-w-7xl mx-auto px-6 lg:px-8 text-center">
           <AnimatedSection>
             <div className="flex items-center justify-center gap-1 mb-4">
@@ -168,7 +170,7 @@ const ComparisonTemplate = ({ competitor, data }) => {
             <blockquote className="text-xl lg:text-2xl text-white font-medium max-w-3xl mx-auto leading-relaxed mb-6">
               &ldquo;We switched from {data.name} to HRMS Pro and cut our admin time by 70%. The AI insights alone saved us from losing our top engineering talent.&rdquo;
             </blockquote>
-            <p className="text-indigo-200 text-sm font-medium">— Marcus Rodriguez, CHRO</p>
+            <p className="text-primary-200 text-sm font-medium">— Marcus Rodriguez, CHRO</p>
           </AnimatedSection>
         </div>
       </section>
@@ -177,8 +179,8 @@ const ComparisonTemplate = ({ competitor, data }) => {
       <section className="py-24 lg:py-32 bg-white dark:bg-gray-950">
         <div className="max-w-4xl mx-auto px-6 lg:px-8 text-center">
           <AnimatedSection>
-            <div className="w-16 h-16 rounded-2xl bg-indigo-50 dark:bg-indigo-500/10 flex items-center justify-center mx-auto mb-6">
-              <ShieldCheckIcon className="w-8 h-8 text-indigo-600 dark:text-indigo-400" />
+            <div className="w-16 h-16 rounded-2xl bg-primary-50 dark:bg-primary-500/10 flex items-center justify-center mx-auto mb-6">
+              <ShieldCheckIcon className="w-8 h-8 text-primary-600 dark:text-primary-500" />
             </div>
             <h2 className="text-4xl lg:text-5xl font-black text-gray-900 dark:text-white tracking-tight mb-6">
               The Verdict
@@ -189,7 +191,7 @@ const ComparisonTemplate = ({ competitor, data }) => {
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <Link
                 to="/demo"
-                className="inline-flex items-center gap-2 px-8 py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm rounded-xl shadow-lg shadow-indigo-500/25 hover:shadow-xl transition-all"
+                className="inline-flex items-center gap-2 px-8 py-4 bg-primary-600 hover:bg-primary-700 text-white font-semibold text-sm rounded-xl shadow-lg shadow-primary-500/25 hover:shadow-xl transition-all"
               >
                 Try HRMS Pro Free
                 <ArrowRightIcon className="w-4 h-4" />

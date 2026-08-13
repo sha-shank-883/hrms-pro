@@ -212,7 +212,7 @@ const DemoRequests = () => {
                   <tr key={req.id} className="hover:bg-neutral-50 transition-colors">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
+                        <div className="w-10 h-10 rounded-lg bg-primary-50 text-blue-600 flex items-center justify-center">
                           <FaBuilding />
                         </div>
                         <span className="font-medium text-neutral-900">{req.company_name}</span>

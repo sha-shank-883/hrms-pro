@@ -178,7 +178,7 @@ const LeaveWidget = memo(({ chartType, onToggle, onSettingsClick, isSettingsOpen
                 {loading && (
                     <div className="loading-overlay">
                         <div className="loading-spinner"></div>
-                        <span className="text-xs mt-2 text-indigo-500 font-medium">Updating...</span>
+                        <span className="text-xs mt-2 text-primary-500 font-medium">Updating...</span>
                     </div>
                 )}
 

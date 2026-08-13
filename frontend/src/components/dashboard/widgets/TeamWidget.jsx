@@ -59,7 +59,7 @@ const TeamWidget = ({ employeeData }) => {
                 {teamMembers.length > 0 ? teamMembers.map((member) => (
                     <div key={member.employee_id} className="flex items-center justify-between p-3 hover:bg-neutral-50 rounded-xl transition-colors group cursor-default border border-transparent hover:border-neutral-100">
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center text-sm font-bold border border-indigo-100 group-hover:bg-indigo-100 transition-colors">
+                            <div className="w-10 h-10 rounded-full bg-primary-50 text-primary-600 flex items-center justify-center text-sm font-bold border border-primary-100 group-hover:bg-primary-100 transition-colors">
                                 {getInitials(member.first_name, member.last_name)}
                             </div>
                             <div>

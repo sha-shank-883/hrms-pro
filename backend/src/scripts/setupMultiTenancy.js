@@ -30,7 +30,8 @@ const setupMultiTenancy = async () => {
             await client.query(`
                 ALTER TABLE shared.tenants 
                 ADD COLUMN IF NOT EXISTS subscription_plan VARCHAR(50) DEFAULT 'free',
-                ADD COLUMN IF NOT EXISTS subscription_expiry TIMESTAMP;
+                ADD COLUMN IF NOT EXISTS subscription_expiry TIMESTAMP,
+                ADD COLUMN IF NOT EXISTS employee_limit INTEGER DEFAULT 15;
             `);
             
         } catch (migErr) {

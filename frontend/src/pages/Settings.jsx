@@ -1,13 +1,18 @@
 import { useState, useEffect } from 'react';
-import { settingsService } from '../services';
+import { useSearchParams } from 'react-router-dom';
+import { settingsService, paymentService, employeeService } from '../services';
 import { useSettings } from '../hooks/useSettings.jsx';
+import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import PayPalCheckout from '../components/billing/PayPalCheckout';
+import RazorpayCheckout from '../components/billing/RazorpayCheckout';
 import {
   FaBuilding, FaClock, FaUmbrellaBeach, FaMoneyBillWave, FaBullseye,
   FaChartBar, FaLock, FaBell, FaFile, FaPalette, FaPaintBrush, FaCog,
   FaSave, FaCheckCircle, FaExclamationCircle, FaMobileAlt,
-  FaMoon, FaSun
+  FaMoon, FaSun, FaCreditCard, FaCrown, FaCheck, FaShieldAlt, FaUsers, FaArrowRight, FaQrcode
 } from 'react-icons/fa';
+import { SparklesIcon } from '@heroicons/react/24/outline';
 
 // Perfect default values for design settings
 const DEFAULT_DESIGN_SETTINGS = {
@@ -100,19 +105,66 @@ const DEFAULT_DESIGN_SETTINGS = {
   design_task_status_inprogress_color: '#3b82f6',
   design_task_status_completed_color: '#10b981'
 };
+
 const Settings = () => {
   const { refreshSettings } = useSettings();
+  const { user, refreshProfile } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [settings, setSettings] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [activeTab, setActiveTab] = useState('general');
+  const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'general');
   const [formData, setFormData] = useState({});
   const { dark, toggle: toggleTheme } = useTheme();
+
+  // Billing states
+  const [billingCurrency, setBillingCurrency] = useState('INR'); // 'INR' | 'USD'
+  const [subscriptionData, setSubscriptionData] = useState(null);
+  const [employeeCount, setEmployeeCount] = useState(0);
+  const [seatQuantity, setSeatQuantity] = useState(15);
+  const [checkoutPlan, setCheckoutPlan] = useState(null);
+  const [billingLoading, setBillingLoading] = useState(false);
 
   useEffect(() => {
     loadSettings();
   }, []);
+
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab) {
+      setActiveTab(tab);
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (activeTab === 'billing') {
+      loadBillingData();
+    }
+  }, [activeTab]);
+
+  const loadBillingData = async () => {
+    try {
+      setBillingLoading(true);
+      const [subRes, empRes] = await Promise.allSettled([
+        paymentService.getSubscription(),
+        employeeService.getAll({ status: 'active', limit: 1 }),
+      ]);
+      if (subRes.status === 'fulfilled' && subRes.value?.data) {
+        setSubscriptionData(subRes.value.data);
+        if (subRes.value.data.employeeLimit) {
+          setSeatQuantity(subRes.value.data.employeeLimit);
+        }
+      }
+      if (empRes.status === 'fulfilled' && empRes.value?.pagination) {
+        setEmployeeCount(empRes.value.pagination.totalItems || 0);
+      }
+    } catch (err) {
+      console.error('Failed to load billing data:', err);
+    } finally {
+      setBillingLoading(false);
+    }
+  };
 
   const loadSettings = async () => {
     try {
@@ -177,6 +229,7 @@ const Settings = () => {
   if (loading && !formData.company_name) return <div className="flex items-center justify-center h-screen"><div className="w-10 h-10 border-4 border-primary-500 border-t-transparent rounded-full animate-spin"></div></div>;
 
   const categories = [
+    { id: 'billing', name: 'Billing & Plan', icon: <FaCreditCard /> },
     { id: 'general', name: 'General', icon: <FaBuilding /> },
     { id: 'attendance', name: 'Attendance', icon: <FaClock /> },
     { id: 'leave', name: 'Leave', icon: <FaUmbrellaBeach /> },
@@ -240,6 +293,448 @@ const Settings = () => {
 
         {/* Content Area */}
         <div className="flex-1 bg-white rounded-xl shadow-sm border border-neutral-200 overflow-y-auto custom-scrollbar h-full p-6">
+
+          {/* Billing & Subscription Tab */}
+          {activeTab === 'billing' && (
+            <div className="space-y-8 animate-in fade-in duration-200">
+              {/* Header */}
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-gray-100 dark:border-gray-800 pb-6">
+                <div>
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                    <FaCrown className="text-amber-500" /> Subscription & Billing
+                  </h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                    Manage your organization's subscription tier, seat capacity, and billing details.
+                  </p>
+                </div>
+
+                {/* Currency Switcher */}
+                <div className="inline-flex p-1 bg-gray-100 dark:bg-gray-800 rounded-xl self-start md:self-auto border border-gray-200 dark:border-gray-700">
+                  <button
+                    type="button"
+                    onClick={() => setBillingCurrency('INR')}
+                    className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${billingCurrency === 'INR'
+                      ? 'bg-white dark:bg-gray-900 text-gray-900 dark:text-white shadow-sm'
+                      : 'text-gray-500 hover:text-gray-900 dark:hover:text-white'
+                    }`}
+                  >
+                    🇮🇳 INR (₹)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setBillingCurrency('USD')}
+                    className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${billingCurrency === 'USD'
+                      ? 'bg-white dark:bg-gray-900 text-gray-900 dark:text-white shadow-sm'
+                      : 'text-gray-500 hover:text-gray-900 dark:hover:text-white'
+                    }`}
+                  >
+                    🇺🇸 USD ($)
+                  </button>
+                </div>
+              </div>
+
+              {/* Current Status Overview Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {/* Active Plan Card */}
+                <div className="bg-gradient-to-br from-primary-50 to-primary-100/40 dark:from-primary-950/30 dark:to-gray-900 border border-primary-200/80 dark:border-primary-800/40 rounded-2xl p-5">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-xs font-bold uppercase tracking-wider text-primary-700 dark:text-primary-300">
+                      Current Plan
+                    </span>
+                    <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
+                      (subscriptionData?.status === 'active' || user?.subscription_status === 'active')
+                        ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300'
+                        : 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'
+                    }`}>
+                      {subscriptionData?.status || user?.subscription_status || 'Trial'}
+                    </span>
+                  </div>
+                  <h4 className="text-2xl font-black text-gray-900 dark:text-white capitalize">
+                    {subscriptionData?.plan || user?.subscription_plan || 'Free Trial'}
+                  </h4>
+                  <p className="text-xs text-gray-600 dark:text-gray-400 mt-2">
+                    {subscriptionData?.expiry
+                      ? `Valid until ${new Date(subscriptionData.expiry).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}`
+                      : user?.subscription_expiry
+                      ? `Valid until ${new Date(user.subscription_expiry).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}`
+                      : '14-day full feature trial active'}
+                  </p>
+                </div>
+
+                {/* Employee Seats Card */}
+                <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-5 shadow-sm">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                      Employee Seats
+                    </span>
+                    <FaUsers className="text-gray-400" />
+                  </div>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-2xl font-black text-gray-900 dark:text-white">
+                      {employeeCount}
+                    </span>
+                    <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                      / {subscriptionData?.plan === 'scale' ? '100' : subscriptionData?.plan === 'hatch' ? '15' : '15'} seats used
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-2 mt-3 overflow-hidden">
+                    <div
+                      className="bg-primary-500 h-2 rounded-full transition-all"
+                      style={{
+                        width: `${Math.min(
+                          100,
+                          (employeeCount / (subscriptionData?.plan === 'scale' ? 100 : 15)) * 100
+                        )}%`,
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* Instant Upgrade Card */}
+                <div className="bg-gradient-to-br from-indigo-900 to-purple-900 text-white rounded-2xl p-5 shadow-lg flex flex-col justify-between">
+                  <div>
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-white/20 text-white mb-2">
+                      <SparklesIcon className="h-3.5 w-3.5" /> Need More Power?
+                    </span>
+                    <h4 className="text-lg font-bold">Scale Your Organization</h4>
+                    <p className="text-xs text-indigo-200 mt-1">
+                      Unlock Automated Payroll, Performance Reviews & ATS Recruitment for your whole team.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const seats = Math.max(1, seatQuantity || 15);
+                      setCheckoutPlan({
+                        id: 'scale',
+                        name: 'Scale Plan',
+                        seats,
+                        price: billingCurrency === 'INR' ? (seats * 799) : (seats * 10),
+                        currency: billingCurrency,
+                      });
+                    }}
+                    className="mt-4 inline-flex items-center justify-center gap-2 px-4 py-2 bg-white text-indigo-900 text-xs font-bold rounded-xl hover:bg-indigo-50 transition-all shadow-md"
+                  >
+                    Upgrade to Scale ({seatQuantity || 15} Seats) <FaArrowRight className="text-[10px]" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Interactive Employee Seats Selector & Pricing Calculator */}
+              <div className="bg-gradient-to-r from-primary-500/10 via-primary-500/5 to-transparent border border-primary-500/30 rounded-2xl p-6 shadow-sm">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-5">
+                  <div>
+                    <span className="text-xs font-bold uppercase tracking-wider text-primary-700 dark:text-primary-400">
+                      Dynamic Seat Sizing
+                    </span>
+                    <h4 className="text-lg font-black text-gray-900 dark:text-white mt-0.5">
+                      How many employees are in your organization?
+                    </h4>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      Pricing automatically adjusts per active employee seat. Scale up or down at any time.
+                    </p>
+                  </div>
+
+                  {/* Seat Input & Stepper */}
+                  <div className="flex items-center gap-3 self-start md:self-auto bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-1.5 shadow-sm">
+                    <button
+                      type="button"
+                      onClick={() => setSeatQuantity(Math.max(1, (seatQuantity || 15) - 5))}
+                      className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 font-bold text-gray-700 dark:text-gray-200 flex items-center justify-center transition-colors"
+                    >
+                      -
+                    </button>
+                    <div className="flex items-center gap-1.5 px-2">
+                      <input
+                        type="number"
+                        min="1"
+                        max="1000"
+                        value={seatQuantity}
+                        onChange={(e) => setSeatQuantity(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                        className="w-16 text-center font-black text-lg bg-transparent border-0 focus:ring-0 text-gray-900 dark:text-white p-0"
+                      />
+                      <span className="text-xs font-semibold text-gray-500 dark:text-gray-400">Seats</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setSeatQuantity((seatQuantity || 15) + 5)}
+                      className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 font-bold text-gray-700 dark:text-gray-200 flex items-center justify-center transition-colors"
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+
+                {/* Range Slider */}
+                <div className="space-y-2">
+                  <input
+                    type="range"
+                    min="1"
+                    max="200"
+                    step="1"
+                    value={seatQuantity}
+                    onChange={(e) => setSeatQuantity(parseInt(e.target.value, 10))}
+                    className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-primary-600"
+                  />
+                  <div className="flex justify-between text-[11px] text-gray-400 font-medium px-1">
+                    <span>1 Employee</span>
+                    <span>25</span>
+                    <span>50</span>
+                    <span>100</span>
+                    <span>150</span>
+                    <span>200+ Employees</span>
+                  </div>
+                </div>
+
+                {/* Quick Presets */}
+                <div className="flex flex-wrap items-center gap-2 mt-4 pt-4 border-t border-primary-500/20">
+                  <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 mr-1">
+                    Quick Presets:
+                  </span>
+                  {[5, 10, 25, 50, 100, 250].map((preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => setSeatQuantity(preset)}
+                      className={`px-3 py-1 text-xs font-bold rounded-lg border transition-all ${
+                        seatQuantity === preset
+                          ? 'bg-primary-600 border-primary-600 text-white shadow-sm'
+                          : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:border-primary-400'
+                      }`}
+                    >
+                      {preset} Employees
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Plans Comparison Grid */}
+              <div>
+                <h4 className="text-base font-bold text-gray-900 dark:text-white mb-4">
+                  Available Subscription Plans for {seatQuantity} Employee{seatQuantity > 1 ? 's' : ''}
+                </h4>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {/* Hatch Plan */}
+                  <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 shadow-sm flex flex-col justify-between hover:border-primary-400 transition-all">
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <h5 className="text-lg font-bold text-gray-900 dark:text-white">Hatch</h5>
+                        {(subscriptionData?.plan === 'hatch' || user?.subscription_plan === 'hatch') && (
+                          <span className="text-xs font-bold text-primary-600 bg-primary-50 px-2 py-0.5 rounded-full">
+                            Current Tier
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+                        Essential HR & Attendance for growing teams.
+                      </p>
+
+                      <div className="mb-4 bg-gray-50 dark:bg-gray-900/60 p-3 rounded-xl border border-gray-100 dark:border-gray-700">
+                        <div className="text-xs text-gray-500 dark:text-gray-400">
+                          {billingCurrency === 'INR' ? '₹299' : '$4'} / employee / month
+                        </div>
+                        <div className="text-2xl font-black text-gray-900 dark:text-white mt-0.5">
+                          {billingCurrency === 'INR'
+                            ? `₹${(seatQuantity * 299).toLocaleString('en-IN')}`
+                            : `$${(seatQuantity * 4).toFixed(2)}`}
+                          <span className="text-xs text-gray-500 font-normal"> / month</span>
+                        </div>
+                        <div className="text-[11px] text-gray-400 mt-1">
+                          Total for {seatQuantity} employee seat{seatQuantity > 1 ? 's' : ''}
+                        </div>
+                      </div>
+
+                      <ul className="space-y-2.5 text-xs text-gray-600 dark:text-gray-300">
+                        <li className="flex items-center gap-2">
+                          <FaCheck className="text-emerald-500 shrink-0" /> {seatQuantity} Employee Seats Included
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <FaCheck className="text-emerald-500 shrink-0" /> Attendance & Clock-in with Geofence
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <FaCheck className="text-emerald-500 shrink-0" /> Leave Management & Approvals
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <FaCheck className="text-emerald-500 shrink-0" /> Employee Directory & Org Chart
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <FaCheck className="text-emerald-500 shrink-0" /> Basic Reports & Export
+                        </li>
+                      </ul>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const seats = Math.max(1, seatQuantity || 10);
+                        setCheckoutPlan({
+                          id: 'hatch',
+                          name: 'Hatch Plan',
+                          seats,
+                          price: billingCurrency === 'INR' ? (seats * 299) : (seats * 4),
+                          currency: billingCurrency,
+                        });
+                      }}
+                      className="mt-6 w-full py-2.5 px-4 rounded-xl font-bold text-xs bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-900 dark:text-white transition-colors"
+                    >
+                      Choose Hatch ({seatQuantity} Seats)
+                    </button>
+                  </div>
+
+                  {/* Scale Plan */}
+                  <div className="bg-white dark:bg-gray-800 border-2 border-primary-500 rounded-2xl p-6 shadow-xl relative flex flex-col justify-between">
+                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary-500 text-white text-[10px] uppercase font-black tracking-widest py-0.5 px-3 rounded-full shadow-sm">
+                      Most Popular
+                    </div>
+
+                    <div>
+                      <div className="flex items-center justify-between mb-2 mt-1">
+                        <h5 className="text-lg font-bold text-gray-900 dark:text-white">Scale</h5>
+                        {(subscriptionData?.plan === 'scale' || user?.subscription_plan === 'scale') && (
+                          <span className="text-xs font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
+                            Current Tier
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+                        Full-suite HRMS with Automated Payroll, Performance & ATS.
+                      </p>
+
+                      <div className="mb-4 bg-primary-50/70 dark:bg-primary-950/40 p-3 rounded-xl border border-primary-200/60 dark:border-primary-800/40">
+                        <div className="text-xs text-primary-700 dark:text-primary-300 font-semibold">
+                          {billingCurrency === 'INR' ? '₹799' : '$10'} / employee / month
+                        </div>
+                        <div className="text-2xl font-black text-gray-900 dark:text-white mt-0.5">
+                          {billingCurrency === 'INR'
+                            ? `₹${(seatQuantity * 799).toLocaleString('en-IN')}`
+                            : `$${(seatQuantity * 10).toFixed(2)}`}
+                          <span className="text-xs text-gray-500 font-normal"> / month</span>
+                        </div>
+                        <div className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">
+                          Total for {seatQuantity} employee seat{seatQuantity > 1 ? 's' : ''}
+                        </div>
+                      </div>
+
+                      <ul className="space-y-2.5 text-xs text-gray-600 dark:text-gray-300">
+                        <li className="flex items-center gap-2 font-bold text-gray-900 dark:text-white">
+                          <FaCheck className="text-emerald-500 shrink-0" /> {seatQuantity} Employee Seats Included
+                        </li>
+                        <li className="flex items-center gap-2 font-semibold text-gray-900 dark:text-white">
+                          <FaCheck className="text-emerald-500 shrink-0" /> Automated Payroll & Payslip Generation
+                        </li>
+                        <li className="flex items-center gap-2 font-semibold text-gray-900 dark:text-white">
+                          <FaCheck className="text-emerald-500 shrink-0" /> Performance Reviews, Goals & KPIs
+                        </li>
+                        <li className="flex items-center gap-2 font-semibold text-gray-900 dark:text-white">
+                          <FaCheck className="text-emerald-500 shrink-0" /> Recruitment & ATS Hiring Pipeline
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <FaCheck className="text-emerald-500 shrink-0" /> Advanced Analytics & Churn Risk Reports
+                        </li>
+                      </ul>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const seats = Math.max(1, seatQuantity || 25);
+                        setCheckoutPlan({
+                          id: 'scale',
+                          name: 'Scale Plan',
+                          seats,
+                          price: billingCurrency === 'INR' ? (seats * 799) : (seats * 10),
+                          currency: billingCurrency,
+                        });
+                      }}
+                      className="mt-6 w-full py-2.5 px-4 rounded-xl font-bold text-xs bg-primary-600 hover:bg-primary-700 text-white shadow-md hover:shadow-lg transition-all"
+                    >
+                      Upgrade to Scale ({seatQuantity} Seats)
+                    </button>
+                  </div>
+
+                  {/* Enterprise Plan */}
+                  <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 shadow-sm flex flex-col justify-between hover:border-gray-300 transition-all">
+                    <div>
+                      <h5 className="text-lg font-bold text-gray-900 dark:text-white mb-2">Enterprise</h5>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+                        Custom workflows, multi-branch, dedicated SLA, and volume scale.
+                      </p>
+                      <div className="mb-6">
+                        <span className="text-3xl font-black text-gray-900 dark:text-white">Custom</span>
+                      </div>
+
+                      <ul className="space-y-2.5 text-xs text-gray-600 dark:text-gray-300">
+                        <li className="flex items-center gap-2">
+                          <FaCheck className="text-emerald-500 shrink-0" /> Unlimited Employees & Multi-Branch
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <FaCheck className="text-emerald-500 shrink-0" /> Custom Domain & White-label Branding
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <FaCheck className="text-emerald-500 shrink-0" /> 24/7 Dedicated Account Manager & SLA
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <FaCheck className="text-emerald-500 shrink-0" /> Biometric Hardware API Integration
+                        </li>
+                      </ul>
+                    </div>
+
+                    <a
+                      href="mailto:support@hrmspro.online?subject=Enterprise%20Plan%20Inquiry"
+                      className="mt-6 w-full py-2.5 px-4 rounded-xl font-bold text-xs text-center border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors block"
+                    >
+                      Contact Sales
+                    </a>
+                  </div>
+                </div>
+              </div>
+
+              {/* Billing Security Badge */}
+              <div className="p-4 rounded-2xl bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 flex items-center justify-between flex-wrap gap-3 text-xs text-gray-500 dark:text-gray-400">
+                <div className="flex items-center gap-3">
+                  <FaShieldAlt className="text-emerald-500 text-lg shrink-0" />
+                  <span>
+                    All transactions are 256-bit SSL encrypted. India payments powered by <strong>Razorpay (UPI / Cards / NetBanking)</strong>; Global payments via <strong>PayPal</strong>.
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-bold text-[10px]">
+                    Razorpay Verified
+                  </span>
+                  <span className="px-2 py-0.5 rounded-md bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 font-bold text-[10px]">
+                    PayPal Verified
+                  </span>
+                </div>
+              </div>
+
+              {/* Razorpay Checkout Modal for INR */}
+              {checkoutPlan && (checkoutPlan.gateway === 'razorpay' || (!checkoutPlan.gateway && billingCurrency === 'INR')) && (
+                <RazorpayCheckout
+                  plan={checkoutPlan}
+                  onClose={() => setCheckoutPlan(null)}
+                  onSuccess={() => {
+                    setCheckoutPlan(null);
+                    loadBillingData();
+                    if (refreshProfile) refreshProfile();
+                  }}
+                />
+              )}
+
+              {/* PayPal Checkout Modal for USD / International */}
+              {checkoutPlan && (checkoutPlan.gateway === 'paypal' || (!checkoutPlan.gateway && billingCurrency === 'USD')) && (
+                <PayPalCheckout
+                  plan={checkoutPlan}
+                  onClose={() => setCheckoutPlan(null)}
+                  onSuccess={() => {
+                    setCheckoutPlan(null);
+                    loadBillingData();
+                    if (refreshProfile) refreshProfile();
+                  }}
+                />
+              )}
+            </div>
+          )}
 
           {/* General Settings */}
           {activeTab === 'general' && (

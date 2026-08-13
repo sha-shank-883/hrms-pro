@@ -313,7 +313,25 @@ const LABELS = [
   ['compare', 'hero_title', 'HRMS Pro vs {competitor}', 'Comparison hero (placeholder replaced at render)'],
   ['compare', 'best_value', 'Best Value', 'Comparison badge'],
   ['compare', 'try_free', 'Try HRMS Pro Free', 'Comparison CTA'],
-  ['compare', 'verdict', 'Our Verdict', 'Comparison verdict heading']
+  ['compare', 'verdict', 'Our Verdict', 'Comparison verdict heading'],
+
+  // ── faq ──
+  ['faq', 'eyebrow', 'Support', 'FAQ section eyebrow'],
+  ['faq', 'title', 'Frequently Asked Questions', 'FAQ section heading'],
+  ['faq', 'subtitle', "Everything you need to know about HRMS Pro. Can't find what you're looking for? Contact our team.", 'FAQ section subtext'],
+
+  // ── privacy ──
+  ['privacy', 'title', 'Privacy Policy', 'Privacy page title'],
+  ['privacy', 'subtitle', 'We are committed to protecting your personal data and maintaining transparent information practices.', 'Privacy page subtitle'],
+
+  // ── terms ──
+  ['terms', 'title', 'Terms of Service', 'Terms page title'],
+  ['terms', 'subtitle', 'Please review the terms and conditions governing your use of our services.', 'Terms page subtitle'],
+
+  // ── resources ──
+  ['resources', 'eyebrow', 'Knowledge Center', 'Resources section eyebrow'],
+  ['resources', 'title', 'Insights to Master your Workforce', 'Resources section title'],
+  ['resources', 'subtitle', 'Expert guides, research, and downloadable templates to help you build a productive workforce.', 'Resources section subtext']
 ];
 
 async function run() {
@@ -414,7 +432,99 @@ async function run() {
     }
     console.log(`  ✓ labels seeded: ${seeded}`);
 
-    // ── 7. Link global settings row 1 to active theme ──
+    // ── 7. website_pages & website_sections tables ──
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS shared.website_pages (
+        id SERIAL PRIMARY KEY,
+        slug VARCHAR(255) UNIQUE NOT NULL,
+        title VARCHAR(255) NOT NULL,
+        page_type VARCHAR(50) DEFAULT 'custom',
+        is_published BOOLEAN DEFAULT true,
+        is_homepage BOOLEAN DEFAULT false,
+        layout_template VARCHAR(100) DEFAULT 'default',
+        meta_title VARCHAR(255),
+        meta_description TEXT,
+        meta_keywords VARCHAR(255),
+        custom_css TEXT,
+        custom_js TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    console.log('✓ shared.website_pages');
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS shared.website_sections (
+        id SERIAL PRIMARY KEY,
+        page_id INTEGER REFERENCES shared.website_pages(id) ON DELETE CASCADE,
+        section_type VARCHAR(100) NOT NULL,
+        title VARCHAR(255),
+        subtitle TEXT,
+        settings JSONB DEFAULT '{}',
+        sort_order INTEGER DEFAULT 0,
+        is_visible BOOLEAN DEFAULT true,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+      ALTER TABLE shared.website_sections
+        ADD COLUMN IF NOT EXISTS title VARCHAR(255),
+        ADD COLUMN IF NOT EXISTS subtitle TEXT;
+    `);
+    console.log('✓ shared.website_sections');
+
+    // Seed Default Core Pages
+    const DEFAULT_PAGES = [
+      { slug: 'home', title: 'Homepage', is_homepage: true, is_published: true, meta_title: 'HRMS Pro — AI-Powered HR Platform for Global Enterprises' },
+      { slug: 'features', title: 'Platform Features', is_homepage: false, is_published: true, meta_title: 'HRMS Pro Features — Workforce Management' },
+      { slug: 'pricing', title: 'Pricing & Plans', is_homepage: false, is_published: true, meta_title: 'HRMS Pro Pricing — Simple Transparent Pricing' },
+      { slug: 'about', title: 'About Us', is_homepage: false, is_published: true, meta_title: 'About HRMS Pro — Company & Mission' },
+      { slug: 'contact', title: 'Contact Us', is_homepage: false, is_published: true, meta_title: 'Contact HRMS Pro Sales & Support' },
+      { slug: 'faq', title: 'FAQ & Help', is_homepage: false, is_published: true, meta_title: 'HRMS Pro Frequently Asked Questions' }
+    ];
+
+    for (const page of DEFAULT_PAGES) {
+      const pageRes = await client.query(
+        `INSERT INTO shared.website_pages (slug, title, is_homepage, is_published, meta_title)
+         VALUES ($1, $2, $3, $4, $5)
+         ON CONFLICT (slug) DO UPDATE SET title = EXCLUDED.title
+         RETURNING id`,
+        [page.slug, page.title, page.is_homepage, page.is_published, page.meta_title]
+      );
+      const pageId = pageRes.rows[0].id;
+
+      // Check if sections already exist for this page
+      const secCheck = await client.query(`SELECT COUNT(*) FROM shared.website_sections WHERE page_id = $1`, [pageId]);
+      if (parseInt(secCheck.rows[0].count, 10) === 0) {
+        if (page.slug === 'home') {
+          await client.query(`
+            INSERT INTO shared.website_sections (page_id, section_type, title, subtitle, settings, sort_order) VALUES
+            ($1, 'hero', 'HR Platform for Global Enterprises', 'Unify your people, payroll, and performance data on a single platform.', '{"badge":"Now Available — AI-Native HCM Platform v3.0","cta_primary_text":"Get a Demo","cta_primary_url":"/demo","cta_secondary_text":"Watch Overview","cta_secondary_url":"#features"}', 1),
+            ($1, 'features', 'Enterprise-grade HR capabilities', 'Deep functionality across every HR domain, backed by AI and global compliance.', '{"items":[{"title":"Core HR","desc":"Employee records & org charts"},{"title":"Payroll","desc":"Global tax & automated runs"},{"title":"Performance","desc":"Goals & review cycles"}]}', 2),
+            ($1, 'stats', 'Global Platform Reach', 'Powering thousands of enterprises worldwide.', '{"items":[{"value":"10K+","title":"Companies"},{"value":"2M+","title":"Employees"},{"value":"150+","title":"Countries"},{"value":"99.9%","title":"Uptime SLA"}]}', 3),
+            ($1, 'testimonials', 'Trusted by HR Leaders', 'See what our customers say about HRMS Pro.', '{"items":[{"title":"Alex Rivera","desc":"Reduced payroll processing time by 80%.","role":"CHRO"}]}', 4),
+            ($1, 'cta', 'Ready to transform your HR?', 'Join thousands of companies building better workplaces.', '{"cta_primary_text":"Get a Demo","cta_primary_url":"/demo"}', 5)
+          `, [pageId]);
+        } else if (page.slug === 'features') {
+          await client.query(`
+            INSERT INTO shared.website_sections (page_id, section_type, title, subtitle, settings, sort_order) VALUES
+            ($1, 'hero', 'Everything you need to manage your workforce', 'A unified HCM platform covering the entire employee lifecycle.', '{"cta_primary_text":"Get Free Demo","cta_primary_url":"/demo"}', 1),
+            ($1, 'features', 'All-in-One HR Domain Functionality', 'Automate payroll, recruitment, attendance, and performance.', '{"items":[{"title":"AI Assistant","desc":"Smart automation"},{"title":"Global Compliance","desc":"150+ countries"}]}', 2)
+          `, [pageId]);
+        } else if (page.slug === 'pricing') {
+          await client.query(`
+            INSERT INTO shared.website_sections (page_id, section_type, title, subtitle, settings, sort_order) VALUES
+            ($1, 'hero', 'Simple, transparent pricing', 'Start free, upgrade as you grow. No hidden fees.', '{}', 1),
+            ($1, 'pricing', 'Plans that fit your growth', 'Select your plan below.', '{"items":[{"name":"Hatch","price":"$6"},{"name":"Scale","price":"$12"},{"name":"Enterprise","price":"Custom"}]}', 2)
+          `, [pageId]);
+        }
+      }
+    }
+
+    // Ensure 'home' is strictly the single homepage
+    await client.query(`UPDATE shared.website_pages SET is_homepage = (slug = 'home')`);
+    console.log('  ✓ homepage set to slug=home');
+
+    // ── 8. Link global settings row 1 to active theme ──
     await client.query(
       `INSERT INTO shared.website_global_settings (id, active_theme_id)
        VALUES (1, $1)

@@ -72,8 +72,8 @@ const LeadMagnetModal = ({ open, onClose, resource }) => {
 
             {!submitted ? (
               <div className="p-8 lg:p-10">
-                <div className="w-14 h-14 rounded-2xl bg-indigo-50 dark:bg-indigo-500/10 flex items-center justify-center mb-5">
-                  <DocumentTextIcon className="w-7 h-7 text-indigo-600 dark:text-indigo-400" />
+                <div className="w-14 h-14 rounded-2xl bg-primary-50 dark:bg-primary-500/10 flex items-center justify-center mb-5">
+                  <DocumentTextIcon className="w-7 h-7 text-primary-600 dark:text-primary-500" />
                 </div>
                 <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
                   {resource?.title || 'HR Compliance Checklist 2026'}
@@ -93,7 +93,7 @@ const LeadMagnetModal = ({ open, onClose, resource }) => {
                       onChange={(e) => setName(e.target.value)}
                       placeholder="Full Name *"
                       required
-                      className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                     />
                   </div>
                   <div>
@@ -103,7 +103,7 @@ const LeadMagnetModal = ({ open, onClose, resource }) => {
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="Work Email *"
                       required
-                      className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                     />
                   </div>
                   <div>
@@ -112,7 +112,7 @@ const LeadMagnetModal = ({ open, onClose, resource }) => {
                       value={company}
                       onChange={(e) => setCompany(e.target.value)}
                       placeholder="Company Name"
-                      className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                     />
                   </div>
 
@@ -123,7 +123,7 @@ const LeadMagnetModal = ({ open, onClose, resource }) => {
                   <button
                     type="submit"
                     disabled={loading}
-                    className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold text-sm rounded-xl shadow-lg shadow-indigo-500/20 hover:shadow-xl transition-all inline-flex items-center justify-center gap-2"
+                    className="w-full py-3.5 bg-primary-600 hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold text-sm rounded-xl shadow-lg shadow-primary-500/20 hover:shadow-xl transition-all inline-flex items-center justify-center gap-2"
                   >
                     {loading ? (
                       <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />

@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { FaArrowRight, FaBookOpen, FaFilePdf, FaVideo, FaDownload } from 'react-icons/fa';
 import { PageWrapper } from '../../components/common/AnimatedSection';
 import SEO from '../../components/common/SEO';
+import { useWebsiteBuilder } from '../../contexts/WebsiteBuilderContext';
 
 const staticResources = [
   {
@@ -79,6 +80,7 @@ const filters = [
 ];
 
 const Resources = () => {
+  const { t } = useWebsiteBuilder();
   const [activeFilter, setActiveFilter] = useState('all');
 
   const filteredResources = activeFilter === 'all'
@@ -95,20 +97,19 @@ const Resources = () => {
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
           <div className="text-center mb-16">
             <motion.span initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
-              className="inline-block px-4 py-1.5 rounded-full bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-100 dark:border-indigo-500/20 text-indigo-600 dark:text-indigo-400 text-xs font-semibold mb-4"
+              className="inline-block px-4 py-1.5 rounded-full bg-primary-50 dark:bg-primary-500/10 border border-primary-100 dark:border-primary-500/20 text-primary-600 dark:text-primary-500 text-xs font-semibold mb-4"
             >
-              Knowledge Center
+              {t('resources.eyebrow', 'Knowledge Center')}
             </motion.span>
             <motion.h1 initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
               className="text-4xl md:text-6xl font-black text-gray-900 dark:text-white mb-6 tracking-tight"
             >
-              Insights to Master your{' '}
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 to-indigo-600">Workforce</span>
+              {t('resources.title', 'Insights to Master your Workforce')}
             </motion.h1>
             <motion.p initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
               className="text-xl text-gray-500 dark:text-gray-400 max-w-2xl mx-auto"
             >
-              Expert guides, research, and tools to help you build a more productive and engaged team.
+              {t('resources.subtitle', 'Expert guides, research, and downloadable templates to help you build a productive workforce.')}
             </motion.p>
           </div>
 
@@ -118,7 +119,7 @@ const Resources = () => {
                 className={`px-6 py-2.5 rounded-full text-sm font-semibold transition-all duration-300 ${
                   activeFilter === filter.id
                     ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 shadow-lg'
-                    : 'bg-white dark:bg-gray-900 text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-700 hover:border-indigo-300 dark:hover:border-indigo-600 hover:text-indigo-600 dark:hover:text-indigo-400'
+                    : 'bg-white dark:bg-gray-900 text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-700 hover:border-primary-300 dark:hover:border-primary-600 hover:text-primary-600 dark:hover:text-primary-400'
                 }`}
               >
                 {filter.label}
@@ -133,7 +134,7 @@ const Resources = () => {
                    animate={{ opacity: 1, y: 0 }}
                    exit={{ opacity: 0 }}
                    whileHover={{ y: -4 }}
-                   className="group relative bg-white dark:bg-gray-900 rounded-3xl border border-gray-200 dark:border-gray-800 overflow-hidden hover:shadow-xl hover:shadow-indigo-500/5 transition-all duration-500"
+                   className="group relative bg-white dark:bg-gray-900 rounded-3xl border border-gray-200 dark:border-gray-800 overflow-hidden hover:shadow-xl hover:shadow-primary-500/5 transition-all duration-500"
                  >
                    <div className="h-56 bg-gray-100 dark:bg-gray-800 relative overflow-hidden">
                      <img src={resource.image_url} alt={resource.title}
@@ -145,11 +146,11 @@ const Resources = () => {
                        </span>
                      </div>
                      <div className="absolute bottom-4 right-4 w-10 h-10 rounded-full bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border border-white/20 dark:border-gray-700/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                       <FaDownload className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                       <FaDownload className="w-4 h-4 text-primary-600 dark:text-primary-500" />
                      </div>
                    </div>
                    <div className="p-8">
-                     <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                     <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">
                        {resource.title}
                      </h3>
                      <p className="text-gray-500 dark:text-gray-400 text-sm mb-6 line-clamp-3">
@@ -161,9 +162,9 @@ const Resources = () => {
                            e.preventDefault();
                          }
                        }}
-                       className="inline-flex items-center gap-2 text-sm font-bold text-gray-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors"
+                       className="inline-flex items-center gap-2 text-sm font-bold text-gray-900 dark:text-white group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors"
                      >
-                       {resource.button_text || (resource.type === 'video' ? 'Watch Video' : 'Download')} <FaArrowRight className="text-indigo-500" />
+                       {resource.button_text || (resource.type === 'video' ? 'Watch Video' : 'Download')} <FaArrowRight className="text-primary-500" />
                      </a>
                    </div>
                  </motion.div>
@@ -173,8 +174,8 @@ const Resources = () => {
           <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
             className="mt-24 p-12 lg:p-16 bg-gray-900 dark:bg-white rounded-[2.5rem] relative overflow-hidden"
           >
-            <div className="absolute top-0 right-0 w-80 h-80 bg-indigo-500/10 blur-[120px] rounded-full" />
-            <div className="absolute bottom-0 left-0 w-64 h-64 bg-purple-500/10 blur-[100px] rounded-full" />
+            <div className="absolute top-0 right-0 w-80 h-80 bg-primary-500/10 blur-[120px] rounded-full" />
+            <div className="absolute bottom-0 left-0 w-64 h-64 bg-secondary-500/10 blur-[100px] rounded-full" />
             <div className="relative z-10 grid lg:grid-cols-2 items-center gap-10">
               <div>
                 <h2 className="text-3xl md:text-4xl font-black text-white dark:text-gray-900 mb-4 tracking-tight">
@@ -184,9 +185,9 @@ const Resources = () => {
               </div>
               <div className="flex flex-col sm:flex-row gap-3">
                 <input type="email" placeholder="Work email address"
-                  className="flex-1 px-5 py-3.5 rounded-xl bg-white/10 dark:bg-gray-100 border border-white/20 dark:border-gray-300 text-white dark:text-gray-900 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-400 text-sm"
+                  className="flex-1 px-5 py-3.5 rounded-xl bg-white/10 dark:bg-gray-100 border border-white/20 dark:border-gray-300 text-white dark:text-gray-900 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-400 text-sm"
                 />
-                <button className="px-7 py-3.5 bg-indigo-500 hover:bg-indigo-600 text-white font-bold text-sm rounded-xl transition-all shadow-lg shadow-indigo-500/20 active:scale-95 whitespace-nowrap">
+                <button className="px-7 py-3.5 bg-primary-500 hover:bg-primary-600 text-white font-bold text-sm rounded-xl transition-all shadow-lg shadow-primary-500/20 active:scale-95 whitespace-nowrap">
                   Join Now
                 </button>
               </div>

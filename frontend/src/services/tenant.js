@@ -44,5 +44,23 @@ export const tenantService = {
   deleteBiometricDevice: async (serialNumber) => {
     const response = await api.delete(`/tenants/biometric-devices/${serialNumber}`);
     return response.data;
+  },
+
+  impersonate: async (tenantId) => {
+    const response = await api.post(`/tenants/${tenantId}/impersonate`);
+    return response.data;
+  },
+
+  backup: async (tenantId) => {
+    const response = await api.get(`/tenants/${tenantId}/backup`, { responseType: 'blob' });
+    return response;
+  },
+
+  restore: async (tenantId, backupJson) => {
+    const response = await api.post(`/tenants/${tenantId}/restore`, backupJson, {
+      headers: { 'Content-Type': 'application/json' },
+      timeout: 120000 // 2 min timeout for large restores
+    });
+    return response.data;
   }
 };

@@ -170,6 +170,22 @@ app.get('/api/setup-db', async (req, res) => {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
+      CREATE TABLE IF NOT EXISTS shared.payment_logs (
+        id SERIAL PRIMARY KEY,
+        tenant_id VARCHAR(100) REFERENCES shared.tenants(tenant_id) ON DELETE CASCADE,
+        plan_id VARCHAR(50) NOT NULL,
+        amount NUMERIC(10,2) NOT NULL,
+        currency VARCHAR(10) DEFAULT 'USD',
+        paypal_order_id VARCHAR(255),
+        razorpay_order_id VARCHAR(255),
+        razorpay_payment_id VARCHAR(255),
+        gateway VARCHAR(50) DEFAULT 'paypal',
+        status VARCHAR(50) DEFAULT 'pending',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+      ALTER TABLE shared.payment_logs ADD COLUMN IF NOT EXISTS razorpay_order_id VARCHAR(255);
+      ALTER TABLE shared.payment_logs ADD COLUMN IF NOT EXISTS razorpay_payment_id VARCHAR(255);
+      ALTER TABLE shared.payment_logs ADD COLUMN IF NOT EXISTS gateway VARCHAR(50) DEFAULT 'paypal';
     `);
 
     // Ensure at least one row exists in website_settings
@@ -347,6 +363,10 @@ app.use('/api/webhooks/biometrics', express.text({ type: '*/*' }), require('./ro
 app.use('/api/support', supportRoutes);
 app.use('/api/email-queue', require('./routes/emailQueueRoutes'));
 app.use('/api/export', require('./routes/exportRoutes'));
+app.use('/api/payments', require('./routes/paymentRoutes'));
+app.use('/api/payment', require('./routes/paymentRoutes'));
+app.use('/api/razorpay', require('./routes/paymentRoutes'));
+
 
 
 setupSocketHandlers(io, connectedUsers);

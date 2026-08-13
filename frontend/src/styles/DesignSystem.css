@@ -2,13 +2,12 @@
 /* Google/Microsoft Professional Standard */
 
 :root {
-    /* BambooHR-inspired Brand Colors */
-    --primary-color: #8cc63f;
-    /* Bamboo Green */
-    --primary-dark: #7ab332;
-    --primary-light: #a3d95b;
-    --primary-lighter: #e8f5d6;
-    --primary-darker: #6ba030;
+    /* Dynamic Theme Brand Colors */
+    --primary-color: var(--colors-primary, #6366f1);
+    --primary-dark: var(--colors-primary-hover, #4f46e5);
+    --primary-light: var(--colors-primary, #6366f1);
+    --primary-lighter: var(--colors-primary, #6366f1);
+    --primary-darker: var(--colors-primary-hover, #4f46e5);
 
     /* Secondary / Accent */
     --secondary-color: #2c3e50;
@@ -416,12 +415,12 @@ h3.card-title {
 
 .card-info {
     border-color: #bfdbfe;
-    /* border-blue-200 */
+    /* border-primary-200 */
 }
 
 .card-info::before {
     background-color: #3b82f6;
-    /* bg-blue-500 */
+    /* bg-primary-500 */
 }
 
 .card-info .card-header {

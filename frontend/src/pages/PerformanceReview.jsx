@@ -139,7 +139,7 @@ const PerformanceReview = () => {
             <div className="grid grid-cols-4 gap-6 mb-8">
                 <div className="card p-4">
                     <div className="flex items-center gap-4">
-                        <div className="p-3 bg-indigo-50 rounded-full text-indigo-600">
+                        <div className="p-3 bg-primary-50 rounded-full text-primary-600">
                             <FaUser size={20} />
                         </div>
                         <div>
@@ -150,7 +150,7 @@ const PerformanceReview = () => {
                 </div>
                 <div className="card p-4">
                     <div className="flex items-center gap-4">
-                        <div className="p-3 bg-purple-50 rounded-full text-purple-600">
+                        <div className="p-3 bg-secondary-50 rounded-full text-secondary-600">
                             <FaUserTie size={20} />
                         </div>
                         <div>
@@ -222,7 +222,7 @@ const PerformanceReview = () => {
                 {/* Manager Review Section */}
                 <div className="card">
                     <div className="p-4 border-b border-neutral-100 flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-purple-600 text-white flex items-center justify-center font-bold shadow-sm">2</div>
+                        <div className="w-8 h-8 rounded-full bg-secondary-600 text-white flex items-center justify-center font-bold shadow-sm">2</div>
                         <h3 className="font-semibold text-neutral-800">Manager Evaluation</h3>
                     </div>
 

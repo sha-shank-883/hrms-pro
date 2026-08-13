@@ -38,6 +38,7 @@ import Assets from './pages/Assets';
 import AuditLogs from './pages/AuditLogs';
 import SuperAdmin from './pages/SuperAdmin';
 import SuperAdminBiometrics from './pages/SuperAdminBiometrics';
+import WebsiteBuilder from './pages/WebsiteBuilder';
 
 import MobileAppConfig from './pages/MobileAppConfig';
 import DemoRequests from './pages/DemoRequests';
@@ -64,8 +65,11 @@ import ResourcesMarket from './pages/marketing/Resources';
 import BlogPost from './pages/marketing/BlogPost';
 import Privacy from './pages/marketing/Privacy';
 import Terms from './pages/marketing/Terms';
+import CancellationRefund from './pages/marketing/CancellationRefund';
+import ShippingPolicy from './pages/marketing/ShippingPolicy';
 import FAQPage from './pages/marketing/FAQPage';
 import NotFound from './pages/marketing/NotFound';
+import DynamicPage from './pages/marketing/DynamicPage';
 import VsBambooHR from './pages/marketing/VsBambooHR';
 import VsGusto from './pages/marketing/VsGusto';
 import VsRippling from './pages/marketing/VsRippling';
@@ -103,31 +107,28 @@ function App() {
         <NotificationProvider>
           <SettingsProvider>
           <ThemeProvider>
-            <Router>
-              <AuthenticatedChatWidget />
-              <Routes>
-                {/* Public/View-Only Routes */}
-                <Route path="/view/id-card/:id" element={<PublicIDCard />} />
+            <WebsiteBuilderProvider>
+              <Router>
+                <AuthenticatedChatWidget />
+                <Routes>
+                  {/* Public/View-Only Routes */}
+                  <Route path="/view/id-card/:id" element={<PublicIDCard />} />
 
-                <Route path="/login" element={
-                  <AuthRedirect>
-                    <Login />
-                  </AuthRedirect>
-                } />
-                <Route path="/signup" element={
-                  <AuthRedirect>
-                    <Signup />
-                  </AuthRedirect>
-                } />
-                <Route path="/forgot-password" element={<ForgotPassword />} />
-                <Route path="/reset-password/:token" element={<ResetPassword />} />
+                  <Route path="/login" element={
+                    <AuthRedirect>
+                      <Login />
+                    </AuthRedirect>
+                  } />
+                  <Route path="/signup" element={
+                    <AuthRedirect>
+                      <Signup />
+                    </AuthRedirect>
+                  } />
+                  <Route path="/forgot-password" element={<ForgotPassword />} />
+                  <Route path="/reset-password/:token" element={<ResetPassword />} />
 
-                {/* Public Marketing Routes */}
-                <Route element={
-                  <WebsiteBuilderProvider>
-                    <PublicLayout />
-                  </WebsiteBuilderProvider>
-                }>
+                  {/* Public Marketing Routes */}
+                  <Route element={<PublicLayout />}>
                     <Route path="/" element={<Home />} />
                     <Route path="/demo" element={<Demo />} />
                     <Route path="/features" element={<Features />} />
@@ -139,10 +140,14 @@ function App() {
                     <Route path="/blog/:id" element={<BlogPost />} />
                     <Route path="/privacy" element={<Privacy />} />
                     <Route path="/terms" element={<Terms />} />
+                    <Route path="/cancellation-refund" element={<CancellationRefund />} />
+                    <Route path="/refund-policy" element={<CancellationRefund />} />
+                    <Route path="/shipping-policy" element={<ShippingPolicy />} />
                     <Route path="/faq" element={<FAQPage />} />
                     <Route path="/vs-bamboohr" element={<VsBambooHR />} />
                     <Route path="/vs-gusto" element={<VsGusto />} />
                     <Route path="/vs-rippling" element={<VsRippling />} />
+                    <Route path="/:slug" element={<DynamicPage />} />
                   </Route>
                 <Route path="*" element={<NotFound />} />
 
@@ -248,6 +253,7 @@ function App() {
                       <Settings />
                     </ProtectedRoute>
                   } />
+
                   <Route path="email-templates" element={
                     <ProtectedRoute allowedRoles={['admin']} allowedPermissions={['settings:update']}>
                       <EmailTemplates />
@@ -261,6 +267,11 @@ function App() {
                   <Route path="super-admin" element={
                     <SuperAdminRoute>
                       <SuperAdmin />
+                    </SuperAdminRoute>
+                  } />
+                  <Route path="super-admin/website" element={
+                    <SuperAdminRoute>
+                      <WebsiteBuilder />
                     </SuperAdminRoute>
                   } />
                   <Route path="super-admin/biometrics" element={
@@ -302,7 +313,8 @@ function App() {
                 </Route>
               </Routes>
             </Router>
-          </ThemeProvider>
+          </WebsiteBuilderProvider>
+        </ThemeProvider>
           </SettingsProvider>
         </NotificationProvider>
       </SocketProvider>

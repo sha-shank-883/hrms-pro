@@ -328,7 +328,7 @@ const BatchActions = () => {
                           {item.status === 'failed' && (
                             <button onClick={() => handleQueueAction(item.queue_id, 'retry', 'retried')}
                               disabled={actionLoading === `retry-${item.queue_id}`}
-                              className="px-3 py-1.5 bg-blue-100 hover:bg-blue-200 text-blue-700 text-xs font-semibold rounded-lg transition-all disabled:opacity-50 flex items-center gap-1.5">
+                              className="px-3 py-1.5 bg-primary-100 hover:bg-primary-200 text-blue-700 text-xs font-semibold rounded-lg transition-all disabled:opacity-50 flex items-center gap-1.5">
                               {actionLoading === `retry-${item.queue_id}` ? <FaSpinner className="animate-spin" /> : <FaRedo />} Retry
                             </button>
                           )}

@@ -7,7 +7,7 @@ import {
 } from 'react-icons/fa';
 
 const STATUS_COLORS = {
-  open: 'bg-blue-100 text-blue-700',
+  open: 'bg-primary-100 text-blue-700',
   pending: 'bg-yellow-100 text-yellow-700',
   resolved: 'bg-green-100 text-green-700',
   closed: 'bg-gray-100 text-gray-600'
@@ -15,7 +15,7 @@ const STATUS_COLORS = {
 
 const PRIORITY_COLORS = {
   low: 'bg-gray-100 text-gray-600',
-  normal: 'bg-blue-100 text-blue-700',
+  normal: 'bg-primary-100 text-blue-700',
   high: 'bg-orange-100 text-orange-700',
   urgent: 'bg-red-100 text-red-700'
 };
@@ -120,7 +120,7 @@ const SupportTickets = () => {
           </p>
         </div>
         <button onClick={() => setShowCreateModal(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">
+          className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg text-sm font-medium hover:bg-primary-700 transition-colors">
           <FaPlus size={12} /> New Ticket
         </button>
       </div>
@@ -133,11 +133,11 @@ const SupportTickets = () => {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search tickets..."
-            className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:border-blue-400"
+            className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:border-primary-400"
           />
         </div>
         <select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
-          className="border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-400">
+          className="border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-primary-400">
           <option value="">All Status</option>
           <option value="open">Open</option>
           <option value="pending">Pending</option>
@@ -145,7 +145,7 @@ const SupportTickets = () => {
           <option value="closed">Closed</option>
         </select>
         <select value={priorityFilter} onChange={(e) => { setPriorityFilter(e.target.value); setPage(1); }}
-          className="border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-400">
+          className="border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-primary-400">
           <option value="">All Priority</option>
           <option value="low">Low</option>
           <option value="normal">Normal</option>
@@ -206,7 +206,7 @@ const SupportTickets = () => {
                       </td>
                       <td className="px-5 py-4 text-right">
                         <button onClick={() => viewTicket(ticket.ticket_id)}
-                          className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors">
+                          className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-primary-50 rounded transition-colors">
                           <FaEye size={14} />
                         </button>
                       </td>
@@ -250,18 +250,18 @@ const SupportTickets = () => {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Subject *</label>
                 <input type="text" value={newTicket.subject} onChange={e => setNewTicket(p => ({ ...p, subject: e.target.value }))}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-blue-400" required />
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-primary-400" required />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
                 <textarea value={newTicket.description} onChange={e => setNewTicket(p => ({ ...p, description: e.target.value }))}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-blue-400 min-h-[80px]" />
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-primary-400 min-h-[80px]" />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
                   <select value={newTicket.category} onChange={e => setNewTicket(p => ({ ...p, category: e.target.value }))}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-blue-400">
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-primary-400">
                     <option value="general">General</option>
                     <option value="login">Login</option>
                     <option value="attendance">Attendance</option>
@@ -273,7 +273,7 @@ const SupportTickets = () => {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
                   <select value={newTicket.priority} onChange={e => setNewTicket(p => ({ ...p, priority: e.target.value }))}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-blue-400">
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-primary-400">
                     <option value="low">Low</option>
                     <option value="normal">Normal</option>
                     <option value="high">High</option>
@@ -285,7 +285,7 @@ const SupportTickets = () => {
                 <button type="button" onClick={() => setShowCreateModal(false)}
                   className="px-4 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50">Cancel</button>
                 <button type="submit" disabled={submitting || !newTicket.subject}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 disabled:opacity-50">
+                  className="px-4 py-2 bg-primary-600 text-white rounded-lg text-sm hover:bg-primary-700 disabled:opacity-50">
                   {submitting ? <FaSpinner className="animate-spin" /> : 'Create Ticket'}
                 </button>
               </div>
@@ -374,10 +374,10 @@ const SupportTickets = () => {
                       onChange={e => setComment(e.target.value)}
                       onKeyDown={e => e.key === 'Enter' && handleAddComment(selectedTicket.ticket_id)}
                       placeholder="Add a comment..."
-                      className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-400"
+                      className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-primary-400"
                     />
                     <button onClick={() => handleAddComment(selectedTicket.ticket_id)} disabled={!comment.trim()}
-                      className="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 disabled:opacity-50">
+                      className="px-3 py-2 bg-primary-600 text-white rounded-lg text-sm hover:bg-primary-700 disabled:opacity-50">
                       <FaReply size={12} />
                     </button>
                   </div>

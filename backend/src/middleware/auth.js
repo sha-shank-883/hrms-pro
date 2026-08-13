@@ -101,9 +101,22 @@ const authorizeRoleOrPermission = (roles, permission) => {
   };
 };
 
+// Verify requester is Super Admin (tenant_default)
+const requireSuperAdmin = (req, res, next) => {
+  const tenantId = req.headers['x-tenant-id'];
+  if (tenantId === 'tenant_default') {
+    return next();
+  }
+  return res.status(403).json({
+    success: false,
+    message: 'Access denied. Only Super Admin (tenant_default) can perform this action.'
+  });
+};
+
 module.exports = {
   authenticateToken,
   authorizeRole,
   authorizeRoleOrPermission,
+  requireSuperAdmin,
   generateToken,
 };

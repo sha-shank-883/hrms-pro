@@ -345,7 +345,7 @@ The HR Team`,
             Manage email templates for automated communications
           </p>
           <p className="mt-2 text-sm text-gray-500">
-            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 mr-2">
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary-100 text-blue-800 mr-2">
               <FaEnvelope className="mr-1" /> New
             </span>
             Use the envelope icon next to templates to send test emails
@@ -628,7 +628,7 @@ The HR Team`,
                   <p className="mt-1 text-xs text-gray-500">
                     Define required variables for this template in JSON format
                   </p>
-                  <div className="mt-2 p-3 bg-blue-50 rounded-md">
+                  <div className="mt-2 p-3 bg-primary-50 rounded-md">
                     <p className="text-xs text-blue-700">
                       <strong>Tip:</strong> Use variables in your template with double curly braces, e.g., {'{{first_name}}'}. 
                       Insert variables using the "Variables" button in the visual editor toolbar.
@@ -755,7 +755,7 @@ The HR Team`,
                       </button>
                       <button
                         onClick={() => handleSendTest(template)}
-                        className="inline-flex items-center p-2 border border-transparent rounded-full shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                        className="inline-flex items-center p-2 border border-transparent rounded-full shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
                         title="Send Test Email"
                       >
                         <FaEnvelope className="h-4 w-4" />
@@ -777,7 +777,7 @@ The HR Team`,
                         {Object.entries(template.variables).map(([key, value]) => (
                           <span 
                             key={key} 
-                            className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800"
+                            className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-primary-100 text-blue-800"
                           >
                             {key}
                           </span>

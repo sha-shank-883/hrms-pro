@@ -61,7 +61,7 @@ const ForgotPassword = () => {
                                     required
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
-                                    className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                    className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
                                 />
                             </div>
                         </div>
@@ -70,7 +70,7 @@ const ForgotPassword = () => {
                             <button
                                 type="submit"
                                 disabled={loading}
-                                className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 ${loading ? 'opacity-75 cursor-not-allowed' : ''}`}
+                                className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 ${loading ? 'opacity-75 cursor-not-allowed' : ''}`}
                             >
                                 {loading ? 'Sending...' : 'Send Reset Link'}
                             </button>
@@ -90,7 +90,7 @@ const ForgotPassword = () => {
                         </div>
 
                         <div className="mt-6 text-center">
-                            <Link to="/login" className="font-medium text-indigo-600 hover:text-indigo-500">
+                            <Link to="/login" className="font-medium text-primary-600 hover:text-primary-500">
                                 Back to Login
                             </Link>
                         </div>

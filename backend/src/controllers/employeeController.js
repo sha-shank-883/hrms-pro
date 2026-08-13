@@ -161,6 +161,27 @@ const createEmployee = asyncHandler(async (req, res) => {
   if (last_name && last_name.length > 100) throw new ValidationError('Last name must not exceed 100 characters');
   if (position && position.length > 100) throw new ValidationError('Position must not exceed 100 characters');
 
+  // Enforce Tenant Employee Seat Limit
+  const tenantId = req.tenant?.tenant_id;
+  if (tenantId) {
+    const tenantRes = await query(
+      `SELECT employee_limit, subscription_plan FROM shared.tenants WHERE tenant_id = $1`,
+      [tenantId]
+    );
+    if (tenantRes.rows.length > 0) {
+      const seatLimit = tenantRes.rows[0].employee_limit || 15;
+      const countRes = await query(
+        `SELECT COUNT(*) FROM "${tenantId}".employees WHERE status = 'active'`
+      );
+      const activeCount = parseInt(countRes.rows[0].count, 10);
+      if (activeCount >= seatLimit) {
+        throw new ForbiddenError(
+          `Employee seat limit reached (${activeCount}/${seatLimit} seats used). Please scale your employee seats under Settings > Billing & Plan.`
+        );
+      }
+    }
+  }
+
   await transaction(async (client) => {
     const userCheck = await client.query('SELECT * FROM users WHERE email = $1', [email]);
     if (userCheck.rows.length > 0) {

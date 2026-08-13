@@ -1,8 +1,8 @@
 /* Dynamic Design System - Variables meant for dynamic override via JS */
 :root {
   /* Colors - Initial defaults, overridden by JS Settings */
-  --primary-color: #8cc63f;
-  --secondary-color: #2c3e50;
+  --primary-color: var(--colors-primary, #6366f1);
+  --secondary-color: var(--colors-secondary, #8b5cf6);
   --success-color: #10b981;
   --warning-color: #f59e0b;
   --danger-color: #ef4444;

@@ -801,7 +801,7 @@ const Chat = () => {
                     <div
                       key={emp.employee_id}
                       onClick={() => startNewChat(emp)}
-                      className={`p-3 cursor-pointer rounded-lg mb-1 hover:bg-gray-100 ${selectedUser?.employee_id === emp.employee_id ? 'bg-blue-50 border border-primary-500' : 'border border-transparent'}`}
+                      className={`p-3 cursor-pointer rounded-lg mb-1 hover:bg-gray-100 ${selectedUser?.employee_id === emp.employee_id ? 'bg-primary-50 border border-primary-500' : 'border border-transparent'}`}
                     >
                       <div className="font-medium flex items-center gap-2">
                         <div className="relative">
@@ -849,7 +849,7 @@ const Chat = () => {
                 <div
                   key={conv.other_user_id}
                   onClick={() => selectConversation(conv)}
-                  className={`p-4 cursor-pointer border-b border-neutral-100 relative ${selectedUser?.user_id === conv.other_user_id ? 'bg-blue-50 border-l-[3px] border-l-primary-500' : 'bg-white border-l-[3px] border-l-transparent'}`}
+                  className={`p-4 cursor-pointer border-b border-neutral-100 relative ${selectedUser?.user_id === conv.other_user_id ? 'bg-primary-50 border-l-[3px] border-l-primary-500' : 'bg-white border-l-[3px] border-l-transparent'}`}
                 >
                   <div className="flex justify-between items-start mb-2">
                     <div className="font-semibold flex-1 flex items-center gap-2">

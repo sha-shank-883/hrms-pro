@@ -172,7 +172,7 @@ const Performance = () => {
             <div className="grid grid-cols-4 gap-6 mb-8">
                 <div className="card">
                     <div className="flex justify-between items-center mb-4">
-                        <div className="p-3 rounded-lg bg-indigo-50 text-indigo-600">
+                        <div className="p-3 rounded-lg bg-primary-50 text-primary-600">
                             <FaTrophy size={20} />
                         </div>
                         <span className="text-xs font-bold uppercase text-neutral-400 tracking-wider">Total Goals</span>
@@ -184,7 +184,7 @@ const Performance = () => {
                 </div>
                 <div className="card">
                     <div className="flex justify-between items-center mb-4">
-                        <div className="p-3 rounded-lg bg-purple-50 text-purple-600">
+                        <div className="p-3 rounded-lg bg-secondary-50 text-secondary-600">
                             <FaChartLine size={20} />
                         </div>
                         <span className="text-xs font-bold uppercase text-neutral-400 tracking-wider">Avg. Progress</span>
@@ -261,7 +261,7 @@ const Performance = () => {
                                                     ${goal.priority === 'critical' ? 'bg-red-50 text-red-700 border-red-100' :
                                                         goal.priority === 'high' ? 'bg-orange-50 text-orange-700 border-orange-100' :
                                                             goal.priority === 'low' ? 'bg-neutral-50 text-neutral-600 border-neutral-200' :
-                                                                'bg-blue-50 text-blue-700 border-blue-100'}`}>
+                                                                'bg-primary-50 text-blue-700 border-primary-100'}`}>
                                                     {goal.priority || 'Medium'}
                                                 </span>
                                                 <span className="text-xs text-neutral-500 font-medium px-2 py-0.5 bg-neutral-50 rounded border border-neutral-100">
@@ -382,7 +382,7 @@ const Performance = () => {
                                             </td>
                                             <td>
                                                 <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${review.status === 'completed' ? 'bg-green-100 text-green-800' :
-                                                    review.status === 'scheduled' ? 'bg-blue-100 text-blue-800' :
+                                                    review.status === 'scheduled' ? 'bg-primary-100 text-blue-800' :
                                                         'bg-neutral-100 text-neutral-800'
                                                     }`}>
                                                     {review.status.replace(/_/g, ' ')}

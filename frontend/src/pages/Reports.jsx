@@ -279,9 +279,9 @@ const Reports = () => {
             </div>
           </div>
         </div>
-        <div className="card border-l-4 border-l-indigo-500 shadow-sm">
+        <div className="card border-l-4 border-l-primary-500 shadow-sm">
           <div className="card-body p-4 flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600">
+            <div className="w-12 h-12 rounded-xl bg-primary-50 flex items-center justify-center text-primary-600">
               <FaUsers size={20} />
             </div>
             <div>

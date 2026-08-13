@@ -337,7 +337,7 @@ const LiveActivity = () => {
                     </div>
                 </div>
                 <div className="insight-card">
-                    <div className="insight-icon bg-blue-100 text-blue-600">
+                    <div className="insight-icon bg-primary-100 text-blue-600">
                         <FaTasks size={20} />
                     </div>
                     <div className="insight-details">

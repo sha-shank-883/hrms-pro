@@ -73,7 +73,7 @@ const SectionRendererV2 = ({ sections, themeMode, displayImageUrl }) => {
             <div className={`max-w-7xl mx-auto px-6 lg:px-8 ${isSplit ? 'grid lg:grid-cols-2 gap-16 items-center min-h-[80vh] py-20' : 'text-center'}`}>
               <div className={isSplit ? '' : 'max-w-4xl mx-auto'}>
                 {s.badge && (
-                  <motion.div initial="hidden" whileInView="visible" variants={fadeInUp} className="inline-flex items-center gap-2 px-4 py-1.5 bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-100 dark:border-indigo-500/20 rounded-full text-xs font-semibold text-indigo-600 dark:text-indigo-400 mb-8">
+                  <motion.div initial="hidden" whileInView="visible" variants={fadeInUp} className="inline-flex items-center gap-2 px-4 py-1.5 bg-primary-50 dark:bg-primary-500/10 border border-primary-100 dark:border-primary-500/20 rounded-full text-xs font-semibold text-primary-600 dark:text-primary-500 mb-8">
                     {s.badge}
                   </motion.div>
                 )}
@@ -92,7 +92,7 @@ const SectionRendererV2 = ({ sections, themeMode, displayImageUrl }) => {
                     className={`flex flex-wrap gap-4 ${isSplit ? '' : 'justify-center'}`}>
                     {s.cta_primary && (
                       <Link to={s.cta_primary.url || '/demo'}
-                        className="inline-flex items-center gap-2 px-8 py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm rounded-2xl shadow-lg shadow-indigo-500/25 hover:shadow-xl transition-all duration-300">
+                        className="inline-flex items-center gap-2 px-8 py-4 bg-primary-600 hover:bg-primary-700 text-white font-semibold text-sm rounded-2xl shadow-lg shadow-primary-500/25 hover:shadow-xl transition-all duration-300">
                         {s.cta_primary.text || 'Get Started'}
                       </Link>
                     )}
@@ -108,7 +108,7 @@ const SectionRendererV2 = ({ sections, themeMode, displayImageUrl }) => {
               {isSplit && s.image && (
                 <motion.div initial={{ opacity: 0, x: 40 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ duration: 0.8 }}
                   className="relative">
-                  <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/20 to-purple-500/20 rounded-3xl blur-3xl" />
+                  <div className="absolute inset-0 bg-gradient-to-br from-primary-500/20 to-secondary-500/20 rounded-3xl blur-3xl" />
                   <img src={img(s.image)} alt={s.title || ''} className="relative rounded-3xl shadow-2xl w-full" />
                 </motion.div>
               )}
@@ -144,7 +144,7 @@ const SectionRendererV2 = ({ sections, themeMode, displayImageUrl }) => {
                   <motion.div key={item._key || idx} initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeInUp} transition={{ delay: idx * 0.06 }}
                     className="group p-8 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-3xl hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300">
                     {item.icon && (
-                      <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-500/10 flex items-center justify-center mb-5 group-hover:bg-indigo-600 dark:group-hover:bg-indigo-500 transition-all duration-300">
+                      <div className="w-12 h-12 rounded-2xl bg-primary-50 dark:bg-primary-500/10 flex items-center justify-center mb-5 group-hover:bg-primary-600 dark:group-hover:bg-primary-500 transition-all duration-300">
                         {renderIcon(item.icon)}
                       </div>
                     )}
@@ -174,10 +174,10 @@ const SectionRendererV2 = ({ sections, themeMode, displayImageUrl }) => {
                 {plans.map((plan, idx) => (
                   <motion.div key={plan._key || idx} initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeInUp} transition={{ delay: idx * 0.1 }}
                     className={`h-full p-8 rounded-3xl border-2 flex flex-col ${plan.popular
-                      ? 'bg-white dark:bg-gray-900 border-indigo-500 shadow-xl shadow-indigo-500/10 scale-[1.02]'
+                      ? 'bg-white dark:bg-gray-900 border-primary-500 shadow-xl shadow-primary-500/10 scale-[1.02]'
                       : 'bg-white dark:bg-gray-900 border-gray-100 dark:border-gray-800'
                     }`}>
-                    {plan.popular && <span className="inline-block self-start px-3 py-1 bg-indigo-600 text-white text-xs font-bold rounded-lg mb-4">Most Popular</span>}
+                    {plan.popular && <span className="inline-block self-start px-3 py-1 bg-primary-600 text-white text-xs font-bold rounded-lg mb-4">Most Popular</span>}
                     {plan.name && <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-1">{plan.name}</h3>}
                     {plan.desc && <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">{plan.desc}</p>}
                     <div className="flex items-baseline gap-1 mb-6">
@@ -188,7 +188,7 @@ const SectionRendererV2 = ({ sections, themeMode, displayImageUrl }) => {
                       <ul className="space-y-3 mb-8 flex-1">
                         {(Array.isArray(plan.features) ? plan.features : (plan.features || '').split('\n').filter(Boolean)).map((f, fi) => (
                           <li key={fi} className="flex items-start gap-2.5 text-sm text-gray-600 dark:text-gray-400">
-                            <svg className="w-4 h-4 text-indigo-500 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                            <svg className="w-4 h-4 text-primary-500 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
                             {f}
                           </li>
                         ))}
@@ -196,7 +196,7 @@ const SectionRendererV2 = ({ sections, themeMode, displayImageUrl }) => {
                     )}
                     <Link to={plan.cta_url || '/demo'}
                       className={`w-full text-center py-3 rounded-2xl font-bold text-sm transition-all ${plan.popular
-                        ? 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20'
+                        ? 'bg-primary-600 hover:bg-primary-700 text-white shadow-lg shadow-primary-500/20'
                         : 'bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100'
                       }`}>
                       {plan.cta_text || (plan.price === 'Custom' ? 'Contact Sales' : 'Start Free Trial')}
@@ -237,7 +237,7 @@ const SectionRendererV2 = ({ sections, themeMode, displayImageUrl }) => {
                     <div className="flex items-center gap-3 pt-4 border-t border-gray-100 dark:border-gray-800">
                       {item.avatar && <img src={img(item.avatar)} alt={item.author} className="w-10 h-10 rounded-full object-cover" />}
                       {!item.avatar && item.author && (
-                        <div className="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-500/20 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-bold text-sm">
+                        <div className="w-10 h-10 rounded-full bg-primary-100 dark:bg-primary-500/20 flex items-center justify-center text-primary-600 dark:text-primary-500 font-bold text-sm">
                           {item.author.split(' ').map(n => n[0]).join('').slice(0, 2)}
                         </div>
                       )}
@@ -276,20 +276,20 @@ const SectionRendererV2 = ({ sections, themeMode, displayImageUrl }) => {
       case 'stats': {
         const items = s.items || [];
         return (
-          <section key={secId} id={secId} className={`${secClass} py-20 bg-indigo-600 dark:bg-indigo-700`}>
+          <section key={secId} id={secId} className={`${secClass} py-20 bg-primary-600 dark:bg-primary-700`}>
             {sectionStyle}
             <div className="max-w-7xl mx-auto px-6 lg:px-8">
               {(s.title || s.subtitle) && (
                 <div className="text-center mb-12">
                   {s.title && <h2 className="text-3xl font-black text-white">{s.title}</h2>}
-                  {s.subtitle && <p className="text-indigo-200 mt-2">{s.subtitle}</p>}
+                  {s.subtitle && <p className="text-primary-200 mt-2">{s.subtitle}</p>}
                 </div>
               )}
               <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-10 text-center">
                 {items.map((item, idx) => (
                   <motion.div key={item._key || idx} initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeInUp} transition={{ delay: idx * 0.1 }}>
                     {item.value && <p className="text-4xl lg:text-5xl font-black text-white mb-2">{item.value}</p>}
-                    {item.label && <p className="text-indigo-200 text-sm font-medium">{item.label}</p>}
+                    {item.label && <p className="text-primary-200 text-sm font-medium">{item.label}</p>}
                   </motion.div>
                 ))}
               </div>
@@ -305,29 +305,29 @@ const SectionRendererV2 = ({ sections, themeMode, displayImageUrl }) => {
           <section key={secId} id={secId} className={`${secClass} py-24 lg:py-32 bg-white dark:bg-gray-950`}>
             {sectionStyle}
             <div className="max-w-7xl mx-auto px-6 lg:px-8">
-              <div className={`relative overflow-hidden ${isSimple ? 'bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800' : 'bg-gradient-to-br from-indigo-600 via-indigo-700 to-purple-800'} rounded-[2.5rem] p-10 lg:p-20 text-center`}>
+              <div className={`relative overflow-hidden ${isSimple ? 'bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800' : 'bg-gradient-to-br from-primary-600 via-primary-700 to-secondary-800'} rounded-[2.5rem] p-10 lg:p-20 text-center`}>
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,white/10)]" />
                 <div className="relative z-10 max-w-3xl mx-auto">
                   {s.title && <h2 className={`text-3xl lg:text-5xl font-black tracking-tight mb-6 ${isSimple ? 'text-gray-900 dark:text-white' : 'text-white'}`}>{s.title}</h2>}
-                  {s.subtitle && <p className={`text-lg mb-10 max-w-2xl mx-auto ${isSimple ? 'text-gray-500' : 'text-indigo-200'}`}>{s.subtitle}</p>}
+                  {s.subtitle && <p className={`text-lg mb-10 max-w-2xl mx-auto ${isSimple ? 'text-gray-500' : 'text-primary-200'}`}>{s.subtitle}</p>}
                   <div className="flex flex-col sm:flex-row items-center justify-center gap-4 max-w-lg mx-auto">
                     {s.show_input ? (
                       <>
                         <input type="email" placeholder={s.input_placeholder || 'Enter your work email'}
-                          className={`w-full px-5 py-3.5 rounded-2xl text-sm focus:outline-none focus:ring-2 ${isSimple ? 'border border-gray-200 bg-white text-gray-900' : 'bg-white/10 border border-white/20 text-white placeholder:text-indigo-200 focus:ring-white/30'}`} />
+                          className={`w-full px-5 py-3.5 rounded-2xl text-sm focus:outline-none focus:ring-2 ${isSimple ? 'border border-gray-200 bg-white text-gray-900' : 'bg-white/10 border border-white/20 text-white placeholder:text-primary-200 focus:ring-white/30'}`} />
                         <Link to={s.button_url || '/demo'}
-                          className={`w-full sm:w-auto px-8 py-3.5 font-bold text-sm rounded-2xl transition-all flex items-center justify-center gap-2 whitespace-nowrap ${isSimple ? 'bg-indigo-600 text-white hover:bg-indigo-700' : 'bg-white text-indigo-700 hover:bg-indigo-50'}`}>
+                          className={`w-full sm:w-auto px-8 py-3.5 font-bold text-sm rounded-2xl transition-all flex items-center justify-center gap-2 whitespace-nowrap ${isSimple ? 'bg-primary-600 text-white hover:bg-primary-700' : 'bg-white text-primary-700 hover:bg-primary-50'}`}>
                           {s.button_text || 'Get Started'}
                         </Link>
                       </>
                     ) : (
                       <Link to={s.button_url || '/demo'}
-                        className={`px-8 py-3.5 font-bold text-sm rounded-2xl transition-all flex items-center justify-center gap-2 ${isSimple ? 'bg-indigo-600 text-white hover:bg-indigo-700' : 'bg-white text-indigo-700 hover:bg-indigo-50'}`}>
+                        className={`px-8 py-3.5 font-bold text-sm rounded-2xl transition-all flex items-center justify-center gap-2 ${isSimple ? 'bg-primary-600 text-white hover:bg-primary-700' : 'bg-white text-primary-700 hover:bg-primary-50'}`}>
                         {s.button_text || 'Get Started'}
                       </Link>
                     )}
                   </div>
-                  {s.footnote && <p className={`text-xs mt-4 ${isSimple ? 'text-gray-400' : 'text-indigo-300'}`}>{s.footnote}</p>}
+                  {s.footnote && <p className={`text-xs mt-4 ${isSimple ? 'text-gray-400' : 'text-primary-300'}`}>{s.footnote}</p>}
                 </div>
               </div>
             </div>
@@ -342,7 +342,7 @@ const SectionRendererV2 = ({ sections, themeMode, displayImageUrl }) => {
             <div className="max-w-4xl mx-auto px-6 lg:px-8">
               {s.title && <h2 className="text-4xl lg:text-5xl font-black text-gray-900 dark:text-white tracking-tight mb-8">{s.title}</h2>}
               {s.content && (
-                <div className="prose prose-lg max-w-none dark:prose-invert text-gray-700 dark:text-gray-300 prose-headings:font-bold prose-a:text-indigo-600"
+                <div className="prose prose-lg max-w-none dark:prose-invert text-gray-700 dark:text-gray-300 prose-headings:font-bold prose-a:text-primary-600"
                   dangerouslySetInnerHTML={{ __html: s.content }} />
               )}
             </div>
@@ -404,10 +404,10 @@ const SectionRendererV2 = ({ sections, themeMode, displayImageUrl }) => {
                   <motion.div key={item._key || idx} initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeInUp} transition={{ delay: idx * 0.06 }}
                     className="text-center group">
                     {item.avatar ? (
-                      <img src={img(item.avatar)} alt={item.name} className="w-24 h-24 rounded-full object-cover mx-auto mb-4 border-4 border-gray-100 dark:border-gray-800 group-hover:border-indigo-200 transition-all" />
+                      <img src={img(item.avatar)} alt={item.name} className="w-24 h-24 rounded-full object-cover mx-auto mb-4 border-4 border-gray-100 dark:border-gray-800 group-hover:border-primary-200 transition-all" />
                     ) : (
-                      <div className="w-24 h-24 rounded-full bg-indigo-50 dark:bg-indigo-500/10 flex items-center justify-center mx-auto mb-4 border-4 border-gray-100 dark:border-gray-800">
-                        <span className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">{item.name ? item.name.charAt(0) : '?'}</span>
+                      <div className="w-24 h-24 rounded-full bg-primary-50 dark:bg-primary-500/10 flex items-center justify-center mx-auto mb-4 border-4 border-gray-100 dark:border-gray-800">
+                        <span className="text-2xl font-bold text-primary-600 dark:text-primary-500">{item.name ? item.name.charAt(0) : '?'}</span>
                       </div>
                     )}
                     {item.name && <h3 className="font-bold text-gray-900 dark:text-white">{item.name}</h3>}
@@ -423,18 +423,18 @@ const SectionRendererV2 = ({ sections, themeMode, displayImageUrl }) => {
 
       case 'newsletter':
         return (
-          <section key={secId} id={secId} className={`${secClass} py-20 bg-indigo-600`}>
+          <section key={secId} id={secId} className={`${secClass} py-20 bg-primary-600`}>
             {sectionStyle}
             <div className="max-w-7xl mx-auto px-6 lg:px-8">
               <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
                 <div>
                   {s.title && <h3 className="text-white font-bold text-lg">{s.title}</h3>}
-                  {s.subtitle && <p className="text-indigo-200 text-sm mt-1">{s.subtitle}</p>}
+                  {s.subtitle && <p className="text-primary-200 text-sm mt-1">{s.subtitle}</p>}
                 </div>
                 <form className="flex gap-2 w-full sm:w-auto" onSubmit={(e) => e.preventDefault()}>
                   <input type="email" placeholder={s.placeholder || 'your@email.com'}
-                    className="px-4 py-2.5 rounded-xl text-sm bg-white/10 border border-white/20 text-white placeholder:text-indigo-200 focus:outline-none focus:ring-2 focus:ring-white/30 w-full sm:w-64" />
-                  <button type="submit" className="px-5 py-2.5 bg-white text-indigo-700 text-sm font-semibold rounded-xl hover:bg-indigo-50 transition-all shrink-0">
+                    className="px-4 py-2.5 rounded-xl text-sm bg-white/10 border border-white/20 text-white placeholder:text-primary-200 focus:outline-none focus:ring-2 focus:ring-white/30 w-full sm:w-64" />
+                  <button type="submit" className="px-5 py-2.5 bg-white text-primary-700 text-sm font-semibold rounded-xl hover:bg-primary-50 transition-all shrink-0">
                     {s.button_text || 'Subscribe'}
                   </button>
                 </form>
@@ -454,11 +454,11 @@ const SectionRendererV2 = ({ sections, themeMode, displayImageUrl }) => {
               </div>
               <form className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-3xl p-8 space-y-5" onSubmit={(e) => e.preventDefault()}>
                 <div className="grid md:grid-cols-2 gap-5">
-                  <input type="text" placeholder="Your Name" className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-                  <input type="email" placeholder="Your Email" className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                  <input type="text" placeholder="Your Name" className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" />
+                  <input type="email" placeholder="Your Email" className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" />
                 </div>
-                <textarea rows={4} placeholder="Your Message" className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-                <button type="submit" className="px-8 py-3 bg-indigo-600 text-white font-semibold text-sm rounded-xl hover:bg-indigo-700 transition-all">
+                <textarea rows={4} placeholder="Your Message" className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" />
+                <button type="submit" className="px-8 py-3 bg-primary-600 text-white font-semibold text-sm rounded-xl hover:bg-primary-700 transition-all">
                   {s.button_text || 'Send Message'}
                 </button>
               </form>
@@ -485,7 +485,7 @@ const SectionRendererV2 = ({ sections, themeMode, displayImageUrl }) => {
                       <div className="p-6">
                         {post.title && <h3 className="font-bold text-gray-900 dark:text-white mb-2">{post.title}</h3>}
                         {post.excerpt && <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">{post.excerpt}</p>}
-                        <Link to={`/blog/${post.slug || post.id}`} className="text-sm font-semibold text-indigo-600 dark:text-indigo-400">Read More</Link>
+                        <Link to={`/blog/${post.slug || post.id}`} className="text-sm font-semibold text-primary-600 dark:text-primary-500">Read More</Link>
                       </div>
                     </motion.div>
                   ))}
@@ -562,7 +562,7 @@ const SectionRendererV2 = ({ sections, themeMode, displayImageUrl }) => {
               <div className="flex flex-wrap justify-center gap-2 mb-10">
                 {items.map((item, idx) => (
                   <button key={item._key || idx} onClick={() => setActiveTab(idx)}
-                    className={`px-6 py-3 rounded-xl text-sm font-semibold transition-all ${activeTab === idx ? 'bg-indigo-600 text-white shadow-md' : 'bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-100'}`}>
+                    className={`px-6 py-3 rounded-xl text-sm font-semibold transition-all ${activeTab === idx ? 'bg-primary-600 text-white shadow-md' : 'bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-100'}`}>
                     {item.tab || `Tab ${idx + 1}`}
                   </button>
                 ))}
@@ -610,7 +610,7 @@ const SectionRendererV2 = ({ sections, themeMode, displayImageUrl }) => {
                 {items.map((item, idx) => (
                   item.logo_url
                     ? <img key={idx} src={img(item.logo_url)} alt={item.name} className="h-10 w-auto grayscale hover:grayscale-0 transition-all" />
-                    : <span key={idx} className="px-5 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-xl text-sm font-medium text-gray-600 dark:text-gray-400 hover:border-indigo-200 hover:text-indigo-600 transition-all">
+                    : <span key={idx} className="px-5 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-xl text-sm font-medium text-gray-600 dark:text-gray-400 hover:border-primary-200 hover:text-primary-600 transition-all">
                       {item.name}
                     </span>
                 ))}
@@ -637,9 +637,9 @@ const SectionRendererV2 = ({ sections, themeMode, displayImageUrl }) => {
                 {items.map((item, idx) => (
                   <motion.div key={item._key || idx} initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeInUp} transition={{ delay: idx * 0.1 }}
                     className="relative pl-20 pb-12 last:pb-0">
-                    <div className="absolute left-5 top-1 w-6 h-6 bg-indigo-600 rounded-full border-4 border-white dark:border-gray-900 shadow" />
+                    <div className="absolute left-5 top-1 w-6 h-6 bg-primary-600 rounded-full border-4 border-white dark:border-gray-900 shadow" />
                     <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6 hover:shadow-md transition-all">
-                      {item.year && <span className="text-xs font-bold text-indigo-600 uppercase tracking-wider">{item.year}</span>}
+                      {item.year && <span className="text-xs font-bold text-primary-600 uppercase tracking-wider">{item.year}</span>}
                       {item.event && <h3 className="text-lg font-bold text-gray-900 dark:text-white mt-1">{item.event}</h3>}
                       {item.desc && <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">{item.desc}</p>}
                     </div>
@@ -653,7 +653,7 @@ const SectionRendererV2 = ({ sections, themeMode, displayImageUrl }) => {
 
       case 'banner':
         return (
-          <div key={secId} id={secId} className={`${secClass} bg-indigo-600 text-white`}>
+          <div key={secId} id={secId} className={`${secClass} bg-primary-600 text-white`}>
             {sectionStyle}
             <div className="max-w-7xl mx-auto px-6 lg:px-8 py-3 flex items-center justify-center gap-4 text-sm">
               <span>{s.text || ''}</span>

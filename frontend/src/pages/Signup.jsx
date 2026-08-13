@@ -163,7 +163,7 @@ const Signup = () => {
       </div>
 
       {/* Right Feature Highlight Section */}
-      <div className="hidden lg:flex relative w-0 flex-1 bg-gradient-to-br from-primary-600 to-purple-700 text-white flex-col justify-center items-center overflow-hidden">
+      <div className="hidden lg:flex relative w-0 flex-1 bg-gradient-to-br from-primary-600 to-secondary-700 text-white flex-col justify-center items-center overflow-hidden">
         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
         <div className="relative z-10 p-12 max-w-2xl w-full">
           <h3 className="text-3xl font-extrabold mb-6">Everything you need to grow</h3>

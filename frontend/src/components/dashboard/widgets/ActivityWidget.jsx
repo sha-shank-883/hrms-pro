@@ -62,7 +62,7 @@ const ActivityWidget = memo(({
                         time: t.created_at,
                         status: t.status,
                         icon: <FaTasks />,
-                        color: 'bg-blue-100 text-blue-600'
+                        color: 'bg-primary-100 text-blue-600'
                     })));
                 }
 
@@ -126,7 +126,7 @@ const ActivityWidget = memo(({
                         message: notif.message,
                         time: new Date().toISOString(),
                         icon: <FaTasks />,
-                        color: 'bg-blue-100 text-blue-600'
+                        color: 'bg-primary-100 text-blue-600'
                     };
                     break;
                 case 'TASK_UPDATE':
@@ -138,7 +138,7 @@ const ActivityWidget = memo(({
                         message: notif.message,
                         time: new Date().toISOString(),
                         icon: <FaInfoCircle />,
-                        color: 'bg-indigo-100 text-indigo-600'
+                        color: 'bg-primary-100 text-primary-600'
                     };
                     break;
                 case 'ATTENDANCE_LOG':
@@ -245,7 +245,7 @@ const ActivityWidget = memo(({
                 </button>
                 <button
                     onClick={() => setFilter('tasks')}
-                    className={`text-xs font-medium px-3 py-1.5 rounded-lg transition-colors ${filter === 'tasks' ? 'bg-blue-500 text-white shadow-sm' : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'}`}
+                    className={`text-xs font-medium px-3 py-1.5 rounded-lg transition-colors ${filter === 'tasks' ? 'bg-primary-500 text-white shadow-sm' : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'}`}
                 >
                     Tasks
                 </button>

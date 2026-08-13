@@ -40,6 +40,8 @@ This document outlines a systematic plan to test every icon, button, navigation 
 | 1.3.2 | Request with tenant header routes to correct schema | Data isolated per tenant |
 | 1.3.3 | Tenant info endpoint returns correct tenant context | Tenant ID + name match |
 | 1.3.4 | Tenant A cannot access Tenant B data | Cross-tenant isolation |
+| 1.3.5 | `POST /api/tenants/:tenantId/impersonate` as Super Admin | Returns JWT token for target tenant admin [PASSED] |
+| 1.3.6 | `POST /api/tenants/:tenantId/impersonate` as non-Super Admin | Returns HTTP 403 Forbidden [PASSED] |
 
 ### 1.4 Module CRUD APIs (Test each endpoint for every module)
 
@@ -1590,4 +1592,33 @@ See `test-cases/README.md` for full details.
 | 8.1.9 | Verify each theme `parameters` JSONB has all design groups | Colors, typography, radii, shadows, spacing, mode, branding keys present |
 | 8.1.10 | Verify `website_global_settings` row 1 linked to active theme | `active_theme_id` = the active theme's id; `theme_mode_auto` = true |
 
-### Updated Total Test Coverage: **4,961 test cases** (up from 4,951)
+### 8.2 Themes & Content Labels Backend API (Phase 2)
+| # | Test Case | Expected Result |
+|---|---|---|
+| 8.2.1 | `GET /api/website/themes/active` | Public endpoint returns active theme parameters JSONB |
+| 8.2.2 | `GET /api/website/labels/public` | Public endpoint returns key-value map of content dictionary |
+| 8.2.3 | `POST /api/website/themes/:id/activate` | Admin endpoint activates specified theme and deactivates others |
+| 8.2.4 | `POST /api/website/labels/bulk` | Admin endpoint updates multiple dictionary labels in single transaction |
+| 8.2.5 | Unauthenticated request to `/api/website/themes` | Returns 401 Unauthorized |
+| 8.2.6 | Employee role request to `/api/website/labels/bulk` | Returns 403 Forbidden |
+
+### 8.3 Website Builder UI & Section Manager (Phase 3)
+| # | Test Case | Expected Result |
+|---|---|---|
+| 8.3.1 | Admin access `/website-builder` | Renders Website Builder page with 5 tabs (Pages, Sections, Themes, Labels, Global Settings) |
+| 8.3.2 | Create new custom page | Page appears in list with slug and draft/published status |
+| 8.3.3 | Add section to page sequence | Section component added to page sequence with JSON parameters |
+| 8.3.4 | Reorder section sequence | Sections reordered up/down with live preview order |
+| 8.3.5 | Activate design theme in UI | Swatch updates and theme applied live |
+| 8.3.6 | Bulk edit content dictionary labels | Inline edits saved and reflected across website |
+
+### 8.4 Public Website Dynamic Rendering (Phase 4)
+| # | Test Case | Expected Result |
+|---|---|---|
+| 8.4.1 | Navigate to `/` | Public layout reads logo, company name, nav links, and labels dynamically |
+| 8.4.2 | Navigate to `/:slug` | DynamicPage renders published custom sections via SectionRendererV2 |
+| 8.4.3 | Theme CSS variables injection | CSS variables (`--colors-primary`, `--radii-radius-md`) injected into `:root` |
+| 8.4.4 | Unpublished page request | Displays styled 404 page |
+
+### Updated Total Test Coverage: **4,980 test cases** (up from 4,961)
+

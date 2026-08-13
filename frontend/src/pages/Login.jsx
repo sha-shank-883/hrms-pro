@@ -23,6 +23,8 @@ const Login = () => {
     const savedTenantId = localStorage.getItem('tenant_id');
     if (savedTenantId) {
       setTenantId(savedTenantId);
+    } else {
+      setTenantId('tenant_default');
     }
   }, [isAuthenticated, navigate]);
 
@@ -32,9 +34,8 @@ const Login = () => {
     setLoading(true);
 
     try {
-      if (tenantId) {
-        localStorage.setItem('tenant_id', tenantId);
-      }
+      const activeTenantId = tenantId.trim() || 'tenant_default';
+      localStorage.setItem('tenant_id', activeTenantId);
 
       if (requires2FA) {
         await authService.verify2FALogin(tempUserId, otp);

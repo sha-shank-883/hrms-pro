@@ -189,7 +189,7 @@ const MyPayslips = () => {
           { label: 'Total', value: stats.total, color: 'text-gray-900', bg: 'bg-white' },
           { label: 'Paid', value: stats.paid, color: 'text-green-600', bg: 'bg-green-50' },
           { label: 'Pending', value: stats.pending, color: 'text-amber-600', bg: 'bg-amber-50' },
-          { label: 'Archived', value: stats.archived, color: 'text-purple-600', bg: 'bg-purple-50' },
+          { label: 'Archived', value: stats.archived, color: 'text-secondary-600', bg: 'bg-secondary-50' },
           { label: 'Total Net', value: currency + stats.total_net.toLocaleString(), color: 'text-primary-600', bg: 'bg-primary-50' }
         ].map(stat => (
           <div key={stat.label} className={`${stat.bg} rounded-2xl border border-gray-100 shadow-sm p-4 text-center`}>
@@ -257,7 +257,7 @@ const MyPayslips = () => {
                 onClick={() => viewPayslip(payslip)}>
                 <div className={`absolute top-0 right-0 w-1 h-full rounded-r-xl ${payslip.payment_status === 'paid' ? 'bg-green-500' : 'bg-amber-500'}`}></div>
                 {payslip.is_archived && (
-                  <div className="absolute top-3 left-3 px-2 py-0.5 bg-purple-100 text-purple-700 text-xs font-semibold rounded-lg flex items-center gap-1">
+                  <div className="absolute top-3 left-3 px-2 py-0.5 bg-secondary-100 text-secondary-700 text-xs font-semibold rounded-lg flex items-center gap-1">
                     <FaArchive /> Archived
                   </div>
                 )}

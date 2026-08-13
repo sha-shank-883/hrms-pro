@@ -175,7 +175,7 @@ const SectionBuilder = ({ sections = [], onChange }) => {
               </div>
 
               {section.type === 'VideoHero' && (
-                <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
+                <div className="bg-primary-50 p-4 rounded-xl border border-primary-100">
                   <label className="block text-xs font-bold text-blue-600 uppercase tracking-wider mb-2">Video Settings</label>
                   <input type="text" className="w-full form-input text-sm bg-white" placeholder="Video URL (Direct link or YouTube/Vimeo)" value={section.videoUrl || ''} onChange={e => updateSection(index, 'videoUrl', e.target.value)} />
                 </div>
@@ -258,10 +258,10 @@ const SectionBuilder = ({ sections = [], onChange }) => {
                     <label className="text-xs font-bold text-neutral-700">HTML Code</label>
                   </div>
                   <textarea
-                    className="w-full font-mono text-sm bg-neutral-950 text-indigo-400 border border-neutral-800 rounded-xl p-5 min-h-[250px] focus:outline-none"
+                    className="w-full font-mono text-sm bg-neutral-950 text-primary-400 border border-neutral-800 rounded-xl p-5 min-h-[250px] focus:outline-none"
                     value={section.code || ''}
                     onChange={(e) => updateSection(index, 'code', e.target.value)}
-                    placeholder={`<div class="p-10 bg-gradient-to-r from-primary-500 to-indigo-600 rounded-3xl">\n  <h3 class="text-white">Custom Block</h3>\n</div>`}
+                    placeholder={`<div class="p-10 bg-gradient-to-r from-primary-500 to-primary-600 rounded-3xl">\n  <h3 class="text-white">Custom Block</h3>\n</div>`}
                     spellCheck={false}
                   />
                 </div>

@@ -27,7 +27,7 @@ const BlogPost = () => {
           <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.4 }}>
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">Article Not Found</h1>
             <p className="text-gray-500 dark:text-gray-400 mb-8">The article you are looking for does not exist or has been removed.</p>
-            <Link to="/blog" className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm rounded-xl transition-all">
+            <Link to="/blog" className="px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white font-semibold text-sm rounded-xl transition-all">
               Back to Blog
             </Link>
           </motion.div>
@@ -68,7 +68,7 @@ const BlogPost = () => {
 
         <div className="max-w-4xl mx-auto px-6 lg:px-8 py-12">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.1 }}
-            className="inline-flex px-3 py-1 rounded-full bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 text-xs font-semibold mb-4"
+            className="inline-flex px-3 py-1 rounded-full bg-primary-50 dark:bg-primary-500/10 text-primary-600 dark:text-primary-500 text-xs font-semibold mb-4"
           >
             {post.category}
           </motion.div>
@@ -119,7 +119,7 @@ const BlogPost = () => {
 
         <div className="max-w-3xl mx-auto px-6 lg:px-8 pb-16">
           <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.3 }}
-            className="prose prose-gray dark:prose-invert prose-headings:text-gray-900 dark:prose-headings:text-white prose-headings:font-bold prose-a:text-indigo-600 dark:prose-a:text-indigo-400 prose-blockquote:border-l-indigo-500 prose-blockquote:bg-gray-50 dark:prose-blockquote:bg-gray-800/50 prose-blockquote:py-4 prose-blockquote:px-6 prose-blockquote:rounded-r-xl prose-blockquote:not-italic prose-blockquote:text-gray-700 dark:prose-blockquote:text-gray-300 prose-li:marker:text-indigo-500 max-w-none"
+            className="prose prose-gray dark:prose-invert prose-headings:text-gray-900 dark:prose-headings:text-white prose-headings:font-bold prose-a:text-primary-600 dark:prose-a:text-primary-400 prose-blockquote:border-l-primary-500 prose-blockquote:bg-gray-50 dark:prose-blockquote:bg-gray-800/50 prose-blockquote:py-4 prose-blockquote:px-6 prose-blockquote:rounded-r-xl prose-blockquote:not-italic prose-blockquote:text-gray-700 dark:prose-blockquote:text-gray-300 prose-li:marker:text-primary-500 max-w-none"
             dangerouslySetInnerHTML={{ __html: post.content }}
           />
 
@@ -157,7 +157,7 @@ const BlogPost = () => {
                        navigator.clipboard.writeText(url);
                      }
                    }}
-                   className="w-9 h-9 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-500 dark:text-gray-400 hover:bg-indigo-50 dark:hover:bg-indigo-500/20 hover:text-indigo-600 dark:hover:text-indigo-400 transition-all"
+                   className="w-9 h-9 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-500 dark:text-gray-400 hover:bg-primary-50 dark:hover:bg-primary-500/20 hover:text-primary-600 dark:hover:text-primary-400 transition-all"
                  >
                    {platform === 'twitter' && (
                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M24 4.557c-.883.392-1.832.656-2.828.775 1.017-.609 1.798-1.574 2.165-2.724-.951.564-2.005.974-3.127 1.195-.897-.957-2.178-1.555-3.594-1.555-3.179 0-5.515 2.966-4.797 6.045-4.091-.205-7.719-2.165-10.148-5.144-1.29 2.213-.669 5.108 1.523 6.574-.806-.026-1.566-.247-2.229-.616-.054 2.281 1.581 4.415 3.949 4.89-.693.188-1.452.232-2.224.084.626 1.956 2.444 3.379 4.6 3.419-2.07 1.623-4.678 2.348-7.29 2.04 2.179 1.397 4.768 2.212 7.548 2.212 9.142 0 14.307-7.721 13.995-14.646.962-.695 1.797-1.562 2.457-2.549z" /></svg>
@@ -192,8 +192,8 @@ const BlogPost = () => {
                         />
                       </div>
                       <div className="p-6">
-                        <span className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 uppercase tracking-widest">{related.category}</span>
-                        <h4 className="text-lg font-bold text-gray-900 dark:text-white mt-2 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors line-clamp-2">
+                        <span className="text-xs font-semibold text-primary-600 dark:text-primary-500 uppercase tracking-widest">{related.category}</span>
+                        <h4 className="text-lg font-bold text-gray-900 dark:text-white mt-2 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors line-clamp-2">
                           {related.title}
                         </h4>
                       </div>

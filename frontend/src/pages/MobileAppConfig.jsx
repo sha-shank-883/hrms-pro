@@ -62,7 +62,7 @@ const MobileAppConfig = () => {
     if (loading) {
         return (
             <div className="flex items-center justify-center h-64">
-                <ArrowPathIcon className="w-8 h-8 text-indigo-500 animate-spin" />
+                <ArrowPathIcon className="w-8 h-8 text-primary-500 animate-spin" />
             </div>
         );
     }
@@ -76,7 +76,7 @@ const MobileAppConfig = () => {
             <div className="page-header mb-8">
                 <div>
                     <h1 className="page-title flex items-center">
-                        <DevicePhoneMobileIcon className="w-8 h-8 mr-3 text-indigo-600" />
+                        <DevicePhoneMobileIcon className="w-8 h-8 mr-3 text-primary-600" />
                         Mobile App Configurator
                     </h1>
                     <p className="mt-1 text-neutral-600">Centralized management for HRMS Pro Mobile interface and features</p>
@@ -102,7 +102,7 @@ const MobileAppConfig = () => {
                 <div className="card overflow-hidden">
                     <div className="p-6 border-b border-neutral-100 bg-neutral-50/50 flex items-center justify-between">
                         <div className="flex items-center">
-                            <PaintBrushIcon className="w-6 h-6 text-indigo-500 mr-3" />
+                            <PaintBrushIcon className="w-6 h-6 text-primary-500 mr-3" />
                             <h2 className="text-lg font-bold text-neutral-800">Interface & Branding</h2>
                         </div>
                     </div>
@@ -111,7 +111,7 @@ const MobileAppConfig = () => {
                             <label className="form-label block text-sm font-semibold text-neutral-700 mb-2">Application Name</label>
                             <input
                                 type="text"
-                                className="form-input w-full bg-white border-neutral-200 focus:ring-indigo-500"
+                                className="form-input w-full bg-white border-neutral-200 focus:ring-primary-500"
                                 value={branding.appName || ''}
                                 onChange={(e) => {
                                     const newVal = { ...branding, appName: e.target.value };
@@ -205,7 +205,7 @@ const MobileAppConfig = () => {
                                             handleUpdate('mobile_features', newVal);
                                         }}
                                     />
-                                    <div className="w-11 h-6 bg-neutral-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                                    <div className="w-11 h-6 bg-neutral-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
                                 </label>
                             </div>
                         ))}
@@ -269,7 +269,7 @@ const MobileAppConfig = () => {
                                             }}
                                             onBlur={(e) => handleUpdate('mobile_maintenance', { ...maintenance, minAppVersion: e.target.value })}
                                         />
-                                        <div className="ml-3 p-2 bg-indigo-50 rounded-lg text-indigo-600">
+                                        <div className="ml-3 p-2 bg-primary-50 rounded-lg text-primary-600">
                                             <InformationCircleIcon className="w-5 h-5" />
                                         </div>
                                     </div>

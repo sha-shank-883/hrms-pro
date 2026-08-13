@@ -104,7 +104,7 @@ const SupportDashboard = () => {
           <Icon className="text-white text-lg" />
         </div>
       </div>
-      {treend !== undefined && (
+      {trend !== undefined && (
         <div className={`flex items-center gap-1 mt-3 text-xs ${trend >= 0 ? 'text-green-600' : 'text-red-600'}`}>
           {trend >= 0 ? <FaArrowUp size={10} /> : <FaArrowDown size={10} />}
           <span>{Math.abs(trend)}% from last week</span>
@@ -136,8 +136,8 @@ const SupportDashboard = () => {
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <StatCard icon={FaTicketAlt} label="Open Tickets" value={dashboard.tickets?.open} color="bg-orange-500" sublabel={`${dashboard.tickets?.urgent || 0} urgent`} />
-            <StatCard icon={FaComments} label="Active Chats" value={dashboard.chats?.active_chats} color="bg-blue-500" sublabel={`${dashboard.chats?.waiting_chats || 0} waiting`} />
-            <StatCard icon={FaRobot} label="AI Conversations" value={dashboard.chats?.ai_chats} color="bg-purple-500" sublabel={`${dashboard.ai?.total_queries || 0} queries this week`} />
+            <StatCard icon={FaComments} label="Active Chats" value={dashboard.chats?.active_chats} color="bg-primary-500" sublabel={`${dashboard.chats?.waiting_chats || 0} waiting`} />
+            <StatCard icon={FaRobot} label="AI Conversations" value={dashboard.chats?.ai_chats} color="bg-secondary-500" sublabel={`${dashboard.ai?.total_queries || 0} queries this week`} />
             <StatCard icon={FaHeadset} label="Available Agents" value={dashboard.tickets?.available_agents} color="bg-green-500" sublabel={`${dashboard.tickets?.busy_agents || 0} busy`} />
           </div>
 
@@ -222,10 +222,10 @@ const SupportDashboard = () => {
                       value={newAgentEmail}
                       onChange={(e) => setNewAgentEmail(e.target.value)}
                       placeholder="Add agent by email..."
-                      className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-400"
+                      className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-primary-400"
                     />
                     <button onClick={handleAddAgent} disabled={addingAgent || !newAgentEmail}
-                      className="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 disabled:opacity-50">
+                      className="px-3 py-2 bg-primary-600 text-white rounded-lg text-sm hover:bg-primary-700 disabled:opacity-50">
                       {addingAgent ? <FaSpinner className="animate-spin" /> : <FaUserPlus />}
                     </button>
                   </div>
@@ -268,7 +268,7 @@ const SupportDashboard = () => {
                       <span className="font-medium">{dashboard.ai?.avg_confidence ? (dashboard.ai.avg_confidence * 100).toFixed(1) : 0}%</span>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div className="bg-blue-500 h-2 rounded-full transition-all duration-500"
+                      <div className="bg-primary-500 h-2 rounded-full transition-all duration-500"
                         style={{ width: `${dashboard.ai?.avg_confidence ? dashboard.ai.avg_confidence * 100 : 0}%` }} />
                     </div>
                   </div>

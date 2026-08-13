@@ -10,7 +10,7 @@ const ChartToggle = memo(({ id, currentType, onToggle }) => {
     return (
         <button
             onClick={() => onToggle(id)}
-            className="p-2 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-indigo-600 transition-colors"
+            className="p-2 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-primary-600 transition-colors"
             title="Switch View"
         >
             <Icon />

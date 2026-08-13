@@ -655,7 +655,7 @@ const Leaves = () => {
                         <tr key={leave.leave_id}>
                           <td>
                             <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-800 flex items-center justify-center font-semibold text-sm">
+                              <div className="w-8 h-8 rounded-full bg-primary-100 text-primary-800 flex items-center justify-center font-semibold text-sm">
                                 {leave.employee_name.charAt(0)}
                               </div>
                               <div className="font-semibold text-neutral-800">{leave.employee_name}</div>
@@ -809,7 +809,7 @@ const Leaves = () => {
                 {individualBalance && (
                   <div>
                     <div className="card border-l-4 border-l-primary-600 mb-8 p-6 flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-full bg-indigo-100 text-indigo-800 flex items-center justify-center font-semibold text-lg">
+                      <div className="w-12 h-12 rounded-full bg-primary-100 text-primary-800 flex items-center justify-center font-semibold text-lg">
                         {individualBalance.employee.first_name.charAt(0)}
                       </div>
                       <div>
@@ -850,7 +850,7 @@ const Leaves = () => {
                       </div>
                       <div className="card p-5">
                         <div className="flex justify-between items-center mb-4">
-                          <div className="p-2 bg-indigo-50 text-indigo-600 rounded-lg">
+                          <div className="p-2 bg-primary-50 text-primary-600 rounded-lg">
                             <FaBalanceScale size={20} />
                           </div>
                           <span className="text-[10px] font-bold tracking-wider text-neutral-400 uppercase">Remaining</span>
@@ -942,7 +942,7 @@ const Leaves = () => {
                         <tr key={item.employee.employee_id}>
                           <td>
                             <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-800 flex items-center justify-center font-semibold text-xs">
+                              <div className="w-8 h-8 rounded-full bg-primary-100 text-primary-800 flex items-center justify-center font-semibold text-xs">
                                 {item.employee.first_name.charAt(0)}
                               </div>
                               <div className="font-medium text-neutral-900">{item.employee.first_name} {item.employee.last_name}</div>

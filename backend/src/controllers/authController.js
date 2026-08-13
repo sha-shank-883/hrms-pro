@@ -217,9 +217,33 @@ const getProfile = asyncHandler(async (req, res) => {
     throw new NotFoundError('User not found');
   }
 
+  const profileData = result.rows[0];
+
+  // Attach subscription info from shared.tenants if tenant header present
+  try {
+    const tenantId = req.headers['x-tenant-id'];
+    if (tenantId) {
+      const tenantResult = await query(
+        'SELECT subscription_plan, subscription_expiry FROM shared.tenants WHERE tenant_id = $1',
+        [tenantId]
+      );
+      if (tenantResult.rows.length > 0) {
+        const { subscription_plan, subscription_expiry } = tenantResult.rows[0];
+        const now = new Date();
+        const expiry = subscription_expiry ? new Date(subscription_expiry) : null;
+        profileData.subscription_plan = subscription_plan || 'free';
+        profileData.subscription_expiry = subscription_expiry;
+        profileData.subscription_expired = expiry ? expiry < now : false;
+      }
+    }
+  } catch (subErr) {
+    // Non-critical — don't fail the profile request
+    console.error('Failed to fetch subscription info:', subErr.message);
+  }
+
   res.json({
     success: true,
-    data: result.rows[0],
+    data: profileData,
   });
 });
 

@@ -130,7 +130,7 @@ const Onboarding = () => {
                     <div className="grid grid-cols-4 gap-6 mb-8">
                         <div className="card">
                             <div className="flex justify-between items-center mb-4">
-                                <div className={`p-3 rounded-lg ${isOffboarding ? 'bg-red-50 text-red-600' : 'bg-indigo-50 text-indigo-600'}`}>
+                                <div className={`p-3 rounded-lg ${isOffboarding ? 'bg-red-50 text-red-600' : 'bg-primary-50 text-primary-600'}`}>
                                     {isOffboarding ? <FaUserMinus size={20} /> : <FaUserPlus size={20} />}
                                 </div>
                                 <span className="text-xs font-bold uppercase text-neutral-400 tracking-wider">
@@ -206,7 +206,7 @@ const Onboarding = () => {
                                             <div className="flex items-start gap-5">
                                                 <div className={`p-4 rounded-2xl flex-shrink-0 transition-colors ${task.status === 'completed'
                                                         ? 'bg-emerald-100 text-emerald-600'
-                                                        : 'bg-indigo-50 text-indigo-600'
+                                                        : 'bg-primary-50 text-primary-600'
                                                     }`}>
                                                     <FaClipboardList size={24} />
                                                 </div>
@@ -296,7 +296,7 @@ const Onboarding = () => {
                 <div className="space-y-6">
                     {/* Progress Circle (Only for Employee) */}
                     {user.role === 'employee' && (
-                        <div className="card text-center p-6 bg-gradient-to-br from-indigo-600 to-indigo-800 text-white border-0 shadow-xl shadow-indigo-100">
+                        <div className="card text-center p-6 bg-gradient-to-br from-primary-600 to-primary-800 text-white border-0 shadow-xl shadow-primary-100">
                             <h3 className="text-lg font-bold mb-4">Your Progress</h3>
                             <div className="relative w-32 h-32 mx-auto mb-4">
                                 <svg className="w-full h-full transform -rotate-90">
@@ -327,7 +327,7 @@ const Onboarding = () => {
                                     </span>
                                 </div>
                             </div>
-                            <p className="text-indigo-100 text-sm font-medium">
+                            <p className="text-primary-100 text-sm font-medium">
                                 {stats.pendingTasks} tasks remaining
                             </p>
                         </div>
@@ -345,7 +345,7 @@ const Onboarding = () => {
                             <div className="p-2 space-y-1">
                                 {newHires.map(emp => (
                                     <div key={emp.employee_id} className="flex items-center gap-3 p-3 rounded-xl hover:bg-neutral-50 transition-colors cursor-pointer group">
-                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm shadow-sm ${isOffboarding ? 'bg-red-50 text-red-600' : 'bg-indigo-50 text-indigo-600'
+                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm shadow-sm ${isOffboarding ? 'bg-red-50 text-red-600' : 'bg-primary-50 text-primary-600'
                                             }`}>
                                             {emp.first_name.charAt(0)}{emp.last_name.charAt(0)}
                                         </div>

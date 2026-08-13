@@ -3,6 +3,7 @@ import { Outlet, Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bars3Icon, XMarkIcon, ChevronDownIcon, ArrowRightIcon, ShieldCheckIcon, StarIcon, PlusIcon, MinusIcon, MapPinIcon, SunIcon, MoonIcon } from '@heroicons/react/24/outline';
 import { useTheme } from '../../context/ThemeContext';
+import { useWebsiteBuilder } from '../../contexts/WebsiteBuilderContext';
 
 const SocialIcon = ({ platform }) => {
   if (platform === 'linkedin') {
@@ -77,18 +78,19 @@ const footerColumns = [
     { label: 'Contact', url: '/contact' },
     { label: 'Partners', url: '#' },
   ]},
-  { title: 'Legal', links: [
+  { title: 'Legal & Policies', links: [
+    { label: 'Terms & Conditions', url: '/terms' },
     { label: 'Privacy Policy', url: '/privacy' },
-    { label: 'Terms of Service', url: '/terms' },
-    { label: 'GDPR', url: '/privacy' },
-    { label: 'SOC 2', url: '/privacy' },
-    { label: 'Data Processing', url: '/privacy' },
+    { label: 'Cancellation & Refund', url: '/cancellation-refund' },
+    { label: 'Shipping Policy', url: '/shipping-policy' },
+    { label: 'Pricing & Plans', url: '/pricing' },
+    { label: 'Contact Us', url: '/contact' },
   ]},
   { title: 'Support', links: [
-    { label: 'Help Center', url: '/faq' },
-    { label: 'Community', url: '#' },
+    { label: 'Help Center & FAQ', url: '/faq' },
     { label: 'Contact Support', url: '/contact' },
-    { label: 'System Status', url: '#' },
+    { label: 'Documentation', url: '/resources' },
+    { label: 'Security & Compliance', url: '/privacy' },
   ]},
 ];
 
@@ -98,6 +100,7 @@ const PublicLayout = () => {
   const [openDropdown, setOpenDropdown] = useState(null);
   const [mobileExpanded, setMobileExpanded] = useState({});
   const { dark, toggle: toggleTheme } = useTheme();
+  const { settings, displayImageUrl, t, loading } = useWebsiteBuilder();
   const dropdownRef = useRef(null);
   const location = useLocation();
 
@@ -155,7 +158,7 @@ const PublicLayout = () => {
                 <div className="space-y-0.5">
                   {(col.links || []).map((link, linkIdx) => (
                     <Link key={link.label || link.id || linkIdx} to={link.url || link.href}
-                      className={`flex items-start gap-3 p-3 rounded-xl transition-all duration-200 ${isActive(link.url || link.href) ? 'bg-indigo-50 dark:bg-indigo-500/10' : 'hover:bg-gray-50 dark:hover:bg-gray-800'}`}>
+                      className={`flex items-start gap-3 p-3 rounded-xl transition-all duration-200 ${isActive(link.url || link.href) ? 'ws-nav-link-active bg-primary-50 dark:bg-primary-500/10' : 'ws-nav-link hover:bg-gray-50 dark:hover:bg-gray-800'}`}>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold text-gray-900 dark:text-white">{link.label}</p>
                         {link.desc && <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{link.desc}</p>}
@@ -170,7 +173,7 @@ const PublicLayout = () => {
           <div className="space-y-0.5">
             {links.map((child) => (
               <Link key={child.label || child.id} to={child.url || child.href}
-                className={`flex items-start gap-3 p-3 rounded-xl transition-all duration-200 ${isActive(child.url || child.href) ? 'bg-indigo-50 dark:bg-indigo-500/10' : 'hover:bg-gray-50 dark:hover:bg-gray-800'}`}>
+                className={`flex items-start gap-3 p-3 rounded-xl transition-all duration-200 ${isActive(child.url || child.href) ? 'ws-nav-link-active bg-primary-50 dark:bg-primary-500/10' : 'ws-nav-link hover:bg-gray-50 dark:hover:bg-gray-800'}`}>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-gray-900 dark:text-white">{child.label}</p>
                   {child.desc && <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{child.desc}</p>}
@@ -186,6 +189,7 @@ const PublicLayout = () => {
   const renderNavItem = (item) => {
     const hasChildren = item.children || item.columns;
     if (hasChildren) {
+      const isItemActive = getLinks(item).some(c => isActive(c.url || c.href));
       return (
         <div key={item.label || item.id} className="relative"
           onMouseEnter={() => setOpenDropdown(item.label)}
@@ -194,9 +198,9 @@ const PublicLayout = () => {
           <button
             onClick={() => setOpenDropdown(openDropdown === item.label ? null : item.label)}
             className={`flex items-center gap-1 px-4 py-2 text-sm font-medium rounded-xl transition-all duration-200 ${
-              openDropdown === item.label || getLinks(item).some(c => isActive(c.url || c.href))
-                ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10'
-                : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-800'
+              openDropdown === item.label || isItemActive
+                ? 'ws-nav-link-active text-primary-600 dark:text-primary-500 bg-primary-50 dark:bg-primary-500/10'
+                : 'ws-nav-link text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
             }`}
           >
             {item.label}
@@ -206,12 +210,13 @@ const PublicLayout = () => {
         </div>
       );
     }
+    const isSingleActive = isActive(item.url || item.href);
     return (
       <Link key={item.label || item.id} to={item.url || item.href}
         className={`px-4 py-2 text-sm font-medium rounded-xl transition-all duration-200 ${
-          isActive(item.url || item.href)
-            ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10'
-            : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-800'
+          isSingleActive
+            ? 'ws-nav-link-active text-primary-600 dark:text-primary-500 bg-primary-50 dark:bg-primary-500/10'
+            : 'ws-nav-link text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
         }`}
       >
         {item.label}
@@ -239,8 +244,8 @@ const PublicLayout = () => {
                 <Link key={child.label || child.id} to={child.url || child.href}
                   className={`block px-4 py-3 rounded-xl text-sm font-medium transition-colors ${
                     isActive(child.url || child.href)
-                      ? 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400'
-                      : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
+                      ? 'ws-nav-link-active bg-primary-50 dark:bg-primary-500/10 text-primary-600 dark:text-primary-500'
+                      : 'ws-nav-link text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
                   }`}
                 >
                   {child.label}
@@ -257,14 +262,29 @@ const PublicLayout = () => {
       <Link key={item.label || item.id} to={item.url || item.href}
         className={`block px-4 py-3 rounded-xl text-sm font-medium transition-colors ${
           isActive(item.url || item.href)
-            ? 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400'
-            : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
+            ? 'ws-nav-link-active bg-primary-50 dark:bg-primary-500/10 text-primary-600 dark:text-primary-500'
+            : 'ws-nav-link text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
         }`}
       >
         {item.label}
       </Link>
     );
   };
+
+  if (loading) {
+    return (
+      <div className="fixed inset-0 z-[9999] bg-white dark:bg-gray-950 flex flex-col items-center justify-center">
+        <div className="relative flex items-center justify-center">
+          <div className="w-20 h-20 rounded-full border-2 border-primary-500/20 animate-ping absolute" />
+          <div className="w-16 h-16 rounded-full border-t-2 border-r-2 border-primary-600 animate-spin" />
+          <div className="w-4 h-4 rounded-full bg-primary-600 absolute" />
+        </div>
+        <p className="mt-6 text-sm text-gray-500 dark:text-gray-400 font-medium tracking-wide animate-pulse">
+          Loading...
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-950">
@@ -275,33 +295,37 @@ const PublicLayout = () => {
       }`}>
         <nav className="max-w-7xl mx-auto flex items-center justify-between px-6 lg:px-8 h-20">
           <Link to="/" className="flex items-center gap-2.5 group shrink-0">
-            <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-indigo-700 rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-md shadow-indigo-500/20 group-hover:shadow-lg group-hover:shadow-indigo-500/30 transition-all duration-300">
-              H
-            </div>
+            {settings.logo_url ? (
+              <img src={displayImageUrl(settings.logo_url)} alt={settings.company_name} className="h-10 object-contain" />
+            ) : (
+              <div className="w-10 h-10 bg-gradient-to-br from-primary-500 to-primary-700 rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-md shadow-primary-500/20 group-hover:shadow-lg group-hover:shadow-primary-500/30 transition-all duration-300">
+                {(settings.company_name || 'H').charAt(0)}
+              </div>
+            )}
             <span className="font-bold text-xl tracking-tight text-gray-900 dark:text-white">
-              HRMS Pro
+              {settings.company_name || 'HRMS Pro'}
             </span>
           </Link>
 
           <div className="hidden lg:flex items-center gap-1" ref={dropdownRef}>
-            {navLinks.map(renderNavItem)}
+            {(settings.header_links && settings.header_links.length > 0 ? settings.header_links : navLinks).map(renderNavItem)}
           </div>
 
           <div className="hidden lg:flex items-center gap-3">
             <button
               onClick={toggleTheme}
-              className="p-2 text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800"
+              className="p-2 text-gray-500 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800"
               title="Toggle theme"
             >
               {dark ? <SunIcon className="w-5 h-5" /> : <MoonIcon className="w-5 h-5" />}
             </button>
             <Link to="/login" className="text-sm font-medium text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors px-4 py-2">
-              Sign In
+              {t('nav.sign_in', 'Sign In')}
             </Link>
             <Link to="/demo"
-              className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-xl shadow-sm shadow-indigo-500/20 hover:shadow-md hover:shadow-indigo-500/30 transition-all duration-200 hover:-translate-y-0.5 inline-flex items-center gap-2"
+              className="px-5 py-2.5 bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold rounded-xl shadow-sm shadow-primary-500/20 hover:shadow-md hover:shadow-primary-500/30 transition-all duration-200 hover:-translate-y-0.5 inline-flex items-center gap-2"
             >
-              Get a Demo
+              {t('nav.get_demo', 'Get a Demo')}
               <ArrowRightIcon className="w-3.5 h-3.5" />
             </Link>
           </div>
@@ -309,7 +333,7 @@ const PublicLayout = () => {
           <div className="flex items-center gap-1 lg:hidden">
             <button
               onClick={toggleTheme}
-              className="p-2 text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800"
+              className="p-2 text-gray-500 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800"
               title="Toggle theme"
             >
               {dark ? <SunIcon className="w-5 h-5" /> : <MoonIcon className="w-5 h-5" />}
@@ -333,7 +357,7 @@ const PublicLayout = () => {
               className="lg:hidden bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800 shadow-lg overflow-hidden"
             >
               <div className="px-6 py-6 space-y-1">
-                {navLinks.map(renderMobileNavItem)}
+                {(settings.header_links && settings.header_links.length > 0 ? settings.header_links : navLinks).map(renderMobileNavItem)}
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -343,7 +367,7 @@ const PublicLayout = () => {
                   <Link to="/login" className="block w-full text-center px-4 py-3 border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 font-semibold text-sm rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
                     Sign In
                   </Link>
-                  <Link to="/demo" className="block w-full text-center px-4 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm rounded-xl transition-colors">
+                  <Link to="/demo" className="block w-full text-center px-4 py-3 bg-primary-600 hover:bg-primary-700 text-white font-semibold text-sm rounded-xl transition-colors">
                     Get a Demo
                   </Link>
                 </motion.div>
@@ -367,120 +391,291 @@ const PublicLayout = () => {
         </AnimatePresence>
       </main>
 
-      <div className="bg-gray-900 dark:bg-gray-950 border-t border-gray-800">
-        <div className="max-w-7xl mx-auto px-6 lg:px-8 py-5">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            <p className="text-sm text-gray-300 font-medium">
-              Stay ahead with HR insights. Get the latest guides and trends delivered weekly.
-            </p>
-            <form className="flex gap-2 w-full sm:w-auto" onSubmit={(e) => e.preventDefault()}>
-              <input type="email" placeholder="Enter your work email"
-                className="px-4 py-2.5 rounded-xl text-sm bg-gray-800 border border-gray-700 text-gray-100 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 w-full sm:w-64"
-              />
-              <button type="submit" className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-xl transition-all shrink-0 shadow-sm">
-                Subscribe
-              </button>
-            </form>
-          </div>
-        </div>
-      </div>
+      {/* Dynamic Footer Design Variants */}
+      {(() => {
+        let footerCfg = {
+          variant: 'modern',
+          tagline: settings.tagline || 'Enterprise-grade HR management platform for global teams.',
+          copyright_text: `© ${new Date().getFullYear()} ${settings.company_name || 'HRMS Pro'}. ${t('footer.rights_reserved', 'All rights reserved.')}`,
+          show_newsletter: true,
+          show_social_links: true,
+          show_trust_badges: true,
+        };
 
-<footer className="bg-gray-950 dark:bg-black text-gray-300">
-        <div className="max-w-7xl mx-auto px-6 lg:px-8">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-8 lg:gap-12 py-16">
-            <div className="sm:col-span-2 lg:col-span-2">
-              <Link to="/" className="flex items-center gap-2.5 mb-5 group">
-                <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-indigo-700 rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-md shadow-indigo-500/20 group-hover:shadow-lg group-hover:shadow-indigo-500/30 transition-all duration-300">
-                  H
-                </div>
-                <span className="font-bold text-xl text-white">HRMS Pro</span>
-              </Link>
-              <p className="text-sm text-gray-400 leading-relaxed mb-6 max-w-md">
-                Enterprise-grade HR management platform for global teams. Automate payroll, track attendance, manage performance, and empower your workforce with AI-driven insights across 150+ countries.
-              </p>
-              <div className="flex items-center gap-4 mb-6">
-                {[['linkedin', 'https://linkedin.com/company/hrmspro', true], ['twitter', 'https://twitter.com/hrmspro', true], ['github', 'https://github.com/hrmspro', false], ['youtube', 'https://youtube.com/@hrmspro', true]].map(([platform, url, newTab]) => (
-                  <a key={platform} href={url} target={newTab ? "_blank" : "_self"} rel={newTab ? "noopener noreferrer" : ""}
-                    className="w-10 h-10 rounded-xl bg-gray-800 hover:bg-indigo-600 flex items-center justify-center text-gray-400 hover:text-white transition-all duration-200"
-                    aria-label={platform}
-                  >
-                    <SocialIcon platform={platform} />
-                  </a>
-                ))}
-              </div>
-              <div className="space-y-3 text-sm">
-                <div className="flex items-start gap-2">
-                  <svg className="w-4 h-4 text-gray-500 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                  </svg>
-                  <a href="mailto:hello@hrmspro.online" className="text-gray-400 hover:text-white transition-colors">hello@hrmspro.online</a>
-                </div>
-                <div className="flex items-start gap-2">
-                  <svg className="w-4 h-4 text-gray-500 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.94.65l1.5 3.75a1 1 0 00.94.65H17a2 2 0 012 2v7a2 2 0 01-2 2H8a2 2 0 01-2-2V8a2 2 0 012-2h10z" />
-                  </svg>
-                  <span className="text-gray-400">+1 (555) 123-4567</span>
-                </div>
-                <div className="flex items-start gap-2">
-                  <MapPinIcon className="w-4 h-4 text-gray-500 mt-0.5" />
-                  <span className="text-gray-400">100 Tech Lane, Suite 200, San Francisco, CA 94105</span>
+        if (settings?.footer_config) {
+          try {
+            const parsed = typeof settings.footer_config === 'string' ? JSON.parse(settings.footer_config) : settings.footer_config;
+            if (parsed && typeof parsed === 'object') {
+              footerCfg = {
+                variant: parsed.variant || 'modern',
+                tagline: parsed.tagline || settings.tagline || 'Enterprise-grade HR management platform for global teams.',
+                copyright_text: parsed.copyright_text || `© ${new Date().getFullYear()} ${settings.company_name || 'HRMS Pro'}. ${t('footer.rights_reserved', 'All rights reserved.')}`,
+                show_newsletter: parsed.show_newsletter !== false,
+                show_social_links: parsed.show_social_links !== false,
+                show_trust_badges: parsed.show_trust_badges !== false,
+                custom_html: parsed.custom_html || '',
+              };
+            }
+          } catch {}
+        }
+
+        const activeCols = settings?.footer_columns && settings.footer_columns.length > 0 ? settings.footer_columns : footerColumns;
+
+        return (
+          <>
+            {/* Optional Newsletter Signup Banner */}
+            {footerCfg.show_newsletter && (
+              <div className="bg-gray-900 dark:bg-gray-950 border-t border-gray-800">
+                <div className="max-w-7xl mx-auto px-6 lg:px-8 py-5">
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <p className="text-sm text-gray-300 font-medium">
+                      {t('footer.newsletter_title', 'Stay ahead with HR insights. Get the latest guides and trends delivered weekly.')}
+                    </p>
+                    <form className="flex gap-2 w-full sm:w-auto" onSubmit={(e) => e.preventDefault()}>
+                      <input type="email" placeholder={t('footer.newsletter_placeholder', 'Enter your work email')}
+                        className="px-4 py-2.5 rounded-xl text-sm bg-gray-800 border border-gray-700 text-gray-100 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500 w-full sm:w-64"
+                      />
+                      <button type="submit" className="px-5 py-2.5 bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold rounded-xl transition-all shrink-0 shadow-sm">
+                        {t('footer.subscribe', 'Subscribe')}
+                      </button>
+                    </form>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
 
-            {footerColumns.map((col, colIndex) => (
-              <div key={col.title || colIndex}>
-                <h5 className="text-xs font-semibold text-white uppercase tracking-widest mb-4">{col.title}</h5>
-                <ul className="space-y-2.5">
-                  {col.links && col.links.map((link, linkIndex) => (
-                    <li key={link.label || linkIndex}>
-                      <Link to={link.url || link.href || '/'} className="text-sm text-gray-400 hover:text-white transition-colors inline-block py-1">
+            {/* Footer Main Content */}
+            <footer className="bg-gray-950 dark:bg-black text-gray-300">
+              {/* VARIANT 1: 100% CUSTOM HTML & TAILWIND STUDIO */}
+              {footerCfg.variant === 'custom_html' && (
+                <div className="max-w-7xl mx-auto px-6 lg:px-8 py-12" dangerouslySetInnerHTML={{ __html: footerCfg.custom_html }} />
+              )}
+
+              {/* VARIANT 2: MINIMAL CENTERED */}
+              {footerCfg.variant === 'minimal' && (
+                <div className="max-w-7xl mx-auto px-6 lg:px-8 py-14 text-center space-y-8">
+                  <Link to="/" className="inline-flex items-center gap-2.5 group">
+                    {settings.logo_url ? (
+                      <img src={displayImageUrl(settings.logo_url)} alt={settings.company_name} className="h-10 object-contain mx-auto" />
+                    ) : (
+                      <div className="w-10 h-10 bg-gradient-to-br from-primary-500 to-primary-700 rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-md">
+                        {(settings.company_name || 'H').charAt(0)}
+                      </div>
+                    )}
+                    <span className="font-bold text-xl text-white">{settings.company_name || 'HRMS Pro'}</span>
+                  </Link>
+
+                  <p className="text-sm text-gray-400 max-w-xl mx-auto leading-relaxed">{footerCfg.tagline}</p>
+
+                  {/* Horizontal Link Categories */}
+                  <div className="flex flex-wrap items-center justify-center gap-3">
+                    {activeCols.flatMap(c => c.links || []).map((link, idx) => (
+                      <Link key={idx} to={link.url || link.href || '/'} className="px-4 py-2 rounded-xl bg-gray-900 hover:bg-gray-800 text-xs font-semibold text-gray-300 hover:text-white transition-all border border-gray-800">
                         {link.label}
                       </Link>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </div>
+                    ))}
+                  </div>
 
-          <div className="py-8 border-t border-gray-800">
-            <div className="flex flex-wrap items-center justify-center gap-6 lg:gap-10">
-              {[
-                { label: 'SOC 2 Type II Certified', icon: 'shield' },
-                { label: 'GDPR Compliant', icon: 'check' },
-                { label: 'ISO 27001 Certified', icon: 'shield' },
-              ].map((badge, i) => (
-                <div key={i} className="flex items-center gap-2">
-                  {badge.icon === 'shield' ? (
-                    <ShieldCheckIcon className="w-4 h-4 text-indigo-400" />
-                  ) : (
-                    <svg className="w-4 h-4 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                    </svg>
+                  {footerCfg.show_social_links && (
+                    <div className="flex items-center justify-center gap-4 pt-2">
+                      {[['linkedin', 'https://linkedin.com'], ['twitter', 'https://twitter.com'], ['github', 'https://github.com'], ['youtube', 'https://youtube.com']].map(([platform, url]) => (
+                        <a key={platform} href={url} target="_blank" rel="noopener noreferrer" className="w-9 h-9 rounded-xl bg-gray-900 border border-gray-800 hover:bg-primary-600 flex items-center justify-center text-gray-400 hover:text-white transition-all">
+                          <SocialIcon platform={platform} />
+                        </a>
+                      ))}
+                    </div>
                   )}
-                  <span className="text-xs text-gray-400">{badge.label}</span>
-                </div>
-              ))}
-            </div>
-          </div>
 
-          <div className="py-6 border-t border-gray-800 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <p className="text-xs text-gray-400">
-              &copy; {new Date().getFullYear()} HRMS Pro. All rights reserved.
-            </p>
-            <div className="flex items-center gap-4">
-              <Link to="/privacy" className="text-xs text-gray-400 hover:text-white transition-colors">Privacy Policy</Link>
-              <span className="text-gray-600">|</span>
-              <Link to="/terms" className="text-xs text-gray-400 hover:text-white transition-colors">Terms of Service</Link>
-              <span className="text-gray-600">|</span>
-              <Link to="/faq" className="text-xs text-gray-400 hover:text-white transition-colors">FAQ</Link>
-              <span className="text-gray-600">|</span>
-              <Link to="/contact" className="text-xs text-gray-400 hover:text-white transition-colors">Contact Us</Link>
-            </div>
-          </div>
-        </div>
-      </footer>
+                  <div className="pt-8 border-t border-gray-800/60 text-xs text-gray-500">
+                    {footerCfg.copyright_text}
+                  </div>
+                </div>
+              )}
+
+              {/* VARIANT 3: DARK LUXE GRADIENT */}
+              {footerCfg.variant === 'dark_luxe' && (
+                <div className="relative overflow-hidden">
+                  <div className="h-1.5 w-full bg-gradient-to-r from-primary-500 via-secondary-500 to-pink-500" />
+                  <div className="max-w-7xl mx-auto px-6 lg:px-8 py-16 space-y-12">
+                    <div className="grid grid-cols-1 lg:grid-cols-5 gap-12 p-8 rounded-3xl bg-gray-900/60 backdrop-blur border border-gray-800 shadow-2xl">
+                      <div className="lg:col-span-2 space-y-6">
+                        <Link to="/" className="flex items-center gap-3">
+                          <div className="w-11 h-11 bg-gradient-to-tr from-primary-500 via-secondary-500 to-pink-500 rounded-2xl flex items-center justify-center text-white font-black text-xl shadow-lg shadow-primary-500/30">
+                            {(settings.company_name || 'H').charAt(0)}
+                          </div>
+                          <span className="font-extrabold text-2xl tracking-tight text-white">{settings.company_name || 'HRMS Pro'}</span>
+                        </Link>
+
+                        <p className="text-sm text-gray-300 leading-relaxed">
+                          {footerCfg.tagline}
+                        </p>
+
+                        {footerCfg.show_social_links && (
+                          <div className="flex items-center gap-3 pt-2">
+                            {[['linkedin', 'https://linkedin.com'], ['twitter', 'https://twitter.com'], ['github', 'https://github.com'], ['youtube', 'https://youtube.com']].map(([platform, url]) => (
+                              <a key={platform} href={url} target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-xl bg-gray-800/80 border border-gray-700 hover:border-primary-500 hover:bg-primary-600 flex items-center justify-center text-gray-300 hover:text-white transition-all">
+                                <SocialIcon platform={platform} />
+                              </a>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="lg:col-span-3 grid grid-cols-2 sm:grid-cols-3 gap-8">
+                        {activeCols.map((col, colIndex) => (
+                          <div key={col.title || colIndex} className="space-y-4">
+                            <h5 className="text-xs font-bold text-primary-400 uppercase tracking-widest">{col.title}</h5>
+                            <ul className="space-y-3">
+                              {col.links && col.links.map((link, linkIndex) => (
+                                <li key={link.label || linkIndex}>
+                                  <Link to={link.url || link.href || '/'} className="text-sm text-gray-400 hover:text-white transition-colors">
+                                    {link.label}
+                                  </Link>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="pt-6 border-t border-gray-800/80 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-gray-400">
+                      <p>{footerCfg.copyright_text}</p>
+                      <div className="flex items-center gap-4">
+                        <Link to="/privacy" className="hover:text-white">Privacy Policy</Link>
+                        <span>•</span>
+                        <Link to="/terms" className="hover:text-white">Terms of Service</Link>
+                        <span>•</span>
+                        <Link to="/contact" className="hover:text-white">Support</Link>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* VARIANT 4: MODERN ENTERPRISE (HIGH DENSITY 12-COLUMN GRID) */}
+              {(footerCfg.variant === 'modern' || (!['custom_html', 'minimal', 'dark_luxe'].includes(footerCfg.variant))) && (
+                <div className="max-w-7xl mx-auto px-6 lg:px-8">
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 py-16">
+                    {/* Left Col: Brand Info, Contact Pills & Socials */}
+                    <div className="lg:col-span-4 space-y-6">
+                      <Link to="/" className="flex items-center gap-3 group">
+                        {settings.logo_url ? (
+                          <img src={displayImageUrl(settings.logo_url)} alt={settings.company_name} className="h-10 object-contain" />
+                        ) : (
+                          <div className="w-10 h-10 bg-gradient-to-br from-primary-500 to-primary-700 rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-md shadow-primary-500/20 group-hover:shadow-lg transition-all duration-300">
+                            {(settings.company_name || 'H').charAt(0)}
+                          </div>
+                        )}
+                        <div className="flex flex-col">
+                          <span className="font-extrabold text-xl tracking-tight text-white">{settings.company_name || 'HRMS Pro'}</span>
+                          <span className="text-[10px] uppercase font-bold tracking-widest text-primary-400">Enterprise HCM Platform</span>
+                        </div>
+                      </Link>
+
+                      <p className="text-sm text-gray-400 leading-relaxed">
+                        {footerCfg.tagline}
+                      </p>
+
+                      {/* Contact Info Pills */}
+                      <div className="space-y-2.5 text-xs text-gray-300 pt-1">
+                        <div className="flex items-center gap-2.5 bg-gray-900/80 border border-gray-800 px-3.5 py-2 rounded-xl">
+                          <svg className="w-4 h-4 text-primary-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                          </svg>
+                          <a href={`mailto:${settings.contact_email || 'hello@hrmspro.online'}`} className="hover:text-white transition-colors">
+                            {settings.contact_email || 'hello@hrmspro.online'}
+                          </a>
+                        </div>
+                        <div className="flex items-center gap-2.5 bg-gray-900/80 border border-gray-800 px-3.5 py-2 rounded-xl">
+                          <svg className="w-4 h-4 text-primary-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.94.65l1.5 3.75a1 1 0 00.94.65H17a2 2 0 012 2v7a2 2 0 01-2 2H8a2 2 0 01-2-2V8a2 2 0 012-2h10z" />
+                          </svg>
+                          <span>{settings.contact_phone || '+1 (555) 123-4567'}</span>
+                        </div>
+                        <div className="flex items-center gap-2.5 bg-gray-900/80 border border-gray-800 px-3.5 py-2 rounded-xl">
+                          <MapPinIcon className="w-4 h-4 text-primary-400 shrink-0" />
+                          <span>{settings.contact_address || '100 Tech Lane, Suite 200, San Francisco, CA'}</span>
+                        </div>
+                      </div>
+
+                      {footerCfg.show_social_links && (
+                        <div className="flex items-center gap-3 pt-2">
+                          {[['linkedin', 'https://linkedin.com'], ['twitter', 'https://twitter.com'], ['github', 'https://github.com'], ['youtube', 'https://youtube.com']].map(([platform, url]) => (
+                            <a key={platform} href={url} target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-xl bg-gray-900 border border-gray-800 hover:bg-primary-600 flex items-center justify-center text-gray-400 hover:text-white transition-all">
+                              <SocialIcon platform={platform} />
+                            </a>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Right Col: 4 Category Links Grid */}
+                    <div className="lg:col-span-8 grid grid-cols-2 sm:grid-cols-4 gap-8">
+                      {activeCols.map((col, colIndex) => (
+                        <div key={col.title || colIndex} className="space-y-4">
+                          <h5 className="text-xs font-bold text-white uppercase tracking-widest border-b border-gray-800 pb-2">{col.title}</h5>
+                          <ul className="space-y-2.5">
+                            {col.links && col.links.map((link, linkIndex) => (
+                              <li key={link.label || linkIndex}>
+                                <Link to={link.url || link.href || '/'} className="ws-footer-link text-xs font-medium text-gray-400 hover:text-white transition-colors inline-block py-0.5">
+                                  {link.label}
+                                </Link>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {footerCfg.show_trust_badges && (
+                    <div className="py-8 border-t border-gray-800/80">
+                      <div className="flex flex-wrap items-center justify-center gap-6 lg:gap-12">
+                        {[
+                          { label: t('footer.badge_soc2', 'SOC 2 Type II Certified'), icon: 'shield' },
+                          { label: t('footer.badge_gdpr', 'GDPR Compliant'), icon: 'check' },
+                          { label: t('footer.badge_iso', 'ISO 27001 Certified'), icon: 'shield' },
+                          { label: '256-bit SSL Encrypted', icon: 'shield' },
+                          { label: '99.99% Uptime SLA', icon: 'check' },
+                        ].map((badge, i) => (
+                          <div key={i} className="flex items-center gap-2">
+                            {badge.icon === 'shield' ? (
+                              <ShieldCheckIcon className="w-4 h-4 text-primary-400" />
+                            ) : (
+                              <svg className="w-4 h-4 text-primary-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                              </svg>
+                            )}
+                            <span className="text-xs text-gray-400 font-medium">{badge.label}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="py-6 border-t border-gray-800 flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <p className="text-xs text-gray-400">{footerCfg.copyright_text}</p>
+                    <div className="flex flex-wrap items-center justify-center sm:justify-end gap-x-4 gap-y-2">
+                      <Link to="/terms" className="text-xs text-gray-400 hover:text-white transition-colors">Terms & Conditions</Link>
+                      <span className="text-gray-700">|</span>
+                      <Link to="/privacy" className="text-xs text-gray-400 hover:text-white transition-colors">Privacy Policy</Link>
+                      <span className="text-gray-700">|</span>
+                      <Link to="/cancellation-refund" className="text-xs text-gray-400 hover:text-white transition-colors">Cancellation & Refund</Link>
+                      <span className="text-gray-700">|</span>
+                      <Link to="/shipping-policy" className="text-xs text-gray-400 hover:text-white transition-colors">Shipping Policy</Link>
+                      <span className="text-gray-700">|</span>
+                      <Link to="/pricing" className="text-xs text-gray-400 hover:text-white transition-colors">Pricing</Link>
+                      <span className="text-gray-700">|</span>
+                      <Link to="/contact" className="text-xs text-gray-400 hover:text-white transition-colors">Contact Us</Link>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </footer>
+          </>
+        );
+      })()}
     </div>
   );
 };

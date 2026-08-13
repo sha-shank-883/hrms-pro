@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { createTenant, getAllTenants, updateTenant, resetTenantAdminPassword, deleteTenant, getBiometricDevices, registerBiometricDevice, deleteBiometricDevice } = require('../controllers/tenantController');
+const { createTenant, getAllTenants, updateTenant, resetTenantAdminPassword, deleteTenant, getBiometricDevices, registerBiometricDevice, deleteBiometricDevice, impersonateTenantAdmin, backupTenant, restoreTenant } = require('../controllers/tenantController');
 const { authenticateToken, authorizeRole } = require('../middleware/auth');
 
 // Middleware to check if user is super admin (tenant_default)
@@ -20,6 +20,9 @@ router.get('/', authenticateToken, authorizeRole('admin'), requireSuperAdmin, ge
 router.put('/:tenantId', authenticateToken, authorizeRole('admin'), requireSuperAdmin, updateTenant);
 router.delete('/:tenantId', authenticateToken, authorizeRole('admin'), requireSuperAdmin, deleteTenant);
 router.post('/:tenantId/reset-password', authenticateToken, authorizeRole('admin'), requireSuperAdmin, resetTenantAdminPassword);
+router.post('/:tenantId/impersonate', authenticateToken, authorizeRole('admin'), requireSuperAdmin, impersonateTenantAdmin);
+router.get('/:tenantId/backup', authenticateToken, authorizeRole('admin'), requireSuperAdmin, backupTenant);
+router.post('/:tenantId/restore', authenticateToken, authorizeRole('admin'), requireSuperAdmin, express.json({ limit: '50mb' }), restoreTenant);
 
 // Biometric Devices Management for Super Admin
 router.get('/biometric-devices/all', authenticateToken, authorizeRole('admin'), requireSuperAdmin, getBiometricDevices);

@@ -16,6 +16,13 @@ export default {
                     600: 'var(--primary-dark, #15803d)',
                     700: 'var(--primary-darker, #166534)',
                 },
+                secondary: {
+                    50: 'var(--secondary-lighter, #f5f3ff)',
+                    100: 'var(--secondary-light, #ede9fe)',
+                    500: 'var(--secondary-color, #8b5cf6)',
+                    600: 'var(--secondary-dark, #7c3aed)',
+                    700: 'var(--secondary-darker, #6d28d9)',
+                },
                 neutral: {
                     50: 'var(--neutral-50, #f8fafc)',
                     100: 'var(--neutral-100, #f1f5f9)',

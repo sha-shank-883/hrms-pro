@@ -226,13 +226,13 @@ const ChatWidget = () => {
       >
         <div className={`flex items-end gap-2 max-w-[85%] ${isUser ? 'flex-row-reverse' : ''}`}>
           <div className={`flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-xs ${
-            isUser ? 'bg-blue-500' : isFAQ ? 'bg-green-500' : 'bg-gray-400'
+            isUser ? 'bg-primary-500' : isFAQ ? 'bg-green-500' : 'bg-gray-400'
           } text-white`}>
             {isUser ? <FaUser size={10} /> : isFAQ ? <FaCheck size={10} /> : <FaRobot size={10} />}
           </div>
           <div className={`rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
             isUser
-              ? 'bg-blue-500 text-white rounded-br-md'
+              ? 'bg-primary-500 text-white rounded-br-md'
               : isFAQ
                 ? 'bg-green-50 border border-green-200 text-gray-800 rounded-bl-md'
                 : 'bg-gray-100 text-gray-800 rounded-bl-md'
@@ -255,7 +255,7 @@ const ChatWidget = () => {
         <div className={`mb-3 bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden transition-all duration-300 ${
           isMinimized ? 'h-14' : 'h-[520px]'
         } w-[380px] max-w-[calc(100vw-40px)]`}>
-          <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white cursor-pointer"
+          <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-primary-600 to-primary-700 text-white cursor-pointer"
             onClick={() => setIsMinimized(!isMinimized)}>
             <div className="flex items-center gap-2">
               <FaHeadset className="text-lg" />
@@ -263,12 +263,12 @@ const ChatWidget = () => {
             </div>
             <div className="flex items-center gap-2">
               {chat?.is_ai_active && (
-                <span className="bg-blue-400/30 text-[10px] px-2 py-0.5 rounded-full">AI Active</span>
+                <span className="bg-primary-400/30 text-[10px] px-2 py-0.5 rounded-full">AI Active</span>
               )}
-              <button onClick={(e) => { e.stopPropagation(); setIsMinimized(!isMinimized); }} className="hover:bg-blue-500/40 p-1 rounded">
+              <button onClick={(e) => { e.stopPropagation(); setIsMinimized(!isMinimized); }} className="hover:bg-primary-500/40 p-1 rounded">
                 <FaMinus size={12} />
               </button>
-              <button onClick={(e) => { e.stopPropagation(); handleClose(); }} className="hover:bg-blue-500/40 p-1 rounded">
+              <button onClick={(e) => { e.stopPropagation(); handleClose(); }} className="hover:bg-primary-500/40 p-1 rounded">
                 <FaTimes size={12} />
               </button>
             </div>
@@ -314,14 +314,14 @@ const ChatWidget = () => {
               </div>
 
               {showFAQs && faqs.length > 0 && (
-                <div className="px-4 py-2 bg-blue-50 border-t border-blue-100">
-                  <p className="text-[11px] text-blue-600 font-medium mb-1.5">Common questions:</p>
+                <div className="px-4 py-2 bg-primary-50 border-t border-primary-100">
+                  <p className="text-[11px] text-primary-600 font-medium mb-1.5">Common questions:</p>
                   <div className="flex flex-wrap gap-1.5">
                     {faqs.map(faq => (
                       <button
                         key={faq.article_id}
                         onClick={() => handleFAQClick(faq)}
-                        className="text-[11px] bg-white border border-blue-200 text-blue-700 rounded-full px-3 py-1 hover:bg-blue-100 transition-colors"
+                        className="text-[11px] bg-white border border-primary-200 text-primary-700 rounded-full px-3 py-1 hover:bg-primary-100 transition-colors"
                       >
                         {faq.question.length > 40 ? faq.question.slice(0, 40) + '..' : faq.question}
                       </button>
@@ -339,13 +339,13 @@ const ChatWidget = () => {
                     onChange={(e) => setInput(e.target.value)}
                     onKeyDown={handleKeyDown}
                     placeholder="Type your message..."
-                    className="flex-1 border border-gray-300 rounded-full px-4 py-2.5 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all"
+                    className="flex-1 border border-gray-300 rounded-full px-4 py-2.5 text-sm outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-100 transition-all"
                     disabled={isLoading}
                   />
                   <button
                     onClick={handleSend}
                     disabled={!input.trim() || isLoading}
-                    className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                    className="w-10 h-10 rounded-full bg-primary-600 text-white flex items-center justify-center hover:bg-primary-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
                   >
                     <FaPaperPlane size={14} />
                   </button>
@@ -358,7 +358,7 @@ const ChatWidget = () => {
 
       <button
         onClick={handleOpen}
-        className="w-14 h-14 rounded-full bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-xl hover:shadow-2xl hover:scale-105 flex items-center justify-center transition-all duration-300 relative"
+        className="w-14 h-14 rounded-full bg-gradient-to-r from-primary-600 to-primary-700 text-white shadow-xl hover:shadow-2xl hover:scale-105 flex items-center justify-center transition-all duration-300 relative"
       >
         {isOpen && !isMinimized ? <FaTimes size={22} /> : <FaCommentDots size={22} />}
         {unreadCount > 0 && (

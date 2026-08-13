@@ -13,14 +13,14 @@ const StatsGrid = memo(({ stats }) => {
                 value={stats?.employees?.total || 0}
                 icon={<FaUsers />}
                 subtext={`${stats?.employees?.active || 0} Active`}
-                colorClass="text-indigo-500 bg-indigo-50"
+                colorClass="text-primary-500 bg-primary-50"
                 onClick={() => navigate('/employees')}
             />
             <StatCard
                 title="Departments"
                 value={stats?.departments?.total || 0}
                 icon={<FaBuilding />}
-                colorClass="text-purple-500 bg-purple-50"
+                colorClass="text-secondary-500 bg-secondary-50"
                 onClick={() => navigate('/departments')}
             />
             <StatCard

@@ -93,7 +93,7 @@ const MyDocuments = () => {
 
   if (loading) return (
     <div className="flex items-center justify-center min-h-screen">
-      <div className="w-16 h-16 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+      <div className="w-16 h-16 border-4 border-primary-600 border-t-transparent rounded-full animate-spin"></div>
     </div>
   );
 
@@ -112,7 +112,7 @@ const MyDocuments = () => {
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
-            <div className="p-2 bg-indigo-100 rounded-lg text-indigo-600"><FaFolder /></div>
+            <div className="p-2 bg-primary-100 rounded-lg text-primary-600"><FaFolder /></div>
             My Documents
           </h1>
           <p className="text-gray-500 mt-1">Manage and view your personal documents</p>
@@ -127,10 +127,10 @@ const MyDocuments = () => {
 
       {/* Statistics */}
       <div className="grid grid-cols-4 gap-6 mb-8">
-        <div className="card p-6 bg-gradient-to-br from-indigo-500 to-purple-600 text-white border-none">
+        <div className="card p-6 bg-gradient-to-br from-primary-500 to-secondary-600 text-white border-none">
           <div className="flex justify-between items-start">
             <div>
-              <p className="text-indigo-100 font-medium mb-1">Total Documents</p>
+              <p className="text-primary-100 font-medium mb-1">Total Documents</p>
               <h3 className="text-4xl font-bold">{documents.length}</h3>
             </div>
             <div className="p-3 bg-white/20 rounded-lg backdrop-blur-sm"><FaFileAlt size={24} /></div>
@@ -249,7 +249,7 @@ const MyDocuments = () => {
       </div>
 
       {/* Information Section */}
-      <div className="mt-8 bg-blue-50 border-l-4 border-blue-500 p-6 rounded-r-lg shadow-sm">
+      <div className="mt-8 bg-primary-50 border-l-4 border-primary-500 p-6 rounded-r-lg shadow-sm">
         <h3 className="text-blue-900 font-bold flex items-center gap-2 mb-2"><FaInfoCircle /> Document Access Information</h3>
         <p className="text-blue-800 text-sm mb-3">You can view:</p>
         <ul className="list-disc list-inside text-blue-700 text-sm space-y-1 ml-2">

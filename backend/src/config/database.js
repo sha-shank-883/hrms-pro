@@ -1,6 +1,7 @@
 const { Pool } = require('pg');
 const { AsyncLocalStorage } = require('async_hooks');
-require('dotenv').config();
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '../../.env') });
 
 const poolConfig = process.env.DATABASE_URL
   ? {

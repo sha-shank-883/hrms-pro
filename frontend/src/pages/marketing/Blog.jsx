@@ -4,9 +4,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { MagnifyingGlassIcon, CalendarDaysIcon, ClockIcon, ArrowRightIcon } from '@heroicons/react/24/outline';
 import { AnimatedSection, AnimatedDiv, AnimatedItem, StaggerContainer, PageWrapper } from '../../components/common/AnimatedSection';
 import SEO from '../../components/common/SEO';
+import { useWebsiteBuilder } from '../../contexts/WebsiteBuilderContext';
 import blogPosts from './blogPosts';
 
 const Blog = () => {
+  const { t } = useWebsiteBuilder();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('All');
   const [visibleCount, setVisibleCount] = useState(9);
@@ -40,11 +42,11 @@ const Blog = () => {
         <motion.div
           animate={{ scale: [1, 1.05, 1], opacity: [0.3, 0.5, 0.3] }}
           transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
-          className="absolute -top-32 -right-32 w-96 h-96 bg-indigo-200 dark:bg-indigo-800/20 rounded-full blur-3xl opacity-30"
+          className="absolute -top-32 -right-32 w-96 h-96 bg-primary-200 dark:bg-primary-800/20 rounded-full blur-3xl opacity-30"
         />
         <div className="max-w-4xl mx-auto px-6 lg:px-8 text-center relative">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-            <span className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 uppercase tracking-widest">Blog</span>
+            <span className="text-xs font-semibold text-primary-600 dark:text-primary-500 uppercase tracking-widest">{t('blog.eyebrow', 'Blog')}</span>
           </motion.div>
           <motion.h1
             initial={{ opacity: 0, y: 20 }}
@@ -52,8 +54,7 @@ const Blog = () => {
             transition={{ duration: 0.5, delay: 0.1 }}
             className="mt-4 text-4xl sm:text-5xl lg:text-6xl font-black text-gray-900 dark:text-white leading-tight tracking-tight mb-6"
           >
-            Insights for{' '}
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600">modern HR</span>
+            {t('blog.title', 'Insights for modern HR')}
           </motion.h1>
           <motion.p
             initial={{ opacity: 0, y: 20 }}
@@ -61,7 +62,7 @@ const Blog = () => {
             transition={{ duration: 0.5, delay: 0.2 }}
             className="text-lg sm:text-xl text-gray-500 dark:text-gray-400 max-w-2xl mx-auto mb-8"
           >
-            Actionable advice, industry trends, and practical guides to help you manage your workforce better.
+            {t('blog.subtitle', 'Actionable advice, industry trends, and practical guides to help you manage your workforce better.')}
           </motion.p>
           <motion.div
             initial={{ opacity: 0, y: 10 }}
@@ -74,7 +75,7 @@ const Blog = () => {
               type="text" placeholder="Search articles..."
               value={searchQuery}
               onChange={(e) => { setSearchQuery(e.target.value); setVisibleCount(9); }}
-              className="w-full pl-12 pr-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white placeholder:text-gray-400 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              className="w-full pl-12 pr-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white placeholder:text-gray-400 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
             />
           </motion.div>
         </div>
@@ -93,7 +94,7 @@ const Blog = () => {
                     whileTap={{ scale: 0.98 }}
                     className={`px-5 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
                        activeCategory === cat
-                         ? 'bg-indigo-600 text-white shadow-sm'
+                         ? 'bg-primary-600 text-white shadow-sm'
                          : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
                     }`}
                   >
@@ -117,7 +118,7 @@ const Blog = () => {
                   <motion.span
                     animate={{ scale: [1, 1.2, 1] }}
                     transition={{ duration: 2, repeat: Infinity }}
-                    className="w-1.5 h-6 bg-indigo-600 rounded-full"
+                    className="w-1.5 h-6 bg-primary-600 rounded-full"
                   />
                   <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Featured Article</h2>
                 </div>
@@ -132,7 +133,7 @@ const Blog = () => {
                         alt={featuredPost.title}
                         className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
                       />
-                      <div className="absolute top-4 left-4 px-3 py-1 rounded-full bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm text-xs font-semibold text-indigo-600 dark:text-indigo-400">
+                      <div className="absolute top-4 left-4 px-3 py-1 rounded-full bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm text-xs font-semibold text-primary-600 dark:text-primary-500">
                         {featuredPost.category}
                       </div>
                     </div>
@@ -149,7 +150,7 @@ const Blog = () => {
                           </span>
                         )}
                       </div>
-                      <h3 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-4 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                      <h3 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-4 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">
                         {featuredPost.title}
                       </h3>
                       <p className="text-gray-500 dark:text-gray-400 mb-6 line-clamp-3">{featuredPost.excerpt}</p>
@@ -193,7 +194,7 @@ const Blog = () => {
                             alt={post.title}
                             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                           />
-                          <div className="absolute top-4 left-4 px-3 py-1 rounded-full bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm text-xs font-semibold text-indigo-600 dark:text-indigo-400">
+                          <div className="absolute top-4 left-4 px-3 py-1 rounded-full bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm text-xs font-semibold text-primary-600 dark:text-primary-500">
                             {post.category}
                           </div>
                         </div>
@@ -213,7 +214,7 @@ const Blog = () => {
                               </>
                             )}
                           </div>
-                          <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-3 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors line-clamp-2">
+                          <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-3 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors line-clamp-2">
                             {post.title}
                           </h3>
                           <p className="text-sm text-gray-500 dark:text-gray-400 flex-1 line-clamp-3 mb-4">
@@ -249,11 +250,11 @@ const Blog = () => {
         </div>
       </AnimatedSection>
 
-      <AnimatedSection className="py-16 bg-gradient-to-br from-indigo-600 to-indigo-800">
+      <AnimatedSection className="py-16 bg-gradient-to-br from-primary-600 to-primary-800">
         <div className="max-w-3xl mx-auto px-6 text-center">
           <AnimatedDiv variant="fadeInUp" delay={0}>
             <h2 className="text-3xl sm:text-4xl font-black text-white mb-4">Stay ahead with HR insights</h2>
-            <p className="text-indigo-100 mb-8">
+            <p className="text-primary-100 mb-8">
               Get the latest articles, guides, and industry trends delivered to your inbox every week.
             </p>
           </AnimatedDiv>
@@ -263,7 +264,7 @@ const Blog = () => {
                 className="flex-1 px-4 py-3 rounded-xl border-0 text-sm focus:outline-none focus:ring-2 focus:ring-white/50" required
               />
               <motion.button type="submit" whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-                className="px-6 py-3 bg-white text-indigo-700 font-semibold text-sm rounded-xl hover:bg-gray-100 transition-all duration-200"
+                className="px-6 py-3 bg-white text-primary-700 font-semibold text-sm rounded-xl hover:bg-gray-100 transition-all duration-200"
               >
                 Subscribe
               </motion.button>

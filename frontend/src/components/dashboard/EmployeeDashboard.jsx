@@ -298,8 +298,8 @@ const EmployeeDashboard = () => {
             case 'widget-quick-actions':
                 WidgetContent = (
                     <div className="bg-white rounded-2xl shadow-sm border border-neutral-100 overflow-hidden h-full flex flex-col">
-                        <div className="px-6 py-4 border-b border-neutral-50 flex justify-between items-center bg-gradient-to-r from-indigo-50 to-white">
-                            <h3 className="text-sm font-bold text-indigo-900 uppercase tracking-wider">Quick Actions</h3>
+                        <div className="px-6 py-4 border-b border-neutral-50 flex justify-between items-center bg-gradient-to-r from-primary-50 to-white">
+                            <h3 className="text-sm font-bold text-primary-900 uppercase tracking-wider">Quick Actions</h3>
                         </div>
                         <div className="p-4 grid grid-cols-2 gap-3 flex-1">
                             <div

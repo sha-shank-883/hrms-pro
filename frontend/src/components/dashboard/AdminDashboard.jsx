@@ -475,7 +475,7 @@ const AdminDashboard = () => {
                     {/* Resize Handle */}
                     <div
                         onMouseDown={(e) => handleResizeStart(e, id)}
-                        className="absolute bottom-0 right-0 w-6 h-6 cursor-se-resize z-20 flex items-center justify-center opacity-0 group-hover:opacity-100 text-gray-400 hover:text-indigo-600 transition-opacity"
+                        className="absolute bottom-0 right-0 w-6 h-6 cursor-se-resize z-20 flex items-center justify-center opacity-0 group-hover:opacity-100 text-gray-400 hover:text-primary-600 transition-opacity"
                         title="Drag to resize"
                     >
                         <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor">
@@ -559,7 +559,7 @@ const AdminDashboard = () => {
                                             style={{ cursor: 'grab' }}
                                         >
                                             <div className={`p-1 rounded mr-2 ${action.theme === 'success' ? 'bg-green-50 text-green-600' :
-                                                action.theme === 'info' ? 'bg-blue-50 text-blue-600' :
+                                                action.theme === 'info' ? 'bg-primary-50 text-blue-600' :
                                                     action.theme === 'warning' ? 'bg-yellow-50 text-yellow-600' :
                                                         action.theme === 'danger' ? 'bg-red-50 text-red-600' : 'bg-neutral-50 text-neutral-600'
                                                 }`}>

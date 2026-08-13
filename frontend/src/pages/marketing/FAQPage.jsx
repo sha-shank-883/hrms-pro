@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { ArrowRightIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import { AnimatedSection, AnimatedItem, PageWrapper } from '../../components/common/AnimatedSection';
 import SEO, { FAQSchema, BreadcrumbSchema } from '../../components/common/SEO';
+import { useWebsiteBuilder } from '../../contexts/WebsiteBuilderContext';
 
 const faqCategories = [
   {
@@ -54,6 +55,7 @@ const faqCategories = [
 ];
 
 const FAQPage = () => {
+  const { t } = useWebsiteBuilder();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('Getting Started');
   const [openItems, setOpenItems] = useState({});
@@ -91,12 +93,12 @@ const FAQPage = () => {
       <section className="relative pt-28 pb-16 lg:pt-36 lg:pb-20 overflow-hidden bg-gradient-to-b from-gray-50 via-white to-white dark:from-gray-950 dark:via-gray-900 dark:to-gray-900">
         <div className="max-w-4xl mx-auto px-6 lg:px-8 text-center relative">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-            <span className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 uppercase tracking-widest">Support</span>
+            <span className="text-xs font-semibold text-primary-600 dark:text-primary-500 uppercase tracking-widest">{t('faq.eyebrow', 'Support')}</span>
             <h1 className="mt-4 text-5xl lg:text-6xl font-black text-gray-900 dark:text-white tracking-tight leading-[0.95] mb-6">
-              Frequently Asked Questions
+              {t('faq.title', 'Frequently Asked Questions')}
             </h1>
             <p className="text-lg lg:text-xl text-gray-500 dark:text-gray-400 max-w-3xl mx-auto mb-8 leading-relaxed">
-              Everything you need to know about HRMS Pro. Can't find what you're looking for? Contact our team.
+              {t('faq.subtitle', "Everything you need to know about HRMS Pro. Can't find what you're looking for? Contact our team.")}
             </p>
             <div className="relative max-w-md mx-auto">
               <MagnifyingGlassIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -105,7 +107,7 @@ const FAQPage = () => {
                 placeholder="Search FAQs..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-12 pr-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white placeholder:text-gray-400 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                className="w-full pl-12 pr-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white placeholder:text-gray-400 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
               />
             </div>
           </motion.div>
@@ -122,7 +124,7 @@ const FAQPage = () => {
                   onClick={() => { setActiveCategory(cat.name); setOpenItems({}); }}
                   className={`px-5 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
                     activeCategory === cat.name
-                      ? 'bg-indigo-600 text-white shadow-sm'
+                      ? 'bg-primary-600 text-white shadow-sm'
                       : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
                   }`}
                 >
@@ -161,7 +163,7 @@ const FAQPage = () => {
 
           <div className="mt-12 text-center p-8 bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-800 rounded-3xl">
             <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Still have questions?</p>
-            <Link to="/contact" className="inline-flex items-center gap-2 text-sm font-semibold text-indigo-600 dark:text-indigo-400 hover:gap-3 transition-all">
+            <Link to="/contact" className="inline-flex items-center gap-2 text-sm font-semibold text-primary-600 dark:text-primary-500 hover:gap-3 transition-all">
               Contact our support team <ArrowRightIcon className="w-3.5 h-3.5" />
             </Link>
           </div>

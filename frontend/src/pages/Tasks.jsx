@@ -417,7 +417,7 @@ const Tasks = () => {
       <div className="grid grid-cols-4 gap-6 mb-8">
         <div className="card stat-card">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-blue-100">
+            <div className="p-2 rounded-lg bg-primary-100">
               <FaTasks className="text-blue-600" />
             </div>
             <div>
@@ -444,8 +444,8 @@ const Tasks = () => {
         </div>
         <div className="card stat-card">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-indigo-100">
-              <FaSpinner className="text-indigo-600" />
+            <div className="p-2 rounded-lg bg-primary-100">
+              <FaSpinner className="text-primary-600" />
             </div>
             <div>
               <div className="text-neutral-500 text-xs font-semibold uppercase tracking-wider">In Progress</div>

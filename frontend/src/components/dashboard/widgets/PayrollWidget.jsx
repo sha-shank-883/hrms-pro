@@ -68,7 +68,7 @@ const PayrollWidget = React.memo(({ chartType = 'bar', onToggle, currencySymbol 
             <div className="card-header">
                 <div>
                     <div className="flex items-center gap-2">
-                        <div className="p-1.5 rounded-md bg-indigo-50 text-indigo-600">
+                        <div className="p-1.5 rounded-md bg-primary-50 text-primary-600">
                             <FaMoneyBillWave size={12} />
                         </div>
                         <h3 className="card-title text-sm uppercase tracking-wide">Payroll Analysis</h3>
@@ -154,7 +154,7 @@ const PayrollWidget = React.memo(({ chartType = 'bar', onToggle, currencySymbol 
                 {loading && (
                     <div className="loading-overlay">
                         <div className="loading-spinner"></div>
-                        <span className="text-xs mt-2 text-indigo-500 font-medium">Updating...</span>
+                        <span className="text-xs mt-2 text-primary-500 font-medium">Updating...</span>
                     </div>
                 )}
 

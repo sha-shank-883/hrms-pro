@@ -392,8 +392,10 @@ exports.submitContactInquiry = asyncHandler(async (req, res) => {
     [name.trim(), email.trim().toLowerCase(), company?.trim() || '', phone?.trim() || '', subject.trim(), message.trim()]
   );
 
+  const { sendEmail } = require('../services/emailService');
+
+  // 1. Notify admin
   try {
-    const { sendEmail } = require('../services/emailService');
     await sendEmail({
       to: process.env.SMTP_USER || 'admin@hrmspro.online',
       subject: `New Contact Inquiry: ${subject}`,
@@ -412,8 +414,92 @@ exports.submitContactInquiry = asyncHandler(async (req, res) => {
       `
     });
   } catch (emailErr) {
-    console.error('Error sending contact notification email:', emailErr);
+    console.error('Error sending admin contact notification email:', emailErr);
+  }
+
+  // 2. Send acknowledgment to customer
+  try {
+    await sendEmail({
+      to: email,
+      subject: `We've received your message — HRMS Pro`,
+      html: `
+        <div style="font-family: system-ui, sans-serif; max-width: 580px; margin: 0 auto; background: #ffffff;">
+          <!-- Header -->
+          <div style="background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%); border-radius: 16px 16px 0 0; padding: 32px 32px 28px;">
+            <h1 style="margin: 0; color: #ffffff; font-size: 22px; font-weight: 800; letter-spacing: -0.5px;">HRMS Pro</h1>
+            <p style="margin: 4px 0 0; color: rgba(255,255,255,0.8); font-size: 13px;">Modern HR Management Platform</p>
+          </div>
+
+          <!-- Body -->
+          <div style="border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 16px 16px; padding: 32px;">
+            <h2 style="margin: 0 0 8px; color: #111827; font-size: 20px; font-weight: 700;">
+              Thanks for reaching out, ${name}!
+            </h2>
+            <p style="color: #6b7280; font-size: 15px; line-height: 1.6; margin: 0 0 24px;">
+              We've received your message and our team will get back to you within <strong style="color: #111827;">24 business hours</strong>.
+            </p>
+
+            <!-- Inquiry Summary -->
+            <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
+              <p style="margin: 0 0 12px; color: #374151; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Your Inquiry Summary</p>
+              <table style="width: 100%; border-collapse: collapse;">
+                <tr>
+                  <td style="color: #6b7280; font-size: 13px; padding: 4px 0; width: 90px; vertical-align: top;">Subject</td>
+                  <td style="color: #111827; font-size: 13px; font-weight: 600; padding: 4px 0;">${subject}</td>
+                </tr>
+                ${company ? `<tr>
+                  <td style="color: #6b7280; font-size: 13px; padding: 4px 0; vertical-align: top;">Company</td>
+                  <td style="color: #111827; font-size: 13px; padding: 4px 0;">${company}</td>
+                </tr>` : ''}
+                <tr>
+                  <td style="color: #6b7280; font-size: 13px; padding: 4px 0; vertical-align: top;">Message</td>
+                  <td style="color: #374151; font-size: 13px; padding: 4px 0; line-height: 1.5;">${message.length > 200 ? message.substring(0, 200) + '...' : message}</td>
+                </tr>
+              </table>
+            </div>
+
+            <!-- What happens next -->
+            <div style="margin-bottom: 28px;">
+              <p style="margin: 0 0 12px; color: #374151; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">What happens next?</p>
+              <div style="display: flex; flex-direction: column; gap: 8px;">
+                <p style="margin: 0; color: #4b5563; font-size: 14px; padding-left: 20px; position: relative;">
+                  <span style="position: absolute; left: 0; color: #4f46e5; font-weight: 700;">1.</span>
+                  Our team reviews your inquiry and routes it to the right specialist.
+                </p>
+                <p style="margin: 0; color: #4b5563; font-size: 14px; padding-left: 20px; position: relative;">
+                  <span style="position: absolute; left: 0; color: #4f46e5; font-weight: 700;">2.</span>
+                  You'll receive a personalized response within 24 business hours.
+                </p>
+                <p style="margin: 0; color: #4b5563; font-size: 14px; padding-left: 20px; position: relative;">
+                  <span style="position: absolute; left: 0; color: #4f46e5; font-weight: 700;">3.</span>
+                  If you'd prefer a live walkthrough, you can book a demo anytime.
+                </p>
+              </div>
+            </div>
+
+            <!-- CTA -->
+            <div style="text-align: center; margin-bottom: 24px;">
+              <a href="${process.env.FRONTEND_URL || 'https://hrmspro.online'}/demo"
+                 style="display: inline-block; padding: 14px 32px; background: #4f46e5; color: #ffffff; text-decoration: none; border-radius: 12px; font-size: 14px; font-weight: 600;">
+                Book a Free Demo
+              </a>
+            </div>
+
+            <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;" />
+
+            <p style="color: #9ca3af; font-size: 12px; margin: 0; text-align: center;">
+              HRMS Pro &mdash; Modern HR Management &bull; 
+              <a href="mailto:info@hrmspro.online" style="color: #6b7280; text-decoration: none;">info@hrmspro.online</a>
+            </p>
+          </div>
+        </div>
+      `
+    });
+  } catch (emailErr) {
+    console.error('Error sending customer acknowledgment email:', emailErr);
   }
 
   res.status(200).json({ success: true, message: 'Your message has been sent successfully. We will get back to you soon.' });
 });
+
+

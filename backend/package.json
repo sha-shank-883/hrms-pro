@@ -38,6 +38,7 @@
     "pdf-parse": "^2.4.5",
     "pg": "^8.16.3",
     "qrcode": "^1.5.4",
+    "razorpay": "^2.9.8",
     "slugify": "^1.6.9",
     "socket.io": "^4.8.1",
     "speakeasy": "^2.0.0"

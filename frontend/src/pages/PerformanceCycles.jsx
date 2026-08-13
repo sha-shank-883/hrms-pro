@@ -48,7 +48,7 @@ const PerformanceCycles = () => {
                 <h1 className="text-2xl font-bold text-gray-800">Performance Cycles</h1>
                 <button
                     onClick={() => setShowModal(true)}
-                    className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-700"
+                    className="bg-primary-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-primary-700"
                 >
                     <FaPlus /> Create New Cycle
                 </button>
@@ -133,7 +133,7 @@ const PerformanceCycles = () => {
                                 </button>
                                 <button
                                     type="submit"
-                                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                                    className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700"
                                 >
                                     Create Cycle
                                 </button>

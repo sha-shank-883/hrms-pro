@@ -171,7 +171,7 @@ const TaxDeclarationModal = ({ isOpen, onClose, onSubmit, initialData, isAdmin =
                     )}
 
                     {formData.regime === 'new' && (
-                        <div className="bg-blue-50 text-blue-800 p-4 rounded-lg mb-6 text-sm">
+                        <div className="bg-primary-50 text-blue-800 p-4 rounded-lg mb-6 text-sm">
                             The New Tax Regime offers lower tax rates but does not allow most exemptions and deductions (like 80C, 80D, HRA).
                         </div>
                     )}

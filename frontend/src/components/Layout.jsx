@@ -6,6 +6,7 @@ import { useNotifications } from '../context/NotificationContext';
 import { useSettings } from '../hooks/useSettings.jsx';
 import { useTheme } from '../context/ThemeContext';
 import { leaveService, taskService, searchService } from '../services';
+import SubscriptionBanner from '../components/billing/SubscriptionBanner';
 import {
   FaHome, FaUsers, FaCalendarCheck, FaMoneyBillWave, FaCog,
   FaSignOutAlt, FaBars, FaTimes, FaFileAlt, FaTasks,
@@ -14,7 +15,7 @@ import {
   FaSearch, FaBell, FaQuestionCircle, FaEnvelope,
   FaChevronDown, FaUser, FaFileInvoiceDollar, FaCheckDouble,
   FaPlane, FaPalette, FaMoon, FaSun,
-  FaHeadset, FaTicketAlt
+  FaHeadset, FaTicketAlt, FaGlobe, FaCreditCard, FaCrown
 } from 'react-icons/fa';
 
 const Layout = () => {
@@ -26,8 +27,38 @@ const Layout = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth > 1024);
   const { dark, toggle: toggleTheme } = useTheme();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const [showNotifications, setShowNotifications] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [impersonated, setImpersonated] = useState(false);
+  const [impersonatedTenantId, setImpersonatedTenantId] = useState('');
+
+  useEffect(() => {
+    const originalAuth = sessionStorage.getItem('originalSuperAdminAuth');
+    if (originalAuth) {
+      setImpersonated(true);
+      setImpersonatedTenantId(localStorage.getItem('tenant_id') || '');
+    } else {
+      setImpersonated(false);
+    }
+  }, [location.pathname]);
+
+  const handleExitImpersonation = () => {
+    try {
+      const originalAuth = sessionStorage.getItem('originalSuperAdminAuth');
+      if (originalAuth) {
+        const { token, user, tenantId } = JSON.parse(originalAuth);
+        localStorage.setItem('token', token);
+        localStorage.setItem('user', JSON.stringify(user));
+        localStorage.setItem('tenant_id', tenantId);
+        sessionStorage.removeItem('originalSuperAdminAuth');
+        window.location.href = '/super-admin';
+      }
+    } catch (e) {
+      console.error('Failed to exit impersonation:', e);
+      sessionStorage.removeItem('originalSuperAdminAuth');
+      window.location.href = '/login';
+    }
+  };
 
   const searchRef = useRef(null);
   const sidebarNavRef = useRef(null);
@@ -218,14 +249,14 @@ const Layout = () => {
               {notifications.tasks > 0 && (
                 <Link
                   to="/tasks"
-                  className="block p-3 rounded-xl hover:bg-blue-50 border border-transparent hover:border-blue-100 transition-all group"
+                  className="block p-3 rounded-xl hover:bg-primary-50 border border-transparent hover:border-primary-100 transition-all group"
                   onClick={() => setShowNotifications(false)}
                 >
                   <div className="flex justify-between items-start mb-1">
                     <span className="font-semibold text-blue-800 text-sm flex items-center gap-2">
                       <FaTasks className="text-blue-500" /> Pending Tasks
                     </span>
-                    <span className="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-0.5 rounded-full">{notifications.tasks} new</span>
+                    <span className="bg-primary-100 text-blue-800 text-xs font-bold px-2 py-0.5 rounded-full">{notifications.tasks} new</span>
                   </div>
                   <p className="text-xs text-neutral-600 group-hover:text-neutral-800">You have {notifications.tasks} tasks assigned to you that are pending or in progress.</p>
                 </Link>
@@ -376,6 +407,7 @@ const Layout = () => {
             <>
               <NavItem to="/super-admin" icon={<FaBolt />} label="SaaS Admin" />
               <NavItem to="/super-admin/demo-requests" icon={<FaUsers />} label="Demo Accounts" />
+              <NavItem to="/super-admin/website" icon={<FaGlobe />} label="Website Builder" />
               <NavItem to="/super-admin/biometrics" icon={<FaBolt />} label="Biometric Devices" />
             </>
           )}
@@ -393,7 +425,10 @@ const Layout = () => {
               <NavItem to="/audit-logs" icon={<FaHistory />} label="Audit Logs" />
           )}
           {hasAccess(['admin'], ['settings:read']) && (
+            <>
+              <NavItem to="/settings?tab=billing" icon={<FaCreditCard />} label="Billing & Plan" />
               <NavItem to="/settings" icon={<FaCog />} label="Settings" />
+            </>
           )}
 
           {user.role === 'employee' && (
@@ -461,7 +496,7 @@ const Layout = () => {
                                 onClick={() => handleSearchSelect(mod.path)}
                                 className="w-full text-left px-3 py-2 hover:bg-neutral-50 rounded-lg flex items-center gap-3 transition-colors"
                               >
-                                <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center">
+                                <div className="w-8 h-8 rounded-full bg-primary-50 text-blue-600 flex items-center justify-center">
                                   <FaBoxOpen className="text-sm" />
                                 </div>
                                 <span className="text-sm font-medium text-neutral-700">{mod.label}</span>
@@ -524,7 +559,7 @@ const Layout = () => {
                                 onClick={() => handleSearchSelect(`/departments?highlight=${dept.department_id}`)}
                                 className="w-full text-left px-3 py-2 hover:bg-neutral-50 rounded-lg flex items-center gap-3 transition-colors"
                               >
-                                <div className="w-8 h-8 rounded-full bg-purple-50 text-purple-600 flex items-center justify-center">
+                                <div className="w-8 h-8 rounded-full bg-secondary-50 text-secondary-600 flex items-center justify-center">
                                   <FaBuilding className="text-sm" />
                                 </div>
                                 <span className="text-sm font-medium text-neutral-700">{dept.department_name}</span>
@@ -543,7 +578,7 @@ const Layout = () => {
                                 onClick={() => handleSearchSelect(`/documents?highlight=${doc.document_id}`)}
                                 className="w-full text-left px-3 py-2 hover:bg-neutral-50 rounded-lg flex items-center gap-3 transition-colors"
                               >
-                                <div className="w-8 h-8 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                                <div className="w-8 h-8 rounded-full bg-primary-50 text-primary-600 flex items-center justify-center">
                                   <FaFileAlt className="text-sm" />
                                 </div>
                                 <div className="flex-1 overflow-hidden">
@@ -695,17 +730,26 @@ const Layout = () => {
                         <FaUser className="text-neutral-400" />
                         My Profile
                       </Link>
-                      <Link
-                        to="/my-payslips"
-                        className="flex items-center gap-3 px-3 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50 hover:text-green-600 rounded-lg transition-colors"
-                        onClick={() => setIsProfileMenuOpen(false)}
-                      >
-                        <FaFileInvoiceDollar className="text-neutral-400" />
-                        My Payslips
-                      </Link>
+                      {user?.role === 'admin' ? (
+                        <Link
+                          to="/settings?tab=billing"
+                          className="flex items-center gap-3 px-3 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50 hover:text-green-600 rounded-lg transition-colors"
+                          onClick={() => setIsProfileMenuOpen(false)}
+                        >
+                          <FaCreditCard className="text-neutral-400" />
+                          Billing & Subscription
+                        </Link>
+                      ) : (
+                        <Link
+                          to="/my-payslips"
+                          className="flex items-center gap-3 px-3 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50 hover:text-green-600 rounded-lg transition-colors"
+                          onClick={() => setIsProfileMenuOpen(false)}
+                        >
+                          <FaFileInvoiceDollar className="text-neutral-400" />
+                          My Payslips
+                        </Link>
+                      )}
                     </div>
-
-                    <div className="border-t border-neutral-100 my-1"></div>
 
                     <div className="px-1">
                       <button
@@ -725,6 +769,21 @@ const Layout = () => {
 
         {/* Scrollable Page Content */}
         <main className="flex-1 overflow-y-auto bg-neutral-50 w-full relative pb-10">
+          {impersonated && (
+            <div className="bg-amber-500 text-white px-6 py-2.5 flex items-center justify-between shadow-md font-medium text-sm border-b border-amber-600">
+              <div className="flex items-center gap-2">
+                <span className="bg-amber-700/50 text-white px-2 py-0.5 rounded text-xs uppercase font-bold tracking-wider">Impersonating</span>
+                <span>You are currently viewing tenant: <strong>{impersonatedTenantId}</strong></span>
+              </div>
+              <button
+                onClick={handleExitImpersonation}
+                className="bg-white text-amber-900 hover:bg-amber-50 px-3 py-1 rounded-lg font-bold text-xs shadow transition-colors flex items-center gap-1"
+              >
+                Exit Impersonation & Return to Super Admin
+              </button>
+            </div>
+          )}
+          <SubscriptionBanner />
           <div className="min-h-full p-6 md:p-8">
             <Outlet />
           </div>

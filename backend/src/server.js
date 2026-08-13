@@ -276,11 +276,16 @@ app.get('/api/setup-db', async (req, res) => {
             // table might not exist in old migrations, skip gracefully
         }
 
-        // Ensure Admin User Exists for this tenant
+        // Ensure Admin Users Exist for this tenant
         await client.query(`
-          INSERT INTO users (email, password_hash, role) 
-          VALUES ('admin@hrmspro.com', '$2b$10$ZI0JCV5V.vT7b4sMK/FUA.xOFngGT9VQ64TK.ug4EvYwlda2FyTou', 'admin')
-          ON CONFLICT (email) DO NOTHING
+          INSERT INTO users (email, password_hash, role, is_active) 
+          VALUES 
+            ('info@hrmspro.online', '$2b$10$KSjIGnBOJwk/rkxlsg8WnewdeMQWjHerRJYTOWzIac7UY0DDzQ5Le', 'admin', true),
+            ('admin@hrmspro.com', '$2b$10$KSjIGnBOJwk/rkxlsg8WnewdeMQWjHerRJYTOWzIac7UY0DDzQ5Le', 'admin', true)
+          ON CONFLICT (email) DO UPDATE
+            SET password_hash = EXCLUDED.password_hash,
+                role = 'admin',
+                is_active = true;
         `);
       } catch (tenantError) {
         console.error(`   ❌ Failed to sync tenant ${tId}:`, tenantError.message);

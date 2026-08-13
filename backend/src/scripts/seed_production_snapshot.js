@@ -270,6 +270,27 @@ async function seedProductionSnapshot() {
       console.log('✅ Website settings seeded with complete local design and contact info.');
     }
 
+    // 4. Ensure Payment Logs Table & Gateway Columns Exist
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS shared.payment_logs (
+        id SERIAL PRIMARY KEY,
+        tenant_id VARCHAR(100) REFERENCES shared.tenants(tenant_id) ON DELETE CASCADE,
+        plan_id VARCHAR(50) NOT NULL,
+        amount NUMERIC(10,2) NOT NULL,
+        currency VARCHAR(10) DEFAULT 'USD',
+        paypal_order_id VARCHAR(255),
+        razorpay_order_id VARCHAR(255),
+        razorpay_payment_id VARCHAR(255),
+        gateway VARCHAR(50) DEFAULT 'paypal',
+        status VARCHAR(50) DEFAULT 'pending',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+      ALTER TABLE shared.payment_logs ADD COLUMN IF NOT EXISTS razorpay_order_id VARCHAR(255);
+      ALTER TABLE shared.payment_logs ADD COLUMN IF NOT EXISTS razorpay_payment_id VARCHAR(255);
+      ALTER TABLE shared.payment_logs ADD COLUMN IF NOT EXISTS gateway VARCHAR(50) DEFAULT 'paypal';
+    `);
+    console.log('✅ Payment logs schema and Razorpay/PayPal columns verified.');
+
     console.log('🎉 Master Production Seeding Completed Successfully!');
   } catch (error) {
     console.error('❌ Error during master snapshot seed:', error);

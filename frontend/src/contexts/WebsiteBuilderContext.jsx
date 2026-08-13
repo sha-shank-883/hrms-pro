@@ -379,9 +379,13 @@ export const WebsiteBuilderProvider = ({ children }) => {
   }, [settings.theme_mode]);
 
   const displayImageUrl = (url) => {
-    if (!url) return null;
-    if (url.startsWith('http')) return url;
-    return `${API_BASE}${url}`;
+    if (!url || typeof url !== 'string') return null;
+    const clean = url.trim();
+    if (!clean || clean === 'null' || clean === 'undefined' || clean === '/null' || clean.endsWith('/null') || clean === 'null/' || clean === '/') return null;
+    if (clean.startsWith('http://') || clean.startsWith('https://') || clean.startsWith('data:')) return clean;
+    const base = (API_BASE || '').replace(/\/api\/?$/, '').replace(/\/+$/, '');
+    const path = clean.startsWith('/') ? clean : `/${clean}`;
+    return `${base}${path}`;
   };
 
   const t = useCallback((key, fallback) => {

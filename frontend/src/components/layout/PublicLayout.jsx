@@ -128,6 +128,35 @@ const PublicLayout = () => {
 
   const isActive = (href) => location.pathname === href;
 
+  const BrandLogo = ({ size = 'md', className = '' }) => {
+    const [imgError, setImgError] = useState(false);
+    const logoUrl = settings?.logo_url ? displayImageUrl(settings.logo_url) : null;
+    const initial = (settings?.company_name || 'H').trim().charAt(0).toUpperCase() || 'H';
+
+    const sizeClasses = {
+      sm: 'w-8 h-8 text-base rounded-lg',
+      md: 'w-10 h-10 text-lg rounded-xl',
+      lg: 'w-11 h-11 text-xl rounded-2xl',
+    }[size] || 'w-10 h-10 text-lg rounded-xl';
+
+    if (logoUrl && !imgError) {
+      return (
+        <img
+          src={logoUrl}
+          alt={settings?.company_name || 'HRMS Pro'}
+          className={`h-10 object-contain ${className}`}
+          onError={() => setImgError(true)}
+        />
+      );
+    }
+
+    return (
+      <div className={`${sizeClasses} bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center text-white font-black shadow-md shadow-primary-500/20 group-hover:shadow-lg transition-all duration-300 ${className}`}>
+        {initial}
+      </div>
+    );
+  };
+
   const toggleMobileExpand = (label) => {
     setMobileExpanded(prev => ({ ...prev, [label]: !prev[label] }));
   };
@@ -295,13 +324,7 @@ const PublicLayout = () => {
       }`}>
         <nav className="max-w-7xl mx-auto flex items-center justify-between px-6 lg:px-8 h-20">
           <Link to="/" className="flex items-center gap-2.5 group shrink-0">
-            {settings.logo_url ? (
-              <img src={displayImageUrl(settings.logo_url)} alt={settings.company_name} className="h-10 object-contain" />
-            ) : (
-              <div className="w-10 h-10 bg-gradient-to-br from-primary-500 to-primary-700 rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-md shadow-primary-500/20 group-hover:shadow-lg group-hover:shadow-primary-500/30 transition-all duration-300">
-                {(settings.company_name || 'H').charAt(0)}
-              </div>
-            )}
+            <BrandLogo size="md" />
             <span className="font-bold text-xl tracking-tight text-gray-900 dark:text-white">
               {settings.company_name || 'HRMS Pro'}
             </span>
@@ -455,13 +478,7 @@ const PublicLayout = () => {
               {footerCfg.variant === 'minimal' && (
                 <div className="max-w-7xl mx-auto px-6 lg:px-8 py-14 text-center space-y-8">
                   <Link to="/" className="inline-flex items-center gap-2.5 group">
-                    {settings.logo_url ? (
-                      <img src={displayImageUrl(settings.logo_url)} alt={settings.company_name} className="h-10 object-contain mx-auto" />
-                    ) : (
-                      <div className="w-10 h-10 bg-gradient-to-br from-primary-500 to-primary-700 rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-md">
-                        {(settings.company_name || 'H').charAt(0)}
-                      </div>
-                    )}
+                    <BrandLogo size="md" />
                     <span className="font-bold text-xl text-white">{settings.company_name || 'HRMS Pro'}</span>
                   </Link>
 
@@ -500,9 +517,7 @@ const PublicLayout = () => {
                     <div className="grid grid-cols-1 lg:grid-cols-5 gap-12 p-8 rounded-3xl bg-gray-900/60 backdrop-blur border border-gray-800 shadow-2xl">
                       <div className="lg:col-span-2 space-y-6">
                         <Link to="/" className="flex items-center gap-3">
-                          <div className="w-11 h-11 bg-gradient-to-tr from-primary-500 via-secondary-500 to-pink-500 rounded-2xl flex items-center justify-center text-white font-black text-xl shadow-lg shadow-primary-500/30">
-                            {(settings.company_name || 'H').charAt(0)}
-                          </div>
+                          <BrandLogo size="lg" />
                           <span className="font-extrabold text-2xl tracking-tight text-white">{settings.company_name || 'HRMS Pro'}</span>
                         </Link>
 
@@ -560,13 +575,7 @@ const PublicLayout = () => {
                     {/* Left Col: Brand Info, Contact Pills & Socials */}
                     <div className="lg:col-span-4 space-y-6">
                       <Link to="/" className="flex items-center gap-3 group">
-                        {settings.logo_url ? (
-                          <img src={displayImageUrl(settings.logo_url)} alt={settings.company_name} className="h-10 object-contain" />
-                        ) : (
-                          <div className="w-10 h-10 bg-gradient-to-br from-primary-500 to-primary-700 rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-md shadow-primary-500/20 group-hover:shadow-lg transition-all duration-300">
-                            {(settings.company_name || 'H').charAt(0)}
-                          </div>
-                        )}
+                        <BrandLogo size="md" />
                         <div className="flex flex-col">
                           <span className="font-extrabold text-xl tracking-tight text-white">{settings.company_name || 'HRMS Pro'}</span>
                           <span className="text-[10px] uppercase font-bold tracking-widest text-primary-400">Enterprise HCM Platform</span>

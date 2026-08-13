@@ -501,6 +501,30 @@ const WebsiteBuilder = () => {
     }
   };
 
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+
+  const handleLogoUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingLogo(true);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const res = await api.post('/website/media/upload', fd, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      const uploadedUrl = res.data?.data?.file_url || res.data?.url;
+      if (uploadedUrl) {
+        setGlobalSettings(prev => ({ ...prev, logo_url: uploadedUrl }));
+        showNotification('Logo uploaded successfully! Click Save to apply.');
+      }
+    } catch (err) {
+      showNotification(err.response?.data?.message || 'Failed to upload logo', 'error');
+    } finally {
+      setUploadingLogo(false);
+    }
+  };
+
   // ───── THEMES & DESIGN TOKENS ─────
 
   useEffect(() => {
@@ -1422,7 +1446,70 @@ const WebsiteBuilder = () => {
 
             {/* Company Basics */}
             <div className="space-y-4 pt-2">
-              <h3 className="text-xs font-bold text-primary-600 uppercase tracking-widest">1. Company Identity</h3>
+              <h3 className="text-xs font-bold text-primary-600 uppercase tracking-widest">1. Company Identity & Brand Logo</h3>
+              
+              {/* Logo Management */}
+              <div className="p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/30 space-y-4">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">Live Header & Footer Preview:</span>
+                    {globalSettings.logo_url && globalSettings.logo_url !== 'null' && globalSettings.logo_url !== '' ? (
+                      <div className="p-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl">
+                        <img 
+                          src={globalSettings.logo_url.startsWith('http') ? globalSettings.logo_url : `${(import.meta.env.VITE_API_URL || '').replace('/api', '')}${globalSettings.logo_url}`} 
+                          alt="Logo Preview" 
+                          className="h-9 object-contain" 
+                          onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                        />
+                      </div>
+                    ) : (
+                      <div className="w-10 h-10 bg-gradient-to-br from-primary-500 to-primary-700 rounded-xl flex items-center justify-center text-white font-black text-xl shadow-md shadow-primary-500/20">
+                        {(globalSettings.company_name || 'H').trim().charAt(0).toUpperCase() || 'H'}
+                      </div>
+                    )}
+                    <span className="text-xs text-gray-500 font-medium">
+                      {globalSettings.logo_url && globalSettings.logo_url !== 'null' && globalSettings.logo_url !== '' 
+                        ? 'Custom Image Logo Active' 
+                        : 'Using Capital First Letter Badge'}
+                    </span>
+                  </div>
+
+                  {globalSettings.logo_url && globalSettings.logo_url !== 'null' && (
+                    <button
+                      type="button"
+                      onClick={() => setGlobalSettings({ ...globalSettings, logo_url: '' })}
+                      className="text-xs text-rose-500 hover:text-rose-600 font-semibold underline"
+                    >
+                      Clear Logo (Use Letter Badge)
+                    </button>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Upload Logo Image (PNG / SVG / JPG)</label>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleLogoUpload}
+                      disabled={uploadingLogo}
+                      className="w-full text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100 cursor-pointer"
+                    />
+                    {uploadingLogo && <span className="text-xs text-primary-600 animate-pulse mt-1 inline-block">Uploading logo...</span>}
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Or Direct Logo Image URL</label>
+                    <input
+                      type="text"
+                      value={globalSettings.logo_url || ''}
+                      onChange={e => setGlobalSettings({ ...globalSettings, logo_url: e.target.value })}
+                      placeholder="https://your-domain.com/logo.png"
+                      className="w-full px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 dark:bg-gray-800 text-xs font-mono"
+                    />
+                  </div>
+                </div>
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Company Name</label>

@@ -39,7 +39,10 @@ if (isEmailEnabled) {
   // Verify connection configuration on startup
   transporter.verify(function (error, success) {
       if (error) {
-          console.error('❌ Email connection error:', error.message);
+          console.warn('⚠️ Email connection warning:', error.message);
+          if (error.message.includes('timeout') || error.code === 'ETIMEDOUT') {
+              console.warn('💡 Tip: Cloud hosts (Render, AWS) often block port 587. Try setting SMTP_PORT=465 and SMTP_SECURE=true (or SMTP_PORT=2525) in your Render environment variables.');
+          }
       } else {
           console.log('✅ Email server is ready to take our messages');
       }

@@ -200,16 +200,87 @@ async function seedProductionSnapshot() {
     await client.query(`
       CREATE TABLE IF NOT EXISTS shared.website_settings (
         id SERIAL PRIMARY KEY,
-        primary_color VARCHAR(50),
-        font_family VARCHAR(100),
+        primary_color VARCHAR(50) DEFAULT '#16a34a',
+        font_family VARCHAR(100) DEFAULT 'Inter',
         logo_url TEXT,
+        hero_title TEXT,
+        hero_subtitle TEXT,
+        hero_image_url TEXT,
+        company_name VARCHAR(255) DEFAULT 'HRMS Pro',
+        tagline TEXT DEFAULT 'Modern HR management platform for growing businesses.',
+        copyright_text VARCHAR(255) DEFAULT 'All rights reserved.',
+        contact_email VARCHAR(255) DEFAULT 'info@hrmspro.online',
+        contact_phone VARCHAR(255) DEFAULT '+91 8881781203',
+        contact_address TEXT DEFAULT 'Sector 4, Noida, India, 201301',
+        theme_mode VARCHAR(20) DEFAULT 'light',
+        primary_gradient TEXT,
+        glassmorphism_enabled BOOLEAN DEFAULT TRUE,
+        show_social_proof BOOLEAN DEFAULT TRUE,
+        show_deep_dive BOOLEAN DEFAULT TRUE,
+        show_time_tracking BOOLEAN DEFAULT TRUE,
+        show_grid_features BOOLEAN DEFAULT TRUE,
+        show_testimonials BOOLEAN DEFAULT TRUE,
+        show_cta BOOLEAN DEFAULT TRUE,
+        social_proof_title TEXT,
+        deep_dive_title TEXT,
+        deep_dive_subtitle TEXT,
+        time_tracking_title TEXT,
+        time_tracking_subtitle TEXT,
+        grid_features_title TEXT,
+        grid_features_subtitle TEXT,
+        testimonial_text TEXT,
+        testimonial_author VARCHAR(255),
+        testimonial_role VARCHAR(255),
+        cta_title TEXT,
+        cta_subtitle TEXT,
+        sign_in_label VARCHAR(50) DEFAULT 'Sign In',
+        cta_label VARCHAR(50) DEFAULT 'Get a Demo',
         header_links JSONB DEFAULT '[]',
         footer_columns JSONB DEFAULT '[]',
         sections JSONB DEFAULT '[]',
+        social_links JSONB DEFAULT '[]',
+        awards JSONB DEFAULT '[]',
+        badges JSONB DEFAULT '[]',
         custom_css TEXT,
         custom_js TEXT,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
+
+      ALTER TABLE shared.website_settings ADD COLUMN IF NOT EXISTS company_name VARCHAR(255) DEFAULT 'HRMS Pro';
+      ALTER TABLE shared.website_settings ADD COLUMN IF NOT EXISTS tagline TEXT DEFAULT 'Modern HR management platform for growing businesses.';
+      ALTER TABLE shared.website_settings ADD COLUMN IF NOT EXISTS copyright_text VARCHAR(255) DEFAULT 'All rights reserved.';
+      ALTER TABLE shared.website_settings ADD COLUMN IF NOT EXISTS contact_email VARCHAR(255) DEFAULT 'info@hrmspro.online';
+      ALTER TABLE shared.website_settings ADD COLUMN IF NOT EXISTS contact_phone VARCHAR(255) DEFAULT '+91 8881781203';
+      ALTER TABLE shared.website_settings ADD COLUMN IF NOT EXISTS contact_address TEXT DEFAULT 'Sector 4, Noida, India, 201301';
+      ALTER TABLE shared.website_settings ADD COLUMN IF NOT EXISTS theme_mode VARCHAR(20) DEFAULT 'light';
+      ALTER TABLE shared.website_settings ADD COLUMN IF NOT EXISTS primary_gradient TEXT;
+      ALTER TABLE shared.website_settings ADD COLUMN IF NOT EXISTS glassmorphism_enabled BOOLEAN DEFAULT TRUE;
+      ALTER TABLE shared.website_settings ADD COLUMN IF NOT EXISTS show_social_proof BOOLEAN DEFAULT TRUE;
+      ALTER TABLE shared.website_settings ADD COLUMN IF NOT EXISTS show_deep_dive BOOLEAN DEFAULT TRUE;
+      ALTER TABLE shared.website_settings ADD COLUMN IF NOT EXISTS show_time_tracking BOOLEAN DEFAULT TRUE;
+      ALTER TABLE shared.website_settings ADD COLUMN IF NOT EXISTS show_grid_features BOOLEAN DEFAULT TRUE;
+      ALTER TABLE shared.website_settings ADD COLUMN IF NOT EXISTS show_testimonials BOOLEAN DEFAULT TRUE;
+      ALTER TABLE shared.website_settings ADD COLUMN IF NOT EXISTS show_cta BOOLEAN DEFAULT TRUE;
+      ALTER TABLE shared.website_settings ADD COLUMN IF NOT EXISTS social_proof_title TEXT;
+      ALTER TABLE shared.website_settings ADD COLUMN IF NOT EXISTS deep_dive_title TEXT;
+      ALTER TABLE shared.website_settings ADD COLUMN IF NOT EXISTS deep_dive_subtitle TEXT;
+      ALTER TABLE shared.website_settings ADD COLUMN IF NOT EXISTS time_tracking_title TEXT;
+      ALTER TABLE shared.website_settings ADD COLUMN IF NOT EXISTS time_tracking_subtitle TEXT;
+      ALTER TABLE shared.website_settings ADD COLUMN IF NOT EXISTS grid_features_title TEXT;
+      ALTER TABLE shared.website_settings ADD COLUMN IF NOT EXISTS grid_features_subtitle TEXT;
+      ALTER TABLE shared.website_settings ADD COLUMN IF NOT EXISTS testimonial_text TEXT;
+      ALTER TABLE shared.website_settings ADD COLUMN IF NOT EXISTS testimonial_author VARCHAR(255);
+      ALTER TABLE shared.website_settings ADD COLUMN IF NOT EXISTS testimonial_role VARCHAR(255);
+      ALTER TABLE shared.website_settings ADD COLUMN IF NOT EXISTS cta_title TEXT;
+      ALTER TABLE shared.website_settings ADD COLUMN IF NOT EXISTS cta_subtitle TEXT;
+      ALTER TABLE shared.website_settings ADD COLUMN IF NOT EXISTS sign_in_label VARCHAR(50) DEFAULT 'Sign In';
+      ALTER TABLE shared.website_settings ADD COLUMN IF NOT EXISTS cta_label VARCHAR(50) DEFAULT 'Get a Demo';
+      ALTER TABLE shared.website_settings ADD COLUMN IF NOT EXISTS header_links JSONB DEFAULT '[]';
+      ALTER TABLE shared.website_settings ADD COLUMN IF NOT EXISTS footer_columns JSONB DEFAULT '[]';
+      ALTER TABLE shared.website_settings ADD COLUMN IF NOT EXISTS sections JSONB DEFAULT '[]';
+      ALTER TABLE shared.website_settings ADD COLUMN IF NOT EXISTS social_links JSONB DEFAULT '[]';
+      ALTER TABLE shared.website_settings ADD COLUMN IF NOT EXISTS awards JSONB DEFAULT '[]';
+      ALTER TABLE shared.website_settings ADD COLUMN IF NOT EXISTS badges JSONB DEFAULT '[]';
     `);
 
     const wsCheck = await client.query('SELECT id FROM shared.website_settings LIMIT 1');

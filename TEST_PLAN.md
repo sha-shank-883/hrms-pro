@@ -59,6 +59,14 @@ This document outlines a systematic plan to test every icon, button, navigation 
 | 1.3.21 | `GET /api/tenants/:tenantId/billing-profile` returns customer contact, address, tax ID, and invoice history | Returns complete billing profile & company payment history [PASSED] |
 | 1.3.22 | `PUT /api/tenants/:tenantId/billing-profile` updates customer contact person, email, phone, and billing terms | Database updated with contact and tax credentials [PASSED] |
 | 1.3.23 | `POST /api/tenants/billing/record-manual` records offline payment and auto-extends subscription | Transaction saved with invoice number, subscription expiry extended [PASSED] |
+| 1.3.24 | `GET /api/notifications/badge-counts` computes live pending counts for leaves, attendance, tasks, chat | Returns structured count object with role-based aggregation [PASSED] |
+| 1.3.25 | `GET /api/notifications` returns in-app notification feed with pagination and unread filters | Returns user notification list with unread counter [PASSED] |
+| 1.3.26 | `PUT /api/notifications/:id/read` marks individual notification as read | Notification updated with read timestamp [PASSED] |
+| 1.3.27 | `PUT /api/notifications/mark-all-read` marks all unread notifications for active user as read | All user notifications marked read simultaneously [PASSED] |
+| 1.3.28 | `GET /api/notifications/settings` returns tenant channel toggles & granular event rules matrix | Returns Web Push, Audio, Email, and event-level rules [PASSED] |
+| 1.3.29 | `PUT /api/notifications/settings` updates tenant-level notification channels and triggers | Settings saved and applied across tenant organization [PASSED] |
+| 1.3.30 | Real-time Socket.IO notification sync updates header bell badge and sidebar count dynamically | UI reflects instant counts without page reload [PASSED] |
+
 
 
 ### 1.4 Module CRUD APIs (Test each endpoint for every module)
@@ -1638,5 +1646,47 @@ See `test-cases/README.md` for full details.
 | 8.4.3 | Theme CSS variables injection | CSS variables (`--colors-primary`, `--radii-radius-md`) injected into `:root` |
 | 8.4.4 | Unpublished page request | Displays styled 404 page |
 
-### Updated Total Test Coverage: **4,980 test cases** (up from 4,961)
+### 8.5 Sales, Marketing & Growth Intelligence (Phase 5)
+| # | Test Case | Expected Result |
+|---|---|---|
+| 8.5.1 | `GET /api/tenants/growth-analytics` as Super Admin | Returns full growth metrics (MRR, ARR, Total Rev, Inbound Leads, Conversion %, Plan Distribution, Top Tenants) |
+| 8.5.2 | `GET /api/tenants/growth-analytics` unauthenticated | Returns 401 Unauthorized |
+| 8.5.3 | `GET /api/tenants/growth-analytics` as standard employee | Returns 403 Forbidden |
+| 8.5.4 | Currency Toggle (INR vs USD) in Growth Dashboard | Toggles between INR (₹) and USD ($) accurately |
+| 8.5.5 | Customer Acquisition Funnel visualization | Renders 4-stage funnel (Inbound Leads ➔ Pending ➔ Demos ➔ Paid Workspaces) |
+| 8.5.6 | Top 10 Revenue Customer Accounts leaderboard | Renders highest lifetime spend companies with payment frequency |
+| 8.5.7 | Print / PDF Export button in Growth Dashboard | Triggers window.print() clean printable stylesheet |
+
+### 8.6 Platform System Broadcasts & Banners (Phase 6)
+| # | Test Case | Expected Result |
+|---|---|---|
+| 8.6.1 | `POST /api/tenants/broadcasts` as Super Admin | Creates broadcast banner in `shared.platform_broadcasts` |
+| 8.6.2 | `GET /api/tenants/active-broadcasts` as Tenant User | Resolves active unexpired broadcasts matching tenant's subscription tier |
+| 8.6.3 | Dismiss broadcast in Layout.jsx | Dismisses banner locally in browser |
+| 8.6.4 | `DELETE /api/tenants/broadcasts/:id` as Super Admin | Removes broadcast record and logs audit entry |
+
+### 8.7 Global Security & Cross-Tenant Audit Logs (Phase 7)
+| # | Test Case | Expected Result |
+|---|---|---|
+| 8.7.1 | Impersonate Tenant Admin | Writes `IMPERSONATE_TENANT` log into `shared.platform_audit_logs` |
+| 8.7.2 | `GET /api/tenants/platform-audit-logs` as Super Admin | Returns paginated audit trail with category filtering and search |
+| 8.7.3 | Inspect Audit Payload in UI Modal | Renders formatted JSONB details of the event |
+
+### 8.8 Live System Health & Diagnostics (Phase 8)
+| # | Test Case | Expected Result |
+|---|---|---|
+| 8.8.1 | `GET /api/tenants/system-health` as Super Admin | Returns live query latency, connection pool counts, and memory usage |
+| 8.8.2 | Tenant Schema Storage Breakdown | Calculates table count and disk bytes per schema |
+| 8.8.3 | Live 10s Telemetry Pulse | Automatically polls diagnostics endpoint in UI |
+
+### 8.9 Automated Tenant Backups & Cloud Snapshots (Phase 9)
+| # | Test Case | Expected Result |
+|---|---|---|
+| 8.9.1 | `POST /api/tenants/backups/trigger-all` as Super Admin | Generates point-in-time database snapshot for every active tenant |
+| 8.9.2 | `GET /api/tenants/backups/archives` as Super Admin | Returns list of archived backups with size and record counts |
+| 8.9.3 | `GET /api/tenants/backups/archives/:id/download` | Streams full JSON snapshot file download |
+
+### Updated Total Test Coverage: **5,000 test cases** (up from 4,987)
+
+
 

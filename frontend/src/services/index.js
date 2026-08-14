@@ -22,3 +22,4 @@ export { default as performanceService } from './performanceService';
 export { default as assetService } from './assetService';
 export { default as auditService } from './auditService';
 export { paymentService } from './payment';
+export { notificationService } from './notificationService';

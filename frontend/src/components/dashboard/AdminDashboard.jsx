@@ -168,7 +168,7 @@ const WidgetWrapper = ({ id, config, children, activeSettings, setActiveSettings
 
 const AdminDashboard = () => {
     const { settings } = useSettings();
-    const { user } = useAuth();
+    const { user, hasModule } = useAuth();
     const navigate = useNavigate();
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -492,16 +492,17 @@ const AdminDashboard = () => {
     const getActionConfig = (id) => QUICK_ACTIONS_CONFIG.find(a => a.id === id);
     const getStatConfig = (id) => STATS_CONFIG.find(s => s.id === id);
 
-    const visibleActions = actionOrder.filter(id => {
-        const config = getActionConfig(id);
-        if (!config) return false;
-        if (user?.isSuperAdmin || user?.role === 'super_admin') {
-            return true;
-        }
-        const roleMatch = config.roles.includes(user?.role || 'employee');
-        const tenantMatch = config.tenant ? config.tenant === user?.tenant_id : true;
-        return roleMatch && tenantMatch;
-    });
+    const visibleActions = useMemo(() => {
+        return actionOrder.filter(id => {
+            const config = getActionConfig(id);
+            if (!config) return false;
+            if (user?.isSuperAdmin || user?.role === 'super_admin') return true;
+            if (config.module && hasModule && !hasModule(config.module)) return false;
+            const roleMatch = config.roles.includes(user?.role || 'employee');
+            const tenantMatch = config.tenant ? config.tenant === user?.tenant_id : true;
+            return roleMatch && tenantMatch;
+        });
+    }, [actionOrder, user, hasModule]);
 
     if (loading) return <DashboardSkeleton />;
     if (error) {

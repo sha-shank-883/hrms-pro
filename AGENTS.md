@@ -11,7 +11,34 @@ Every new implementation MUST be accompanied by:
 
 ---
 
-## Skills Reference
+## Golden Architectural Rules for New Features (Zero Regression Policy)
+
+Every developer and agent modifying this repository MUST strictly follow these 5 core rules:
+
+1. **Multi-Tenant Schema Isolation**:
+   - **Platform-Level SaaS data**: (tenants, plan configurations, payment/billing logs, marketing CMS, biometric hardware registry, global super admins) lives strictly in `shared.<table_name>`.
+   - **Tenant-Level Company data**: (employees, departments, attendance, leaves, payroll, expenses, offboarding, helpdesk, documents, audit logs) lives strictly in `"<tenant_id>".<table_name>`.
+   - Never write tenant operational records to `shared` schema, and never place global platform records in tenant schemas.
+
+2. **Entitlement & Dynamic Plan Gatekeeping**:
+   - Every new tenant module MUST be registered in `SYSTEM_MODULES` in `backend/src/controllers/tenantController.js`.
+   - Backend routes MUST be protected using `checkModuleAccess('<module_key>')`.
+   - Frontend routes and navigation items MUST be guarded with `<ModuleGuard module="<module_key>">` and `hasModule('<module_key>')`.
+   - Super Admin custom module overrides must be respected seamlessly.
+
+3. **Zero Regression / Non-Destructive Extension**:
+   - NEVER delete or overwrite existing endpoints, table columns, or UI components unless explicitly asked.
+   - Always extend existing tables using `ALTER TABLE ... ADD COLUMN IF NOT EXISTS`.
+   - Use parameterized SQL queries with explicit type safety (e.g. `p.id::text = $1 OR p.invoice_number = $1`) to prevent PostgreSQL type coercion failures.
+
+4. **UI & Design System Consistency**:
+   - Use consistent Tailwind CSS tokens, responsive desktop grids (`grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-4`).
+   - Keep navigation items compact and sleek (`px-3 py-2 text-xs font-semibold`, `w-64` sidebar width).
+   - Provide printable invoice/document receipts using clean print stylesheets and modal portals.
+
+5. **Self-Contained Migration & Verification**:
+   - Every new database table must have an idempotent migration script in `backend/src/scripts/` that executes gracefully on both fresh and existing tenant schemas.
+   - Verify every implementation with automated test scripts and `npm run build`.
 
 Each skill enforces production-grade conventions for its domain. The system **automatically** determines which skills apply to every task.
 

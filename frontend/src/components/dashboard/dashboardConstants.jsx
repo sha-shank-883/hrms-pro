@@ -14,27 +14,105 @@ import {
     FaFileAlt,
     FaEnvelope,
     FaHistory,
-    FaChartBar
+    FaChartBar,
+    FaPlane,
+    FaComments,
+    FaBoxOpen,
+    FaChartLine,
+    FaCreditCard,
+    FaShieldAlt
 } from 'react-icons/fa';
 
 export const QUICK_ACTIONS_CONFIG = [
     {
-        id: 'action-saas-admin',
-        label: 'SaaS Admin',
-        icon: <FaGlobe />,
-        path: '/super-admin',
-        roles: ['admin'],
-        tenant: 'tenant_default',
+        id: 'action-add-employee',
+        label: 'Employees',
+        icon: <FaUsers />,
+        path: '/employees',
+        roles: ['admin', 'manager'],
+        module: 'core_hr',
+        theme: 'info'
+    },
+    {
+        id: 'action-attendance',
+        label: 'Attendance',
+        icon: <FaClock />,
+        path: '/attendance',
+        roles: ['admin', 'manager', 'employee'],
+        module: 'attendance',
+        theme: 'success'
+    },
+    {
+        id: 'action-apply-leave',
+        label: 'Leaves',
+        icon: <FaPlane />,
+        path: '/leaves',
+        roles: ['admin', 'manager', 'employee'],
+        module: 'leaves',
+        theme: 'warning'
+    },
+    {
+        id: 'action-assign-task',
+        label: 'Tasks',
+        icon: <FaTasks />,
+        path: '/tasks',
+        roles: ['admin', 'manager', 'employee'],
+        module: 'tasks',
         theme: 'primary'
     },
     {
-        id: 'action-demo-accounts',
-        label: 'Demo Accounts',
-        icon: <FaUsers />,
-        path: '/super-admin/demo-requests',
-        roles: ['admin'],
-        tenant: 'tenant_default',
+        id: 'action-payroll',
+        label: 'Payroll',
+        icon: <FaMoneyBillWave />,
+        path: '/payroll',
+        roles: ['admin', 'manager'],
+        module: 'payroll',
+        theme: 'danger'
+    },
+    {
+        id: 'action-performance',
+        label: 'Performance',
+        icon: <FaChartLine />,
+        path: '/performance',
+        roles: ['admin', 'manager'],
+        module: 'performance',
         theme: 'primary'
+    },
+    {
+        id: 'action-chat',
+        label: 'Team Chat',
+        icon: <FaComments />,
+        path: '/chat',
+        roles: ['admin', 'manager', 'employee'],
+        module: 'chat',
+        theme: 'info'
+    },
+    {
+        id: 'action-recruitment',
+        label: 'Recruitment',
+        icon: <FaUserPlus />,
+        path: '/recruitment',
+        roles: ['admin', 'manager'],
+        module: 'recruitment',
+        theme: 'success'
+    },
+    {
+        id: 'action-documents',
+        label: 'Documents',
+        icon: <FaFileAlt />,
+        path: '/documents',
+        roles: ['admin', 'manager', 'employee'],
+        module: 'documents',
+        theme: 'secondary'
+    },
+    {
+        id: 'action-assets',
+        label: 'Assets',
+        icon: <FaBoxOpen />,
+        path: '/assets',
+        roles: ['admin', 'manager'],
+        module: 'assets',
+        theme: 'warning'
     },
     {
         id: 'action-reports',
@@ -42,62 +120,15 @@ export const QUICK_ACTIONS_CONFIG = [
         icon: <FaChartBar />,
         path: '/reports',
         roles: ['admin', 'manager'],
+        module: 'reports_analytics',
         theme: 'info'
     },
     {
-        id: 'action-audit-logs',
-        label: 'Audit Logs',
-        icon: <FaHistory />,
-        path: '/audit-logs',
+        id: 'action-billing',
+        label: 'Billing & Plan',
+        icon: <FaCreditCard />,
+        path: '/settings?tab=billing',
         roles: ['admin'],
-        theme: 'secondary'
-    },
-    {
-        id: 'action-email-templates',
-        label: 'Email Templates',
-        icon: <FaEnvelope />,
-        path: '/email-templates',
-        roles: ['admin'],
-        theme: 'secondary'
-    },
-    {
-        id: 'action-add-employee',
-        label: 'Add Employee',
-        icon: <FaUserPlus />,
-        path: '/employees',
-        roles: ['admin', 'manager'],
-        theme: 'info'
-    },
-    {
-        id: 'action-apply-leave',
-        label: 'Apply Leave',
-        icon: <FaCalendarPlus />,
-        path: '/leaves',
-        roles: ['admin', 'manager', 'employee'],
-        theme: 'success'
-    },
-    {
-        id: 'action-assign-task',
-        label: 'Assign Task',
-        icon: <FaTasks />,
-        path: '/tasks',
-        roles: ['admin', 'manager'],
-        theme: 'warning'
-    },
-    {
-        id: 'action-payroll',
-        label: 'Payslips',
-        icon: <FaMoneyBillWave />,
-        path: '/payroll',
-        roles: ['admin'],
-        theme: 'danger'
-    },
-    {
-        id: 'action-my-payslips',
-        label: 'My Payslips',
-        icon: <FaMoneyBillWave />,
-        path: '/my-payslips',
-        roles: ['employee'],
         theme: 'danger'
     },
     {
@@ -118,15 +149,7 @@ export const STATS_CONFIG = [
         colorClass: 'text-primary-600 bg-primary-50',
         path: '/employees',
         getValue: (stats) => stats?.employees?.total || 0,
-        getSubtext: (stats) => `${stats?.employees?.active || 0} Active`
-    },
-    {
-        id: 'stat-departments',
-        title: 'Departments',
-        icon: <FaBuilding />,
-        colorClass: 'text-info-600 bg-info-50',
-        path: '/departments',
-        getValue: (stats) => stats?.departments?.total || 0
+        getSubtext: (stats) => `${stats?.employees?.active || 0} Active Staff`
     },
     {
         id: 'stat-attendance',
@@ -144,6 +167,15 @@ export const STATS_CONFIG = [
         colorClass: 'text-warning bg-warning-50',
         path: '/leaves',
         getValue: (stats) => stats?.leaves?.pending || 0,
-        getSubtext: (stats) => `${stats?.leaves?.approved || 0} Approved`
+        getSubtext: (stats) => `${stats?.leaves?.approved || 0} Approved this month`
+    },
+    {
+        id: 'stat-departments',
+        title: 'Departments',
+        icon: <FaBuilding />,
+        colorClass: 'text-info-600 bg-info-50',
+        path: '/departments',
+        getValue: (stats) => stats?.departments?.total || 0,
+        getSubtext: (stats) => 'Active Organization Units'
     }
 ];

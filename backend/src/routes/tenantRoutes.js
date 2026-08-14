@@ -6,9 +6,37 @@ const {
   backupTenant, restoreTenant,
   getPlanConfigs, updatePlanConfig, getTenantModules, updateTenantModules,
   getBillingOverview, getTenantBillingProfile, updateTenantBillingProfile, recordManualPayment,
-  getMyTenantBilling, updateMyTenantBilling, getInvoiceDetails
+  getMyTenantBilling, updateMyTenantBilling, getInvoiceDetails,
+  getGrowthAnalytics,
+  getActiveBroadcasts, getAllBroadcasts, createBroadcast, updateBroadcast, deleteBroadcast,
+  getPlatformAuditLogs,
+  getSystemHealthDiagnostics,
+  getBackupArchives, triggerAllTenantBackups, downloadBackupArchive
 } = require('../controllers/tenantController');
 const { authenticateToken, authorizeRole, requireSuperAdmin } = require('../middleware/auth');
+
+// Active Broadcasts for Public/Tenant Header Banner
+router.get('/active-broadcasts', authenticateToken, getActiveBroadcasts);
+
+// Platform Broadcasts Management (Super Admin)
+router.get('/broadcasts', authenticateToken, requireSuperAdmin, getAllBroadcasts);
+router.post('/broadcasts', authenticateToken, requireSuperAdmin, createBroadcast);
+router.put('/broadcasts/:id', authenticateToken, requireSuperAdmin, updateBroadcast);
+router.delete('/broadcasts/:id', authenticateToken, requireSuperAdmin, deleteBroadcast);
+
+// Platform Security & Cross-Tenant Audit Logs (Super Admin)
+router.get('/platform-audit-logs', authenticateToken, requireSuperAdmin, getPlatformAuditLogs);
+
+// Live System Health & Infrastructure Diagnostics (Super Admin)
+router.get('/system-health', authenticateToken, requireSuperAdmin, getSystemHealthDiagnostics);
+
+// Tenant Backup Archives & Automated Snapshots (Super Admin)
+router.get('/backups/archives', authenticateToken, requireSuperAdmin, getBackupArchives);
+router.post('/backups/trigger-all', authenticateToken, requireSuperAdmin, triggerAllTenantBackups);
+router.get('/backups/archives/:id/download', authenticateToken, requireSuperAdmin, downloadBackupArchive);
+
+// Platform Sales, Marketing & Growth Analytics (Super Admin)
+router.get('/growth-analytics', authenticateToken, requireSuperAdmin, getGrowthAnalytics);
 
 // Tenant Self-Serve Customer Billing & Invoices
 router.get('/my-billing', authenticateToken, getMyTenantBilling);

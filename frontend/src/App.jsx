@@ -40,9 +40,14 @@ import Assets from './pages/Assets';
 import AuditLogs from './pages/AuditLogs';
 import SuperAdmin from './pages/SuperAdmin';
 import SuperAdminBilling from './pages/SuperAdminBilling';
+import SuperAdminGrowth from './pages/SuperAdminGrowth';
 import SuperAdminPlans from './pages/SuperAdminPlans';
 import SuperAdminEntitlements from './pages/SuperAdminEntitlements';
 import SuperAdminBiometrics from './pages/SuperAdminBiometrics';
+import SuperAdminBroadcasts from './pages/SuperAdminBroadcasts';
+import SuperAdminPlatformAudit from './pages/SuperAdminPlatformAudit';
+import SuperAdminHealth from './pages/SuperAdminHealth';
+import SuperAdminBackups from './pages/SuperAdminBackups';
 import WebsiteBuilder from './pages/WebsiteBuilder';
 
 import MobileAppConfig from './pages/MobileAppConfig';
@@ -303,6 +308,11 @@ function App() {
                       <SuperAdminBilling />
                     </SuperAdminRoute>
                   } />
+                  <Route path="super-admin/growth" element={
+                    <SuperAdminRoute>
+                      <SuperAdminGrowth />
+                    </SuperAdminRoute>
+                  } />
                   <Route path="super-admin/plans" element={
                     <SuperAdminRoute>
                       <SuperAdminPlans />
@@ -316,6 +326,26 @@ function App() {
                   <Route path="super-admin/website" element={
                     <SuperAdminRoute>
                       <WebsiteBuilder />
+                    </SuperAdminRoute>
+                  } />
+                  <Route path="super-admin/broadcasts" element={
+                    <SuperAdminRoute>
+                      <SuperAdminBroadcasts />
+                    </SuperAdminRoute>
+                  } />
+                  <Route path="super-admin/platform-audit" element={
+                    <SuperAdminRoute>
+                      <SuperAdminPlatformAudit />
+                    </SuperAdminRoute>
+                  } />
+                  <Route path="super-admin/health" element={
+                    <SuperAdminRoute>
+                      <SuperAdminHealth />
+                    </SuperAdminRoute>
+                  } />
+                  <Route path="super-admin/backups" element={
+                    <SuperAdminRoute>
+                      <SuperAdminBackups />
                     </SuperAdminRoute>
                   } />
                   <Route path="super-admin/biometrics" element={

@@ -381,6 +381,7 @@ app.use('/api/export', require('./routes/exportRoutes'));
 app.use('/api/payments', require('./routes/paymentRoutes'));
 app.use('/api/payment', require('./routes/paymentRoutes'));
 app.use('/api/razorpay', require('./routes/paymentRoutes'));
+app.use('/api/notifications', require('./routes/notificationRoutes'));
 
 
 
@@ -394,9 +395,10 @@ app.use(errorHandler);
 
 // Start server
 const PORT = process.env.PORT || 5001;
+const autoMigrate = require('./config/autoMigrate');
 
 if (process.env.NODE_ENV !== 'test') {
-  server.listen(PORT, () => {
+  server.listen(PORT, async () => {
     console.log('');
     console.log('🚀 ============================================');
     console.log(`   HRMS Pro Server Running`);
@@ -408,6 +410,7 @@ if (process.env.NODE_ENV !== 'test') {
     console.log('   ============================================');
     console.log('');
 
+    await autoMigrate();
     emailQueueService.startWorker();
   });
 

@@ -5,7 +5,7 @@ import { useSocket } from '../context/SocketContext';
 import { useNotifications } from '../context/NotificationContext';
 import { useSettings } from '../hooks/useSettings.jsx';
 import { useTheme } from '../context/ThemeContext';
-import { leaveService, taskService, searchService } from '../services';
+import { leaveService, taskService, searchService, tenantService } from '../services';
 import SubscriptionBanner from '../components/billing/SubscriptionBanner';
 import {
   FaHome, FaUsers, FaCalendarCheck, FaMoneyBillWave, FaCog,
@@ -16,13 +16,81 @@ import {
   FaChevronDown, FaUser, FaFileInvoiceDollar, FaCheckDouble,
   FaPlane, FaPalette, FaMoon, FaSun,
   FaHeadset, FaTicketAlt, FaGlobe, FaCreditCard, FaCrown,
-  FaLayerGroup, FaThLarge, FaFingerprint, FaMobileAlt
+  FaLayerGroup, FaThLarge, FaFingerprint, FaMobileAlt,
+  FaBullhorn, FaShieldAlt, FaHeartbeat, FaDatabase
 } from 'react-icons/fa';
+
+const PlatformBroadcastBanner = () => {
+  const [broadcasts, setBroadcasts] = useState([]);
+  const [dismissed, setDismissed] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('dismissed_broadcasts') || '[]');
+    } catch {
+      return [];
+    }
+  });
+
+  useEffect(() => {
+    const fetchBroadcasts = async () => {
+      try {
+        const res = await tenantService.getActiveBroadcasts();
+        if (res.success && res.broadcasts) {
+          setBroadcasts(res.broadcasts);
+        }
+      } catch (err) {
+        // silent fail
+      }
+    };
+    fetchBroadcasts();
+  }, []);
+
+  const handleDismiss = (id) => {
+    const next = [...dismissed, id];
+    setDismissed(next);
+    localStorage.setItem('dismissed_broadcasts', JSON.stringify(next));
+  };
+
+  const visible = broadcasts.filter(b => !dismissed.includes(b.id));
+  if (visible.length === 0) return null;
+
+  return (
+    <div className="space-y-1">
+      {visible.map(b => (
+        <div
+          key={b.id}
+          className={`px-6 py-2.5 flex items-center justify-between text-xs font-medium border-b transition-all shadow-xs ${
+            b.type === 'warning' ? 'bg-amber-500 text-white border-amber-600' :
+            b.type === 'critical' ? 'bg-red-600 text-white border-red-700' :
+            b.type === 'maintenance' ? 'bg-purple-600 text-white border-purple-700' :
+            'bg-blue-600 text-white border-blue-700'
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            <span className="uppercase text-[10px] font-black tracking-wider px-1.5 py-0.5 rounded bg-black/20">
+              {b.type}
+            </span>
+            <span className="font-bold">{b.title}:</span>
+            <span>{b.message}</span>
+          </div>
+          {b.dismissible && (
+            <button
+              onClick={() => handleDismiss(b.id)}
+              className="text-white/80 hover:text-white p-1 rounded hover:bg-black/10 text-sm leading-none"
+              title="Dismiss announcement"
+            >
+              &times;
+            </button>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+};
 
 const Layout = () => {
   const { user, logout, hasModule } = useAuth();
   const { settings } = useSettings();
-  const { notifications, markAsRead } = useNotifications();
+  const { notifications, feed, unreadCount, markAsRead, markAllAsRead } = useNotifications();
   const navigate = useNavigate();
   const location = useLocation();
   const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth > 1024);
@@ -219,82 +287,215 @@ const Layout = () => {
       {showNotifications && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setShowNotifications(false)}></div>
-          <div className="absolute top-20 right-4 md:right-20 w-80 md:w-96 bg-white rounded-xl shadow-2xl border border-neutral-100 z-50 animate-in fade-in zoom-in-95 duration-200 origin-top-right overflow-hidden flex flex-col max-h-[80vh]">
-            <div className="p-4 border-b border-neutral-100 flex justify-between items-center bg-neutral-50">
-              <h3 className="font-bold text-neutral-800 flex items-center gap-2">
-                <FaBell className="text-primary-600" /> Notifications
-              </h3>
-              <button className="text-xs font-medium text-primary-600 hover:text-primary-700 flex items-center gap-1 hover:bg-primary-50 px-2 py-1 rounded transition-colors">
-                <FaCheckDouble /> Mark all read
+          <div className="absolute top-16 right-4 md:right-20 w-80 md:w-96 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-neutral-200 dark:border-gray-700 z-50 animate-in fade-in zoom-in-95 duration-200 origin-top-right overflow-hidden flex flex-col max-h-[85vh]">
+            <div className="p-4 border-b border-neutral-100 dark:border-gray-700 flex justify-between items-center bg-neutral-50 dark:bg-gray-850">
+              <div className="flex items-center gap-2">
+                <FaBell className="text-primary-600" />
+                <h3 className="font-bold text-sm text-neutral-900 dark:text-white">Notifications</h3>
+                {(notifications.total > 0 || unreadCount > 0) && (
+                  <span className="bg-primary-100 text-primary-800 dark:bg-primary-950 dark:text-primary-300 text-[10px] font-black px-2 py-0.5 rounded-full">
+                    {notifications.total || unreadCount} unread
+                  </span>
+                )}
+              </div>
+              <button 
+                onClick={() => markAllAsRead()}
+                className="text-xs font-semibold text-primary-600 hover:text-primary-700 flex items-center gap-1 hover:bg-primary-50 dark:hover:bg-primary-950/50 px-2 py-1 rounded transition-colors"
+              >
+                <FaCheckDouble className="text-[10px]" /> Mark all read
               </button>
             </div>
 
-            <div className="overflow-y-auto custom-scrollbar p-2 space-y-2">
-              {notifications.leaves > 0 && (
-                <Link
-                  to="/leaves"
-                  className="block p-3 rounded-xl hover:bg-amber-50 border border-transparent hover:border-amber-100 transition-all group"
-                  onClick={() => setShowNotifications(false)}
-                >
-                  <div className="flex justify-between items-start mb-1">
-                    <span className="font-semibold text-amber-800 text-sm flex items-center gap-2">
-                      <FaCalendarCheck className="text-amber-500" /> Leave Requests
-                    </span>
-                    <span className="bg-amber-100 text-amber-800 text-xs font-bold px-2 py-0.5 rounded-full">{notifications.leaves} new</span>
-                  </div>
-                  <p className="text-xs text-neutral-600 group-hover:text-neutral-800">You have {notifications.leaves} pending leave applications requiring approval.</p>
-                </Link>
+            {/* Actionable Module Cards */}
+            <div className="overflow-y-auto custom-scrollbar p-3 space-y-2.5 max-h-[60vh]">
+              {/* Super Admin Platform Action Cards */}
+              {(user?.isSuperAdmin || user?.role === 'super_admin') ? (
+                <>
+                  {notifications.leads > 0 && (
+                    <Link
+                      to="/super-admin/demo-requests"
+                      className="block p-3 rounded-xl bg-blue-50/70 hover:bg-blue-100/70 border border-blue-200/60 dark:bg-blue-950/20 dark:border-blue-900/50 transition-all group"
+                      onClick={() => setShowNotifications(false)}
+                    >
+                      <div className="flex justify-between items-start mb-1">
+                        <span className="font-bold text-blue-900 dark:text-blue-300 text-xs flex items-center gap-1.5">
+                          <FaUsers className="text-blue-500" /> New Demo Leads
+                        </span>
+                        <span className="bg-blue-200 dark:bg-blue-900 text-blue-900 dark:text-blue-100 text-[10px] font-extrabold px-2 py-0.5 rounded-full">
+                          {notifications.leads} pending
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-blue-800 dark:text-blue-400">
+                        {notifications.leads} potential client lead(s) requested product demos.
+                      </p>
+                    </Link>
+                  )}
+
+                  {notifications.billing > 0 && (
+                    <Link
+                      to="/super-admin/billing"
+                      className="block p-3 rounded-xl bg-emerald-50/70 hover:bg-emerald-100/70 border border-emerald-200/60 dark:bg-emerald-950/20 dark:border-emerald-900/50 transition-all group"
+                      onClick={() => setShowNotifications(false)}
+                    >
+                      <div className="flex justify-between items-start mb-1">
+                        <span className="font-bold text-emerald-900 dark:text-emerald-300 text-xs flex items-center gap-1.5">
+                          <FaCreditCard className="text-emerald-500" /> Platform Payments
+                        </span>
+                        <span className="bg-emerald-200 dark:bg-emerald-900 text-emerald-900 dark:text-emerald-100 text-[10px] font-extrabold px-2 py-0.5 rounded-full">
+                          {notifications.billing} recent
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-emerald-800 dark:text-emerald-400">
+                        {notifications.billing} subscription payment transaction(s) logged in the last 24h.
+                      </p>
+                    </Link>
+                  )}
+                </>
+              ) : (
+                /* Tenant Organization Action Cards */
+                <>
+                  {notifications.leaves > 0 && (
+                    <Link
+                      to="/leaves"
+                      className="block p-3 rounded-xl bg-amber-50/70 hover:bg-amber-100/70 border border-amber-200/60 dark:bg-amber-950/20 dark:border-amber-900/50 transition-all group"
+                      onClick={() => setShowNotifications(false)}
+                    >
+                      <div className="flex justify-between items-start mb-1">
+                        <span className="font-bold text-amber-900 dark:text-amber-300 text-xs flex items-center gap-1.5">
+                          <FaCalendarCheck className="text-amber-500" /> Leave Approvals
+                        </span>
+                        <span className="bg-amber-200 dark:bg-amber-900 text-amber-900 dark:text-amber-100 text-[10px] font-extrabold px-2 py-0.5 rounded-full">
+                          {notifications.leaves} pending
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-amber-800 dark:text-amber-400">
+                        You have {notifications.leaves} leave request(s) awaiting your action.
+                      </p>
+                    </Link>
+                  )}
+
+                  {notifications.attendance > 0 && (
+                    <Link
+                      to="/attendance"
+                      className="block p-3 rounded-xl bg-purple-50/70 hover:bg-purple-100/70 border border-purple-200/60 dark:bg-purple-950/20 dark:border-purple-900/50 transition-all group"
+                      onClick={() => setShowNotifications(false)}
+                    >
+                      <div className="flex justify-between items-start mb-1">
+                        <span className="font-bold text-purple-900 dark:text-purple-300 text-xs flex items-center gap-1.5">
+                          <FaClock className="text-purple-500" /> Regularization Requests
+                        </span>
+                        <span className="bg-purple-200 dark:bg-purple-900 text-purple-900 dark:text-purple-100 text-[10px] font-extrabold px-2 py-0.5 rounded-full">
+                          {notifications.attendance} pending
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-purple-800 dark:text-purple-400">
+                        {notifications.attendance} attendance regularization claim(s) need review.
+                      </p>
+                    </Link>
+                  )}
+
+                  {notifications.tasks > 0 && (
+                    <Link
+                      to="/tasks"
+                      className="block p-3 rounded-xl bg-blue-50/70 hover:bg-blue-100/70 border border-blue-200/60 dark:bg-blue-950/20 dark:border-blue-900/50 transition-all group"
+                      onClick={() => setShowNotifications(false)}
+                    >
+                      <div className="flex justify-between items-start mb-1">
+                        <span className="font-bold text-blue-900 dark:text-blue-300 text-xs flex items-center gap-1.5">
+                          <FaTasks className="text-blue-500" /> Pending Tasks
+                        </span>
+                        <span className="bg-blue-200 dark:bg-blue-900 text-blue-900 dark:text-blue-100 text-[10px] font-extrabold px-2 py-0.5 rounded-full">
+                          {notifications.tasks} active
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-blue-800 dark:text-blue-400">
+                        You have {notifications.tasks} task(s) in progress or awaiting completion.
+                      </p>
+                    </Link>
+                  )}
+
+                  {notifications.chat > 0 && (
+                    <Link
+                      to="/chat"
+                      className="block p-3 rounded-xl bg-emerald-50/70 hover:bg-emerald-100/70 border border-emerald-200/60 dark:bg-emerald-950/20 dark:border-emerald-900/50 transition-all group"
+                      onClick={() => setShowNotifications(false)}
+                    >
+                      <div className="flex justify-between items-start mb-1">
+                        <span className="font-bold text-emerald-900 dark:text-emerald-300 text-xs flex items-center gap-1.5">
+                          <FaComments className="text-emerald-500" /> Unread Messages
+                        </span>
+                        <span className="bg-emerald-200 dark:bg-emerald-900 text-emerald-900 dark:text-emerald-100 text-[10px] font-extrabold px-2 py-0.5 rounded-full">
+                          {notifications.chat} new
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-emerald-800 dark:text-emerald-400">
+                        You have {notifications.chat} unread direct or channel message(s).
+                      </p>
+                    </Link>
+                  )}
+                </>
               )}
 
-              {notifications.tasks > 0 && (
-                <Link
-                  to="/tasks"
-                  className="block p-3 rounded-xl hover:bg-primary-50 border border-transparent hover:border-primary-100 transition-all group"
-                  onClick={() => setShowNotifications(false)}
-                >
-                  <div className="flex justify-between items-start mb-1">
-                    <span className="font-semibold text-blue-800 text-sm flex items-center gap-2">
-                      <FaTasks className="text-blue-500" /> Pending Tasks
-                    </span>
-                    <span className="bg-primary-100 text-blue-800 text-xs font-bold px-2 py-0.5 rounded-full">{notifications.tasks} new</span>
-                  </div>
-                  <p className="text-xs text-neutral-600 group-hover:text-neutral-800">You have {notifications.tasks} tasks assigned to you that are pending or in progress.</p>
-                </Link>
+              {/* Feed Items */}
+              {feed && feed.length > 0 && (
+                <div className="pt-2 border-t border-neutral-100 dark:border-gray-700 space-y-1.5">
+                  <p className="text-[10px] font-extrabold uppercase text-neutral-400 px-1 tracking-wider">Recent Activity</p>
+                  {feed.slice(0, 5).map(item => (
+                    <div
+                      key={item.id}
+                      onClick={() => {
+                        markAsRead(item.id);
+                        if (item.action_url) {
+                          navigate(item.action_url);
+                          setShowNotifications(false);
+                        }
+                      }}
+                      className={`p-2.5 rounded-xl border text-left cursor-pointer transition-all ${
+                        !item.is_read
+                          ? 'bg-primary-50/40 border-primary-200 dark:bg-primary-950/30 dark:border-primary-800'
+                          : 'bg-neutral-50/50 border-neutral-100 dark:bg-gray-800 dark:border-gray-700 opacity-70 hover:opacity-100'
+                      }`}
+                    >
+                      <div className="flex justify-between items-start gap-1">
+                        <span className="font-bold text-xs text-neutral-900 dark:text-white flex items-center gap-1">
+                          {!item.is_read && <span className="w-1.5 h-1.5 rounded-full bg-primary-500 shrink-0"></span>}
+                          {item.title}
+                        </span>
+                        <span className="text-[9px] text-neutral-400 shrink-0">
+                          {new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-neutral-600 dark:text-neutral-300 line-clamp-2 mt-0.5">{item.message}</p>
+                    </div>
+                  ))}
+                </div>
               )}
 
-              {notifications.chat > 0 && (
-                <Link
-                  to="/chat"
-                  className="block p-3 rounded-xl hover:bg-green-50 border border-transparent hover:border-green-100 transition-all group"
-                  onClick={() => setShowNotifications(false)}
-                >
-                  <div className="flex justify-between items-start mb-1">
-                    <span className="font-semibold text-green-800 text-sm flex items-center gap-2">
-                      <FaComments className="text-green-500" /> New Messages
-                    </span>
-                    <span className="bg-green-100 text-green-800 text-xs font-bold px-2 py-0.5 rounded-full">{notifications.chat} new</span>
-                  </div>
-                  <p className="text-xs text-neutral-600 group-hover:text-neutral-800">You have {notifications.chat} unread messages from your team.</p>
-                </Link>
-              )}
-
-              {notifications.leaves === 0 && notifications.tasks === 0 && notifications.chat === 0 && (
+              {notifications.leaves === 0 && notifications.attendance === 0 && notifications.tasks === 0 && notifications.chat === 0 && notifications.leads === 0 && notifications.billing === 0 && (!feed || feed.length === 0) && (
                 <div className="flex flex-col items-center justify-center py-8 text-neutral-400">
-                  <div className="w-16 h-16 bg-neutral-100 rounded-full flex items-center justify-center mb-3">
-                    <FaBell className="text-2xl text-neutral-300" />
+                  <div className="w-12 h-12 bg-neutral-100 dark:bg-gray-700 rounded-full flex items-center justify-center mb-2">
+                    <FaBell className="text-xl text-neutral-300 dark:text-neutral-500" />
                   </div>
-                  <p className="text-sm font-medium">No new notifications</p>
-                  <p className="text-xs text-neutral-400 mt-1">You're all caught up!</p>
+                  <p className="text-xs font-bold text-neutral-700 dark:text-neutral-300">No unread notifications</p>
+                  <p className="text-[10px] text-neutral-400 mt-0.5">You're completely up to date!</p>
                 </div>
               )}
             </div>
 
             {/* Footer */}
-            {(notifications.leaves > 0 || notifications.tasks > 0 || notifications.chat > 0) && (
-              <div className="p-3 bg-neutral-50 border-t border-neutral-100 text-center">
-                <p className="text-xs text-neutral-500">Real-time updates enabled</p>
-              </div>
-            )}
+            <div className="p-2.5 bg-neutral-50 dark:bg-gray-850 border-t border-neutral-100 dark:border-gray-700 flex items-center justify-between text-[11px] text-neutral-500 px-4">
+              <span className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+                Live Socket Sync
+              </span>
+              <Link
+                to="/settings?tab=notifications"
+                onClick={() => setShowNotifications(false)}
+                className="font-bold text-primary-600 hover:text-primary-700"
+              >
+                Settings
+              </Link>
+            </div>
           </div>
         </>
       )}
@@ -338,18 +539,23 @@ const Layout = () => {
           {(user?.isSuperAdmin || user?.role === 'super_admin') ? (
             <>
               <NavSection title="Tenants & Revenue" />
-              <NavItem to="/super-admin" icon={<FaBuilding />} label="Tenants Directory" />
-              <NavItem to="/super-admin/billing" icon={<FaCreditCard />} label="Billing & Invoices" />
-              <NavItem to="/super-admin/plans" icon={<FaLayerGroup />} label="Plan Tiers" />
-              <NavItem to="/super-admin/entitlements" icon={<FaThLarge />} label="Entitlement Matrix" />
+              <NavItem to="/super-admin" icon={<FaBuilding />} label="Tenants" count={notifications.tenants} />
+              <NavItem to="/super-admin/billing" icon={<FaCreditCard />} label="Billing" count={notifications.billing} />
+              <NavItem to="/super-admin/plans" icon={<FaLayerGroup />} label="Plans" />
+              <NavItem to="/super-admin/entitlements" icon={<FaThLarge />} label="Modules" />
 
               <NavSection title="Growth & Marketing" />
-              <NavItem to="/super-admin/demo-requests" icon={<FaUsers />} label="Demo Leads" />
-              <NavItem to="/super-admin/website" icon={<FaGlobe />} label="Website CMS" />
+              <NavItem to="/super-admin/growth" icon={<FaChartLine />} label="Growth" />
+              <NavItem to="/super-admin/demo-requests" icon={<FaUsers />} label="Leads" count={notifications.leads} />
+              <NavItem to="/super-admin/website" icon={<FaGlobe />} label="Website" />
 
               <NavSection title="Platform Operations" />
-              <NavItem to="/super-admin/biometrics" icon={<FaFingerprint />} label="Biometric Sync" />
-              <NavItem to="/super-admin/mobile-config" icon={<FaMobileAlt />} label="Mobile App" />
+              <NavItem to="/super-admin/broadcasts" icon={<FaBullhorn />} label="Broadcasts" />
+              <NavItem to="/super-admin/platform-audit" icon={<FaShieldAlt />} label="Audit" />
+              <NavItem to="/super-admin/health" icon={<FaHeartbeat />} label="Health" />
+              <NavItem to="/super-admin/backups" icon={<FaDatabase />} label="Backups" />
+              <NavItem to="/super-admin/biometrics" icon={<FaFingerprint />} label="Biometrics" />
+              <NavItem to="/super-admin/mobile-config" icon={<FaMobileAlt />} label="Mobile" />
             </>
           ) : (
             <>
@@ -442,16 +648,16 @@ const Layout = () => {
               )}
               {hasAccess(['admin'], ['settings:update']) && (
                 <>
-                  <NavItem to="/email-templates" icon={<FaFileAlt />} label="Email Templates" />
-                  <NavItem to="/send-email" icon={<FaEnvelope />} label="Send Email" />
+                  <NavItem to="/email-templates" icon={<FaFileAlt />} label="Templates" />
+                  <NavItem to="/send-email" icon={<FaEnvelope />} label="Broadcast" />
                 </>
               )}
               {hasModule('audit_logs') && hasAccess(['admin'], ['audit_logs:read']) && (
-                  <NavItem to="/audit-logs" icon={<FaHistory />} label="Audit Logs" />
+                  <NavItem to="/audit-logs" icon={<FaHistory />} label="Audit" />
               )}
               {hasAccess(['admin'], ['settings:read']) && (
                 <>
-                  <NavItem to="/settings?tab=billing" icon={<FaCreditCard />} label="Billing & Plan" />
+                  <NavItem to="/settings?tab=billing" icon={<FaCreditCard />} label="Billing" />
                   <NavItem to="/settings" icon={<FaCog />} label="Settings" />
                 </>
               )}
@@ -459,9 +665,9 @@ const Layout = () => {
               {user.role === 'employee' && (
                 <>
                   <NavSection title="My Items" />
-                  <NavItem to="/profile" icon={<FaUsers />} label="My Profile" />
+                  <NavItem to="/profile" icon={<FaUsers />} label="Profile" />
                   {hasModule('payroll') && (
-                    <NavItem to="/my-payslips" icon={<FaMoneyBillWave />} label="My Payslips" />
+                    <NavItem to="/my-payslips" icon={<FaMoneyBillWave />} label="Payslips" />
                   )}
                 </>
               )}
@@ -713,11 +919,13 @@ const Layout = () => {
                 SUPER ADMIN
               </span>
             )}
-            <button className="notification-button" onClick={() => setShowNotifications(!showNotifications)}>
-              <FaBell className="notification-bell" />
-              <span className={`notification-badge ${notifications.leaves > 0 || notifications.tasks > 0 || notifications.chat > 0 ? 'show' : ''}`}>
-                {notifications.leaves > 0 ? notifications.leaves : ''}
-              </span>
+            <button className="notification-button relative p-2.5 rounded-xl hover:bg-neutral-100 dark:hover:bg-gray-800 transition-colors" onClick={() => setShowNotifications(!showNotifications)} title="Notifications">
+              <FaBell className="text-lg text-neutral-600 dark:text-gray-300" />
+              {(notifications.total > 0 || unreadCount > 0) && (
+                <span className="absolute top-1 right-1 bg-red-500 text-white text-[10px] font-black min-w-[18px] h-[18px] px-1 rounded-full flex items-center justify-center border-2 border-white dark:border-gray-900 shadow-sm">
+                  {(notifications.total || unreadCount) > 99 ? '99+' : (notifications.total || unreadCount)}
+                </span>
+              )}
             </button>
             <button className="p-3 text-neutral-500 hover:text-green-600 transition-colors duration-200 rounded-md hover:bg-neutral-100">
               <FaQuestionCircle className="text-xl" />
@@ -849,6 +1057,7 @@ const Layout = () => {
               </button>
             </div>
           )}
+          <PlatformBroadcastBanner />
           <SubscriptionBanner />
           <div className="min-h-full p-6 md:p-8">
             <Outlet />

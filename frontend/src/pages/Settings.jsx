@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { settingsService, paymentService, employeeService, tenantService } from '../services';
+import { settingsService, paymentService, employeeService, tenantService, notificationService } from '../services';
 import { useSettings } from '../hooks/useSettings.jsx';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
@@ -147,6 +147,28 @@ const Settings = () => {
   const [billingProfileSuccess, setBillingProfileSuccess] = useState('');
   const [billingProfileError, setBillingProfileError] = useState('');
 
+  // Tenant Dynamic Notification & Web Push Settings
+  const [notifSettings, setNotifSettings] = useState({
+    enable_web_push: true,
+    enable_in_app_sound: true,
+    enable_email_alerts: true,
+    event_rules: {
+      leave_request: { in_app: true, email: true, push: true },
+      leave_approval: { in_app: true, email: true, push: true },
+      attendance_regularization: { in_app: true, email: true, push: true },
+      task_assigned: { in_app: true, email: true, push: true },
+      payroll_published: { in_app: true, email: true, push: true },
+      chat_message: { in_app: true, email: false, push: true },
+      system_announcement: { in_app: true, email: true, push: true }
+    }
+  });
+  const [savingNotifSettings, setSavingNotifSettings] = useState(false);
+  const [notifSuccess, setNotifSuccess] = useState('');
+  const [notifError, setNotifError] = useState('');
+  const [browserPushPermission, setBrowserPushPermission] = useState(
+    typeof window !== 'undefined' && 'Notification' in window ? Notification.permission : 'default'
+  );
+
   useEffect(() => {
     loadSettings();
   }, []);
@@ -162,7 +184,72 @@ const Settings = () => {
     if (activeTab === 'billing') {
       loadBillingData();
     }
+    if (activeTab === 'notifications') {
+      loadNotifSettings();
+    }
   }, [activeTab]);
+
+  const loadNotifSettings = async () => {
+    try {
+      const res = await notificationService.getSettings();
+      if (res.success && res.data) {
+        setNotifSettings({
+          enable_web_push: res.data.enable_web_push ?? true,
+          enable_in_app_sound: res.data.enable_in_app_sound ?? true,
+          enable_email_alerts: res.data.enable_email_alerts ?? true,
+          event_rules: res.data.event_rules || notifSettings.event_rules
+        });
+      }
+    } catch (e) {
+      console.error('Failed to load notification settings:', e);
+    }
+  };
+
+  const handleRequestBrowserPermission = async () => {
+    if ('Notification' in window) {
+      const perm = await Notification.requestPermission();
+      setBrowserPushPermission(perm);
+      if (perm === 'granted') {
+        new Notification('HRMS Pro', {
+          body: 'Browser push notifications are now active!',
+          icon: '/favicon.ico'
+        });
+      }
+    }
+  };
+
+  const handleTestSound = () => {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(587.33, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.15);
+      gain.gain.setValueAtTime(0.1, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.25);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.25);
+    } catch (e) {}
+  };
+
+  const handleSaveNotificationSettings = async (e) => {
+    e.preventDefault();
+    try {
+      setSavingNotifSettings(true);
+      setNotifError('');
+      setNotifSuccess('');
+      const res = await notificationService.updateSettings(notifSettings);
+      setNotifSuccess(res.message || 'Notification preferences saved successfully');
+      setTimeout(() => setNotifSuccess(''), 4000);
+    } catch (err) {
+      setNotifError(err.response?.data?.message || 'Failed to save notification preferences');
+    } finally {
+      setSavingNotifSettings(false);
+    }
+  };
 
   const loadBillingData = async () => {
     try {
@@ -1342,6 +1429,218 @@ const Settings = () => {
                     Enable Two-Factor Authentication
                   </label>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* Dynamic Notification Preferences Tab */}
+          {activeTab === 'notifications' && (
+            <div className="space-y-6 animate-in fade-in duration-200">
+              <div className="card p-6 border border-neutral-200 dark:border-gray-700 rounded-2xl shadow-sm">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-100 dark:border-gray-700 pb-4 mb-6">
+                  <div>
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                      <FaBell className="text-primary-600" /> Organization Notification & Web Push Engine
+                    </h3>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      Configure delivery channels, browser desktop push notifications, and granular module alert triggers.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleTestSound}
+                    className="btn btn-secondary btn-xs text-xs flex items-center gap-1.5 self-start sm:self-auto"
+                  >
+                    <FaBolt className="text-amber-500 text-xs" /> Test Audio Chime
+                  </button>
+                </div>
+
+                {notifSuccess && (
+                  <div className="mb-4 p-3 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 text-emerald-800 dark:text-emerald-300 rounded-xl text-xs flex items-center gap-2">
+                    <FaCheckCircle className="text-emerald-600" />
+                    <span>{notifSuccess}</span>
+                  </div>
+                )}
+                {notifError && (
+                  <div className="mb-4 p-3 bg-red-50 dark:bg-red-950/50 border border-red-200 text-red-800 dark:text-red-300 rounded-xl text-xs flex items-center gap-2">
+                    <FaExclamationCircle className="text-red-600" />
+                    <span>{notifError}</span>
+                  </div>
+                )}
+
+                <form onSubmit={handleSaveNotificationSettings} className="space-y-6">
+                  {/* Channels Grid */}
+                  <div>
+                    <h4 className="text-xs font-bold uppercase text-gray-400 tracking-wider mb-3">Delivery Channels</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {/* Browser Desktop Push */}
+                      <div className="p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50 flex flex-col justify-between">
+                        <div>
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="font-bold text-xs text-gray-900 dark:text-white flex items-center gap-1.5">
+                              <FaGlobe className="text-indigo-500" /> Browser Web Push
+                            </span>
+                            <input
+                              type="checkbox"
+                              checked={notifSettings.enable_web_push}
+                              onChange={(e) => setNotifSettings({ ...notifSettings, enable_web_push: e.target.checked })}
+                              className="rounded text-primary-600 focus:ring-primary-500 w-4 h-4 cursor-pointer"
+                            />
+                          </div>
+                          <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                            Receive instant desktop notifications even when HRMS Pro is in the background.
+                          </p>
+                        </div>
+                        <div className="mt-3 pt-2 border-t border-gray-200/60 dark:border-gray-700 flex items-center justify-between">
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                            browserPushPermission === 'granted'
+                              ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                              : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
+                          }`}>
+                            Status: {browserPushPermission}
+                          </span>
+                          {browserPushPermission !== 'granted' && (
+                            <button
+                              type="button"
+                              onClick={handleRequestBrowserPermission}
+                              className="text-[10px] font-bold text-primary-600 hover:text-primary-700 underline"
+                            >
+                              Enable in Browser
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* In-App Audio Chime */}
+                      <div className="p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50 flex flex-col justify-between">
+                        <div>
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="font-bold text-xs text-gray-900 dark:text-white flex items-center gap-1.5">
+                              <FaBell className="text-amber-500" /> In-App Audio Chime
+                            </span>
+                            <input
+                              type="checkbox"
+                              checked={notifSettings.enable_in_app_sound}
+                              onChange={(e) => setNotifSettings({ ...notifSettings, enable_in_app_sound: e.target.checked })}
+                              className="rounded text-primary-600 focus:ring-primary-500 w-4 h-4 cursor-pointer"
+                            />
+                          </div>
+                          <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                            Play a pleasant harmonic chime when new tasks, chats, or approvals are received.
+                          </p>
+                        </div>
+                        <div className="mt-3 pt-2 border-t border-gray-200/60 dark:border-gray-700">
+                          <span className="text-[10px] text-gray-400">Web Audio API synth enabled</span>
+                        </div>
+                      </div>
+
+                      {/* Email Notifications */}
+                      <div className="p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50 flex flex-col justify-between">
+                        <div>
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="font-bold text-xs text-gray-900 dark:text-white flex items-center gap-1.5">
+                              <FaEnvelope className="text-emerald-500" /> Email Notifications
+                            </span>
+                            <input
+                              type="checkbox"
+                              checked={notifSettings.enable_email_alerts}
+                              onChange={(e) => setNotifSettings({ ...notifSettings, enable_email_alerts: e.target.checked })}
+                              className="rounded text-primary-600 focus:ring-primary-500 w-4 h-4 cursor-pointer"
+                            />
+                          </div>
+                          <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                            Dispatch transactional email alerts for critical approvals, payroll runs, and account changes.
+                          </p>
+                        </div>
+                        <div className="mt-3 pt-2 border-t border-gray-200/60 dark:border-gray-700">
+                          <span className="text-[10px] text-gray-400">Powered by Brevo / SMTP Queue</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Granular Module Event Rules Matrix */}
+                  <div>
+                    <h4 className="text-xs font-bold uppercase text-gray-400 tracking-wider mb-3">Granular Event Trigger Matrix</h4>
+                    <div className="overflow-x-auto border border-gray-200 dark:border-gray-700 rounded-xl">
+                      <table className="w-full text-left text-xs">
+                        <thead className="bg-gray-50 dark:bg-gray-900/60 border-b border-gray-200 dark:border-gray-700">
+                          <tr>
+                            <th className="p-3 font-bold text-gray-700 dark:text-gray-300">System Event & Activity</th>
+                            <th className="p-3 font-bold text-gray-700 dark:text-gray-300 text-center">In-App Feed & Badge</th>
+                            <th className="p-3 font-bold text-gray-700 dark:text-gray-300 text-center">Web Push Alert</th>
+                            <th className="p-3 font-bold text-gray-700 dark:text-gray-300 text-center">Email Dispatch</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                          {[
+                            { key: 'leave_request', label: 'Leave Application Submitted', desc: 'Alerts manager & HR when an employee requests time off' },
+                            { key: 'leave_approval', label: 'Leave Request Approved / Rejected', desc: 'Notifies employee when their leave request decision is made' },
+                            { key: 'attendance_regularization', label: 'Attendance Regularization Request', desc: 'Alerts manager when clock-in discrepancy claim is filed' },
+                            { key: 'task_assigned', label: 'Task Assigned / Status Updated', desc: 'Notifies assignees when tasks or due dates change' },
+                            { key: 'payroll_published', label: 'Payroll Finalized & Payslip Published', desc: 'Notifies employees when monthly payslips are ready' },
+                            { key: 'chat_message', label: 'Team Chat Direct & Channel Messages', desc: 'Real-time badge and desktop alert for incoming messages' },
+                            { key: 'system_announcement', label: 'Company Announcements & Policy Updates', desc: 'Broadcast notifications to all active organization members' }
+                          ].map(ev => {
+                            const rule = notifSettings.event_rules?.[ev.key] || { in_app: true, push: true, email: true };
+                            return (
+                              <tr key={ev.key} className="hover:bg-gray-50/70 dark:hover:bg-gray-750 transition-colors">
+                                <td className="p-3">
+                                  <div className="font-bold text-gray-900 dark:text-white">{ev.label}</div>
+                                  <div className="text-[10px] text-gray-500 dark:text-gray-400">{ev.desc}</div>
+                                </td>
+                                <td className="p-3 text-center">
+                                  <input
+                                    type="checkbox"
+                                    checked={rule.in_app ?? true}
+                                    onChange={(e) => {
+                                      const nextRules = { ...notifSettings.event_rules, [ev.key]: { ...rule, in_app: e.target.checked } };
+                                      setNotifSettings({ ...notifSettings, event_rules: nextRules });
+                                    }}
+                                    className="rounded text-primary-600 focus:ring-primary-500 w-4 h-4 cursor-pointer"
+                                  />
+                                </td>
+                                <td className="p-3 text-center">
+                                  <input
+                                    type="checkbox"
+                                    checked={rule.push ?? true}
+                                    onChange={(e) => {
+                                      const nextRules = { ...notifSettings.event_rules, [ev.key]: { ...rule, push: e.target.checked } };
+                                      setNotifSettings({ ...notifSettings, event_rules: nextRules });
+                                    }}
+                                    className="rounded text-primary-600 focus:ring-primary-500 w-4 h-4 cursor-pointer"
+                                  />
+                                </td>
+                                <td className="p-3 text-center">
+                                  <input
+                                    type="checkbox"
+                                    checked={rule.email ?? true}
+                                    onChange={(e) => {
+                                      const nextRules = { ...notifSettings.event_rules, [ev.key]: { ...rule, email: e.target.checked } };
+                                      setNotifSettings({ ...notifSettings, event_rules: nextRules });
+                                    }}
+                                    className="rounded text-primary-600 focus:ring-primary-500 w-4 h-4 cursor-pointer"
+                                  />
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end pt-4 border-t border-gray-100 dark:border-gray-700">
+                    <button
+                      type="submit"
+                      disabled={savingNotifSettings}
+                      className="btn btn-primary text-xs flex items-center gap-1.5"
+                    >
+                      <FaSave className="text-xs" />
+                      {savingNotifSettings ? 'Saving...' : 'Save Notification Preferences'}
+                    </button>
+                  </div>
+                </form>
               </div>
             </div>
           )}

@@ -32,7 +32,8 @@ const tenantMiddleware = async (req, res, next) => {
     '/api/setup-db',
     '/api/webhooks/biometrics',
     '/api/resources',
-    '/api/mobile-config'
+    '/api/mobile-config',
+    '/api/notifications'
   ];
   const isGlobalOrPublic = globalPaths.some(p => req.originalUrl.startsWith(p));
 

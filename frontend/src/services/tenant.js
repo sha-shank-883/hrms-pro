@@ -117,6 +117,56 @@ export const tenantService = {
   getInvoice: async (invoiceId) => {
     const response = await api.get(`/tenants/invoice/${invoiceId}`);
     return response.data;
+  },
+
+  getGrowthAnalytics: async () => {
+    const response = await api.get('/tenants/growth-analytics');
+    return response.data;
+  },
+
+  getActiveBroadcasts: async () => {
+    const response = await api.get('/tenants/active-broadcasts');
+    return response.data;
+  },
+
+  getAllBroadcasts: async () => {
+    const response = await api.get('/tenants/broadcasts');
+    return response.data;
+  },
+
+  createBroadcast: async (data) => {
+    const response = await api.post('/tenants/broadcasts', data);
+    return response.data;
+  },
+
+  updateBroadcast: async (id, data) => {
+    const response = await api.put(`/tenants/broadcasts/${id}`, data);
+    return response.data;
+  },
+
+  deleteBroadcast: async (id) => {
+    const response = await api.delete(`/tenants/broadcasts/${id}`);
+    return response.data;
+  },
+
+  getPlatformAuditLogs: async (params) => {
+    const response = await api.get('/tenants/platform-audit-logs', { params });
+    return response.data;
+  },
+
+  getSystemHealthDiagnostics: async () => {
+    const response = await api.get('/tenants/system-health');
+    return response.data;
+  },
+
+  getBackupArchives: async () => {
+    const response = await api.get('/tenants/backups/archives');
+    return response.data;
+  },
+
+  triggerAllTenantBackups: async () => {
+    const response = await api.post('/tenants/backups/trigger-all');
+    return response.data;
   }
 };
 

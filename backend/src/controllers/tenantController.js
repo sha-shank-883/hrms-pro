@@ -7,6 +7,7 @@ const path = require('path');
 const speakeasy = require('speakeasy');
 const asyncHandler = require('../utils/asyncHandler');
 const { NotFoundError, UnauthorizedError, ForbiddenError, ValidationError, ConflictError, AppError } = require('../utils/errors');
+const { logPlatformAudit } = require('../utils/platformAudit');
 
 const createTenant = asyncHandler(async (req, res) => {
   const { tenantId, name, adminEmail, adminPassword } = req.body;
@@ -240,6 +241,17 @@ const impersonateTenantAdmin = asyncHandler(async (req, res) => {
 
   const targetAdmin = targetUserResult.rows[0];
   const token = generateToken(targetAdmin);
+
+  await logPlatformAudit({
+    action: 'IMPERSONATE_TENANT',
+    category: 'impersonation',
+    actor_email: req.user?.email || 'super_admin',
+    actor_role: req.user?.role || 'super_admin',
+    target_tenant_id: tenantId,
+    details: { impersonated_email: targetAdmin.email, tenant_name: tenant.name },
+    ip_address: req.ip,
+    user_agent: req.headers['user-agent']
+  });
 
   res.json({
     success: true,
@@ -968,6 +980,464 @@ const getInvoiceDetails = asyncHandler(async (req, res) => {
   });
 });
 
+/**
+ * Super Admin: Get Full Sales, Marketing & Growth Analytics Report
+ */
+const getGrowthAnalytics = asyncHandler(async (req, res) => {
+  // 1. Overall Revenue & Subscriptions
+  const revSummary = await pool.query(`
+    SELECT 
+      COALESCE(SUM(CASE WHEN status = 'completed' THEN amount ELSE 0 END), 0) as total_revenue,
+      COALESCE(SUM(CASE WHEN status = 'completed' AND currency = 'INR' THEN amount ELSE 0 END), 0) as total_inr,
+      COALESCE(SUM(CASE WHEN status = 'completed' AND currency = 'USD' THEN amount ELSE 0 END), 0) as total_usd,
+      COALESCE(SUM(CASE WHEN status = 'completed' AND created_at >= NOW() - INTERVAL '30 days' THEN amount ELSE 0 END), 0) as revenue_last_30_days,
+      COALESCE(SUM(CASE WHEN status = 'completed' AND created_at >= NOW() - INTERVAL '60 days' AND created_at < NOW() - INTERVAL '30 days' THEN amount ELSE 0 END), 0) as revenue_prev_30_days,
+      COUNT(CASE WHEN status = 'completed' THEN 1 END) as completed_transactions,
+      COUNT(CASE WHEN status = 'pending' THEN 1 END) as pending_transactions
+    FROM shared.payment_logs
+  `);
+
+  // 2. Compute MRR & ARR from active paid tenants and plan configs
+  const mrrRes = await pool.query(`
+    SELECT 
+      COALESCE(SUM(pc.price_inr), 0) as mrr_inr,
+      COALESCE(SUM(pc.price_usd), 0) as mrr_usd,
+      COUNT(t.tenant_id) as paid_tenant_count
+    FROM shared.tenants t
+    JOIN shared.plan_configs pc ON t.subscription_plan = pc.plan_id
+    WHERE t.status = 'active' AND t.subscription_plan != 'free'
+  `);
+
+  // 3. Marketing & Sales Funnel: Leads to Conversions
+  const leadsSummary = await pool.query(`
+    SELECT 
+      COUNT(*) as total_leads,
+      COUNT(CASE WHEN status = 'new' OR status = 'pending' THEN 1 END) as pending_leads,
+      COUNT(CASE WHEN status = 'contacted' THEN 1 END) as contacted_leads,
+      COUNT(CASE WHEN status = 'provisioned' OR status = 'converted' THEN 1 END) as converted_leads,
+      COUNT(CASE WHEN created_at >= NOW() - INTERVAL '30 days' THEN 1 END) as leads_last_30_days
+    FROM shared.demo_requests
+  `);
+
+  // 4. Monthly Revenue Trend (Last 6 Months)
+  const monthlyRevenue = await pool.query(`
+    SELECT 
+      TO_CHAR(created_at, 'Mon YYYY') as month_label,
+      DATE_TRUNC('month', created_at) as month_date,
+      COALESCE(SUM(CASE WHEN status = 'completed' THEN amount ELSE 0 END), 0) as revenue,
+      COALESCE(SUM(CASE WHEN status = 'completed' AND currency = 'INR' THEN amount ELSE 0 END), 0) as revenue_inr,
+      COALESCE(SUM(CASE WHEN status = 'completed' AND currency = 'USD' THEN amount ELSE 0 END), 0) as revenue_usd,
+      COUNT(CASE WHEN status = 'completed' THEN 1 END) as transaction_count
+    FROM shared.payment_logs
+    WHERE created_at >= NOW() - INTERVAL '6 months'
+    GROUP BY DATE_TRUNC('month', created_at), TO_CHAR(created_at, 'Mon YYYY')
+    ORDER BY month_date ASC
+  `);
+
+  // 5. Monthly Tenant Signups & Leads Trend (Last 6 Months)
+  const monthlyGrowth = await pool.query(`
+    SELECT 
+      TO_CHAR(t.created_at, 'Mon YYYY') as month_label,
+      DATE_TRUNC('month', t.created_at) as month_date,
+      COUNT(*) as new_tenants
+    FROM shared.tenants t
+    WHERE t.created_at >= NOW() - INTERVAL '6 months'
+    GROUP BY DATE_TRUNC('month', t.created_at), TO_CHAR(t.created_at, 'Mon YYYY')
+    ORDER BY month_date ASC
+  `);
+
+  // 6. Plan Distribution Matrix
+  const planDist = await pool.query(`
+    SELECT 
+      COALESCE(pc.name, t.subscription_plan) as plan_name,
+      t.subscription_plan as plan_id,
+      COALESCE(pc.price_inr, 0) as price_inr,
+      COALESCE(pc.price_usd, 0) as price_usd,
+      COUNT(t.tenant_id) as tenant_count,
+      COUNT(CASE WHEN t.status = 'active' THEN 1 END) as active_count
+    FROM shared.tenants t
+    LEFT JOIN shared.plan_configs pc ON t.subscription_plan = pc.plan_id
+    GROUP BY pc.name, t.subscription_plan, pc.price_inr, pc.price_usd
+    ORDER BY tenant_count DESC
+  `);
+
+  // 7. Top 10 Revenue Customer Accounts
+  const topTenants = await pool.query(`
+    SELECT 
+      t.tenant_id,
+      t.name as tenant_name,
+      t.subscription_plan,
+      t.employee_limit,
+      t.contact_person,
+      t.contact_email,
+      t.status,
+      COALESCE(SUM(p.amount), 0) as total_paid,
+      COUNT(p.id) as payment_count,
+      MAX(p.created_at) as last_payment_date
+    FROM shared.tenants t
+    LEFT JOIN shared.payment_logs p ON t.tenant_id = p.tenant_id AND p.status = 'completed'
+    GROUP BY t.tenant_id, t.name, t.subscription_plan, t.employee_limit, t.contact_person, t.contact_email, t.status
+    ORDER BY total_paid DESC, t.created_at DESC
+    LIMIT 10
+  `);
+
+  // 8. Recent Conversions and Demo Leads
+  const recentLeads = await pool.query(`
+    SELECT id, name, email, company_name, phone, status, tenant_id, created_at
+    FROM shared.demo_requests
+    ORDER BY created_at DESC
+    LIMIT 8
+  `);
+
+  // Compute Growth Rates & Conversion Percentages
+  const totalLeads = parseInt(leadsSummary.rows[0]?.total_leads || 0, 10);
+  const convertedLeads = parseInt(leadsSummary.rows[0]?.converted_leads || 0, 10);
+  const conversionRate = totalLeads > 0 ? ((convertedLeads / totalLeads) * 100).toFixed(1) : '0.0';
+
+  const revLast30 = parseFloat(revSummary.rows[0]?.revenue_last_30_days || 0);
+  const revPrev30 = parseFloat(revSummary.rows[0]?.revenue_prev_30_days || 0);
+  const momGrowth = revPrev30 > 0 
+    ? (((revLast30 - revPrev30) / revPrev30) * 100).toFixed(1) 
+    : revLast30 > 0 ? '+100.0' : '0.0';
+
+  const mrrInr = parseFloat(mrrRes.rows[0]?.mrr_inr || 0);
+  const mrrUsd = parseFloat(mrrRes.rows[0]?.mrr_usd || 0);
+  const arrInr = mrrInr * 12;
+  const arrUsd = mrrUsd * 12;
+
+  res.json({
+    success: true,
+    data: {
+      metrics: {
+        total_revenue: parseFloat(revSummary.rows[0]?.total_revenue || 0),
+        total_inr: parseFloat(revSummary.rows[0]?.total_inr || 0),
+        total_usd: parseFloat(revSummary.rows[0]?.total_usd || 0),
+        mrr_inr: mrrInr,
+        mrr_usd: mrrUsd,
+        arr_inr: arrInr,
+        arr_usd: arrUsd,
+        mom_growth_percent: momGrowth,
+        paid_tenants: parseInt(mrrRes.rows[0]?.paid_tenant_count || 0, 10),
+        total_leads: totalLeads,
+        pending_leads: parseInt(leadsSummary.rows[0]?.pending_leads || 0, 10),
+        converted_leads: convertedLeads,
+        conversion_rate_percent: conversionRate,
+        completed_transactions: parseInt(revSummary.rows[0]?.completed_transactions || 0, 10)
+      },
+      monthly_revenue: monthlyRevenue.rows,
+      monthly_growth: monthlyGrowth.rows,
+      plan_distribution: planDist.rows,
+      top_tenants: topTenants.rows,
+      recent_leads: recentLeads.rows
+    }
+  });
+});
+
+/**
+ * Public/Tenant: Get active broadcasts for current tenant's tier
+ */
+const getActiveBroadcasts = asyncHandler(async (req, res) => {
+  const tenantId = req.tenantId || req.user?.tenant_id;
+  let targetTier = 'all';
+  if (tenantId) {
+    const tRes = await pool.query('SELECT subscription_plan FROM shared.tenants WHERE tenant_id = $1', [tenantId]);
+    if (tRes.rows.length > 0) {
+      targetTier = tRes.rows[0].subscription_plan || 'free';
+    }
+  }
+
+  const broadcasts = await pool.query(`
+    SELECT id, title, message, type, target_tier, dismissible, starts_at, expires_at
+    FROM shared.platform_broadcasts
+    WHERE is_active = true
+      AND (target_tier = 'all' OR target_tier = $1)
+      AND starts_at <= CURRENT_TIMESTAMP
+      AND (expires_at IS NULL OR expires_at >= CURRENT_TIMESTAMP)
+    ORDER BY starts_at DESC
+    LIMIT 5
+  `, [targetTier]);
+
+  res.json({
+    success: true,
+    broadcasts: broadcasts.rows
+  });
+});
+
+/**
+ * Super Admin: Get all broadcasts
+ */
+const getAllBroadcasts = asyncHandler(async (req, res) => {
+  const result = await pool.query(`
+    SELECT * FROM shared.platform_broadcasts
+    ORDER BY created_at DESC
+  `);
+  res.json({ success: true, broadcasts: result.rows });
+});
+
+/**
+ * Super Admin: Create a new platform broadcast
+ */
+const createBroadcast = asyncHandler(async (req, res) => {
+  const { title, message, type = 'info', target_tier = 'all', is_active = true, expires_at = null, dismissible = true } = req.body;
+  if (!title || !message) {
+    throw new ValidationError('Title and message are required');
+  }
+  const result = await pool.query(`
+    INSERT INTO shared.platform_broadcasts 
+      (title, message, type, target_tier, is_active, expires_at, dismissible, created_by)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+    RETURNING *
+  `, [title, message, type, target_tier, is_active, expires_at, dismissible, req.user?.email || 'super_admin']);
+
+  await logPlatformAudit({
+    action: 'CREATE_BROADCAST',
+    category: 'broadcast',
+    actor_email: req.user?.email || 'super_admin',
+    actor_role: req.user?.role || 'super_admin',
+    details: { broadcast_id: result.rows[0].id, title, type, target_tier },
+    ip_address: req.ip,
+    user_agent: req.headers['user-agent']
+  });
+
+  res.status(201).json({ success: true, broadcast: result.rows[0] });
+});
+
+/**
+ * Super Admin: Update a platform broadcast
+ */
+const updateBroadcast = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const { title, message, type, target_tier, is_active, expires_at, dismissible } = req.body;
+  const result = await pool.query(`
+    UPDATE shared.platform_broadcasts
+    SET 
+      title = COALESCE($1, title),
+      message = COALESCE($2, message),
+      type = COALESCE($3, type),
+      target_tier = COALESCE($4, target_tier),
+      is_active = COALESCE($5, is_active),
+      expires_at = $6,
+      dismissible = COALESCE($7, dismissible),
+      updated_at = CURRENT_TIMESTAMP
+    WHERE id = $8
+    RETURNING *
+  `, [title, message, type, target_tier, is_active, expires_at, dismissible, id]);
+
+  if (result.rows.length === 0) {
+    throw new NotFoundError('Broadcast not found');
+  }
+
+  res.json({ success: true, broadcast: result.rows[0] });
+});
+
+/**
+ * Super Admin: Delete a platform broadcast
+ */
+const deleteBroadcast = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const result = await pool.query(`DELETE FROM shared.platform_broadcasts WHERE id = $1 RETURNING id, title`, [id]);
+  if (result.rows.length === 0) {
+    throw new NotFoundError('Broadcast not found');
+  }
+
+  await logPlatformAudit({
+    action: 'DELETE_BROADCAST',
+    category: 'broadcast',
+    actor_email: req.user?.email || 'super_admin',
+    actor_role: req.user?.role || 'super_admin',
+    details: { broadcast_id: id, title: result.rows[0].title },
+    ip_address: req.ip,
+    user_agent: req.headers['user-agent']
+  });
+
+  res.json({ success: true, message: 'Broadcast deleted successfully' });
+});
+
+/**
+ * Super Admin: Get cross-tenant platform security & audit logs
+ */
+const getPlatformAuditLogs = asyncHandler(async (req, res) => {
+  const { category, search, page = 1, limit = 50 } = req.query;
+  const offset = (parseInt(page, 10) - 1) * parseInt(limit, 10);
+  
+  let conditions = [];
+  let params = [];
+  let paramIdx = 1;
+
+  if (category && category !== 'all') {
+    conditions.push(`category = $${paramIdx++}`);
+    params.push(category);
+  }
+
+  if (search) {
+    conditions.push(`(action ILIKE $${paramIdx} OR actor_email ILIKE $${paramIdx} OR target_tenant_id ILIKE $${paramIdx})`);
+    params.push(`%${search}%`);
+    paramIdx++;
+  }
+
+  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+  const logsRes = await pool.query(`
+    SELECT * FROM shared.platform_audit_logs
+    ${whereClause}
+    ORDER BY created_at DESC
+    LIMIT $${paramIdx++} OFFSET $${paramIdx++}
+  `, [...params, parseInt(limit, 10), offset]);
+
+  const countRes = await pool.query(`
+    SELECT COUNT(*) as total FROM shared.platform_audit_logs
+    ${whereClause}
+  `, params);
+
+  res.json({
+    success: true,
+    logs: logsRes.rows,
+    pagination: {
+      total: parseInt(countRes.rows[0].total, 10),
+      page: parseInt(page, 10),
+      limit: parseInt(limit, 10),
+      totalPages: Math.ceil(parseInt(countRes.rows[0].total, 10) / parseInt(limit, 10))
+    }
+  });
+});
+
+/**
+ * Super Admin: Get live system health & infrastructure diagnostics
+ */
+const getSystemHealthDiagnostics = asyncHandler(async (req, res) => {
+  const startHr = process.hrtime();
+  await pool.query('SELECT 1');
+  const elapsedHr = process.hrtime(startHr);
+  const latencyMs = (elapsedHr[0] * 1000 + elapsedHr[1] / 1e6).toFixed(2);
+
+  const poolStats = {
+    totalConnections: pool.totalCount || 0,
+    idleConnections: pool.idleCount || 0,
+    waitingClients: pool.waitingCount || 0,
+    queryLatencyMs: parseFloat(latencyMs)
+  };
+
+  const storageRes = await pool.query(`
+    SELECT 
+      table_schema as schema_name,
+      pg_size_pretty(SUM(pg_total_relation_size(quote_ident(table_schema) || '.' || quote_ident(table_name)))) as total_size,
+      SUM(pg_total_relation_size(quote_ident(table_schema) || '.' || quote_ident(table_name))) as total_bytes,
+      COUNT(table_name) as table_count
+    FROM information_schema.tables
+    WHERE table_schema NOT IN ('pg_catalog', 'information_schema', 'pg_toast')
+    GROUP BY table_schema
+    ORDER BY total_bytes DESC
+  `);
+
+  const memUsage = process.memoryUsage();
+  const memoryStats = {
+    rss: (memUsage.rss / 1024 / 1024).toFixed(1) + ' MB',
+    heapTotal: (memUsage.heapTotal / 1024 / 1024).toFixed(1) + ' MB',
+    heapUsed: (memUsage.heapUsed / 1024 / 1024).toFixed(1) + ' MB',
+    external: (memUsage.external / 1024 / 1024).toFixed(1) + ' MB'
+  };
+
+  res.json({
+    success: true,
+    data: {
+      uptimeSeconds: Math.floor(process.uptime()),
+      nodeVersion: process.version,
+      platform: process.platform,
+      pool: poolStats,
+      memory: memoryStats,
+      schemas: storageRes.rows
+    }
+  });
+});
+
+/**
+ * Super Admin: Get all platform backup archives
+ */
+const getBackupArchives = asyncHandler(async (req, res) => {
+  const result = await pool.query(`
+    SELECT id, tenant_id, tenant_name, filename, file_size_bytes, table_count, record_count, backup_type, created_by, created_at
+    FROM shared.tenant_backup_archives
+    ORDER BY created_at DESC
+    LIMIT 100
+  `);
+  res.json({ success: true, archives: result.rows });
+});
+
+/**
+ * Super Admin: Trigger 1-click snapshot across all active tenants
+ */
+const triggerAllTenantBackups = asyncHandler(async (req, res) => {
+  const tenantsRes = await pool.query(`SELECT tenant_id, name FROM shared.tenants WHERE status = 'active'`);
+  const createdArchives = [];
+
+  for (const tenant of tenantsRes.rows) {
+    const { tenant_id, name } = tenant;
+    try {
+      const tablesRes = await pool.query(`
+        SELECT table_name FROM information_schema.tables 
+        WHERE table_schema = $1 AND table_type = 'BASE TABLE'
+      `, [tenant_id]);
+
+      const backupData = {};
+      let totalRecords = 0;
+
+      for (const tableRow of tablesRes.rows) {
+        const tableName = tableRow.table_name;
+        const dataRes = await pool.query(`SELECT * FROM "${tenant_id}"."${tableName}"`);
+        backupData[tableName] = dataRes.rows;
+        totalRecords += dataRes.rows.length;
+      }
+
+      const jsonStr = JSON.stringify(backupData);
+      const sizeBytes = Buffer.byteLength(jsonStr, 'utf8');
+      const filename = `${tenant_id}_snapshot_${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
+
+      const insRes = await pool.query(`
+        INSERT INTO shared.tenant_backup_archives
+          (tenant_id, tenant_name, filename, file_size_bytes, table_count, record_count, backup_type, snapshot_data, created_by)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        RETURNING id, tenant_id, filename, file_size_bytes, table_count, record_count, created_at
+      `, [tenant_id, name, filename, sizeBytes, tablesRes.rows.length, totalRecords, 'manual', jsonStr, req.user?.email || 'super_admin']);
+
+      createdArchives.push(insRes.rows[0]);
+    } catch (e) {
+      console.error(`Backup failed for ${tenant_id}:`, e.message);
+    }
+  }
+
+  await logPlatformAudit({
+    action: 'TRIGGER_BULK_BACKUP',
+    category: 'backup_restore',
+    actor_email: req.user?.email || 'super_admin',
+    actor_role: req.user?.role || 'super_admin',
+    details: { total_tenants: tenantsRes.rows.length, successful_backups: createdArchives.length },
+    ip_address: req.ip,
+    user_agent: req.headers['user-agent']
+  });
+
+  res.json({
+    success: true,
+    message: `Generated snapshots for ${createdArchives.length} active tenants`,
+    archives: createdArchives
+  });
+});
+
+/**
+ * Super Admin: Download a backup archive by ID
+ */
+const downloadBackupArchive = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const result = await pool.query(`SELECT filename, snapshot_data FROM shared.tenant_backup_archives WHERE id = $1`, [id]);
+  if (result.rows.length === 0) {
+    throw new NotFoundError('Backup archive not found');
+  }
+
+  const archive = result.rows[0];
+  res.setHeader('Content-Type', 'application/json');
+  res.setHeader('Content-Disposition', `attachment; filename="${archive.filename}"`);
+  res.send(typeof archive.snapshot_data === 'string' ? archive.snapshot_data : JSON.stringify(archive.snapshot_data, null, 2));
+});
+
 module.exports = {
   createTenant, getAllTenants, updateTenant, resetTenantAdminPassword, deleteTenant,
   getBiometricDevices, registerBiometricDevice, deleteBiometricDevice, impersonateTenantAdmin,
@@ -975,6 +1445,11 @@ module.exports = {
   getPlanConfigs, updatePlanConfig, getTenantModules, updateTenantModules,
   getBillingOverview, getTenantBillingProfile, updateTenantBillingProfile, recordManualPayment,
   getMyTenantBilling, updateMyTenantBilling, getInvoiceDetails,
+  getGrowthAnalytics,
+  getActiveBroadcasts, getAllBroadcasts, createBroadcast, updateBroadcast, deleteBroadcast,
+  getPlatformAuditLogs,
+  getSystemHealthDiagnostics,
+  getBackupArchives, triggerAllTenantBackups, downloadBackupArchive,
   SYSTEM_MODULES
 };
 

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { tenantService } from '../services';
 import { useAuth } from '../context/AuthContext';
 import {
@@ -18,7 +19,16 @@ import {
     CreditCardIcon,
     BanknotesIcon,
     DocumentTextIcon,
-    ArrowPathIcon
+    ArrowPathIcon,
+    GlobeAltIcon,
+    UsersIcon,
+    FingerPrintIcon,
+    SparklesIcon,
+    BoltIcon,
+    Squares2X2Icon,
+    ArrowTrendingUpIcon,
+    MegaphoneIcon,
+    CpuChipIcon
 } from '@heroicons/react/24/outline';
 
 const SuperAdmin = () => {
@@ -299,7 +309,7 @@ const SuperAdmin = () => {
         try {
             setError('');
             setSuccess('');
-            
+
             const currentToken = localStorage.getItem('token');
             const currentUser = localStorage.getItem('user');
             const currentTenant = localStorage.getItem('tenant_id');
@@ -317,7 +327,7 @@ const SuperAdmin = () => {
                 localStorage.setItem('token', res.data.token);
                 localStorage.setItem('user', JSON.stringify(res.data.user));
                 localStorage.setItem('tenant_id', res.data.tenantId);
-                
+
                 window.location.href = '/dashboard';
             }
         } catch (err) {
@@ -431,7 +441,7 @@ const SuperAdmin = () => {
             )}
 
             {/* 4-Column Stats Cards Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-4 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-4 mb-6">
                 <div className="card p-4 bg-white rounded-2xl border border-neutral-200 shadow-xs">
                     <div className="flex items-center justify-between">
                         <div>
@@ -486,6 +496,44 @@ const SuperAdmin = () => {
                             <CreditCardIcon className="w-5 h-5 text-indigo-600" />
                         </div>
                     </div>
+                </div>
+            </div>
+
+            {/* Platform Control Hub & Module Shortcuts */}
+            <div className="mb-6">
+                <div className="flex items-center justify-between mb-3 px-1">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-500 flex items-center gap-1.5">
+                        <SparklesIcon className="w-4 h-4 text-primary-600" /> Platform Control Hub & Module Shortcuts
+                    </h3>
+                    <span className="text-[11px] text-neutral-400">Quick access across all system management portals</span>
+                </div>
+                <div className="grid grid-cols-6 sm:grid-cols-4 lg:grid-cols-6 gap-3">
+                    {[
+                        { label: 'Tenants', desc: 'Workspaces', to: '/super-admin', icon: <BuildingOffice2Icon className="w-5 h-5" /> },
+                        { label: 'Growth', desc: 'Analytics & MRR', to: '/super-admin/growth', icon: <ArrowTrendingUpIcon className="w-5 h-5" /> },
+                        { label: 'Billing', desc: 'Revenue & Logs', to: '/super-admin/billing', icon: <CreditCardIcon className="w-5 h-5" /> },
+                        { label: 'Plans', desc: 'SaaS Tiers', to: '/super-admin/plans', icon: <BanknotesIcon className="w-5 h-5" /> },
+                        { label: 'Modules', desc: 'Entitlements', to: '/super-admin/entitlements', icon: <Squares2X2Icon className="w-5 h-5" /> },
+                        { label: 'Broadcasts', desc: 'System Banners', to: '/super-admin/broadcasts', icon: <MegaphoneIcon className="w-5 h-5" /> },
+                        { label: 'Audit Log', desc: 'Security Trail', to: '/super-admin/platform-audit', icon: <ShieldCheckIcon className="w-5 h-5" /> },
+                        { label: 'Health', desc: 'Live Telemetry', to: '/super-admin/health', icon: <CpuChipIcon className="w-5 h-5" /> },
+                        { label: 'Backups', desc: 'Cloud Snapshots', to: '/super-admin/backups', icon: <CloudArrowUpIcon className="w-5 h-5" /> },
+                        { label: 'Leads', desc: 'Demo Requests', to: '/super-admin/demo-requests', icon: <UsersIcon className="w-5 h-5" /> },
+                        { label: 'Website', desc: 'CMS & Landing', to: '/super-admin/website', icon: <GlobeAltIcon className="w-5 h-5" /> },
+                        { label: 'Biometrics', desc: 'Device Sync', to: '/super-admin/biometrics', icon: <FingerPrintIcon className="w-5 h-5" /> },
+                    ].map((item, idx) => (
+                        <Link
+                            key={idx}
+                            to={item.to}
+                            className="group p-3 bg-white hover:bg-neutral-50 border border-neutral-200 hover:border-primary-400 rounded-2xl transition-all shadow-xs hover:shadow-md flex flex-col items-center text-center"
+                        >
+                            <div className="w-9 h-9 rounded-xl bg-neutral-50 group-hover:bg-primary-50 text-neutral-600 group-hover:text-primary-600 flex items-center justify-center mb-1.5 transition-colors">
+                                {item.icon}
+                            </div>
+                            <span className="text-xs font-bold text-neutral-800 group-hover:text-primary-700 truncate w-full">{item.label}</span>
+                            <span className="text-[10px] text-neutral-400 truncate w-full">{item.desc}</span>
+                        </Link>
+                    ))}
                 </div>
             </div>
 
@@ -570,9 +618,8 @@ const SuperAdmin = () => {
                                                 <span className="bg-neutral-100 px-2 py-0.5 rounded text-[11px] font-semibold">{tenant.tenant_id}</span>
                                             </td>
                                             <td>
-                                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                                                    tenant.status === 'active' ? 'bg-emerald-100 text-emerald-800' : 'bg-neutral-100 text-neutral-600'
-                                                }`}>
+                                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${tenant.status === 'active' ? 'bg-emerald-100 text-emerald-800' : 'bg-neutral-100 text-neutral-600'
+                                                    }`}>
                                                     {tenant.status}
                                                 </span>
                                             </td>
@@ -821,26 +868,23 @@ const SuperAdmin = () => {
                         {/* Modal Navigation Tabs */}
                         <div className="flex border-b border-neutral-200 px-6 overflow-x-auto">
                             <button
-                                className={`px-4 py-3 text-xs font-bold border-b-2 transition-colors whitespace-nowrap ${
-                                    manageModal.tab === 'overview' ? 'border-primary-600 text-primary-600' : 'border-transparent text-neutral-500 hover:text-neutral-700'
-                                }`}
+                                className={`px-4 py-3 text-xs font-bold border-b-2 transition-colors whitespace-nowrap ${manageModal.tab === 'overview' ? 'border-primary-600 text-primary-600' : 'border-transparent text-neutral-500 hover:text-neutral-700'
+                                    }`}
                                 onClick={() => setManageModal({ ...manageModal, tab: 'overview' })}
                             >
                                 Overview & Plan
                             </button>
                             <button
-                                className={`px-4 py-3 text-xs font-bold border-b-2 transition-colors flex items-center gap-1.5 whitespace-nowrap ${
-                                    manageModal.tab === 'billing' ? 'border-primary-600 text-primary-600' : 'border-transparent text-neutral-500 hover:text-neutral-700'
-                                }`}
+                                className={`px-4 py-3 text-xs font-bold border-b-2 transition-colors flex items-center gap-1.5 whitespace-nowrap ${manageModal.tab === 'billing' ? 'border-primary-600 text-primary-600' : 'border-transparent text-neutral-500 hover:text-neutral-700'
+                                    }`}
                                 onClick={() => setManageModal({ ...manageModal, tab: 'billing' })}
                             >
                                 <CreditCardIcon className="w-4 h-4 text-emerald-600" />
                                 Contact & Billing
                             </button>
                             <button
-                                className={`px-4 py-3 text-xs font-bold border-b-2 transition-colors flex items-center gap-1.5 whitespace-nowrap ${
-                                    manageModal.tab === 'modules' ? 'border-primary-600 text-primary-600' : 'border-transparent text-neutral-500 hover:text-neutral-700'
-                                }`}
+                                className={`px-4 py-3 text-xs font-bold border-b-2 transition-colors flex items-center gap-1.5 whitespace-nowrap ${manageModal.tab === 'modules' ? 'border-primary-600 text-primary-600' : 'border-transparent text-neutral-500 hover:text-neutral-700'
+                                    }`}
                                 onClick={() => setManageModal({ ...manageModal, tab: 'modules' })}
                             >
                                 <AdjustmentsHorizontalIcon className="w-4 h-4" />
@@ -850,17 +894,15 @@ const SuperAdmin = () => {
                                 )}
                             </button>
                             <button
-                                className={`px-4 py-3 text-xs font-bold border-b-2 transition-colors whitespace-nowrap ${
-                                    manageModal.tab === 'security' ? 'border-primary-600 text-primary-600' : 'border-transparent text-neutral-500 hover:text-neutral-700'
-                                }`}
+                                className={`px-4 py-3 text-xs font-bold border-b-2 transition-colors whitespace-nowrap ${manageModal.tab === 'security' ? 'border-primary-600 text-primary-600' : 'border-transparent text-neutral-500 hover:text-neutral-700'
+                                    }`}
                                 onClick={() => setManageModal({ ...manageModal, tab: 'security' })}
                             >
                                 Security
                             </button>
                             <button
-                                className={`px-4 py-3 text-xs font-bold border-b-2 transition-colors whitespace-nowrap ${
-                                    manageModal.tab === 'danger' ? 'border-red-600 text-red-600' : 'border-transparent text-neutral-500 hover:text-red-500'
-                                }`}
+                                className={`px-4 py-3 text-xs font-bold border-b-2 transition-colors whitespace-nowrap ${manageModal.tab === 'danger' ? 'border-red-600 text-red-600' : 'border-transparent text-neutral-500 hover:text-red-500'
+                                    }`}
                                 onClick={() => setManageModal({ ...manageModal, tab: 'danger' })}
                             >
                                 Danger Zone
@@ -1116,11 +1158,10 @@ const SuperAdmin = () => {
                                             return (
                                                 <label
                                                     key={sm.key}
-                                                    className={`flex items-start gap-2.5 p-2.5 rounded-xl border transition-all cursor-pointer ${
-                                                        isChecked
-                                                            ? 'bg-primary-50/50 border-primary-300'
-                                                            : 'bg-neutral-50 border-neutral-200 text-neutral-400'
-                                                    }`}
+                                                    className={`flex items-start gap-2.5 p-2.5 rounded-xl border transition-all cursor-pointer ${isChecked
+                                                        ? 'bg-primary-50/50 border-primary-300'
+                                                        : 'bg-neutral-50 border-neutral-200 text-neutral-400'
+                                                        }`}
                                                 >
                                                     <input
                                                         type="checkbox"

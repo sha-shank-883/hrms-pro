@@ -4,8 +4,10 @@ const { validate } = require('../middleware/validate');
 const { authenticateToken, authorizeRole } = require('../middleware/auth');
 const { logAction } = require('../middleware/auditLogger');
 const templateController = require('../controllers/payslipTemplateController');
+const checkModuleAccess = require('../middleware/checkModuleAccess');
 
 const router = express.Router();
+router.use(checkModuleAccess('payroll'));
 
 router.get('/', authenticateToken, authorizeRole('admin', 'manager'), templateController.getAllTemplates);
 router.get('/:id', authenticateToken, authorizeRole('admin', 'manager', 'employee'), templateController.getTemplateById);

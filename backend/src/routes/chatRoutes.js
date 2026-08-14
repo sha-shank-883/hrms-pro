@@ -4,6 +4,9 @@ const { body } = require('express-validator');
 const { validate } = require('../middleware/validate');
 const { authenticateToken } = require('../middleware/auth');
 const chatController = require('../controllers/chatController');
+const checkModuleAccess = require('../middleware/checkModuleAccess');
+
+router.use(checkModuleAccess('chat'));
 
 // Validation rules
 const messageValidation = [

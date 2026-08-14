@@ -9,6 +9,8 @@ import './styles/global.css';
 
 // Pages
 import Login from './pages/Login';
+import Signup from './pages/Signup';
+import PublicIDCard from './pages/PublicIDCard';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import Dashboard from './pages/Dashboard';
@@ -37,6 +39,9 @@ import Onboarding from './pages/Onboarding';
 import Assets from './pages/Assets';
 import AuditLogs from './pages/AuditLogs';
 import SuperAdmin from './pages/SuperAdmin';
+import SuperAdminBilling from './pages/SuperAdminBilling';
+import SuperAdminPlans from './pages/SuperAdminPlans';
+import SuperAdminEntitlements from './pages/SuperAdminEntitlements';
 import SuperAdminBiometrics from './pages/SuperAdminBiometrics';
 import WebsiteBuilder from './pages/WebsiteBuilder';
 
@@ -73,9 +78,9 @@ import DynamicPage from './pages/marketing/DynamicPage';
 import VsBambooHR from './pages/marketing/VsBambooHR';
 import VsGusto from './pages/marketing/VsGusto';
 import VsRippling from './pages/marketing/VsRippling';
-import Signup from './pages/Signup';
 import ProtectedRoute from './components/ProtectedRoute';
 import SuperAdminRoute from './components/SuperAdminRoute';
+import ModuleGuard from './components/ModuleGuard';
 const AuthRoute = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
 
@@ -91,8 +96,6 @@ const AuthRedirect = ({ children }) => {
   if (loading) return null;
   return isAuthenticated ? <Navigate to="/dashboard" /> : children;
 };
-
-import PublicIDCard from './pages/PublicIDCard';
 
 const AuthenticatedChatWidget = () => {
   const { isAuthenticated } = useAuth();
@@ -173,79 +176,105 @@ function App() {
                       <Profile />
                     </ProtectedRoute>
                   } />
-                  <Route path="attendance" element={<Attendance />} />
-                  <Route path="leaves" element={<Leaves />} />
-                  <Route path="tasks" element={<Tasks />} />
+                  <Route path="attendance" element={<ModuleGuard module="attendance"><Attendance /></ModuleGuard>} />
+                  <Route path="leaves" element={<ModuleGuard module="leaves"><Leaves /></ModuleGuard>} />
+                  <Route path="tasks" element={<ModuleGuard module="tasks"><Tasks /></ModuleGuard>} />
                   <Route path="onboarding" element={<Onboarding />} />
                   <Route path="offboarding" element={<Onboarding />} />
-                  <Route path="performance" element={<Performance />} />
-                  <Route path="performance/review/:id" element={<PerformanceReview />} />
+                  <Route path="performance" element={<ModuleGuard module="performance"><Performance /></ModuleGuard>} />
+                  <Route path="performance/review/:id" element={<ModuleGuard module="performance"><PerformanceReview /></ModuleGuard>} />
                   <Route path="performance/cycles" element={
                     <ProtectedRoute allowedRoles={['admin']} allowedPermissions={['performance:update']}>
-                      <PerformanceCycles />
+                      <ModuleGuard module="performance">
+                        <PerformanceCycles />
+                      </ModuleGuard>
                     </ProtectedRoute>
                   } />
                   <Route path="payroll" element={
                     <ProtectedRoute allowedRoles={['admin', 'manager']} allowedPermissions={['payroll:read']}>
-                      <Payroll />
+                      <ModuleGuard module="payroll">
+                        <Payroll />
+                      </ModuleGuard>
                     </ProtectedRoute>
                   } />
                   <Route path="payroll/runs" element={
                     <ProtectedRoute allowedRoles={['admin', 'manager']} allowedPermissions={['payroll:read']}>
-                      <PayrollRuns />
+                      <ModuleGuard module="payroll">
+                        <PayrollRuns />
+                      </ModuleGuard>
                     </ProtectedRoute>
                   } />
                   <Route path="payroll/payslip-designer" element={
                     <ProtectedRoute allowedRoles={['admin']} allowedPermissions={['payroll:read']}>
-                      <PayslipDesigner />
+                      <ModuleGuard module="payroll">
+                        <PayslipDesigner />
+                      </ModuleGuard>
                     </ProtectedRoute>
                   } />
                   <Route path="payroll/batch" element={
                     <ProtectedRoute allowedRoles={['admin', 'manager']} allowedPermissions={['payroll:read']}>
-                      <BatchActions />
+                      <ModuleGuard module="payroll">
+                        <BatchActions />
+                      </ModuleGuard>
                     </ProtectedRoute>
                   } />
                   <Route path="my-payslips" element={
                     <ProtectedRoute allowedRoles={['employee']}>
-                      <MyPayslips />
+                      <ModuleGuard module="payroll">
+                        <MyPayslips />
+                      </ModuleGuard>
                     </ProtectedRoute>
                   } />
                   <Route path="recruitment" element={
                     <ProtectedRoute allowedRoles={['admin', 'manager']} allowedPermissions={['recruitment:read']}>
-                      <Recruitment />
+                      <ModuleGuard module="recruitment">
+                        <Recruitment />
+                      </ModuleGuard>
                     </ProtectedRoute>
                   } />
-                  <Route path="documents" element={<Documents />} />
+                  <Route path="documents" element={<ModuleGuard module="documents"><Documents /></ModuleGuard>} />
                   <Route path="my-documents" element={
                     <ProtectedRoute allowedRoles={['employee']}>
-                      <MyDocuments />
+                      <ModuleGuard module="documents">
+                        <MyDocuments />
+                      </ModuleGuard>
                     </ProtectedRoute>
                   } />
-                  <Route path="assets" element={<Assets />} />
+                  <Route path="assets" element={<ModuleGuard module="assets"><Assets /></ModuleGuard>} />
                   <Route path="audit-logs" element={
                     <ProtectedRoute allowedRoles={['admin']} allowedPermissions={['audit_logs:read']}>
-                      <AuditLogs />
+                      <ModuleGuard module="audit_logs">
+                        <AuditLogs />
+                      </ModuleGuard>
                     </ProtectedRoute>
                   } />
-                  <Route path="chat" element={<Chat />} />
+                  <Route path="chat" element={<ModuleGuard module="chat"><Chat /></ModuleGuard>} />
                   <Route path="reports" element={
                     <ProtectedRoute allowedRoles={['admin', 'manager']} allowedPermissions={['reports:read']}>
-                      <Reports />
+                      <ModuleGuard module="reports_analytics">
+                        <Reports />
+                      </ModuleGuard>
                     </ProtectedRoute>
                   } />
                   <Route path="reports/churn-risk" element={
                     <ProtectedRoute allowedRoles={['admin']} allowedPermissions={['reports:read']}>
-                      <ChurnRiskReport />
+                      <ModuleGuard module="reports_analytics">
+                        <ChurnRiskReport />
+                      </ModuleGuard>
                     </ProtectedRoute>
                   } />
                   <Route path="live-activity" element={
                     <ProtectedRoute allowedRoles={['admin', 'manager']} allowedPermissions={['reports:read']}>
-                      <LiveActivity />
+                      <ModuleGuard module="live_activity">
+                        <LiveActivity />
+                      </ModuleGuard>
                     </ProtectedRoute>
                   } />
                   <Route path="analytics" element={
                     <ProtectedRoute allowedRoles={['admin', 'manager']} allowedPermissions={['reports:read']}>
-                      <Analytics />
+                      <ModuleGuard module="reports_analytics">
+                        <Analytics />
+                      </ModuleGuard>
                     </ProtectedRoute>
                   } />
                   <Route path="settings" element={
@@ -267,6 +296,21 @@ function App() {
                   <Route path="super-admin" element={
                     <SuperAdminRoute>
                       <SuperAdmin />
+                    </SuperAdminRoute>
+                  } />
+                  <Route path="super-admin/billing" element={
+                    <SuperAdminRoute>
+                      <SuperAdminBilling />
+                    </SuperAdminRoute>
+                  } />
+                  <Route path="super-admin/plans" element={
+                    <SuperAdminRoute>
+                      <SuperAdminPlans />
+                    </SuperAdminRoute>
+                  } />
+                  <Route path="super-admin/entitlements" element={
+                    <SuperAdminRoute>
+                      <SuperAdminEntitlements />
                     </SuperAdminRoute>
                   } />
                   <Route path="super-admin/website" element={

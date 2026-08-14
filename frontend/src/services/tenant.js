@@ -62,5 +62,62 @@ export const tenantService = {
       timeout: 120000 // 2 min timeout for large restores
     });
     return response.data;
+  },
+
+  getPlanConfigs: async () => {
+    const response = await api.get('/tenants/plans/configs');
+    return response.data;
+  },
+
+  updatePlanConfig: async (planId, data) => {
+    const response = await api.put(`/tenants/plans/configs/${planId}`, data);
+    return response.data;
+  },
+
+  getTenantModules: async (tenantId) => {
+    const response = await api.get(`/tenants/${tenantId}/modules`);
+    return response.data;
+  },
+
+  updateTenantModules: async (tenantId, data) => {
+    const response = await api.put(`/tenants/${tenantId}/modules`, data);
+    return response.data;
+  },
+
+  getBillingOverview: async () => {
+    const response = await api.get('/tenants/billing/overview');
+    return response.data;
+  },
+
+  getTenantBillingProfile: async (tenantId) => {
+    const response = await api.get(`/tenants/${tenantId}/billing-profile`);
+    return response.data;
+  },
+
+  updateTenantBillingProfile: async (tenantId, data) => {
+    const response = await api.put(`/tenants/${tenantId}/billing-profile`, data);
+    return response.data;
+  },
+
+  recordManualPayment: async (data) => {
+    const response = await api.post('/tenants/billing/record-manual', data);
+    return response.data;
+  },
+
+  getMyBilling: async () => {
+    const response = await api.get('/tenants/my-billing');
+    return response.data;
+  },
+
+  updateMyBilling: async (data) => {
+    const response = await api.put('/tenants/my-billing', data);
+    return response.data;
+  },
+
+  getInvoice: async (invoiceId) => {
+    const response = await api.get(`/tenants/invoice/${invoiceId}`);
+    return response.data;
   }
 };
+
+

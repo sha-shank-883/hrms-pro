@@ -1,18 +1,20 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { settingsService, paymentService, employeeService } from '../services';
+import { settingsService, paymentService, employeeService, tenantService } from '../services';
 import { useSettings } from '../hooks/useSettings.jsx';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import PayPalCheckout from '../components/billing/PayPalCheckout';
 import RazorpayCheckout from '../components/billing/RazorpayCheckout';
+import InvoiceModal from '../components/billing/InvoiceModal';
+import StatementModal from '../components/billing/StatementModal';
 import {
   FaBuilding, FaClock, FaUmbrellaBeach, FaMoneyBillWave, FaBullseye,
   FaChartBar, FaLock, FaBell, FaFile, FaPalette, FaPaintBrush, FaCog,
   FaSave, FaCheckCircle, FaExclamationCircle, FaMobileAlt,
   FaMoon, FaSun, FaCreditCard, FaCrown, FaCheck, FaShieldAlt, FaUsers, FaArrowRight, FaQrcode
 } from 'react-icons/fa';
-import { SparklesIcon } from '@heroicons/react/24/outline';
+import { SparklesIcon, DocumentTextIcon, DocumentChartBarIcon, EyeIcon, PrinterIcon } from '@heroicons/react/24/outline';
 
 // Perfect default values for design settings
 const DEFAULT_DESIGN_SETTINGS = {
@@ -126,6 +128,25 @@ const Settings = () => {
   const [checkoutPlan, setCheckoutPlan] = useState(null);
   const [billingLoading, setBillingLoading] = useState(false);
 
+  // Advanced Tenant Billing Profile & Invoice History
+  const [tenantBillingProfile, setTenantBillingProfile] = useState({
+    contact_person: '',
+    contact_email: '',
+    contact_phone: '',
+    billing_address: '',
+    city: '',
+    country: 'India',
+    tax_id: '',
+    billing_currency: 'INR',
+    billing_cycle: 'monthly'
+  });
+  const [tenantInvoices, setTenantInvoices] = useState([]);
+  const [activeInvoiceId, setActiveInvoiceId] = useState(null);
+  const [showStatementModal, setShowStatementModal] = useState(false);
+  const [savingBillingProfile, setSavingBillingProfile] = useState(false);
+  const [billingProfileSuccess, setBillingProfileSuccess] = useState('');
+  const [billingProfileError, setBillingProfileError] = useState('');
+
   useEffect(() => {
     loadSettings();
   }, []);
@@ -146,10 +167,12 @@ const Settings = () => {
   const loadBillingData = async () => {
     try {
       setBillingLoading(true);
-      const [subRes, empRes] = await Promise.allSettled([
+      const [subRes, empRes, myBillingRes] = await Promise.allSettled([
         paymentService.getSubscription(),
         employeeService.getAll({ status: 'active', limit: 1 }),
+        tenantService.getMyBilling()
       ]);
+
       if (subRes.status === 'fulfilled' && subRes.value?.data) {
         setSubscriptionData(subRes.value.data);
         if (subRes.value.data.employeeLimit) {
@@ -159,10 +182,49 @@ const Settings = () => {
       if (empRes.status === 'fulfilled' && empRes.value?.pagination) {
         setEmployeeCount(empRes.value.pagination.totalItems || 0);
       }
+      if (myBillingRes.status === 'fulfilled' && myBillingRes.value?.success) {
+        const t = myBillingRes.value.tenant;
+        setTenantInvoices(myBillingRes.value.invoices || []);
+        if (myBillingRes.value.employeeCount) {
+          setEmployeeCount(myBillingRes.value.employeeCount);
+        }
+        if (t) {
+          setTenantBillingProfile({
+            contact_person: t.contact_person || '',
+            contact_email: t.contact_email || '',
+            contact_phone: t.contact_phone || '',
+            billing_address: t.billing_address || '',
+            city: t.city || '',
+            country: t.country || 'India',
+            tax_id: t.tax_id || '',
+            billing_currency: t.billing_currency || 'INR',
+            billing_cycle: t.billing_cycle || 'monthly'
+          });
+          if (t.billing_currency) {
+            setBillingCurrency(t.billing_currency);
+          }
+        }
+      }
     } catch (err) {
       console.error('Failed to load billing data:', err);
     } finally {
       setBillingLoading(false);
+    }
+  };
+
+  const handleSaveBillingProfile = async (e) => {
+    e.preventDefault();
+    try {
+      setSavingBillingProfile(true);
+      setBillingProfileError('');
+      setBillingProfileSuccess('');
+      const res = await tenantService.updateMyBilling(tenantBillingProfile);
+      setBillingProfileSuccess(res.message || 'Billing profile and Tax ID updated successfully');
+      setTimeout(() => setBillingProfileSuccess(''), 4000);
+    } catch (err) {
+      setBillingProfileError(err.response?.data?.message || 'Failed to update billing profile');
+    } finally {
+      setSavingBillingProfile(false);
     }
   };
 
@@ -707,6 +769,242 @@ const Settings = () => {
                   </span>
                 </div>
               </div>
+
+              {/* Company Tax & Billing Information Profile Form */}
+              <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 shadow-sm">
+                <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-100 dark:border-gray-700">
+                  <div>
+                    <h4 className="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                      <FaBuilding className="text-primary-600" />
+                      Company Tax & Official Invoicing Details
+                    </h4>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                      This information appears on your official tax invoices and payment receipts.
+                    </p>
+                  </div>
+                </div>
+
+                {billingProfileSuccess && (
+                  <div className="mb-4 p-3 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 text-emerald-800 dark:text-emerald-300 rounded-xl text-xs flex items-center gap-2">
+                    <FaCheckCircle className="text-emerald-600" />
+                    <span>{billingProfileSuccess}</span>
+                  </div>
+                )}
+                {billingProfileError && (
+                  <div className="mb-4 p-3 bg-red-50 dark:bg-red-950/50 border border-red-200 text-red-800 dark:text-red-300 rounded-xl text-xs flex items-center gap-2">
+                    <FaExclamationCircle className="text-red-600" />
+                    <span>{billingProfileError}</span>
+                  </div>
+                )}
+
+                <form onSubmit={handleSaveBillingProfile} className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Billing Contact Person</label>
+                      <input
+                        type="text"
+                        className="form-input w-full text-xs"
+                        placeholder="e.g. John Doe (Finance Head)"
+                        value={tenantBillingProfile.contact_person}
+                        onChange={(e) => setTenantBillingProfile({ ...tenantBillingProfile, contact_person: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Billing / Accounts Email</label>
+                      <input
+                        type="email"
+                        className="form-input w-full text-xs"
+                        placeholder="billing@yourcompany.com"
+                        value={tenantBillingProfile.contact_email}
+                        onChange={(e) => setTenantBillingProfile({ ...tenantBillingProfile, contact_email: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Phone Number</label>
+                      <input
+                        type="text"
+                        className="form-input w-full text-xs"
+                        placeholder="+91 98765 43210"
+                        value={tenantBillingProfile.contact_phone}
+                        onChange={(e) => setTenantBillingProfile({ ...tenantBillingProfile, contact_phone: e.target.value })}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="md:col-span-2">
+                      <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Registered Billing Address</label>
+                      <input
+                        type="text"
+                        className="form-input w-full text-xs"
+                        placeholder="Office address, Building, Street"
+                        value={tenantBillingProfile.billing_address}
+                        onChange={(e) => setTenantBillingProfile({ ...tenantBillingProfile, billing_address: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Tax ID / GSTIN Number</label>
+                      <input
+                        type="text"
+                        className="form-input w-full text-xs font-mono"
+                        placeholder="e.g. 07AAAAA0000A1Z5"
+                        value={tenantBillingProfile.tax_id}
+                        onChange={(e) => setTenantBillingProfile({ ...tenantBillingProfile, tax_id: e.target.value })}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">City</label>
+                      <input
+                        type="text"
+                        className="form-input w-full text-xs"
+                        placeholder="e.g. Mumbai"
+                        value={tenantBillingProfile.city}
+                        onChange={(e) => setTenantBillingProfile({ ...tenantBillingProfile, city: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Country</label>
+                      <input
+                        type="text"
+                        className="form-input w-full text-xs"
+                        placeholder="e.g. India"
+                        value={tenantBillingProfile.country}
+                        onChange={(e) => setTenantBillingProfile({ ...tenantBillingProfile, country: e.target.value })}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end pt-3 border-t border-gray-100 dark:border-gray-700">
+                    <button
+                      type="submit"
+                      disabled={savingBillingProfile}
+                      className="btn btn-primary text-xs flex items-center gap-1.5"
+                    >
+                      <FaSave className="text-xs" />
+                      {savingBillingProfile ? 'Saving...' : 'Save Invoicing Profile'}
+                    </button>
+                  </div>
+                </form>
+              </div>
+
+              {/* Billing History & Invoices Section */}
+              <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 shadow-sm">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 pb-3 border-b border-gray-100 dark:border-gray-700">
+                  <div>
+                    <h4 className="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                      <DocumentTextIcon className="w-5 h-5 text-emerald-600" />
+                      Purchase History & Tax Invoices
+                    </h4>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                      Download official GST invoices, payment receipts, and statement of account.
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setShowStatementModal(true)}
+                    className="btn btn-secondary btn-xs text-xs flex items-center gap-1.5 self-start sm:self-auto"
+                  >
+                    <DocumentChartBarIcon className="w-4 h-4 text-indigo-600" />
+                    Download Statement of Account
+                  </button>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-gray-50 dark:bg-gray-900/60 border-b border-gray-200 dark:border-gray-700">
+                      <tr>
+                        <th className="p-3 font-bold text-gray-700 dark:text-gray-300">Date & Time</th>
+                        <th className="p-3 font-bold text-gray-700 dark:text-gray-300">Invoice #</th>
+                        <th className="p-3 font-bold text-gray-700 dark:text-gray-300">Plan Purchased</th>
+                        <th className="p-3 font-bold text-gray-700 dark:text-gray-300">Amount</th>
+                        <th className="p-3 font-bold text-gray-700 dark:text-gray-300">Payment Gateway</th>
+                        <th className="p-3 font-bold text-gray-700 dark:text-gray-300">Status</th>
+                        <th className="p-3 font-bold text-gray-700 dark:text-gray-300 text-right">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                      {tenantInvoices.length === 0 ? (
+                        <tr>
+                          <td colSpan="7" className="text-center py-8 text-gray-400">
+                            <div className="flex flex-col items-center">
+                              <FaCreditCard className="text-gray-300 text-3xl mb-2" />
+                              <p className="font-medium text-xs">No payment records found yet</p>
+                              <p className="text-[11px] text-gray-400 mt-0.5">Your official tax invoices will appear here once you upgrade.</p>
+                            </div>
+                          </td>
+                        </tr>
+                      ) : (
+                        tenantInvoices.map((inv) => (
+                          <tr key={inv.id} className="hover:bg-gray-50/70 dark:hover:bg-gray-750 transition-colors">
+                            <td className="p-3 text-gray-500 whitespace-nowrap">
+                              {new Date(inv.created_at).toLocaleDateString()} <span className="text-[10px] text-gray-400">{new Date(inv.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                            </td>
+                            <td className="p-3 font-mono font-bold text-gray-900 dark:text-white">
+                              {inv.invoice_number || `INV-${inv.id}`}
+                            </td>
+                            <td className="p-3">
+                              <span className="px-2 py-0.5 rounded font-bold uppercase text-[10px] bg-primary-50 dark:bg-primary-950 text-primary-700 dark:text-primary-300 border border-primary-100 dark:border-primary-800">
+                                {inv.plan_id}
+                              </span>
+                            </td>
+                            <td className="p-3 font-black text-gray-900 dark:text-white">
+                              {inv.currency === 'INR' ? '₹' : '$'}{parseFloat(inv.amount).toLocaleString()}
+                            </td>
+                            <td className="p-3 uppercase text-[10px] font-bold text-gray-600 dark:text-gray-400">
+                              {inv.gateway?.replace('_', ' ')}
+                            </td>
+                            <td className="p-3">
+                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                inv.status === 'completed'
+                                  ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                                  : inv.status === 'pending'
+                                  ? 'bg-amber-100 text-amber-800'
+                                  : 'bg-red-100 text-red-800'
+                              }`}>
+                                {inv.status}
+                              </span>
+                            </td>
+                            <td className="p-3 text-right">
+                              <button
+                                type="button"
+                                onClick={() => setActiveInvoiceId(inv.id)}
+                                className="btn btn-secondary btn-xs text-xs flex items-center gap-1 text-emerald-700 hover:text-emerald-800 ml-auto"
+                              >
+                                <EyeIcon className="w-3.5 h-3.5" />
+                                View Invoice
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Printable Invoice Modal */}
+              {activeInvoiceId && (
+                <InvoiceModal invoiceId={activeInvoiceId} onClose={() => setActiveInvoiceId(null)} />
+              )}
+
+              {/* Statement of Account Modal */}
+              {showStatementModal && (
+                <StatementModal
+                  tenant={{
+                    ...subscriptionData,
+                    name: formData.company_name || 'My Organization',
+                    tenant_id: user?.tenantId,
+                    contact_email: tenantBillingProfile.contact_email || formData.company_email,
+                    tax_id: tenantBillingProfile.tax_id
+                  }}
+                  invoices={tenantInvoices}
+                  onClose={() => setShowStatementModal(false)}
+                />
+              )}
 
               {/* Razorpay Checkout Modal for INR */}
               {checkoutPlan && (checkoutPlan.gateway === 'razorpay' || (!checkoutPlan.gateway && billingCurrency === 'INR')) && (

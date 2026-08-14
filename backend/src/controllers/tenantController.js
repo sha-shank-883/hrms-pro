@@ -64,7 +64,7 @@ const updateTenant = asyncHandler(async (req, res) => {
   delete tenantUpdates.tenant_id;
 
   await transaction(async (client) => {
-    const allowedFields = ['name', 'status', 'domain', 'db_name', 'subscription_plan', 'subscription_expiry'];
+    const allowedFields = ['name', 'status', 'domain', 'db_name', 'subscription_plan', 'subscription_expiry', 'custom_modules', 'employee_limit'];
     const filteredUpdates = {};
 
     Object.keys(tenantUpdates).forEach(key => {
@@ -467,8 +467,515 @@ const restoreTenant = asyncHandler(async (req, res) => {
   });
 });
 
+const SYSTEM_MODULES = [
+  { key: 'core_hr', name: 'Core HR & Employees', description: 'Employee directory, departments, org chart, and profile', category: 'Core', isCore: true },
+  { key: 'attendance', name: 'Attendance & Shifts', description: 'Clock in/out, geofence, shifts, and regularization', category: 'Core' },
+  { key: 'leaves', name: 'Leave Management', description: 'Leave requests, balances, comp-off, and multi-level approvals', category: 'Core' },
+  { key: 'tasks', name: 'Task Management', description: 'Task Kanban board, priorities, assignments, and tracking', category: 'Operations' },
+  { key: 'documents', name: 'Document Management', description: 'Employee docs, auto-generated letters, and e-signatures', category: 'Operations' },
+  { key: 'performance', name: 'Performance & Appraisals', description: 'Performance reviews, KPIs, OKRs, and goals', category: 'HR' },
+  { key: 'payroll', name: 'Automated Payroll', description: 'Salary calculations, payslip designer, and batch runs', category: 'Finance' },
+  { key: 'assets', name: 'Asset Inventory', description: 'Company equipment tracking, custody, and return history', category: 'Operations' },
+  { key: 'chat', name: 'Team Chat', description: 'Real-time team messaging, departmental channels, and direct messages', category: 'Collaboration' },
+  { key: 'recruitment', name: 'Recruitment & ATS', description: 'Job openings, candidate pipeline, and interview management', category: 'HR' },
+  { key: 'biometrics', name: 'Biometric Integration', description: 'Hardware device attendance sync and punch logs', category: 'Hardware' },
+  { key: 'live_activity', name: 'Live Activity Stream', description: 'Real-time employee pulse, status radar, and presence', category: 'Analytics' },
+  { key: 'reports_analytics', name: 'Advanced Reports', description: 'Custom report builder, churn risk, and export tools', category: 'Analytics' },
+  { key: 'audit_logs', name: 'Security Audit Logs', description: 'System-wide compliance audit trail and activity log', category: 'Security' },
+];
+
+/**
+ * Super Admin: Get all plan configurations & system module list
+ */
+const getPlanConfigs = asyncHandler(async (req, res) => {
+  const result = await pool.query(
+    `SELECT plan_id, name, description, price_inr, price_usd, employee_limit, modules, is_active, updated_at 
+     FROM shared.plan_configs 
+     ORDER BY price_usd ASC, price_inr ASC`
+  );
+
+  res.json({
+    success: true,
+    plans: result.rows,
+    systemModules: SYSTEM_MODULES
+  });
+});
+
+/**
+ * Super Admin: Update a plan configuration (modules, limits, pricing)
+ */
+const updatePlanConfig = asyncHandler(async (req, res) => {
+  const { planId } = req.params;
+  const { name, description, price_inr, price_usd, employee_limit, modules, is_active } = req.body;
+
+  if (!planId) {
+    throw new ValidationError('Plan ID is required');
+  }
+
+  // Ensure core_hr is always included
+  let finalModules = Array.isArray(modules) ? modules : [];
+  if (!finalModules.includes('core_hr')) {
+    finalModules.unshift('core_hr');
+  }
+
+  const result = await pool.query(
+    `UPDATE shared.plan_configs
+     SET name = COALESCE($1, name),
+         description = COALESCE($2, description),
+         price_inr = COALESCE($3, price_inr),
+         price_usd = COALESCE($4, price_usd),
+         employee_limit = COALESCE($5, employee_limit),
+         modules = $6,
+         is_active = COALESCE($7, is_active),
+         updated_at = CURRENT_TIMESTAMP
+     WHERE plan_id = $8
+     RETURNING *`,
+    [name, description, price_inr, price_usd, employee_limit, JSON.stringify(finalModules), is_active, planId]
+  );
+
+  if (result.rows.length === 0) {
+    throw new NotFoundError(`Plan '${planId}' not found`);
+  }
+
+  res.json({
+    success: true,
+    message: `Plan '${planId}' configuration updated successfully`,
+    plan: result.rows[0]
+  });
+});
+
+/**
+ * Super Admin: Get active modules and override state for a specific tenant
+ */
+const getTenantModules = asyncHandler(async (req, res) => {
+  const { tenantId } = req.params;
+
+  const tenantRes = await pool.query(
+    `SELECT tenant_id, name, subscription_plan, subscription_expiry, custom_modules, employee_limit, status
+     FROM shared.tenants 
+     WHERE tenant_id = $1`,
+    [tenantId]
+  );
+
+  if (tenantRes.rows.length === 0) {
+    throw new NotFoundError(`Tenant '${tenantId}' not found`);
+  }
+
+  const tenant = tenantRes.rows[0];
+  const { getTenantActiveModules } = require('../utils/moduleEntitlements');
+  const entitlement = await getTenantActiveModules(tenantId);
+
+  res.json({
+    success: true,
+    tenant_id: tenant.tenant_id,
+    name: tenant.name,
+    subscription_plan: tenant.subscription_plan,
+    custom_modules: tenant.custom_modules,
+    is_custom: entitlement.isCustom,
+    active_modules: entitlement.modules,
+    systemModules: SYSTEM_MODULES
+  });
+});
+
+/**
+ * Super Admin: Manually assign custom modules or reset to plan default for a specific tenant
+ */
+const updateTenantModules = asyncHandler(async (req, res) => {
+  const { tenantId } = req.params;
+  const { customModules, resetToDefault } = req.body;
+
+  const tenantRes = await pool.query(
+    `SELECT tenant_id, subscription_plan FROM shared.tenants WHERE tenant_id = $1`,
+    [tenantId]
+  );
+
+  if (tenantRes.rows.length === 0) {
+    throw new NotFoundError(`Tenant '${tenantId}' not found`);
+  }
+
+  if (resetToDefault === true || customModules === null) {
+    // Reset to inherit plan modules dynamically
+    await pool.query(
+      `UPDATE shared.tenants SET custom_modules = NULL, updated_at = CURRENT_TIMESTAMP WHERE tenant_id = $1`,
+      [tenantId]
+    );
+
+    const { getTenantActiveModules } = require('../utils/moduleEntitlements');
+    const entitlement = await getTenantActiveModules(tenantId);
+
+    return res.json({
+      success: true,
+      message: `Tenant '${tenantId}' reset to default plan modules (${tenantRes.rows[0].subscription_plan})`,
+      is_custom: false,
+      active_modules: entitlement.modules
+    });
+  }
+
+  if (!Array.isArray(customModules)) {
+    throw new ValidationError('customModules must be an array of module keys or null');
+  }
+
+  // Ensure core_hr is always enabled
+  const moduleSet = new Set(customModules);
+  moduleSet.add('core_hr');
+  const finalModules = Array.from(moduleSet);
+
+  await pool.query(
+    `UPDATE shared.tenants SET custom_modules = $1, updated_at = CURRENT_TIMESTAMP WHERE tenant_id = $2`,
+    [JSON.stringify(finalModules), tenantId]
+  );
+
+  res.json({
+    success: true,
+    message: `Custom modules assigned to tenant '${tenantId}' successfully`,
+    is_custom: true,
+    active_modules: finalModules
+  });
+});
+
+/**
+ * Super Admin: Get platform-wide billing overview and transaction history
+ */
+const getBillingOverview = asyncHandler(async (req, res) => {
+  const revRes = await pool.query(`
+    SELECT 
+      COALESCE(SUM(CASE WHEN status = 'completed' THEN amount ELSE 0 END), 0) as total_revenue,
+      COALESCE(SUM(CASE WHEN status = 'completed' AND currency = 'INR' THEN amount ELSE 0 END), 0) as total_inr,
+      COALESCE(SUM(CASE WHEN status = 'completed' AND currency = 'USD' THEN amount ELSE 0 END), 0) as total_usd,
+      COUNT(CASE WHEN status = 'completed' THEN 1 END) as total_successful_payments,
+      COUNT(CASE WHEN status = 'pending' THEN 1 END) as total_pending_payments
+    FROM shared.payment_logs
+  `);
+
+  const subRes = await pool.query(`
+    SELECT 
+      COUNT(*) as total_tenants,
+      COUNT(CASE WHEN status = 'active' THEN 1 END) as active_tenants,
+      COUNT(CASE WHEN subscription_plan != 'free' THEN 1 END) as paid_subscriptions,
+      COUNT(CASE WHEN subscription_expiry < NOW() THEN 1 END) as expired_subscriptions,
+      COUNT(CASE WHEN subscription_expiry >= NOW() AND subscription_expiry <= NOW() + INTERVAL '7 days' THEN 1 END) as expiring_soon
+    FROM shared.tenants
+  `);
+
+  const txnRes = await pool.query(`
+    SELECT 
+      p.*,
+      t.name as tenant_name,
+      t.contact_email,
+      t.contact_person
+    FROM shared.payment_logs p
+    LEFT JOIN shared.tenants t ON p.tenant_id = t.tenant_id
+    ORDER BY p.created_at DESC
+    LIMIT 100
+  `);
+
+  res.json({
+    success: true,
+    summary: {
+      ...revRes.rows[0],
+      ...subRes.rows[0]
+    },
+    transactions: txnRes.rows
+  });
+});
+
+/**
+ * Super Admin: Get specific tenant customer contact & billing profile
+ */
+const getTenantBillingProfile = asyncHandler(async (req, res) => {
+  const { tenantId } = req.params;
+  const tenantRes = await pool.query(`
+    SELECT 
+      tenant_id, name, domain, status, subscription_plan, subscription_expiry,
+      employee_limit, contact_person, contact_email, contact_phone,
+      billing_address, city, country, tax_id, billing_currency, billing_cycle,
+      created_at, updated_at
+    FROM shared.tenants
+    WHERE tenant_id = $1
+  `, [tenantId]);
+
+  if (tenantRes.rows.length === 0) {
+    throw new NotFoundError(`Tenant '${tenantId}' not found`);
+  }
+
+  const invoicesRes = await pool.query(`
+    SELECT * 
+    FROM shared.payment_logs 
+    WHERE tenant_id = $1 
+    ORDER BY created_at DESC
+  `, [tenantId]);
+
+  res.json({
+    success: true,
+    tenant: tenantRes.rows[0],
+    invoices: invoicesRes.rows
+  });
+});
+
+/**
+ * Super Admin: Update tenant contact and billing details
+ */
+const updateTenantBillingProfile = asyncHandler(async (req, res) => {
+  const { tenantId } = req.params;
+  const {
+    contact_person, contact_email, contact_phone,
+    billing_address, city, country, tax_id,
+    billing_currency, billing_cycle
+  } = req.body;
+
+  const result = await pool.query(`
+    UPDATE shared.tenants
+    SET 
+      contact_person = COALESCE($1, contact_person),
+      contact_email = COALESCE($2, contact_email),
+      contact_phone = COALESCE($3, contact_phone),
+      billing_address = COALESCE($4, billing_address),
+      city = COALESCE($5, city),
+      country = COALESCE($6, country),
+      tax_id = COALESCE($7, tax_id),
+      billing_currency = COALESCE($8, billing_currency),
+      billing_cycle = COALESCE($9, billing_cycle),
+      updated_at = CURRENT_TIMESTAMP
+    WHERE tenant_id = $10
+    RETURNING *
+  `, [
+    contact_person, contact_email, contact_phone,
+    billing_address, city, country, tax_id,
+    billing_currency, billing_cycle, tenantId
+  ]);
+
+  if (result.rows.length === 0) {
+    throw new NotFoundError(`Tenant '${tenantId}' not found`);
+  }
+
+  res.json({
+    success: true,
+    message: 'Tenant contact & billing profile updated successfully',
+    tenant: result.rows[0]
+  });
+});
+
+/**
+ * Super Admin: Manually record an offline payment (Wire / Cash / Cheque) and extend subscription
+ */
+const recordManualPayment = asyncHandler(async (req, res) => {
+  const {
+    tenant_id,
+    plan_id,
+    amount,
+    currency = 'INR',
+    gateway = 'manual_wire',
+    duration_days = 30,
+    invoice_number,
+    transaction_id,
+    notes
+  } = req.body;
+
+  if (!tenant_id || !plan_id || !amount) {
+    throw new ValidationError('Tenant ID, plan ID, and amount are required.');
+  }
+
+  const tenantRes = await pool.query(`SELECT * FROM shared.tenants WHERE tenant_id = $1`, [tenant_id]);
+  if (tenantRes.rows.length === 0) {
+    throw new NotFoundError(`Tenant '${tenant_id}' not found`);
+  }
+
+  const generatedInvoiceNumber = invoice_number || `INV-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
+  const genTxnId = transaction_id || `MANUAL-${Date.now()}`;
+
+  const currentExpiry = tenantRes.rows[0].subscription_expiry ? new Date(tenantRes.rows[0].subscription_expiry) : new Date();
+  const baseDate = currentExpiry > new Date() ? currentExpiry : new Date();
+  const newExpiry = new Date(baseDate.getTime() + parseInt(duration_days) * 24 * 60 * 60 * 1000);
+
+  const paymentRes = await pool.query(`
+    INSERT INTO shared.payment_logs 
+      (tenant_id, plan_id, amount, currency, gateway, transaction_id, invoice_number, status, notes, billing_period_start, billing_period_end)
+    VALUES 
+      ($1, $2, $3, $4, $5, $6, $7, 'completed', $8, $9, $10)
+    RETURNING *
+  `, [
+    tenant_id, plan_id, amount, currency, gateway, genTxnId,
+    generatedInvoiceNumber, notes || 'Manual payment recorded by Super Admin',
+    baseDate, newExpiry
+  ]);
+
+  await pool.query(`
+    UPDATE shared.tenants 
+    SET 
+      subscription_plan = $1,
+      subscription_expiry = $2,
+      status = 'active',
+      updated_at = CURRENT_TIMESTAMP
+    WHERE tenant_id = $3
+  `, [plan_id, newExpiry, tenant_id]);
+
+  res.json({
+    success: true,
+    message: `Manual payment recorded and subscription extended until ${newExpiry.toLocaleDateString()}`,
+    payment: paymentRes.rows[0],
+    new_expiry: newExpiry
+  });
+});
+
+/**
+ * Tenant Admin: Get self-serve company billing, current plan, and invoice history
+ */
+const getMyTenantBilling = asyncHandler(async (req, res) => {
+  const tenantId = req.user?.tenantId || req.headers['x-tenant-id'];
+
+  if (!tenantId) {
+    throw new BadRequestError('Tenant context is required');
+  }
+
+  const tenantRes = await pool.query(`
+    SELECT 
+      tenant_id, name, domain, status, subscription_plan, subscription_expiry,
+      employee_limit, contact_person, contact_email, contact_phone,
+      billing_address, city, country, tax_id, billing_currency, billing_cycle,
+      created_at
+    FROM shared.tenants
+    WHERE tenant_id = $1
+  `, [tenantId]);
+
+  if (tenantRes.rows.length === 0) {
+    throw new NotFoundError(`Tenant '${tenantId}' not found`);
+  }
+
+  const invoicesRes = await pool.query(`
+    SELECT * 
+    FROM shared.payment_logs 
+    WHERE tenant_id = $1 
+    ORDER BY created_at DESC
+  `, [tenantId]);
+
+  // Try to count employees in tenant schema safely
+  let employeeCount = 0;
+  try {
+    const empRes = await pool.query(`SELECT COUNT(*) FROM "${tenantId}".employees`);
+    employeeCount = parseInt(empRes.rows[0]?.count || 0);
+  } catch (err) {
+    // schema might have different structure or 0
+    employeeCount = 0;
+  }
+
+  res.json({
+    success: true,
+    tenant: tenantRes.rows[0],
+    employeeCount,
+    invoices: invoicesRes.rows
+  });
+});
+
+/**
+ * Tenant Admin: Update company's own billing contact & tax profile
+ */
+const updateMyTenantBilling = asyncHandler(async (req, res) => {
+  const tenantId = req.user?.tenantId || req.headers['x-tenant-id'];
+
+  if (!tenantId) {
+    throw new BadRequestError('Tenant context is required');
+  }
+
+  const {
+    contact_person, contact_email, contact_phone,
+    billing_address, city, country, tax_id,
+    billing_currency, billing_cycle
+  } = req.body;
+
+  const result = await pool.query(`
+    UPDATE shared.tenants
+    SET 
+      contact_person = COALESCE($1, contact_person),
+      contact_email = COALESCE($2, contact_email),
+      contact_phone = COALESCE($3, contact_phone),
+      billing_address = COALESCE($4, billing_address),
+      city = COALESCE($5, city),
+      country = COALESCE($6, country),
+      tax_id = COALESCE($7, tax_id),
+      billing_currency = COALESCE($8, billing_currency),
+      billing_cycle = COALESCE($9, billing_cycle),
+      updated_at = CURRENT_TIMESTAMP
+    WHERE tenant_id = $10
+    RETURNING *
+  `, [
+    contact_person, contact_email, contact_phone,
+    billing_address, city, country, tax_id,
+    billing_currency, billing_cycle, tenantId
+  ]);
+
+  if (result.rows.length === 0) {
+    throw new NotFoundError(`Tenant '${tenantId}' not found`);
+  }
+
+  res.json({
+    success: true,
+    message: 'Billing profile updated successfully',
+    tenant: result.rows[0]
+  });
+});
+
+/**
+ * Universal: Get detailed invoice JSON (Super Admin or Tenant Admin for their own invoice)
+ */
+const getInvoiceDetails = asyncHandler(async (req, res) => {
+  const { invoiceId } = req.params;
+  const isSuperAdmin = req.user?.isSuperAdmin || req.user?.role === 'super_admin';
+  const tenantId = req.user?.tenantId || req.headers['x-tenant-id'];
+
+  const invoiceRes = await pool.query(`
+    SELECT 
+      p.*,
+      t.name as tenant_name,
+      t.domain as tenant_domain,
+      t.contact_person,
+      t.contact_email,
+      t.contact_phone,
+      t.billing_address,
+      t.city,
+      t.country,
+      t.tax_id
+    FROM shared.payment_logs p
+    LEFT JOIN shared.tenants t ON p.tenant_id = t.tenant_id
+    WHERE p.id::text = $1 OR p.invoice_number = $1
+    LIMIT 1
+  `, [String(invoiceId)]);
+
+  if (invoiceRes.rows.length === 0) {
+    throw new NotFoundError(`Invoice '${invoiceId}' not found`);
+  }
+
+  const invoice = invoiceRes.rows[0];
+
+  // If not super admin, must match tenant_id
+  if (!isSuperAdmin && invoice.tenant_id !== tenantId) {
+    throw new ForbiddenError('You do not have access to view this invoice');
+  }
+
+  res.json({
+    success: true,
+    invoice: {
+      ...invoice,
+      vendor: {
+        company_name: 'HRMS Pro Technologies Inc.',
+        address: 'Level 5, Enterprise Tower, Cyber City',
+        city: 'Hyderabad, Telangana, 500081',
+        country: 'India',
+        tax_id: '36AAAAA0000A1Z5',
+        support_email: 'billing@hrmspro.online',
+        website: 'https://hrmspro.online'
+      }
+    }
+  });
+});
+
 module.exports = {
   createTenant, getAllTenants, updateTenant, resetTenantAdminPassword, deleteTenant,
   getBiometricDevices, registerBiometricDevice, deleteBiometricDevice, impersonateTenantAdmin,
-  backupTenant, restoreTenant
+  backupTenant, restoreTenant,
+  getPlanConfigs, updatePlanConfig, getTenantModules, updateTenantModules,
+  getBillingOverview, getTenantBillingProfile, updateTenantBillingProfile, recordManualPayment,
+  getMyTenantBilling, updateMyTenantBilling, getInvoiceDetails,
+  SYSTEM_MODULES
 };
+
+

@@ -207,14 +207,14 @@ const WebsiteBuilder = () => {
         const active = res.data.data.find(t => t.is_active);
         if (active) setActiveThemeId(active.id);
       }
-    } catch {}
+    } catch { }
   }, []);
 
   const fetchLabels = useCallback(async () => {
     try {
       const res = await api.get('/website/labels');
       if (res.data?.success) setLabels(res.data.data);
-    } catch {}
+    } catch { }
   }, []);
 
   const fetchGlobalSettings = useCallback(async () => {
@@ -247,17 +247,17 @@ const WebsiteBuilder = () => {
                 setFooterColumns(parsedConfig.columns);
               }
             }
-          } catch {}
+          } catch { }
         }
       }
-    } catch {}
+    } catch { }
   }, []);
 
   const fetchMedia = useCallback(async () => {
     try {
       const res = await api.get('/website/media');
       if (res.data?.success) setMediaList(res.data.data);
-    } catch {}
+    } catch { }
   }, []);
 
   useEffect(() => {
@@ -671,11 +671,10 @@ const WebsiteBuilder = () => {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-5 py-3 rounded-xl font-semibold text-sm transition-all duration-200 whitespace-nowrap ${
-                isActive
+              className={`flex items-center gap-2 px-5 py-3 rounded-xl font-semibold text-sm transition-all duration-200 whitespace-nowrap ${isActive
                   ? 'bg-white dark:bg-gray-900 text-primary-600 dark:text-primary-500 shadow-sm'
                   : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
-              }`}
+                }`}
             >
               <Icon className="w-4 h-4" />
               {tab.label}
@@ -1251,7 +1250,7 @@ const WebsiteBuilder = () => {
               </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 pt-2">
+            <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-4 gap-6 pt-2">
               <div className="space-y-2">
                 <label className="text-xs font-semibold text-gray-700 dark:text-gray-300">Primary Accent Color</label>
                 <div className="flex items-center gap-2">
@@ -1333,11 +1332,10 @@ const WebsiteBuilder = () => {
                 return (
                   <div
                     key={t.slug}
-                    className={`p-5 rounded-2xl border transition-all duration-200 space-y-3 ${
-                      isSelected
+                    className={`p-5 rounded-2xl border transition-all duration-200 space-y-3 ${isSelected
                         ? 'border-emerald-500 dark:border-emerald-400 bg-emerald-50/20 dark:bg-emerald-500/5 ring-2 ring-emerald-500/20'
                         : 'border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/40 hover:border-gray-200'
-                    }`}
+                      }`}
                   >
                     <div className="flex items-center justify-between">
                       <h3 className="font-bold text-sm text-gray-900 dark:text-white">{t.name}</h3>
@@ -1447,7 +1445,7 @@ const WebsiteBuilder = () => {
             {/* Company Basics */}
             <div className="space-y-4 pt-2">
               <h3 className="text-xs font-bold text-primary-600 uppercase tracking-widest">1. Company Identity & Brand Logo</h3>
-              
+
               {/* Logo Management */}
               <div className="p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/30 space-y-4">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -1455,10 +1453,10 @@ const WebsiteBuilder = () => {
                     <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">Live Header & Footer Preview:</span>
                     {globalSettings.logo_url && globalSettings.logo_url !== 'null' && globalSettings.logo_url !== '' ? (
                       <div className="p-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl">
-                        <img 
-                          src={globalSettings.logo_url.startsWith('http') ? globalSettings.logo_url : `${(import.meta.env.VITE_API_URL || '').replace('/api', '')}${globalSettings.logo_url}`} 
-                          alt="Logo Preview" 
-                          className="h-9 object-contain" 
+                        <img
+                          src={globalSettings.logo_url.startsWith('http') ? globalSettings.logo_url : `${(import.meta.env.VITE_API_URL || '').replace('/api', '')}${globalSettings.logo_url}`}
+                          alt="Logo Preview"
+                          className="h-9 object-contain"
                           onError={(e) => { e.currentTarget.style.display = 'none'; }}
                         />
                       </div>
@@ -1468,8 +1466,8 @@ const WebsiteBuilder = () => {
                       </div>
                     )}
                     <span className="text-xs text-gray-500 font-medium">
-                      {globalSettings.logo_url && globalSettings.logo_url !== 'null' && globalSettings.logo_url !== '' 
-                        ? 'Custom Image Logo Active' 
+                      {globalSettings.logo_url && globalSettings.logo_url !== 'null' && globalSettings.logo_url !== ''
+                        ? 'Custom Image Logo Active'
                         : 'Using Capital First Letter Badge'}
                     </span>
                   </div>

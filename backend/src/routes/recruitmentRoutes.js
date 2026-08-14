@@ -4,6 +4,10 @@ const { body } = require('express-validator');
 const { validate } = require('../middleware/validate');
 const { authenticateToken, authorizeRole } = require('../middleware/auth');
 const recruitmentController = require('../controllers/recruitmentController');
+const checkModuleAccess = require('../middleware/checkModuleAccess');
+
+// Plan Entitlement Guard
+router.use(checkModuleAccess('recruitment'));
 
 // Validation rules
 const jobPostingValidation = [

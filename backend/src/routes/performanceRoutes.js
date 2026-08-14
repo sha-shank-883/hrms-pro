@@ -3,10 +3,12 @@ const router = express.Router();
 const performanceController = require('../controllers/performanceController');
 const { authenticateToken } = require('../middleware/auth');
 const tenantMiddleware = require('../middleware/tenantMiddleware');
+const checkModuleAccess = require('../middleware/checkModuleAccess');
 
 // Apply middlewares
 router.use(tenantMiddleware);
 router.use(authenticateToken);
+router.use(checkModuleAccess('performance'));
 
 // --- Goals Routes ---
 router.get('/goals', performanceController.getGoals);

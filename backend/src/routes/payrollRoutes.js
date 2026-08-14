@@ -4,8 +4,12 @@ const { validate } = require('../middleware/validate');
 const { authenticateToken, authorizeRole } = require('../middleware/auth');
 const payrollController = require('../controllers/payrollController');
 const { logAction } = require('../middleware/auditLogger');
+const checkModuleAccess = require('../middleware/checkModuleAccess');
 
 const router = express.Router();
+
+// Plan Entitlement Guard: restricts entire router if payroll is not in tenant's plan
+router.use(checkModuleAccess('payroll'));
 
 // Validation rules
 const payrollValidation = [

@@ -113,12 +113,25 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const hasModule = (moduleKey) => {
+    if (!user) return false;
+    // Super Admin has access to all modules
+    if (user.isSuperAdmin || user.role === 'super_admin') return true;
+    if (user.tenant_modules && user.tenant_modules.includes('all')) return true;
+    if (user.tenant_modules && Array.isArray(user.tenant_modules)) {
+      return user.tenant_modules.includes(moduleKey);
+    }
+    // Default fallback: core modules
+    return ['core_hr', 'attendance', 'leaves', 'tasks', 'documents'].includes(moduleKey);
+  };
+
   const value = {
     user,
     login,
     register,
     logout,
     refreshProfile,
+    hasModule,
     isAuthenticated,
     loading,
   };

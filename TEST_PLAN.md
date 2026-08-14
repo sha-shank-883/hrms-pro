@@ -48,6 +48,18 @@ This document outlines a systematic plan to test every icon, button, navigation 
 | 1.3.10 | Global Super Admin authentication remains intact even if business tenants are dropped | Super Admin login succeeds independently [PASSED] |
 | 1.3.11 | `DELETE /api/tenants/:tenantId` with 2FA token verifies against `shared.super_admins` | Tenant deleted cleanly without impacting super admin [PASSED] |
 | 1.3.12 | Frontend Super Admin route allows access with `isSuperAdmin: true` | Super Admin dashboard accessible without `tenant_default` check [PASSED] |
+| 1.3.13 | `GET /api/tenants/plans/configs` returns all configured SaaS plan tiers with system modules | Returns 4 default tiers (Free, Hatch, Scale, Enterprise) + module metadata [PASSED] |
+| 1.3.14 | `PUT /api/tenants/plans/configs/:planId` dynamically updates plan modules, prices, and limits | Database updated and immediately reflected in all tenants inheriting that plan [PASSED] |
+| 1.3.15 | `GET /api/tenants/:tenantId/modules` resolves active modules hierarchy (custom vs plan default) | Returns resolved modules list and `is_custom` boolean [PASSED] |
+| 1.3.16 | `PUT /api/tenants/:tenantId/modules` manually grants custom module overrides to specific tenant | Overrides default plan without modifying other tenants [PASSED] |
+| 1.3.17 | `PUT /api/tenants/:tenantId/modules` with `resetToDefault: true` removes custom overrides | Tenant smoothly reverts to inheriting its subscription plan default modules [PASSED] |
+| 1.3.18 | `checkModuleAccess` middleware rejects unauthorized module APIs with HTTP 403 `MODULE_LOCKED` | Module locked with upgrade CTA payload; allowed modules continue uninterrupted [PASSED] |
+| 1.3.19 | Non-lockout guarantee: `core_hr` always remains active in all configurations | Admin and employees can never be locked out of essential account operations [PASSED] |
+| 1.3.20 | `GET /api/tenants/billing/overview` returns platform revenue, paid subscriptions, and transaction logs | Returns summary (Total INR/USD, MRR, Paid counts) + recent payment logs [PASSED] |
+| 1.3.21 | `GET /api/tenants/:tenantId/billing-profile` returns customer contact, address, tax ID, and invoice history | Returns complete billing profile & company payment history [PASSED] |
+| 1.3.22 | `PUT /api/tenants/:tenantId/billing-profile` updates customer contact person, email, phone, and billing terms | Database updated with contact and tax credentials [PASSED] |
+| 1.3.23 | `POST /api/tenants/billing/record-manual` records offline payment and auto-extends subscription | Transaction saved with invoice number, subscription expiry extended [PASSED] |
+
 
 ### 1.4 Module CRUD APIs (Test each endpoint for every module)
 

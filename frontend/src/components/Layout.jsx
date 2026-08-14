@@ -15,11 +15,12 @@ import {
   FaSearch, FaBell, FaQuestionCircle, FaEnvelope,
   FaChevronDown, FaUser, FaFileInvoiceDollar, FaCheckDouble,
   FaPlane, FaPalette, FaMoon, FaSun,
-  FaHeadset, FaTicketAlt, FaGlobe, FaCreditCard, FaCrown
+  FaHeadset, FaTicketAlt, FaGlobe, FaCreditCard, FaCrown,
+  FaLayerGroup, FaThLarge, FaFingerprint, FaMobileAlt
 } from 'react-icons/fa';
 
 const Layout = () => {
-  const { user, logout } = useAuth();
+  const { user, logout, hasModule } = useAuth();
   const { settings } = useSettings();
   const { notifications, markAsRead } = useNotifications();
   const navigate = useNavigate();
@@ -176,7 +177,7 @@ const Layout = () => {
     return (
       <NavLink
         to={to}
-        className={`block px-3 py-2 text-sm font-medium rounded-lg transition-all ${isActive
+        className={`block px-2.5 py-1.5 text-xs font-medium rounded-lg transition-all ${isActive
           ? 'bg-green-100 text-green-700 font-semibold'
           : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
         }`}
@@ -187,34 +188,33 @@ const Layout = () => {
   };
 
   const NavItem = ({ to, icon, label, count, badgeColor = 'primary-soft' }) => {
-    const isActive = location.pathname === to || location.pathname.startsWith(`${to}/`);
+    const isActive = location.pathname === to || (to !== '/' && to !== '/dashboard' && to !== '/super-admin' && location.pathname.startsWith(`${to}/`));
     return (
       <NavLink
         to={to}
-        className={`nav-item flex items-center gap-4 px-4 py-4 text-base font-medium rounded-xl transition-all duration-200 mb-2 mx-2 ${isActive
-          ? 'bg-green-50 text-green-700 border-l-4 border-green-500 pl-4 shadow-sm'
-          : 'text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 hover:shadow-sm'
+        className={`nav-item flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-lg transition-all duration-150 mb-0.5 mx-1 ${isActive
+          ? 'bg-primary-50 text-primary-700 font-bold border-l-2 border-primary-600 pl-2.5 shadow-xs'
+          : 'text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900'
           }`}
       >
-        <span className={`nav-icon text-xl ${isActive ? 'text-green-600' : 'text-neutral-500'}`}>{icon}</span>
-        <span className="flex-1 truncate">{label}</span>
+        <span className={`nav-icon text-sm shrink-0 ${isActive ? 'text-primary-600' : 'text-neutral-400'}`}>{icon}</span>
+        <span className="flex-1 truncate tracking-tight">{label}</span>
         {count > 0 && (
-          <span className={`badge badge-${badgeColor} badge-sm ml-auto ${isActive ? 'bg-green-100 text-green-800 border-green-200' : 'bg-neutral-100 text-neutral-600 border-neutral-200'}`}>{count}</span>
+          <span className={`badge badge-${badgeColor} badge-sm ml-auto text-[10px] px-1.5 py-0.2 font-bold ${isActive ? 'bg-primary-100 text-primary-800' : 'bg-neutral-100 text-neutral-600'}`}>{count}</span>
         )}
       </NavLink>
     );
   };
 
   const NavSection = ({ title }) => (
-    <div className="px-6 mt-8 mb-4 text-sm font-semibold text-neutral-500 uppercase tracking-wider flex items-center gap-3">
-      <span className="flex-1">{title}</span>
+    <div className="px-3 mt-4 mb-1.5 text-[10px] font-extrabold text-neutral-400 uppercase tracking-wider flex items-center gap-2">
+      <span className="shrink-0">{title}</span>
       <span className="border-t border-neutral-200 flex-1"></span>
     </div>
   );
 
   return (
     <div className="app-shell flex h-screen overflow-hidden bg-neutral-50">
-      {/* Notification Panel */}
       {/* Notification Panel */}
       {showNotifications && (
         <>
@@ -308,139 +308,168 @@ const Layout = () => {
       )}
 
       {/* Sidebar - Fixed on mobile to overlay, relative on desktop to push content */}
-      <aside className={`app-sidebar w-72 flex flex-col bg-white h-full fixed inset-y-0 left-0 lg:relative flex-shrink-0 transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} z-50 transition-transform duration-300 ease-in-out lg:translate-x-0 lg:z-auto lg:transform-none shadow-2xl lg:shadow-none`}>
-        {/* Sidebar Header - More Padding */}
-        <div className="h-20 flex items-center justify-between px-6 border-b border-neutral-200 bg-white">
-          <div className="flex items-center gap-4 overflow-hidden">
+      <aside className={`app-sidebar w-64 flex flex-col bg-white h-full fixed inset-y-0 left-0 lg:relative flex-shrink-0 transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} z-50 transition-transform duration-300 ease-in-out lg:translate-x-0 lg:z-auto lg:transform-none shadow-xl lg:shadow-none border-r border-neutral-200/80`}>
+        {/* Sidebar Header */}
+        <div className="h-16 flex items-center justify-between px-4 border-b border-neutral-200/80 bg-white">
+          <div className="flex items-center gap-3 overflow-hidden">
             {settings.company_logo ? (
-              <img src={settings.company_logo} alt="Logo" className="h-10 object-contain" />
+              <img src={settings.company_logo} alt="Logo" className="h-8 object-contain" />
             ) : (
-              <div className="h-12 w-12 bg-green-500 rounded-xl flex items-center justify-center text-white font-bold text-xl">
+              <div className="h-9 w-9 bg-primary-600 rounded-xl flex items-center justify-center text-white font-black text-base shadow-xs">
                 {settings.company_name ? settings.company_name.charAt(0) : 'H'}
               </div>
             )}
             <div className="overflow-hidden">
-              <span className="font-bold text-xl text-neutral-900 truncate block">
+              <span className="font-bold text-sm text-neutral-900 truncate block">
                 {settings.company_name || "HRMS Pro"}
               </span>
-              <span className="text-sm text-neutral-500 truncate block">Human Resources</span>
+              <span className="text-[11px] text-neutral-400 truncate block font-medium">
+                {(user?.isSuperAdmin || user?.role === 'super_admin') ? 'Super Admin Portal' : 'Workspace'}
+              </span>
             </div>
           </div>
-          <button className="lg:hidden text-neutral-500 hover:text-neutral-700 p-2 rounded-md hover:bg-neutral-100" onClick={() => setIsSidebarOpen(false)}>
-            <FaTimes className="text-xl" />
+          <button className="lg:hidden text-neutral-400 hover:text-neutral-700 p-1.5 rounded-lg hover:bg-neutral-100" onClick={() => setIsSidebarOpen(false)}>
+            <FaTimes className="text-base" />
           </button>
         </div>
 
-        {/* Sidebar Nav - More Spacious */}
-        <nav ref={sidebarNavRef} className="flex-1 overflow-y-auto py-6 px-4 custom-scrollbar bg-white" style={{ overflowAnchor: 'none' }}>
-          <NavItem to="/dashboard" icon={<FaHome />} label="Dashboard" />
-
-          {(() => {
-            const hasAccess = (roles = [], perms = []) => {
-              if (roles.includes(user.role)) return true;
-              if (perms.length > 0 && user.permissions && perms.some(p => user.permissions.includes(p))) return true;
-              return false;
-            };
-
-            return (
-              <>
-          {hasAccess(['admin', 'manager'], ['reports:read']) && (
-            <NavItem to="/live-activity" icon={<FaBolt />} label="Live Activity" count={notifications.liveActivity} />
-          )}
-
-          <NavItem to="/chat" icon={<FaComments />} label="Chat" count={notifications.chat} />
-
-          <NavSection title="Main Modules" />
-          
-          {hasAccess(['admin', 'manager'], ['employees:read']) && (
+        {/* Sidebar Nav */}
+        <nav ref={sidebarNavRef} className="flex-1 overflow-y-auto py-3 px-2 custom-scrollbar bg-white" style={{ overflowAnchor: 'none' }}>
+          {(user?.isSuperAdmin || user?.role === 'super_admin') ? (
             <>
-              <NavItem to="/employees" icon={<FaUsers />} label="Employees" />
-              <NavItem to="/org-chart" icon={<FaSitemap />} label="Directory" />
+              <NavSection title="Tenants & Revenue" />
+              <NavItem to="/super-admin" icon={<FaBuilding />} label="Tenants Directory" />
+              <NavItem to="/super-admin/billing" icon={<FaCreditCard />} label="Billing & Invoices" />
+              <NavItem to="/super-admin/plans" icon={<FaLayerGroup />} label="Plan Tiers" />
+              <NavItem to="/super-admin/entitlements" icon={<FaThLarge />} label="Entitlement Matrix" />
+
+              <NavSection title="Growth & Marketing" />
+              <NavItem to="/super-admin/demo-requests" icon={<FaUsers />} label="Demo Leads" />
+              <NavItem to="/super-admin/website" icon={<FaGlobe />} label="Website CMS" />
+
+              <NavSection title="Platform Operations" />
+              <NavItem to="/super-admin/biometrics" icon={<FaFingerprint />} label="Biometric Sync" />
+              <NavItem to="/super-admin/mobile-config" icon={<FaMobileAlt />} label="Mobile App" />
             </>
-          )}
-          {hasAccess(['admin', 'manager'], ['departments:read']) && (
-              <NavItem to="/departments" icon={<FaBuilding />} label="Departments" />
-          )}
-          
-          <NavItem to="/attendance" icon={<FaCalendarCheck />} label="Attendance" count={notifications.attendance} />
-          <NavItem to="/leaves" icon={<FaPlane />} label="Leaves" count={notifications.leaves} />
-          <NavItem to="/tasks" icon={<FaTasks />} label="Tasks" count={notifications.tasks} />
-          <NavItem to="/performance" icon={<FaChartLine />} label="Performance" />
-          
-          {hasAccess(['admin', 'manager'], ['payroll:read']) && (
-            <div>
-              <NavItem to="/payroll" icon={<FaMoneyBillWave />} label="Payroll" />
-              {location.pathname.startsWith('/payroll') && (
-                <div className="ml-8 mb-2 space-y-1 border-l-2 border-green-200 pl-3">
-                  <SubNavItem to="/payroll/runs" label="Runs" />
-                  <SubNavItem to="/payroll/payslip-designer" label="Designer" />
-                  <SubNavItem to="/payroll/batch" label="Batch Actions" />
+          ) : (
+            <>
+              <NavItem to="/dashboard" icon={<FaHome />} label="Dashboard" />
+
+              {(() => {
+                const hasAccess = (roles = [], perms = []) => {
+                  if (roles.includes(user.role)) return true;
+                  if (perms.length > 0 && user.permissions && perms.some(p => user.permissions.includes(p))) return true;
+                  return false;
+                };
+
+                return (
+                  <>
+              {hasModule('live_activity') && hasAccess(['admin', 'manager'], ['reports:read']) && (
+                <NavItem to="/live-activity" icon={<FaBolt />} label="Live Activity" count={notifications.liveActivity} />
+              )}
+
+              {hasModule('chat') && (
+                <NavItem to="/chat" icon={<FaComments />} label="Chat" count={notifications.chat} />
+              )}
+
+              <NavSection title="Main Modules" />
+              
+              {hasModule('core_hr') && hasAccess(['admin', 'manager'], ['employees:read']) && (
+                <>
+                  <NavItem to="/employees" icon={<FaUsers />} label="Employees" />
+                  <NavItem to="/org-chart" icon={<FaSitemap />} label="Directory" />
+                </>
+              )}
+              {hasModule('core_hr') && hasAccess(['admin', 'manager'], ['departments:read']) && (
+                  <NavItem to="/departments" icon={<FaBuilding />} label="Departments" />
+              )}
+              
+              {hasModule('attendance') && (
+                <NavItem to="/attendance" icon={<FaCalendarCheck />} label="Attendance" count={notifications.attendance} />
+              )}
+              {hasModule('leaves') && (
+                <NavItem to="/leaves" icon={<FaPlane />} label="Leaves" count={notifications.leaves} />
+              )}
+              {hasModule('tasks') && (
+                <NavItem to="/tasks" icon={<FaTasks />} label="Tasks" count={notifications.tasks} />
+              )}
+              {hasModule('performance') && (
+                <NavItem to="/performance" icon={<FaChartLine />} label="Performance" />
+              )}
+              
+              {hasModule('payroll') && hasAccess(['admin', 'manager'], ['payroll:read']) && (
+                <div>
+                  <NavItem to="/payroll" icon={<FaMoneyBillWave />} label="Payroll" />
+                  {location.pathname.startsWith('/payroll') && (
+                    <div className="ml-8 mb-2 space-y-1 border-l-2 border-green-200 pl-3">
+                      <SubNavItem to="/payroll/runs" label="Runs" />
+                      <SubNavItem to="/payroll/payslip-designer" label="Designer" />
+                      <SubNavItem to="/payroll/batch" label="Batch Actions" />
+                    </div>
+                  )}
                 </div>
               )}
-            </div>
-          )}
-          {hasAccess(['admin', 'manager'], ['recruitment:read']) && (
-              <NavItem to="/recruitment" icon={<FaUserPlus />} label="Recruitment" />
-          )}
-          
-          <NavItem to="/documents" icon={<FaFileAlt />} label="Documents" />
-          <NavItem to="/assets" icon={<FaBoxOpen />} label="Assets" />
+              {hasModule('recruitment') && hasAccess(['admin', 'manager'], ['recruitment:read']) && (
+                  <NavItem to="/recruitment" icon={<FaUserPlus />} label="Recruitment" />
+              )}
+              
+              {hasModule('documents') && (
+                <NavItem to="/documents" icon={<FaFileAlt />} label="Documents" />
+              )}
+              {hasModule('assets') && (
+                <NavItem to="/assets" icon={<FaBoxOpen />} label="Assets" />
+              )}
 
-          {hasAccess(['admin', 'manager'], ['support:read']) && (
-            <NavSection title="Support" />
-          )}
-          {hasAccess(['admin', 'manager'], ['support:read']) && (
-            <NavItem to="/support" icon={<FaHeadset />} label="Support" />
-          )}
-          {hasAccess(['admin', 'manager', 'employee'], ['support:read', 'tickets:read']) && (
-            <NavItem to="/support/tickets" icon={<FaTicketAlt />} label="Tickets" />
-          )}
-          {hasAccess(['admin', 'manager'], ['support:read']) && (
-            <NavItem to="/support/faq" icon={<FaQuestionCircle />} label="FAQ" />
-          )}
+              {hasAccess(['admin', 'manager'], ['support:read']) && (
+                <NavSection title="Support" />
+              )}
+              {hasAccess(['admin', 'manager'], ['support:read']) && (
+                <NavItem to="/support" icon={<FaHeadset />} label="Support" />
+              )}
+              {hasAccess(['admin', 'manager', 'employee'], ['support:read', 'tickets:read']) && (
+                <NavItem to="/support/tickets" icon={<FaTicketAlt />} label="Tickets" />
+              )}
+              {hasAccess(['admin', 'manager'], ['support:read']) && (
+                <NavItem to="/support/faq" icon={<FaQuestionCircle />} label="FAQ" />
+              )}
 
-          {hasAccess(['admin'], ['reports:read', 'settings:read', 'audit_logs:read']) && (
-            <NavSection title="Administration" />
-          )}
-          
-          {(user?.isSuperAdmin || user?.role === 'super_admin' || (hasAccess(['admin'], []) && localStorage.getItem('tenant_id') === 'tenant_default')) && (
-            <>
-              <NavItem to="/super-admin" icon={<FaBolt />} label="SaaS Admin" />
-              <NavItem to="/super-admin/demo-requests" icon={<FaUsers />} label="Demo Accounts" />
-              <NavItem to="/super-admin/website" icon={<FaGlobe />} label="Website Builder" />
-              <NavItem to="/super-admin/biometrics" icon={<FaBolt />} label="Biometric Devices" />
-            </>
-          )}
-          
-          {hasAccess(['admin', 'manager'], ['reports:read']) && (
-              <NavItem to="/reports" icon={<FaFileAlt />} label="Reports" />
-          )}
-          {hasAccess(['admin'], ['settings:update']) && (
-            <>
-              <NavItem to="/email-templates" icon={<FaFileAlt />} label="Email Templates" />
-              <NavItem to="/send-email" icon={<FaEnvelope />} label="Send Email" />
-            </>
-          )}
-          {hasAccess(['admin'], ['audit_logs:read']) && (
-              <NavItem to="/audit-logs" icon={<FaHistory />} label="Audit Logs" />
-          )}
-          {hasAccess(['admin'], ['settings:read']) && (
-            <>
-              <NavItem to="/settings?tab=billing" icon={<FaCreditCard />} label="Billing & Plan" />
-              <NavItem to="/settings" icon={<FaCog />} label="Settings" />
-            </>
-          )}
+              {hasAccess(['admin'], ['reports:read', 'settings:read', 'audit_logs:read']) && (
+                <NavSection title="Administration" />
+              )}
+              
+              {hasModule('reports_analytics') && hasAccess(['admin', 'manager'], ['reports:read']) && (
+                  <NavItem to="/reports" icon={<FaFileAlt />} label="Reports" />
+              )}
+              {hasAccess(['admin'], ['settings:update']) && (
+                <>
+                  <NavItem to="/email-templates" icon={<FaFileAlt />} label="Email Templates" />
+                  <NavItem to="/send-email" icon={<FaEnvelope />} label="Send Email" />
+                </>
+              )}
+              {hasModule('audit_logs') && hasAccess(['admin'], ['audit_logs:read']) && (
+                  <NavItem to="/audit-logs" icon={<FaHistory />} label="Audit Logs" />
+              )}
+              {hasAccess(['admin'], ['settings:read']) && (
+                <>
+                  <NavItem to="/settings?tab=billing" icon={<FaCreditCard />} label="Billing & Plan" />
+                  <NavItem to="/settings" icon={<FaCog />} label="Settings" />
+                </>
+              )}
 
-          {user.role === 'employee' && (
-            <>
-              <NavSection title="My Items" />
-              <NavItem to="/profile" icon={<FaUsers />} label="My Profile" />
-              <NavItem to="/my-payslips" icon={<FaMoneyBillWave />} label="My Payslips" />
+              {user.role === 'employee' && (
+                <>
+                  <NavSection title="My Items" />
+                  <NavItem to="/profile" icon={<FaUsers />} label="My Profile" />
+                  {hasModule('payroll') && (
+                    <NavItem to="/my-payslips" icon={<FaMoneyBillWave />} label="My Payslips" />
+                  )}
+                </>
+              )}
+                  </>
+                );
+              })()}
             </>
           )}
-              </>
-            );
-          })()}
         </nav>
 
         {/* Sidebar Footer removed - moved to Header */}
@@ -678,6 +707,12 @@ const Layout = () => {
           </div>
 
           <div className="flex items-center gap-4">
+            {(user?.isSuperAdmin || user?.role === 'super_admin') && (
+              <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 bg-amber-50 text-amber-900 border border-amber-300 rounded-lg text-xs font-black tracking-wide">
+                <FaBolt className="text-amber-500 text-[10px]" />
+                SUPER ADMIN
+              </span>
+            )}
             <button className="notification-button" onClick={() => setShowNotifications(!showNotifications)}>
               <FaBell className="notification-bell" />
               <span className={`notification-badge ${notifications.leaves > 0 || notifications.tasks > 0 || notifications.chat > 0 ? 'show' : ''}`}>
@@ -707,7 +742,7 @@ const Layout = () => {
                 </div>
                 <div className="hidden md:block text-left">
                   <p className="text-sm font-semibold text-neutral-700 leading-tight">{user?.first_name}</p>
-                  <p className="text-xs text-neutral-500 capitalize leading-tight">{user?.role}</p>
+                  <p className="text-xs text-neutral-500 capitalize leading-tight">{user?.isSuperAdmin ? 'Super Admin' : user?.role}</p>
                 </div>
                 <FaChevronDown className={`text-neutral-400 text-xs transition-transform duration-200 ${isProfileMenuOpen ? 'rotate-180' : ''}`} />
               </button>
@@ -722,32 +757,63 @@ const Layout = () => {
                     </div>
 
                     <div className="px-1">
-                      <Link
-                        to="/profile"
-                        className="flex items-center gap-3 px-3 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50 hover:text-green-600 rounded-lg transition-colors"
-                        onClick={() => setIsProfileMenuOpen(false)}
-                      >
-                        <FaUser className="text-neutral-400" />
-                        My Profile
-                      </Link>
-                      {user?.role === 'admin' ? (
-                        <Link
-                          to="/settings?tab=billing"
-                          className="flex items-center gap-3 px-3 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50 hover:text-green-600 rounded-lg transition-colors"
-                          onClick={() => setIsProfileMenuOpen(false)}
-                        >
-                          <FaCreditCard className="text-neutral-400" />
-                          Billing & Subscription
-                        </Link>
+                      {(user?.isSuperAdmin || user?.role === 'super_admin') ? (
+                        <>
+                          <Link
+                            to="/super-admin"
+                            className="flex items-center gap-3 px-3 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50 hover:text-primary-600 rounded-lg transition-colors"
+                            onClick={() => setIsProfileMenuOpen(false)}
+                          >
+                            <FaBolt className="text-amber-500" />
+                            SaaS Control Center
+                          </Link>
+                          <Link
+                            to="/super-admin/demo-requests"
+                            className="flex items-center gap-3 px-3 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50 hover:text-primary-600 rounded-lg transition-colors"
+                            onClick={() => setIsProfileMenuOpen(false)}
+                          >
+                            <FaUsers className="text-primary-500" />
+                            Marketing & Leads
+                          </Link>
+                          <Link
+                            to="/super-admin/website"
+                            className="flex items-center gap-3 px-3 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50 hover:text-primary-600 rounded-lg transition-colors"
+                            onClick={() => setIsProfileMenuOpen(false)}
+                          >
+                            <FaGlobe className="text-indigo-500" />
+                            Website Builder
+                          </Link>
+                        </>
                       ) : (
-                        <Link
-                          to="/my-payslips"
-                          className="flex items-center gap-3 px-3 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50 hover:text-green-600 rounded-lg transition-colors"
-                          onClick={() => setIsProfileMenuOpen(false)}
-                        >
-                          <FaFileInvoiceDollar className="text-neutral-400" />
-                          My Payslips
-                        </Link>
+                        <>
+                          <Link
+                            to="/profile"
+                            className="flex items-center gap-3 px-3 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50 hover:text-green-600 rounded-lg transition-colors"
+                            onClick={() => setIsProfileMenuOpen(false)}
+                          >
+                            <FaUser className="text-neutral-400" />
+                            My Profile
+                          </Link>
+                          {user?.role === 'admin' ? (
+                            <Link
+                              to="/settings?tab=billing"
+                              className="flex items-center gap-3 px-3 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50 hover:text-green-600 rounded-lg transition-colors"
+                              onClick={() => setIsProfileMenuOpen(false)}
+                            >
+                              <FaCreditCard className="text-neutral-400" />
+                              Billing & Subscription
+                            </Link>
+                          ) : (
+                            <Link
+                              to="/my-payslips"
+                              className="flex items-center gap-3 px-3 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50 hover:text-green-600 rounded-lg transition-colors"
+                              onClick={() => setIsProfileMenuOpen(false)}
+                            >
+                              <FaFileInvoiceDollar className="text-neutral-400" />
+                              My Payslips
+                            </Link>
+                          )}
+                        </>
                       )}
                     </div>
 

@@ -4,8 +4,10 @@ const { validate } = require('../middleware/validate');
 const { authenticateToken, authorizeRole } = require('../middleware/auth');
 const runController = require('../controllers/payrollRunController');
 const { logAction } = require('../middleware/auditLogger');
+const checkModuleAccess = require('../middleware/checkModuleAccess');
 
 const router = express.Router();
+router.use(checkModuleAccess('payroll'));
 
 router.get('/', authenticateToken, authorizeRole('admin', 'manager'), runController.getAllRuns);
 router.get('/:id', authenticateToken, authorizeRole('admin', 'manager', 'employee'), runController.getRunById);

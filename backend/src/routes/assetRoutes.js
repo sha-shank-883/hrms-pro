@@ -5,8 +5,10 @@ const { validate } = require('../middleware/validate');
 const assetController = require('../controllers/assetController');
 const { authenticateToken, authorizeRole } = require('../middleware/auth');
 const { logAction } = require('../middleware/auditLogger');
+const checkModuleAccess = require('../middleware/checkModuleAccess');
 
 router.use(authenticateToken);
+router.use(checkModuleAccess('assets'));
 
 const assetValidation = [
   body('name').optional().notEmpty().withMessage('Asset name is required'),

@@ -7,6 +7,7 @@ const { sendEmailSync } = require('../services/emailService');
 const speakeasy = require('speakeasy');
 const QRCode = require('qrcode');
 const asyncHandler = require('../utils/asyncHandler');
+const { getTenantActiveModules } = require('../utils/moduleEntitlements');
 const { NotFoundError, UnauthorizedError, ForbiddenError, ValidationError, ConflictError } = require('../utils/errors');
 
 const register = asyncHandler(async (req, res) => {
@@ -100,6 +101,7 @@ const login = asyncHandler(async (req, res) => {
             role: 'super_admin',
             isSuperAdmin: true,
             permissions: ['all'],
+            tenant_modules: ['all'],
             first_name: superAdmin.full_name || 'Super',
             last_name: 'Admin',
           },
@@ -148,6 +150,8 @@ const login = asyncHandler(async (req, res) => {
   );
 
   const token = generateToken(user);
+  const tenantId = req.headers['x-tenant-id'] || 'tenant_default';
+  const entitlement = await getTenantActiveModules(tenantId);
 
   res.json({
     success: true,
@@ -161,6 +165,11 @@ const login = asyncHandler(async (req, res) => {
         employee_id: user.employee_id,
         first_name: user.first_name,
         last_name: user.last_name,
+        tenant_id: tenantId,
+        subscription_plan: entitlement.plan,
+        subscription_expired: entitlement.isExpired,
+        tenant_modules: entitlement.modules,
+        is_custom_modules: entitlement.isCustom,
       },
       token,
     },
@@ -206,6 +215,7 @@ const verify2FALogin = asyncHandler(async (req, res) => {
           role: 'super_admin',
           isSuperAdmin: true,
           permissions: ['all'],
+          tenant_modules: ['all'],
           first_name: superAdmin.full_name || 'Super',
           last_name: 'Admin',
         },
@@ -241,6 +251,9 @@ const verify2FALogin = asyncHandler(async (req, res) => {
   );
 
   const authToken = generateToken(user);
+  const tenantId = req.headers['x-tenant-id'] || 'tenant_default';
+  const entitlement = await getTenantActiveModules(tenantId);
+
   res.json({
     success: true,
     message: 'Login successful',
@@ -253,6 +266,11 @@ const verify2FALogin = asyncHandler(async (req, res) => {
         employee_id: user.employee_id,
         first_name: user.first_name,
         last_name: user.last_name,
+        tenant_id: tenantId,
+        subscription_plan: entitlement.plan,
+        subscription_expired: entitlement.isExpired,
+        tenant_modules: entitlement.modules,
+        is_custom_modules: entitlement.isCustom,
       },
       token: authToken,
     },
@@ -359,6 +377,7 @@ const getProfile = asyncHandler(async (req, res) => {
           first_name: admin.full_name || 'Super',
           last_name: 'Admin',
           permissions: ['all'],
+          tenant_modules: ['all'],
           is_two_factor_enabled: admin.is_2fa_enabled,
           created_at: admin.created_at
         }
@@ -377,26 +396,29 @@ const getProfile = asyncHandler(async (req, res) => {
 
   const profileData = result.rows[0];
 
-  // Attach subscription info from shared.tenants if tenant header present
+  // Attach subscription info and active modules from shared.tenants if tenant header present
   try {
-    const tenantId = req.headers['x-tenant-id'];
+    const tenantId = req.headers['x-tenant-id'] || req.user.tenant_id;
     if (tenantId) {
+      const entitlement = await getTenantActiveModules(tenantId);
+      profileData.subscription_plan = entitlement.plan;
+      profileData.subscription_expired = entitlement.isExpired;
+      profileData.tenant_modules = entitlement.modules;
+      profileData.is_custom_modules = entitlement.isCustom;
+
       const tenantResult = await query(
-        'SELECT subscription_plan, subscription_expiry FROM shared.tenants WHERE tenant_id = $1',
+        'SELECT subscription_expiry FROM shared.tenants WHERE tenant_id = $1',
         [tenantId]
       );
       if (tenantResult.rows.length > 0) {
-        const { subscription_plan, subscription_expiry } = tenantResult.rows[0];
-        const now = new Date();
-        const expiry = subscription_expiry ? new Date(subscription_expiry) : null;
-        profileData.subscription_plan = subscription_plan || 'free';
-        profileData.subscription_expiry = subscription_expiry;
-        profileData.subscription_expired = expiry ? expiry < now : false;
+        profileData.subscription_expiry = tenantResult.rows[0].subscription_expiry;
       }
+    } else {
+      profileData.tenant_modules = ['core_hr', 'attendance', 'leaves', 'tasks', 'documents'];
     }
   } catch (subErr) {
-    // Non-critical — don't fail the profile request
     console.error('Failed to fetch subscription info:', subErr.message);
+    profileData.tenant_modules = ['core_hr', 'attendance', 'leaves', 'tasks', 'documents'];
   }
 
   res.json({

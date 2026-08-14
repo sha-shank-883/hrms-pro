@@ -1,6 +1,6 @@
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
-const { query } = require('../config/database');
+const { pool, query } = require('../config/database');
 const { generateToken } = require('../middleware/auth');
 const { validatePassword } = require('../utils/passwordValidator');
 const { sendEmailSync } = require('../services/emailService');
@@ -55,6 +55,64 @@ const register = asyncHandler(async (req, res) => {
 const login = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
 
+  // 1. Check Global Super Admin Table First
+  try {
+    const superAdminRes = await pool.query(
+      'SELECT * FROM shared.super_admins WHERE email = $1 AND is_active = true',
+      [email]
+    );
+
+    if (superAdminRes.rows.length > 0) {
+      const superAdmin = superAdminRes.rows[0];
+      const isPasswordValid = await bcrypt.compare(password, superAdmin.password_hash);
+
+      if (!isPasswordValid) {
+        throw new UnauthorizedError('Invalid credentials');
+      }
+
+      if (superAdmin.is_2fa_enabled) {
+        const tempToken = generateToken({ ...superAdmin, role: 'super_admin', isSuperAdmin: true, is2FAPending: true }, '5m');
+
+        return res.json({
+          success: true,
+          message: '2FA required',
+          requires2FA: true,
+          isSuperAdmin: true,
+          tempToken: tempToken,
+          userId: superAdmin.id
+        });
+      }
+
+      await pool.query(
+        'UPDATE shared.super_admins SET last_login = CURRENT_TIMESTAMP WHERE id = $1',
+        [superAdmin.id]
+      );
+
+      const token = generateToken({ ...superAdmin, role: 'super_admin', isSuperAdmin: true });
+
+      return res.json({
+        success: true,
+        message: 'Login successful',
+        data: {
+          user: {
+            userId: superAdmin.id,
+            email: superAdmin.email,
+            role: 'super_admin',
+            isSuperAdmin: true,
+            permissions: ['all'],
+            first_name: superAdmin.full_name || 'Super',
+            last_name: 'Admin',
+          },
+          token,
+        },
+      });
+    }
+  } catch (err) {
+    if (err instanceof UnauthorizedError) throw err;
+    console.error('Super Admin lookup check error:', err.message);
+  }
+
+  // 2. Standard Tenant User Lookup
   const result = await query(
     'SELECT u.*, e.employee_id, e.first_name, e.last_name FROM users u LEFT JOIN employees e ON u.user_id = e.user_id WHERE u.email = $1 AND u.is_active = true',
     [email]
@@ -112,6 +170,50 @@ const login = asyncHandler(async (req, res) => {
 const verify2FALogin = asyncHandler(async (req, res) => {
   const { userId, token } = req.body;
 
+  // Check if this is a global Super Admin
+  const superAdminRes = await pool.query(
+    'SELECT * FROM shared.super_admins WHERE id = $1',
+    [userId]
+  );
+
+  if (superAdminRes.rows.length > 0) {
+    const superAdmin = superAdminRes.rows[0];
+
+    const verified = speakeasy.totp.verify({
+      secret: superAdmin.two_factor_secret,
+      encoding: 'base32',
+      token: token
+    });
+
+    if (!verified) {
+      throw new ValidationError('Invalid 2FA code');
+    }
+
+    await pool.query(
+      'UPDATE shared.super_admins SET last_login = CURRENT_TIMESTAMP WHERE id = $1',
+      [superAdmin.id]
+    );
+
+    const authToken = generateToken({ ...superAdmin, role: 'super_admin', isSuperAdmin: true });
+
+    return res.json({
+      success: true,
+      message: 'Login successful',
+      data: {
+        user: {
+          userId: superAdmin.id,
+          email: superAdmin.email,
+          role: 'super_admin',
+          isSuperAdmin: true,
+          permissions: ['all'],
+          first_name: superAdmin.full_name || 'Super',
+          last_name: 'Admin',
+        },
+        token: authToken,
+      },
+    });
+  }
+
   const result = await query(
     'SELECT u.*, e.employee_id, e.first_name, e.last_name FROM users u LEFT JOIN employees e ON u.user_id = e.user_id WHERE u.user_id = $1',
     [userId]
@@ -161,10 +263,17 @@ const setup2FA = asyncHandler(async (req, res) => {
   const userId = req.user.userId;
   const secret = speakeasy.generateSecret({ name: `HRMS Pro (${req.user.email})` });
 
-  await query(
-    'UPDATE users SET two_factor_secret = $1 WHERE user_id = $2',
-    [secret.base32, userId]
-  );
+  if (req.user.isSuperAdmin || req.user.role === 'super_admin') {
+    await pool.query(
+      'UPDATE shared.super_admins SET two_factor_secret = $1 WHERE id = $2',
+      [secret.base32, userId]
+    );
+  } else {
+    await query(
+      'UPDATE users SET two_factor_secret = $1 WHERE user_id = $2',
+      [secret.base32, userId]
+    );
+  }
 
   const data_url = await QRCode.toDataURL(secret.otpauth_url);
 
@@ -179,11 +288,21 @@ const verify2FASetup = asyncHandler(async (req, res) => {
   const { token } = req.body;
   const userId = req.user.userId;
 
-  const result = await query('SELECT two_factor_secret FROM users WHERE user_id = $1', [userId]);
-  const user = result.rows[0];
+  let userSecret = null;
+  if (req.user.isSuperAdmin || req.user.role === 'super_admin') {
+    const superRes = await pool.query('SELECT two_factor_secret FROM shared.super_admins WHERE id = $1', [userId]);
+    if (superRes.rows.length > 0) userSecret = superRes.rows[0].two_factor_secret;
+  } else {
+    const result = await query('SELECT two_factor_secret FROM users WHERE user_id = $1', [userId]);
+    if (result.rows.length > 0) userSecret = result.rows[0].two_factor_secret;
+  }
+
+  if (!userSecret) {
+    throw new ValidationError('2FA secret not found. Please initiate setup again.');
+  }
 
   const verified = speakeasy.totp.verify({
-    secret: user.two_factor_secret,
+    secret: userSecret,
     encoding: 'base32',
     token: token
   });
@@ -192,22 +311,61 @@ const verify2FASetup = asyncHandler(async (req, res) => {
     throw new ValidationError('Invalid code');
   }
 
-  await query('UPDATE users SET is_two_factor_enabled = true WHERE user_id = $1', [userId]);
+  if (req.user.isSuperAdmin || req.user.role === 'super_admin') {
+    await pool.query('UPDATE shared.super_admins SET is_2fa_enabled = true WHERE id = $1', [userId]);
+  } else {
+    await query('UPDATE users SET is_two_factor_enabled = true WHERE user_id = $1', [userId]);
+  }
+
   res.json({ success: true, message: '2FA enabled successfully' });
 });
 
 const disable2FA = asyncHandler(async (req, res) => {
   const userId = req.user.userId;
 
-  await query(
-    'UPDATE users SET is_two_factor_enabled = false, two_factor_secret = NULL WHERE user_id = $1',
-    [userId]
-  );
+  if (req.user.isSuperAdmin || req.user.role === 'super_admin') {
+    await pool.query(
+      'UPDATE shared.super_admins SET is_2fa_enabled = false, two_factor_secret = NULL WHERE id = $1',
+      [userId]
+    );
+  } else {
+    await query(
+      'UPDATE users SET is_two_factor_enabled = false, two_factor_secret = NULL WHERE user_id = $1',
+      [userId]
+    );
+  }
 
   res.json({ success: true, message: '2FA disabled successfully' });
 });
 
 const getProfile = asyncHandler(async (req, res) => {
+  // Check if Super Admin
+  if (req.user.isSuperAdmin || req.user.role === 'super_admin') {
+    const superRes = await pool.query(
+      'SELECT id as user_id, email, full_name, is_2fa_enabled, created_at FROM shared.super_admins WHERE id = $1 OR email = $2',
+      [req.user.userId, req.user.email]
+    );
+
+    if (superRes.rows.length > 0) {
+      const admin = superRes.rows[0];
+      return res.json({
+        success: true,
+        data: {
+          user_id: admin.user_id,
+          userId: admin.user_id,
+          email: admin.email,
+          role: 'super_admin',
+          isSuperAdmin: true,
+          first_name: admin.full_name || 'Super',
+          last_name: 'Admin',
+          permissions: ['all'],
+          is_two_factor_enabled: admin.is_2fa_enabled,
+          created_at: admin.created_at
+        }
+      });
+    }
+  }
+
   const result = await query(
     'SELECT u.user_id, u.email, u.role, u.permissions, u.created_at, u.is_two_factor_enabled, e.* FROM users u LEFT JOIN employees e ON u.user_id = e.user_id WHERE u.user_id = $1',
     [req.user.userId]
@@ -253,6 +411,31 @@ const changePassword = asyncHandler(async (req, res) => {
   const passwordValidation = await validatePassword(newPassword);
   if (!passwordValidation.isValid) {
     throw new ValidationError(passwordValidation.errors.join(' '));
+  }
+
+  if (req.user.isSuperAdmin || req.user.role === 'super_admin') {
+    const superRes = await pool.query(
+      'SELECT * FROM shared.super_admins WHERE id = $1 OR email = $2',
+      [req.user.userId, req.user.email]
+    );
+    if (superRes.rows.length === 0) {
+      throw new NotFoundError('Super Admin not found');
+    }
+    const admin = superRes.rows[0];
+    const isPasswordValid = await bcrypt.compare(currentPassword, admin.password_hash);
+    if (!isPasswordValid) {
+      throw new UnauthorizedError('Current password is incorrect');
+    }
+    const salt = await bcrypt.genSalt(10);
+    const passwordHash = await bcrypt.hash(newPassword, salt);
+    await pool.query(
+      'UPDATE shared.super_admins SET password_hash = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+      [passwordHash, admin.id]
+    );
+    return res.json({
+      success: true,
+      message: 'Password changed successfully',
+    });
   }
 
   const result = await query(

@@ -403,7 +403,7 @@ const Layout = () => {
             <NavSection title="Administration" />
           )}
           
-          {hasAccess(['admin'], []) && localStorage.getItem('tenant_id') === 'tenant_default' && (
+          {(user?.isSuperAdmin || user?.role === 'super_admin' || (hasAccess(['admin'], []) && localStorage.getItem('tenant_id') === 'tenant_default')) && (
             <>
               <NavItem to="/super-admin" icon={<FaBolt />} label="SaaS Admin" />
               <NavItem to="/super-admin/demo-requests" icon={<FaUsers />} label="Demo Accounts" />

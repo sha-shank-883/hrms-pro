@@ -20,26 +20,25 @@ const setTenantCache = (tenantId, tenant) => {
 const tenantMiddleware = async (req, res, next) => {
     const tenantId = req.headers['x-tenant-id'];
 
-  // Public paths that do not require a tenant ID explicitly
-  const publicPaths = [
-    '/api/leads/demo',
-    '/api/leads/lead-magnet',
-    '/api/leads/contact',
+  // Global / Control-plane and public paths that do not strictly require a tenant ID header
+  const globalPaths = [
+    '/api/tenants',
+    '/api/auth',
+    '/api/leads',
     '/api/website-settings',
     '/api/website',
     '/api/cms',
     '/api/blog',
     '/api/setup-db',
     '/api/webhooks/biometrics',
-    '/api/resources'
+    '/api/resources',
+    '/api/mobile-config'
   ];
-  const isPublic = publicPaths.some(p => req.originalUrl.startsWith(p));
+  const isGlobalOrPublic = globalPaths.some(p => req.originalUrl.startsWith(p));
 
     if (!tenantId) {
-        if (isPublic) {
-            return tenantStorage.run('tenant_default', () => {
-                next();
-            });
+        if (isGlobalOrPublic) {
+            return next();
         }
         return res.status(400).json({ error: 'X-Tenant-ID header is required' });
     }
@@ -52,6 +51,9 @@ const tenantMiddleware = async (req, res, next) => {
             tenant = await Tenant.findById(tenantId);
 
             if (!tenant) {
+                if (isGlobalOrPublic) {
+                    return next();
+                }
                 return res.status(404).json({ error: 'Tenant not found' });
             }
 

@@ -225,6 +225,16 @@ app.get('/api/setup-db', async (req, res) => {
     }
     console.log('✅ Global CMS tables and records verified.');
 
+    // 1.5 Ensure Global Super Admin Accounts exist
+    await client.query(`
+      INSERT INTO shared.super_admins (email, password_hash, full_name, is_active)
+      VALUES 
+        ('info@hrmspro.online', '$2b$10$KSjIGnBOJwk/rkxlsg8WnewdeMQWjHerRJYTOWzIac7UY0DDzQ5Le', 'Master Super Admin', true),
+        ('admin@hrmspro.com', '$2b$10$KSjIGnBOJwk/rkxlsg8WnewdeMQWjHerRJYTOWzIac7UY0DDzQ5Le', 'System Super Admin', true)
+      ON CONFLICT (email) DO NOTHING;
+    `);
+    console.log('✅ Global Super Admin accounts verified.');
+
     // 2. Create Default Tenant
     const defaultTenantId = 'tenant_default';
     await client.query(`

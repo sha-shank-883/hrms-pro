@@ -351,27 +351,23 @@ const SuperAdmin = () => {
                                         </td>
                                         <td className="text-right">
                                              <div className="flex justify-end gap-2">
-                                                 {tenant.tenant_id !== 'tenant_default' && (
-                                                     <>
-                                                     <button
-                                                         className="btn btn-secondary text-xs px-3 py-1.5 flex items-center gap-1 hover:bg-neutral-100"
-                                                         onClick={() => handleDownloadBackup(tenant)}
-                                                         title="Download full JSON backup — includes ALL tenant tables"
-                                                     >
-                                                         <ArrowDownTrayIcon className="w-4 h-4 text-neutral-500" />
-                                                         Backup
-                                                     </button>
-                                                     <button
-                                                         className="btn btn-secondary text-xs px-3 py-1.5 flex items-center gap-1 hover:bg-amber-50 hover:text-amber-700 hover:border-amber-300"
-                                                         onClick={() => handleRestoreBackup(tenant)}
-                                                         title="Restore tenant from a backup JSON file"
-                                                     >
-                                                         <ArrowUpTrayIcon className="w-4 h-4" />
-                                                         Restore
-                                                     </button>
-                                                     </>
-                                                 )}
-                                                 {tenant.tenant_id !== 'tenant_default' && tenant.status === 'active' && (
+                                                 <button
+                                                     className="btn btn-secondary text-xs px-3 py-1.5 flex items-center gap-1 hover:bg-neutral-100"
+                                                     onClick={() => handleDownloadBackup(tenant)}
+                                                     title="Download full JSON backup — includes ALL tenant tables"
+                                                 >
+                                                     <ArrowDownTrayIcon className="w-4 h-4 text-neutral-500" />
+                                                     Backup
+                                                 </button>
+                                                 <button
+                                                     className="btn btn-secondary text-xs px-3 py-1.5 flex items-center gap-1 hover:bg-amber-50 hover:text-amber-700 hover:border-amber-300"
+                                                     onClick={() => handleRestoreBackup(tenant)}
+                                                     title="Restore tenant from a backup JSON file"
+                                                 >
+                                                     <ArrowUpTrayIcon className="w-4 h-4" />
+                                                     Restore
+                                                 </button>
+                                                 {tenant.status === 'active' && (
                                                      <button
                                                          className="btn btn-primary text-xs px-3 py-1.5 flex items-center gap-1 bg-primary-600 hover:bg-primary-700 text-white"
                                                          onClick={() => handleImpersonate(tenant.tenant_id)}

@@ -10,8 +10,8 @@ const SuperAdminRoute = ({ children }) => {
         return <div className="loading">Loading...</div>;
     }
 
-    // Check if user is admin AND tenant is tenant_default
-    if (user?.role === 'admin' && tenantId === 'tenant_default') {
+    // Check if user is Global Super Admin or admin on tenant_default (legacy)
+    if (user?.isSuperAdmin || user?.role === 'super_admin' || (user?.role === 'admin' && tenantId === 'tenant_default')) {
         return children;
     }
 

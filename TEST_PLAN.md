@@ -42,6 +42,12 @@ This document outlines a systematic plan to test every icon, button, navigation 
 | 1.3.4 | Tenant A cannot access Tenant B data | Cross-tenant isolation |
 | 1.3.5 | `POST /api/tenants/:tenantId/impersonate` as Super Admin | Returns JWT token for target tenant admin [PASSED] |
 | 1.3.6 | `POST /api/tenants/:tenantId/impersonate` as non-Super Admin | Returns HTTP 403 Forbidden [PASSED] |
+| 1.3.7 | `POST /api/auth/login` as Global Super Admin without tenant ID | Returns JWT with `isSuperAdmin: true` and `role: "super_admin"` [PASSED] |
+| 1.3.8 | `GET /api/tenants` as Global Super Admin without `x-tenant-id` | Returns list of all tenants (HTTP 200) [PASSED] |
+| 1.3.9 | `GET /api/tenants` as regular tenant employee / admin | Returns HTTP 403 Forbidden [PASSED] |
+| 1.3.10 | Global Super Admin authentication remains intact even if business tenants are dropped | Super Admin login succeeds independently [PASSED] |
+| 1.3.11 | `DELETE /api/tenants/:tenantId` with 2FA token verifies against `shared.super_admins` | Tenant deleted cleanly without impacting super admin [PASSED] |
+| 1.3.12 | Frontend Super Admin route allows access with `isSuperAdmin: true` | Super Admin dashboard accessible without `tenant_default` check [PASSED] |
 
 ### 1.4 Module CRUD APIs (Test each endpoint for every module)
 

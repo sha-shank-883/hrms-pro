@@ -495,6 +495,9 @@ const AdminDashboard = () => {
     const visibleActions = actionOrder.filter(id => {
         const config = getActionConfig(id);
         if (!config) return false;
+        if (user?.isSuperAdmin || user?.role === 'super_admin') {
+            return true;
+        }
         const roleMatch = config.roles.includes(user?.role || 'employee');
         const tenantMatch = config.tenant ? config.tenant === user?.tenant_id : true;
         return roleMatch && tenantMatch;

@@ -137,18 +137,31 @@ const deleteTenant = asyncHandler(async (req, res) => {
     throw new ValidationError('2FA token is required');
   }
 
-  const userRes = await query(`SELECT two_factor_secret FROM users WHERE user_id = $1`, [userId]);
-  if (userRes.rows.length === 0) {
-    throw new NotFoundError('Super Admin user not found');
+  // Check 2FA secret from shared.super_admins first, fallback to users table
+  let twoFactorSecret = null;
+  const superAdminRes = await pool.query(
+    `SELECT two_factor_secret, is_2fa_enabled FROM shared.super_admins WHERE id = $1 OR email = $2`,
+    [userId, req.user.email]
+  );
+  if (superAdminRes.rows.length > 0 && superAdminRes.rows[0].two_factor_secret) {
+    twoFactorSecret = superAdminRes.rows[0].two_factor_secret;
+  } else {
+    try {
+      const userRes = await query(`SELECT two_factor_secret FROM users WHERE user_id = $1`, [userId]);
+      if (userRes.rows.length > 0) {
+        twoFactorSecret = userRes.rows[0].two_factor_secret;
+      }
+    } catch (e) {
+      // ignore
+    }
   }
 
-  const { two_factor_secret } = userRes.rows[0];
-  if (!two_factor_secret) {
-    throw new ValidationError('2FA is not enabled for Super Admin. Please enable it first.');
+  if (!twoFactorSecret) {
+    throw new ValidationError('2FA is not enabled for Super Admin. Please enable it first in profile/security settings.');
   }
 
   const verified = speakeasy.totp.verify({
-    secret: two_factor_secret,
+    secret: twoFactorSecret,
     encoding: 'base32',
     token: twoFactorToken
   });

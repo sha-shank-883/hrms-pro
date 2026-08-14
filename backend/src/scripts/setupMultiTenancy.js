@@ -24,6 +24,15 @@ const setupMultiTenancy = async () => {
           ON CONFLICT (tenant_id) DO NOTHING
         `, [defaultTenantId, 'Default Company']);
 
+        // Insert into shared.super_admins
+        await client.query(`
+          INSERT INTO shared.super_admins (email, password_hash, full_name, is_active)
+          VALUES 
+            ('info@hrmspro.online', '$2b$10$KSjIGnBOJwk/rkxlsg8WnewdeMQWjHerRJYTOWzIac7UY0DDzQ5Le', 'Master Super Admin', true),
+            ('admin@hrmspro.com', '$2b$10$KSjIGnBOJwk/rkxlsg8WnewdeMQWjHerRJYTOWzIac7UY0DDzQ5Le', 'System Super Admin', true)
+          ON CONFLICT (email) DO NOTHING;
+        `);
+
         // 2.5 Migration: Ensure subscription columns exist (for existing live DBs)
         
         try {

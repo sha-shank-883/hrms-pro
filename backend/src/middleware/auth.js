@@ -42,6 +42,11 @@ const authorizeRole = (...roles) => {
       });
     }
 
+    // Global Super Admin has access to admin endpoints
+    if (req.user.isSuperAdmin || req.user.role === 'super_admin') {
+      return next();
+    }
+
     if (!roles.includes(req.user.role)) {
       return res.status(403).json({
         success: false,
@@ -54,15 +59,16 @@ const authorizeRole = (...roles) => {
 };
 
 // Generate JWT token
-const generateToken = (user) => {
+const generateToken = (user, expiresIn) => {
   return jwt.sign(
     {
-      userId: user.user_id,
+      userId: user.user_id || user.userId || user.id,
       email: user.email,
-      role: user.role
+      role: user.role,
+      isSuperAdmin: !!(user.isSuperAdmin || user.role === 'super_admin')
     },
     process.env.JWT_SECRET,
-    { expiresIn: process.env.JWT_EXPIRE || '24h' }
+    { expiresIn: expiresIn || process.env.JWT_EXPIRE || '24h' }
   );
 };
 
@@ -74,6 +80,11 @@ const authorizeRoleOrPermission = (roles, permission) => {
         success: false,
         message: 'User not authenticated'
       });
+    }
+
+    // Global Super Admin bypasses role/permission checks
+    if (req.user.isSuperAdmin || req.user.role === 'super_admin') {
+      return next();
     }
 
     if (roles.includes(req.user.role)) {
@@ -101,15 +112,21 @@ const authorizeRoleOrPermission = (roles, permission) => {
   };
 };
 
-// Verify requester is Super Admin (tenant_default)
+// Verify requester is Super Admin
 const requireSuperAdmin = (req, res, next) => {
-  const tenantId = req.headers['x-tenant-id'];
-  if (tenantId === 'tenant_default') {
+  if (req.user && (req.user.isSuperAdmin === true || req.user.role === 'super_admin')) {
     return next();
   }
+
+  // Backward compatibility fallback for existing sessions
+  const tenantId = req.headers['x-tenant-id'];
+  if (req.user && req.user.role === 'admin' && tenantId === 'tenant_default') {
+    return next();
+  }
+
   return res.status(403).json({
     success: false,
-    message: 'Access denied. Only Super Admin (tenant_default) can perform this action.'
+    message: 'Access denied. Super Admin privileges required.'
   });
 };
 
@@ -120,3 +137,4 @@ module.exports = {
   requireSuperAdmin,
   generateToken,
 };
+

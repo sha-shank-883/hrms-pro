@@ -183,6 +183,9 @@ app.get('/api/setup-db', async (req, res) => {
         status VARCHAR(50) DEFAULT 'pending',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
+      ALTER TABLE shared.tenants ADD COLUMN IF NOT EXISTS billing_cycle VARCHAR(20) DEFAULT 'monthly';
+      ALTER TABLE shared.tenants ADD COLUMN IF NOT EXISTS auto_renew BOOLEAN DEFAULT false;
+      ALTER TABLE shared.tenants ADD COLUMN IF NOT EXISTS employee_limit INTEGER DEFAULT 15;
       ALTER TABLE shared.payment_logs ADD COLUMN IF NOT EXISTS razorpay_order_id VARCHAR(255);
       ALTER TABLE shared.payment_logs ADD COLUMN IF NOT EXISTS razorpay_payment_id VARCHAR(255);
       ALTER TABLE shared.payment_logs ADD COLUMN IF NOT EXISTS gateway VARCHAR(50) DEFAULT 'paypal';

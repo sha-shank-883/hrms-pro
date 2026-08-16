@@ -664,37 +664,58 @@ const getProfile = asyncHandler(async (req, res) => {
       ADD COLUMN IF NOT EXISTS is_two_factor_enabled BOOLEAN DEFAULT false
     `).catch(() => {});
 
-    const result = await query(
-      `SELECT 
-         u.user_id, 
-         u.email, 
-         u.role, 
-         u.permissions, 
-         u.created_at, 
-         COALESCE(u.is_two_factor_enabled, false) as is_two_factor_enabled,
-         COALESCE(e.first_name, u.first_name, '') as first_name,
-         COALESCE(e.last_name, u.last_name, '') as last_name,
-         COALESCE(e.phone, u.phone, '') as phone,
-         COALESCE(e.profile_image, u.avatar, '') as profile_image,
-         e.employee_id,
-         e.department_id,
-         e.position,
-         e.hire_date,
-         e.salary,
-         e.status,
-         e.gender,
-         e.date_of_birth,
-         e.address,
-         e.about_me,
-         e.social_links
-       FROM users u 
-       LEFT JOIN employees e ON u.user_id = e.user_id 
-       WHERE u.user_id = $1 OR LOWER(u.email) = LOWER($2)`,
-      [userId, userEmail]
-    );
+    try {
+      const result = await query(
+        `SELECT 
+           u.user_id, 
+           u.email, 
+           u.role, 
+           u.permissions, 
+           u.created_at, 
+           COALESCE(u.is_two_factor_enabled, false) as is_two_factor_enabled,
+           COALESCE(e.first_name, u.first_name, '') as first_name,
+           COALESCE(e.last_name, u.last_name, '') as last_name,
+           COALESCE(e.phone, u.phone, '') as phone,
+           COALESCE(e.profile_image, u.avatar, '') as profile_image,
+           e.employee_id,
+           e.department_id,
+           e.position,
+           e.hire_date,
+           e.salary,
+           e.status,
+           e.gender,
+           e.date_of_birth,
+           e.address
+         FROM users u 
+         LEFT JOIN employees e ON u.user_id = e.user_id 
+         WHERE u.user_id = $1 OR LOWER(u.email) = LOWER($2)`,
+        [userId, userEmail]
+      );
 
-    if (result.rows.length > 0) {
-      profileData = result.rows[0];
+      if (result.rows.length > 0) {
+        profileData = result.rows[0];
+      }
+    } catch (joinErr) {
+      const userOnlyRes = await query(
+        `SELECT 
+           user_id, 
+           email, 
+           role, 
+           permissions, 
+           created_at, 
+           COALESCE(is_two_factor_enabled, false) as is_two_factor_enabled,
+           first_name, 
+           last_name, 
+           phone, 
+           avatar as profile_image
+         FROM users 
+         WHERE user_id = $1 OR LOWER(email) = LOWER($2)`,
+        [userId, userEmail]
+      ).catch(() => ({ rows: [] }));
+
+      if (userOnlyRes.rows.length > 0) {
+        profileData = userOnlyRes.rows[0];
+      }
     }
   } catch (err) {
     console.error('Tenant user getProfile query warning:', err.message);
@@ -742,21 +763,84 @@ const getProfile = asyncHandler(async (req, res) => {
       profileData.tenant_modules = entitlement.modules;
       profileData.is_custom_modules = entitlement.isCustom;
 
-      const tenantResult = await pool.query(
-        'SELECT subscription_expiry, contact_person, contact_phone FROM shared.tenants WHERE tenant_id = $1',
-        [tenantId]
-      );
+      let tenantResult = { rows: [] };
+      try {
+        tenantResult = await pool.query(
+          'SELECT subscription_expiry, employee_limit, billing_cycle, auto_renew, contact_person, contact_phone, name AS company_name FROM shared.tenants WHERE tenant_id = $1',
+          [tenantId]
+        );
+      } catch (tErr) {
+        console.error('Tenant profile lookup error:', tErr.message);
+        tenantResult = await pool.query(
+          'SELECT subscription_expiry, contact_person, contact_phone, name AS company_name FROM shared.tenants WHERE tenant_id = $1',
+          [tenantId]
+        ).catch(() => ({ rows: [] }));
+      }
+
       if (tenantResult.rows.length > 0) {
-        profileData.subscription_expiry = tenantResult.rows[0].subscription_expiry;
-        if (!profileData.first_name && tenantResult.rows[0].contact_person) {
-          const names = tenantResult.rows[0].contact_person.split(' ');
+        const row = tenantResult.rows[0];
+        profileData.subscription_expiry = row.subscription_expiry;
+        profileData.employee_limit = row.employee_limit || 15;
+        profileData.billing_cycle = row.billing_cycle || 'monthly';
+        profileData.auto_renew = Boolean(row.auto_renew);
+        if (!profileData.company_name && row.company_name) {
+          profileData.company_name = row.company_name;
+        }
+
+        if (!profileData.first_name && row.contact_person) {
+          const names = row.contact_person.split(' ');
           profileData.first_name = names[0];
           profileData.last_name = names.slice(1).join(' ');
         }
-        if (!profileData.phone && tenantResult.rows[0].contact_phone) {
-          profileData.phone = tenantResult.rows[0].contact_phone;
+        if (!profileData.phone && row.contact_phone) {
+          profileData.phone = row.contact_phone;
         }
       }
+
+      // Count active employees in tenant schema
+      try {
+        const empCountRes = await pool.query(
+          `SELECT COUNT(*)::int AS count FROM "${tenantId}".employees WHERE status = 'active'`
+        );
+        profileData.active_employees = empCountRes.rows[0]?.count || 0;
+      } catch (_) {
+        profileData.active_employees = 0;
+      }
+
+      // VIP Subscriber Badge definition
+      const isPaidActive = Boolean(
+        profileData.subscription_plan && 
+        profileData.subscription_plan !== 'free' && 
+        !profileData.subscription_expired
+      );
+
+      profileData.is_subscribed = isPaidActive;
+      profileData.plan_badge = {
+        tier: profileData.subscription_plan || 'free',
+        is_premium: isPaidActive,
+        label: profileData.subscription_plan === 'scale' 
+          ? 'SCALE VIP' 
+          : profileData.subscription_plan === 'hatch' 
+          ? 'HATCH PRO' 
+          : profileData.subscription_plan === 'enterprise' 
+          ? 'ENTERPRISE ELITE' 
+          : 'FREE MEMBER',
+        icon: profileData.subscription_plan === 'scale' 
+          ? 'crown' 
+          : profileData.subscription_plan === 'hatch' 
+          ? 'shield' 
+          : 'sparkle',
+        ringColor: profileData.subscription_plan === 'scale' 
+          ? 'ring-amber-400' 
+          : profileData.subscription_plan === 'hatch' 
+          ? 'ring-emerald-500' 
+          : 'ring-gray-300',
+        badgeBg: profileData.subscription_plan === 'scale'
+          ? 'bg-gradient-to-r from-amber-500 to-yellow-500 text-white'
+          : profileData.subscription_plan === 'hatch'
+          ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white'
+          : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300'
+      };
     } else {
       profileData.tenant_modules = ['core_hr', 'attendance', 'leaves', 'tasks', 'documents'];
     }

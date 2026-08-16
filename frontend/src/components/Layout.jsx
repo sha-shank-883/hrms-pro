@@ -913,12 +913,22 @@ const Layout = () => {
           </div>
 
           <div className="flex items-center gap-4">
-            {(user?.isSuperAdmin || user?.role === 'super_admin') && (
-              <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 bg-amber-50 text-amber-900 border border-amber-300 rounded-lg text-xs font-black tracking-wide">
+            {(user?.isSuperAdmin || user?.role === 'super_admin') ? (
+              <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 bg-amber-50 text-amber-900 border border-amber-300 rounded-lg text-xs font-black tracking-wide shadow-xs">
                 <FaBolt className="text-amber-500 text-[10px]" />
                 SUPER ADMIN
               </span>
-            )}
+            ) : user?.subscription_plan === 'scale' ? (
+              <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 bg-gradient-to-r from-amber-500 to-yellow-500 text-white rounded-lg text-xs font-black tracking-wide shadow-xs">
+                <FaCrown className="text-yellow-100 text-[10px]" />
+                SCALE VIP
+              </span>
+            ) : user?.subscription_plan === 'hatch' ? (
+              <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-lg text-xs font-black tracking-wide shadow-xs">
+                <FaShieldAlt className="text-emerald-100 text-[10px]" />
+                HATCH PRO
+              </span>
+            ) : null}
             <button className="notification-button relative p-2.5 rounded-xl hover:bg-neutral-100 dark:hover:bg-gray-800 transition-colors" onClick={() => setShowNotifications(!showNotifications)} title="Notifications">
               <FaBell className="text-lg text-neutral-600 dark:text-gray-300" />
               {(notifications.total > 0 || unreadCount > 0) && (
@@ -941,7 +951,13 @@ const Layout = () => {
                 onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
                 className="flex items-center gap-3 hover:bg-neutral-50 rounded-xl p-2 transition-all duration-200 border border-transparent hover:border-neutral-200"
               >
-                <div className="w-9 h-9 rounded-full bg-neutral-200 flex items-center justify-center overflow-hidden border border-neutral-300">
+                <div className={`w-9 h-9 rounded-full bg-neutral-200 flex items-center justify-center overflow-hidden border ${
+                  user?.subscription_plan === 'scale'
+                    ? 'ring-2 ring-amber-400 border-amber-300 shadow-xs'
+                    : user?.subscription_plan === 'hatch'
+                    ? 'ring-2 ring-emerald-500 border-emerald-300 shadow-xs'
+                    : 'border-neutral-300'
+                }`}>
                   {user?.profile_image ? (
                     <img src={getProfilePicture(user.profile_image)} alt="" className="w-full h-full object-cover" />
                   ) : (
@@ -949,8 +965,14 @@ const Layout = () => {
                   )}
                 </div>
                 <div className="hidden md:block text-left">
-                  <p className="text-sm font-semibold text-neutral-700 leading-tight">{user?.first_name}</p>
-                  <p className="text-xs text-neutral-500 capitalize leading-tight">{user?.isSuperAdmin ? 'Super Admin' : user?.role}</p>
+                  <div className="flex items-center gap-1.5">
+                    <p className="text-sm font-semibold text-neutral-700 leading-tight">{user?.first_name}</p>
+                    {user?.subscription_plan === 'scale' && <FaCrown className="text-amber-500 text-[10px]" />}
+                    {user?.subscription_plan === 'hatch' && <FaShieldAlt className="text-emerald-500 text-[10px]" />}
+                  </div>
+                  <p className="text-xs text-neutral-500 capitalize leading-tight">
+                    {user?.isSuperAdmin ? 'Super Admin' : (user?.subscription_plan === 'scale' ? 'Scale VIP Admin' : (user?.subscription_plan === 'hatch' ? 'Hatch Pro Admin' : user?.role))}
+                  </p>
                 </div>
                 <FaChevronDown className={`text-neutral-400 text-xs transition-transform duration-200 ${isProfileMenuOpen ? 'rotate-180' : ''}`} />
               </button>
@@ -958,10 +980,26 @@ const Layout = () => {
               {isProfileMenuOpen && (
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setIsProfileMenuOpen(false)}></div>
-                  <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-neutral-100 py-2 z-50 animate-in fade-in zoom-in-95 duration-100 origin-top-right">
+                  <div className="absolute right-0 mt-2 w-60 bg-white rounded-xl shadow-xl border border-neutral-100 py-2 z-50 animate-in fade-in zoom-in-95 duration-100 origin-top-right">
                     <div className="px-4 py-3 border-b border-neutral-100 mb-1">
-                      <p className="text-sm font-semibold text-neutral-900">{user?.first_name} {user?.last_name}</p>
-                      <p className="text-xs text-neutral-500 truncate">{user?.email}</p>
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-semibold text-neutral-900">{user?.first_name} {user?.last_name}</p>
+                        {user?.subscription_plan === 'scale' ? (
+                          <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-300">
+                            👑 SCALE
+                          </span>
+                        ) : user?.subscription_plan === 'hatch' ? (
+                          <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-300">
+                            🛡️ HATCH
+                          </span>
+                        ) : null}
+                      </div>
+                      <p className="text-xs text-neutral-500 truncate mt-0.5">{user?.email}</p>
+                      {user?.employee_limit && (
+                        <p className="text-[11px] text-gray-400 mt-1">
+                          Capacity: {user.employee_limit} Seats Active
+                        </p>
+                      )}
                     </div>
 
                     <div className="px-1">

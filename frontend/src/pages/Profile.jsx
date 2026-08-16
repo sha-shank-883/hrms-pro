@@ -561,13 +561,37 @@ const Profile = () => {
 
       {/* 1. Header Section */}
       <div className="card mb-6 overflow-hidden">
-        <div className="h-40 bg-primary-600 relative">
-          <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
+        <div className={`h-44 relative transition-all ${
+          (profile.subscription_plan === 'scale' || user?.subscription_plan === 'scale')
+            ? 'bg-gradient-to-r from-amber-600 via-yellow-600 to-amber-700'
+            : (profile.subscription_plan === 'hatch' || user?.subscription_plan === 'hatch')
+            ? 'bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700'
+            : 'bg-primary-600'
+        }`}>
+          <div className="absolute inset-0 opacity-15 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
+          {(profile.subscription_plan === 'scale' || user?.subscription_plan === 'scale') && (
+            <div className="absolute top-4 right-6 flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-black/40 backdrop-blur-md border border-amber-300/50 text-amber-200 text-xs font-black shadow-lg">
+              <FaCrown className="text-amber-400 text-sm" />
+              <span>SCALE VIP MEMBER</span>
+            </div>
+          )}
+          {(profile.subscription_plan === 'hatch' || user?.subscription_plan === 'hatch') && (
+            <div className="absolute top-4 right-6 flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-black/40 backdrop-blur-md border border-emerald-300/50 text-emerald-200 text-xs font-black shadow-lg">
+              <FaShieldAlt className="text-emerald-400 text-sm" />
+              <span>HATCH PRO MEMBER</span>
+            </div>
+          )}
         </div>
 
         <div className="px-8 pb-8 flex flex-col md:flex-row items-end -mt-16 gap-6 relative z-10">
           <div className="relative w-32 h-32 md:w-40 md:h-40">
-            <div className="w-32 h-32 md:w-40 md:h-40 rounded-full border-4 border-white shadow-md bg-white p-1 overflow-hidden">
+            <div className={`w-32 h-32 md:w-40 md:h-40 rounded-full border-4 shadow-xl bg-white p-1 overflow-hidden ${
+              (profile.subscription_plan === 'scale' || user?.subscription_plan === 'scale')
+                ? 'border-amber-300 ring-4 ring-amber-400/40'
+                : (profile.subscription_plan === 'hatch' || user?.subscription_plan === 'hatch')
+                ? 'border-emerald-300 ring-4 ring-emerald-400/40'
+                : 'border-white'
+            }`}>
               <div className="w-full h-full rounded-full bg-neutral-100 flex items-center justify-center overflow-hidden relative">
                 {uploadingPhoto && (
                   <div className="absolute inset-0 bg-black/40 flex items-center justify-center z-10">
@@ -605,8 +629,19 @@ const Profile = () => {
           </div>
 
           <div className="flex-1 pb-2 text-center md:text-left">
-            <h1 className="text-3xl font-bold text-neutral-900 mb-1">{profile.first_name} {profile.last_name}</h1>
-            <p className="text-lg text-neutral-500 font-medium mb-3">{profile.position || 'Employee'}</p>
+            <div className="flex items-center gap-2.5 justify-center md:justify-start mb-1 flex-wrap">
+              <h1 className="text-3xl font-bold text-neutral-900">{profile.first_name} {profile.last_name}</h1>
+              {(profile.subscription_plan === 'scale' || user?.subscription_plan === 'scale') ? (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-black bg-gradient-to-r from-amber-500 to-yellow-500 text-white shadow-xs">
+                  <FaCrown className="text-[10px]" /> VIP
+                </span>
+              ) : (profile.subscription_plan === 'hatch' || user?.subscription_plan === 'hatch') ? (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-black bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-xs">
+                  <FaShieldAlt className="text-[10px]" /> PRO
+                </span>
+              ) : null}
+            </div>
+            <p className="text-lg text-neutral-500 font-medium mb-3">{profile.position || 'Company Owner'}</p>
 
             <div className="flex flex-wrap gap-2 justify-center md:justify-start">
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-primary-50 text-primary-700">
@@ -621,6 +656,11 @@ const Profile = () => {
                 <span className={`w-2 h-2 rounded-full ${profile.status === 'active' ? 'bg-success-500' : 'bg-warning-500'}`}></span>
                 {profile.status}
               </span>
+              {(profile.employee_limit || user?.employee_limit) && (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                  <FaUsers size={10} /> {profile.employee_limit || user?.employee_limit} Seats Capacity
+                </span>
+              )}
             </div>
           </div>
 

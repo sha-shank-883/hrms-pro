@@ -11,6 +11,7 @@ import { useWebsiteBuilder } from '../../contexts/WebsiteBuilderContext';
 import { useAuth } from '../../context/AuthContext';
 import PayPalCheckout from '../../components/billing/PayPalCheckout';
 import RazorpayCheckout from '../../components/billing/RazorpayCheckout';
+import SubscriptionCheckoutModal from '../../components/billing/SubscriptionCheckoutModal';
 
 const fadeInUp = {
   hidden: { opacity: 0, y: 24 },
@@ -411,25 +412,13 @@ const Pricing = () => {
           </div>
         </div>
       </section>
-      {/* Razorpay Checkout Modal (INR / India) */}
-      {checkoutPlan && (checkoutPlan.currency === 'INR' || checkoutPlan.gateway === 'razorpay') && (
-        <RazorpayCheckout
+      {/* Unified Subscription Checkout Modal (Razorpay + PayPal Switcher) */}
+      {checkoutPlan && (
+        <SubscriptionCheckoutModal
           plan={checkoutPlan}
           onClose={() => setCheckoutPlan(null)}
           onSuccess={(data) => {
-            console.log('Razorpay payment success:', data);
-            navigate('/dashboard');
-          }}
-        />
-      )}
-
-      {/* PayPal Checkout Modal (USD / Global) */}
-      {checkoutPlan && (checkoutPlan.currency === 'USD' || checkoutPlan.gateway === 'paypal') && (
-        <PayPalCheckout
-          plan={checkoutPlan}
-          onClose={() => setCheckoutPlan(null)}
-          onSuccess={(data) => {
-            console.log('PayPal payment success:', data);
+            console.log('Payment success:', data);
             navigate('/dashboard');
           }}
         />

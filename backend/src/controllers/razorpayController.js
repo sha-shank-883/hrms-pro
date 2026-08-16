@@ -30,27 +30,37 @@ const PLANS = {
 };
 
 // ---------------------------------------------------------------------------
-// Helper: Calculate Plan Cost (Enforces Server-Side Pricing & Sanitized Seats)
+// Helper: Calculate Plan Cost (Enforces Server-Side Pricing, Yearly 20% Discount & Sanitized Seats)
 // ---------------------------------------------------------------------------
-function calculateINRPlanCost(planId, seatsCount) {
+function calculateINRPlanCost(planId, seatsCount, billingCycle = 'monthly') {
   const plan = PLANS[planId];
   if (!plan) return null;
 
   // Strict integer sanitization: min 1 seat, max 10,000 seats
   const parsedSeats = parseInt(seatsCount || plan.defaultSeats || 10, 10);
   const seats = Math.max(1, Math.min(10000, isNaN(parsedSeats) ? 10 : parsedSeats));
+  const isYearly = String(billingCycle).toLowerCase() === 'yearly';
+  const durationDays = isYearly ? 365 : 30;
+
   const unitPrice = plan.pricePerSeatINR;
-  const totalPrice = Math.round(unitPrice * seats);
+  // Yearly gets 20% discount (0.80 multiplier on 12 months)
+  const totalPrice = isYearly
+    ? Math.round(unitPrice * seats * 12 * 0.80)
+    : Math.round(unitPrice * seats);
   const amountInPaise = totalPrice * 100; // Razorpay requires amount in paise
 
   return {
     plan,
     seats,
+    billingCycle: isYearly ? 'yearly' : 'monthly',
+    durationDays,
     currency: 'INR',
     symbol: '₹',
     unitPrice,
     totalPrice,
     amountInPaise,
+    isDiscounted: isYearly,
+    discountPercent: isYearly ? 20 : 0
   };
 }
 
@@ -88,18 +98,18 @@ const getRazorpayKey = asyncHandler(async (req, res) => {
 // POST /api/razorpay/create-order
 // ---------------------------------------------------------------------------
 const createRazorpayOrder = asyncHandler(async (req, res) => {
-  const { planId, seats } = req.body;
+  const { planId, seats, billingCycle = 'monthly', autoPay = false } = req.body;
 
   if (!planId) {
     throw new ValidationError('Field "planId" is required (e.g. "hatch", "scale").');
   }
 
-  const calculation = calculateINRPlanCost(planId, seats);
+  const calculation = calculateINRPlanCost(planId, seats, billingCycle);
   if (!calculation) {
     throw new ValidationError(`Invalid plan: "${planId}". Valid plans: hatch, scale.`);
   }
 
-  const { plan, seats: selectedSeats, totalPrice, amountInPaise } = calculation;
+  const { plan, seats: selectedSeats, totalPrice, amountInPaise, durationDays } = calculation;
   const tenantId = req.tenant.tenant_id;
   const razorpay = getRazorpayInstance();
 
@@ -113,6 +123,8 @@ const createRazorpayOrder = asyncHandler(async (req, res) => {
       tenant_id: tenantId,
       plan_id: plan.id,
       seats: String(selectedSeats),
+      billing_cycle: calculation.billingCycle,
+      auto_pay: String(Boolean(autoPay)),
       amount_in_paise: String(amountInPaise),
       organization: req.tenant.company_name || 'HRMS Pro Tenant',
     },
@@ -133,7 +145,7 @@ const createRazorpayOrder = asyncHandler(async (req, res) => {
       `INSERT INTO shared.payment_logs
          (tenant_id, plan_id, amount, currency, razorpay_order_id, gateway, status, created_at)
        VALUES ($1, $2, $3, 'INR', $4, 'razorpay', 'created', CURRENT_TIMESTAMP)`,
-      [tenantId, `${plan.id}_${selectedSeats}_seats`, totalPrice, order.id]
+      [tenantId, `${plan.id}_${selectedSeats}_seats_${calculation.billingCycle}`, totalPrice, order.id]
     );
   } catch (_) {}
 
@@ -144,6 +156,8 @@ const createRazorpayOrder = asyncHandler(async (req, res) => {
       amount: order.amount,
       currency: order.currency,
       seats: selectedSeats,
+      billingCycle: calculation.billingCycle,
+      durationDays,
       unitPrice: plan.pricePerSeatINR,
       totalPrice,
       planId: plan.id,
@@ -163,6 +177,8 @@ const verifyRazorpayPayment = asyncHandler(async (req, res) => {
     razorpay_signature,
     planId,
     seats,
+    billingCycle = 'monthly',
+    autoPay = false
   } = req.body;
 
   if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
@@ -208,26 +224,35 @@ const verifyRazorpayPayment = asyncHandler(async (req, res) => {
   }
 
   // 3. Server-side Plan Cost Calculation
-  const calculation = calculateINRPlanCost(planId, seats);
+  const calculation = calculateINRPlanCost(planId, seats, billingCycle);
   if (!calculation) {
     throw new ValidationError(`Invalid plan: "${planId}".`);
   }
 
-  const { plan, seats: selectedSeats, totalPrice } = calculation;
+  const { plan, seats: selectedSeats, totalPrice, durationDays } = calculation;
 
-  // 4. Calculate new subscription expiry (today + 30 days)
+  // 4. Calculate new subscription expiry (today + durationDays: 30 or 365)
   const expiry = new Date();
-  expiry.setDate(expiry.getDate() + plan.durationDays);
+  expiry.setDate(expiry.getDate() + durationDays);
 
-  // 5. Update tenant subscription and employee limit in shared.tenants
+  // Ensure columns exist on shared.tenants
+  await pool.query(`
+    ALTER TABLE shared.tenants 
+    ADD COLUMN IF NOT EXISTS billing_cycle VARCHAR(20) DEFAULT 'monthly',
+    ADD COLUMN IF NOT EXISTS auto_renew BOOLEAN DEFAULT false;
+  `).catch(() => {});
+
+  // 5. Update tenant subscription, employee limit, cycle and auto_renew in shared.tenants
   await pool.query(
     `UPDATE shared.tenants
      SET subscription_plan    = $1,
          employee_limit       = $2,
          subscription_expiry  = $3,
+         billing_cycle        = $4,
+         auto_renew           = $5,
          updated_at           = CURRENT_TIMESTAMP
-     WHERE tenant_id = $4`,
-    [plan.id, selectedSeats, expiry.toISOString(), tenantId]
+     WHERE tenant_id = $6`,
+    [plan.id, selectedSeats, expiry.toISOString(), calculation.billingCycle, Boolean(autoPay), tenantId]
   );
 
   // 6. Record payment success in shared.payment_logs
@@ -236,7 +261,7 @@ const verifyRazorpayPayment = asyncHandler(async (req, res) => {
       `INSERT INTO shared.payment_logs
          (tenant_id, plan_id, amount, currency, razorpay_order_id, razorpay_payment_id, gateway, status, created_at)
        VALUES ($1, $2, $3, 'INR', $4, $5, 'razorpay', 'completed', CURRENT_TIMESTAMP)`,
-      [tenantId, `${plan.id}_${selectedSeats}_seats`, totalPrice, razorpay_order_id, razorpay_payment_id]
+      [tenantId, `${plan.id}_${selectedSeats}_seats_${calculation.billingCycle}`, totalPrice, razorpay_order_id, razorpay_payment_id]
     );
   } catch (_) {}
 

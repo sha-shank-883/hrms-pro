@@ -1721,7 +1721,18 @@ See `test-cases/README.md` for full details.
 | 8.9.2 | `GET /api/tenants/backups/archives` as Super Admin | Returns list of archived backups with size and record counts |
 | 8.9.3 | `GET /api/tenants/backups/archives/:id/download` | Streams full JSON snapshot file download |
 
-### Updated Total Test Coverage: **5,000 test cases** (up from 4,987)
+### 8.10 Dual Gateway Subscription, Yearly Pricing, Auto-Pay & VIP Badging (Phase 10)
+| # | Test Case | Expected Result |
+|---|---|---|
+| 8.10.1 | Dual Gateway Switcher (Razorpay vs PayPal) | Allows real-time switching between INR (UPI/Netbanking) and USD (Cards/PayPal) |
+| 8.10.2 | Yearly Billing Cycle with 20% Discount | Computes discounted total for 365-day entitlement period |
+| 8.10.3 | Monthly Billing Cycle with 30-Day Expiry | Calculates standard rate for 30-day entitlement period |
+| 8.10.4 | Auto-Pay / Auto-Renew Flag Persistence | Saves `auto_renew` state and `billing_cycle` in `shared.tenants` |
+| 8.10.5 | Employee Capacity Sizing & Metering | Accurately calculates assigned seats vs capacity limit with color-coded bar |
+| 8.10.6 | Seat Quantity Stepper / Slider | Updates plan checkout dynamically with seat adjustments |
+| 8.10.7 | VIP Badging in Layout Header & Dropdown | Renders `👑 SCALE VIP` or `🛡️ HATCH PRO` badges and glowing avatar rings |
+| 8.10.8 | VIP Header & Border Styling in Profile.jsx | Renders golden/emerald gradient header cards and VIP member status chips |
+| 8.10.9 | Secure Server-Side Price Calculation | Recomputes true price on server, rejecting any client-side tampering |
+| 8.10.10 | Cryptographic HMAC Signature Verification | Uses `crypto.timingSafeEqual` constant-time verification |
 
-
-
+### Updated Total Test Coverage: **5,010 test cases** (up from 5,000)

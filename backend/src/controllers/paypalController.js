@@ -34,9 +34,9 @@ const PLANS = {
 };
 
 // ---------------------------------------------------------------------------
-// Helper: Calculate dynamic plan cost based on seats and currency
+// Helper: Calculate dynamic plan cost based on seats, currency, and cycle
 // ---------------------------------------------------------------------------
-function calculatePlanCost(planId, seatsCount, currency = 'USD') {
+function calculatePlanCost(planId, seatsCount, currency = 'USD', billingCycle = 'monthly') {
   const plan = PLANS[planId];
   if (!plan) return null;
 
@@ -45,19 +45,30 @@ function calculatePlanCost(planId, seatsCount, currency = 'USD') {
   const seats = Math.max(1, Math.min(10000, isNaN(parsedSeats) ? 10 : parsedSeats));
   const curr = (currency || 'USD').toUpperCase();
   const pricing = plan.pricing?.[curr] || plan.pricing.USD;
+  const isYearly = String(billingCycle).toLowerCase() === 'yearly';
+  const durationDays = isYearly ? 365 : 30;
 
   const unitPrice = pricing.pricePerSeat;
-  const totalPrice = (unitPrice * seats).toFixed(2);
-  const totalUSD = (plan.pricing.USD.pricePerSeat * seats).toFixed(2);
+  // Yearly gets 20% discount (0.80 multiplier on 12 months)
+  const totalPrice = isYearly
+    ? (unitPrice * seats * 12 * 0.80).toFixed(2)
+    : (unitPrice * seats).toFixed(2);
+  const totalUSD = isYearly
+    ? (plan.pricing.USD.pricePerSeat * seats * 12 * 0.80).toFixed(2)
+    : (plan.pricing.USD.pricePerSeat * seats).toFixed(2);
 
   return {
     plan,
     seats,
+    billingCycle: isYearly ? 'yearly' : 'monthly',
+    durationDays,
     currency: curr,
     symbol: pricing.symbol || (curr === 'INR' ? '₹' : '$'),
     unitPrice,
     totalPrice,
     totalUSD,
+    isDiscounted: isYearly,
+    discountPercent: isYearly ? 20 : 0
   };
 }
 
@@ -107,14 +118,14 @@ const getPlans = asyncHandler(async (req, res) => {
 // POST /api/payments/paypal/create-order  (auth required)
 // ---------------------------------------------------------------------------
 const createOrder = asyncHandler(async (req, res) => {
-  const { planId, currency = 'USD', seats = 10 } = req.body;
+  const { planId, currency = 'USD', seats = 10, billingCycle = 'monthly', autoPay = false } = req.body;
 
-  const calculation = calculatePlanCost(planId, seats, currency);
+  const calculation = calculatePlanCost(planId, seats, currency, billingCycle);
   if (!calculation) {
     throw new ValidationError(`Invalid plan: "${planId}". Valid plans are: ${Object.keys(PLANS).join(', ')}`);
   }
 
-  const { plan, seats: selectedSeats, currency: selectedCurrency, totalPrice, totalUSD, symbol } = calculation;
+  const { plan, seats: selectedSeats, currency: selectedCurrency, totalPrice, totalUSD, symbol, durationDays } = calculation;
 
   // PayPal REST API charges in USD while converting to the selected employee seats
   const payPalCurrency = 'USD';
@@ -133,12 +144,12 @@ const createOrder = asyncHandler(async (req, res) => {
       intent: 'CAPTURE',
       purchase_units: [
         {
-          description: `HRMS Pro - ${plan.name} Plan (${selectedSeats} Employees - monthly)${selectedCurrency === 'INR' ? ` (₹${totalPrice} INR)` : ` ($${totalPrice} USD)`}`,
+          description: `HRMS Pro - ${plan.name} Plan (${selectedSeats} Employees - ${calculation.billingCycle})${selectedCurrency === 'INR' ? ` (₹${totalPrice} INR)` : ` ($${totalPrice} USD)`}`,
           amount: {
             currency_code: payPalCurrency,
             value: payPalValue,
           },
-          custom_id: `${req.tenant.tenant_id}|${plan.id}|${selectedCurrency}|${selectedSeats}`,
+          custom_id: `${req.tenant.tenant_id}|${plan.id}|${selectedCurrency}|${selectedSeats}|${calculation.billingCycle}|${Boolean(autoPay)}`,
         },
       ],
       application_context: {
@@ -162,6 +173,8 @@ const createOrder = asyncHandler(async (req, res) => {
     data: {
       orderId: order.id,
       seats: selectedSeats,
+      billingCycle: calculation.billingCycle,
+      durationDays,
       totalPrice,
       currency: selectedCurrency,
       symbol,
@@ -173,7 +186,7 @@ const createOrder = asyncHandler(async (req, res) => {
 // POST /api/payments/paypal/capture-order  (auth required)
 // ---------------------------------------------------------------------------
 const captureOrder = asyncHandler(async (req, res) => {
-  const { orderId, planId, currency = 'USD', seats = 10 } = req.body;
+  const { orderId, planId, currency = 'USD', seats = 10, billingCycle = 'monthly', autoPay = false } = req.body;
 
   if (!orderId || !planId) {
     throw new ValidationError('orderId and planId are required.');
@@ -199,12 +212,12 @@ const captureOrder = asyncHandler(async (req, res) => {
   }
 
   // 2. Server-side Plan Cost Verification
-  const calculation = calculatePlanCost(planId, seats, currency);
+  const calculation = calculatePlanCost(planId, seats, currency, billingCycle);
   if (!calculation) {
     throw new ValidationError(`Invalid plan: "${planId}".`);
   }
 
-  const { plan, seats: selectedSeats, currency: selectedCurrency, totalPrice, symbol } = calculation;
+  const { plan, seats: selectedSeats, currency: selectedCurrency, totalPrice, symbol, durationDays } = calculation;
 
   const accessToken = await getPayPalAccessToken();
   const base = process.env.PAYPAL_BASE_URL || 'https://api-m.sandbox.paypal.com';
@@ -229,19 +242,28 @@ const captureOrder = asyncHandler(async (req, res) => {
     throw new AppError(`Payment not completed. Status: ${status}`, 402);
   }
 
-  // 3. Calculate new expiry (today + plan.durationDays)
+  // 3. Calculate new expiry (today + durationDays: 30 or 365)
   const expiry = new Date();
-  expiry.setDate(expiry.getDate() + plan.durationDays);
+  expiry.setDate(expiry.getDate() + durationDays);
 
-  // 4. Update tenant subscription plan, employee limit and expiry in shared.tenants
+  // Ensure columns exist on shared.tenants
+  await pool.query(`
+    ALTER TABLE shared.tenants 
+    ADD COLUMN IF NOT EXISTS billing_cycle VARCHAR(20) DEFAULT 'monthly',
+    ADD COLUMN IF NOT EXISTS auto_renew BOOLEAN DEFAULT false;
+  `).catch(() => {});
+
+  // 4. Update tenant subscription plan, employee limit, cycle and auto_renew in shared.tenants
   await pool.query(
     `UPDATE shared.tenants
      SET subscription_plan    = $1,
          employee_limit       = $2,
          subscription_expiry  = $3,
+         billing_cycle        = $4,
+         auto_renew           = $5,
          updated_at           = CURRENT_TIMESTAMP
-     WHERE tenant_id = $4`,
-    [plan.id, selectedSeats, expiry.toISOString(), tenantId]
+     WHERE tenant_id = $6`,
+    [plan.id, selectedSeats, expiry.toISOString(), calculation.billingCycle, Boolean(autoPay), tenantId]
   );
 
   // 5. Record payment in shared.payment_logs
@@ -250,7 +272,7 @@ const captureOrder = asyncHandler(async (req, res) => {
       `INSERT INTO shared.payment_logs
          (tenant_id, plan_id, amount, currency, paypal_order_id, status, created_at)
        VALUES ($1, $2, $3, $4, $5, 'completed', CURRENT_TIMESTAMP)`,
-      [tenantId, `${plan.id}_${selectedSeats}_seats`, totalPrice, selectedCurrency, orderId]
+      [tenantId, `${plan.id}_${selectedSeats}_seats_${calculation.billingCycle}`, totalPrice, selectedCurrency, orderId]
     );
   } catch (_) {}
 

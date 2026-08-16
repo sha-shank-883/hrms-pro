@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import PayPalCheckout from '../components/billing/PayPalCheckout';
 import RazorpayCheckout from '../components/billing/RazorpayCheckout';
+import SubscriptionCheckoutModal from '../components/billing/SubscriptionCheckoutModal';
 import InvoiceModal from '../components/billing/InvoiceModal';
 import StatementModal from '../components/billing/StatementModal';
 import {
@@ -482,89 +483,138 @@ const Settings = () => {
                 </div>
               </div>
 
-              {/* Current Status Overview Cards */}
+              {/* Subscription & Active Seat Capacity Meter */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {/* Active Plan Card */}
-                <div className="bg-gradient-to-br from-primary-50 to-primary-100/40 dark:from-primary-950/30 dark:to-gray-900 border border-primary-200/80 dark:border-primary-800/40 rounded-2xl p-5">
+                {/* Active Plan & VIP Membership Card */}
+                <div className={`border rounded-3xl p-6 shadow-md relative overflow-hidden transition-all ${
+                  (subscriptionData?.plan === 'scale' || user?.subscription_plan === 'scale')
+                    ? 'bg-gradient-to-br from-amber-500/10 via-amber-500/5 to-transparent border-amber-400/50 dark:border-amber-500/30'
+                    : (subscriptionData?.plan === 'hatch' || user?.subscription_plan === 'hatch')
+                    ? 'bg-gradient-to-br from-emerald-500/10 via-emerald-500/5 to-transparent border-emerald-400/50 dark:border-emerald-500/30'
+                    : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700'
+                }`}>
                   <div className="flex items-center justify-between mb-3">
-                    <span className="text-xs font-bold uppercase tracking-wider text-primary-700 dark:text-primary-300">
-                      Current Plan
+                    <span className="text-xs font-black uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                      Membership Status
                     </span>
-                    <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
-                      (subscriptionData?.status === 'active' || user?.subscription_status === 'active')
-                        ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300'
-                        : 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'
+                    <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-black tracking-wide ${
+                      (subscriptionData?.plan === 'scale' || user?.subscription_plan === 'scale')
+                        ? 'bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300 border border-amber-300'
+                        : (subscriptionData?.plan === 'hatch' || user?.subscription_plan === 'hatch')
+                        ? 'bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300'
+                        : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
                     }`}>
-                      {subscriptionData?.status || user?.subscription_status || 'Trial'}
+                      {(subscriptionData?.plan === 'scale' || user?.subscription_plan === 'scale')
+                        ? '👑 SCALE VIP'
+                        : (subscriptionData?.plan === 'hatch' || user?.subscription_plan === 'hatch')
+                        ? '🛡️ HATCH PRO'
+                        : 'FREE TRIAL'}
                     </span>
                   </div>
-                  <h4 className="text-2xl font-black text-gray-900 dark:text-white capitalize">
-                    {subscriptionData?.plan || user?.subscription_plan || 'Free Trial'}
+                  <h4 className="text-2xl font-black text-gray-900 dark:text-white capitalize flex items-center gap-2">
+                    {subscriptionData?.plan || user?.subscription_plan || 'Free Trial'} Plan
                   </h4>
-                  <p className="text-xs text-gray-600 dark:text-gray-400 mt-2">
-                    {subscriptionData?.expiry
-                      ? `Valid until ${new Date(subscriptionData.expiry).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}`
-                      : user?.subscription_expiry
-                      ? `Valid until ${new Date(user.subscription_expiry).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}`
-                      : '14-day full feature trial active'}
-                  </p>
-                </div>
-
-                {/* Employee Seats Card */}
-                <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-5 shadow-sm">
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                      Employee Seats
-                    </span>
-                    <FaUsers className="text-gray-400" />
-                  </div>
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-2xl font-black text-gray-900 dark:text-white">
-                      {employeeCount}
-                    </span>
-                    <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                      / {subscriptionData?.plan === 'scale' ? '100' : subscriptionData?.plan === 'hatch' ? '15' : '15'} seats used
-                    </span>
-                  </div>
-                  <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-2 mt-3 overflow-hidden">
-                    <div
-                      className="bg-primary-500 h-2 rounded-full transition-all"
-                      style={{
-                        width: `${Math.min(
-                          100,
-                          (employeeCount / (subscriptionData?.plan === 'scale' ? 100 : 15)) * 100
-                        )}%`,
-                      }}
-                    />
+                  <div className="mt-2 space-y-1 text-xs text-gray-600 dark:text-gray-400">
+                    <p>
+                      {subscriptionData?.expiresAt || user?.subscription_expiry
+                        ? `Renews / Active until ${new Date(subscriptionData?.expiresAt || user?.subscription_expiry).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}`
+                        : '14-day trial active'}
+                    </p>
+                    <p className="text-[11px] text-gray-500 flex items-center gap-1.5 font-medium">
+                      <span>Cycle: <strong className="capitalize">{user?.billing_cycle || 'Monthly'}</strong></span>
+                      <span>•</span>
+                      <span>Auto-Pay: <strong>{user?.auto_renew ? 'Enabled' : 'Manual'}</strong></span>
+                    </p>
                   </div>
                 </div>
 
-                {/* Instant Upgrade Card */}
-                <div className="bg-gradient-to-br from-indigo-900 to-purple-900 text-white rounded-2xl p-5 shadow-lg flex flex-col justify-between">
+                {/* Employee Capacity Utilization Meter */}
+                <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-3xl p-6 shadow-sm flex flex-col justify-between">
                   <div>
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-white/20 text-white mb-2">
-                      <SparklesIcon className="h-3.5 w-3.5" /> Need More Power?
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                        Employee Seat Capacity
+                      </span>
+                      <FaUsers className="text-primary-500" />
+                    </div>
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-3xl font-black text-gray-900 dark:text-white">
+                        {user?.active_employees ?? employeeCount}
+                      </span>
+                      <span className="text-xs font-semibold text-gray-500 dark:text-gray-400">
+                        / {subscriptionData?.employeeLimit || user?.employee_limit || 15} Seats Assigned
+                      </span>
+                    </div>
+                    <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-2.5 mt-3 overflow-hidden">
+                      <div
+                        className={`h-2.5 rounded-full transition-all ${
+                          ((user?.active_employees ?? employeeCount) / (subscriptionData?.employeeLimit || user?.employee_limit || 15)) > 0.9
+                            ? 'bg-red-500'
+                            : ((user?.active_employees ?? employeeCount) / (subscriptionData?.employeeLimit || user?.employee_limit || 15)) > 0.75
+                            ? 'bg-amber-500'
+                            : 'bg-emerald-500'
+                        }`}
+                        style={{
+                          width: `${Math.min(
+                            100,
+                            Math.max(
+                              5,
+                              ((user?.active_employees ?? employeeCount) / (subscriptionData?.employeeLimit || user?.employee_limit || 15)) * 100
+                            )
+                          )}%`,
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-3 border-t border-gray-100 dark:border-gray-700 text-xs mt-3">
+                    <span className="text-gray-500 dark:text-gray-400 font-medium">
+                      {Math.max(0, (subscriptionData?.employeeLimit || user?.employee_limit || 15) - (user?.active_employees ?? employeeCount))} Seats Remaining
                     </span>
-                    <h4 className="text-lg font-bold">Scale Your Organization</h4>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const nextSeats = (subscriptionData?.employeeLimit || user?.employee_limit || 15) + 5;
+                        setSeatQuantity(nextSeats);
+                        setCheckoutPlan({
+                          id: subscriptionData?.plan || user?.subscription_plan || 'scale',
+                          name: `${(subscriptionData?.plan || user?.subscription_plan || 'scale').toUpperCase()} Plan`,
+                          seats: nextSeats,
+                          currency: billingCurrency,
+                        });
+                      }}
+                      className="text-primary-600 dark:text-primary-400 hover:underline font-bold"
+                    >
+                      + Add More Seats
+                    </button>
+                  </div>
+                </div>
+
+                {/* Instant Plan / Capacity Upgrade Action Card */}
+                <div className="bg-gradient-to-br from-indigo-900 via-indigo-850 to-purple-900 text-white rounded-3xl p-6 shadow-xl flex flex-col justify-between relative overflow-hidden">
+                  <div>
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-black bg-white/20 text-white mb-2 shadow-xs">
+                      <SparklesIcon className="h-3.5 w-3.5" /> Direct Capacity Upgrade
+                    </span>
+                    <h4 className="text-lg font-bold">Scale Your HRMS Power</h4>
                     <p className="text-xs text-indigo-200 mt-1">
-                      Unlock Automated Payroll, Performance Reviews & ATS Recruitment for your whole team.
+                      Instantly increase seat capacity, enable automated payroll, ATS recruitment & AI features.
                     </p>
                   </div>
                   <button
                     type="button"
                     onClick={() => {
-                      const seats = Math.max(1, seatQuantity || 15);
+                      const seats = Math.max(1, seatQuantity || 25);
                       setCheckoutPlan({
                         id: 'scale',
                         name: 'Scale Plan',
                         seats,
-                        price: billingCurrency === 'INR' ? (seats * 799) : (seats * 10),
                         currency: billingCurrency,
                       });
                     }}
-                    className="mt-4 inline-flex items-center justify-center gap-2 px-4 py-2 bg-white text-indigo-900 text-xs font-bold rounded-xl hover:bg-indigo-50 transition-all shadow-md"
+                    className="mt-4 inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-white text-indigo-950 text-xs font-black rounded-2xl hover:bg-indigo-50 transition-all shadow-md active:scale-95"
                   >
-                    Upgrade to Scale ({seatQuantity || 15} Seats) <FaArrowRight className="text-[10px]" />
+                    Upgrade / Renew Plan ({seatQuantity || 25} Seats) <FaArrowRight className="text-[10px]" />
                   </button>
                 </div>
               </div>
@@ -1093,22 +1143,9 @@ const Settings = () => {
                 />
               )}
 
-              {/* Razorpay Checkout Modal for INR */}
-              {checkoutPlan && (checkoutPlan.gateway === 'razorpay' || (!checkoutPlan.gateway && billingCurrency === 'INR')) && (
-                <RazorpayCheckout
-                  plan={checkoutPlan}
-                  onClose={() => setCheckoutPlan(null)}
-                  onSuccess={() => {
-                    setCheckoutPlan(null);
-                    loadBillingData();
-                    if (refreshProfile) refreshProfile();
-                  }}
-                />
-              )}
-
-              {/* PayPal Checkout Modal for USD / International */}
-              {checkoutPlan && (checkoutPlan.gateway === 'paypal' || (!checkoutPlan.gateway && billingCurrency === 'USD')) && (
-                <PayPalCheckout
+              {/* Unified Subscription Checkout Modal (Razorpay + PayPal Switcher) */}
+              {checkoutPlan && (
+                <SubscriptionCheckoutModal
                   plan={checkoutPlan}
                   onClose={() => setCheckoutPlan(null)}
                   onSuccess={() => {

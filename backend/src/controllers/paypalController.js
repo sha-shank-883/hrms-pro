@@ -288,14 +288,17 @@ const captureOrder = asyncHandler(async (req, res) => {
   );
 
   // 5. Record payment in shared.payment_logs
+  const invoiceNumber = `INV-${tenantId.slice(-4).toUpperCase()}-${Date.now().toString().slice(-6)}`;
   try {
     await pool.query(
       `INSERT INTO shared.payment_logs
-         (tenant_id, plan_id, amount, currency, paypal_order_id, status, created_at)
-       VALUES ($1, $2, $3, $4, $5, 'completed', CURRENT_TIMESTAMP)`,
-      [tenantId, `${plan.id}_${selectedSeats}_seats_${calculation.billingCycle}`, totalPrice, selectedCurrency, orderId]
+         (tenant_id, plan_id, amount, currency, paypal_order_id, gateway, status, seats_purchased, is_addon, billing_cycle, invoice_number, created_at)
+       VALUES ($1, $2, $3, $4, $5, 'paypal', 'completed', $6, $7, $8, $9, CURRENT_TIMESTAMP)`,
+      [tenantId, `${plan.id}_${selectedSeats}_seats_${calculation.billingCycle}`, totalPrice, selectedCurrency, orderId, selectedSeats, isAddon, calculation.billingCycle, invoiceNumber]
     );
-  } catch (_) {}
+  } catch (logErr) {
+    console.error('Failed to log PayPal payment:', logErr.message);
+  }
 
   // Send confirmation email (best-effort)
   try {

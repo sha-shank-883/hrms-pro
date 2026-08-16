@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { tenantService } from '../services';
+import { tenantService, paymentService } from '../services';
 import InvoiceModal from '../components/billing/InvoiceModal';
 import StatementModal from '../components/billing/StatementModal';
 import {
@@ -14,7 +14,8 @@ import {
     MagnifyingGlassIcon,
     DocumentChartBarIcon,
     PrinterIcon,
-    EyeIcon
+    EyeIcon,
+    ArrowUturnLeftIcon
 } from '@heroicons/react/24/outline';
 
 const SuperAdminBilling = () => {
@@ -32,6 +33,17 @@ const SuperAdminBilling = () => {
     // Invoice View Modal & Statement View Modal
     const [activeInvoiceId, setActiveInvoiceId] = useState(null);
     const [statementTenant, setStatementTenant] = useState(null);
+
+    // Refund Modal State
+    const [refundModal, setRefundModal] = useState({
+        show: false,
+        txn: null,
+        amount: '',
+        reason: '',
+        adjustPlan: true,
+        loading: false,
+        error: ''
+    });
 
     const [paymentModal, setPaymentModal] = useState({
         show: false,
@@ -84,6 +96,28 @@ const SuperAdminBilling = () => {
             loadBillingData();
         } catch (err) {
             setError(err.response?.data?.message || 'Failed to record payment');
+        }
+    };
+
+    const handleProcessRefund = async (e) => {
+        e.preventDefault();
+        setRefundModal(prev => ({ ...prev, loading: true, error: '' }));
+        try {
+            const res = await paymentService.processRefund({
+                paymentLogId: refundModal.txn.id,
+                amount: refundModal.amount ? parseFloat(refundModal.amount) : undefined,
+                reason: refundModal.reason,
+                adjustPlan: refundModal.adjustPlan
+            });
+            setSuccess(res.message || 'Refund successfully processed');
+            setRefundModal({ show: false, txn: null, amount: '', reason: '', adjustPlan: true, loading: false, error: '' });
+            loadBillingData();
+        } catch (err) {
+            setRefundModal(prev => ({
+                ...prev,
+                loading: false,
+                error: err.response?.data?.message || err.message || 'Failed to process refund'
+            }));
         }
     };
 
@@ -359,14 +393,39 @@ const SuperAdminBilling = () => {
                                             {txn.transaction_id || txn.razorpay_payment_id || txn.paypal_order_id || '-'}
                                         </td>
                                         <td className="text-right">
-                                            <button
-                                                onClick={() => setActiveInvoiceId(txn.id)}
-                                                className="btn btn-secondary btn-xs text-xs flex items-center gap-1 text-emerald-700 hover:text-emerald-800 ml-auto"
-                                                title="View & Print Tax Invoice"
-                                            >
-                                                <EyeIcon className="w-3.5 h-3.5" />
-                                                Invoice
-                                            </button>
+                                            <div className="flex items-center justify-end gap-1.5">
+                                                <button
+                                                    onClick={() => setActiveInvoiceId(txn.id)}
+                                                    className="btn btn-secondary btn-xs text-xs flex items-center gap-1 text-emerald-700 hover:text-emerald-800"
+                                                    title="View & Print Tax Invoice"
+                                                >
+                                                    <EyeIcon className="w-3.5 h-3.5" />
+                                                    Invoice
+                                                </button>
+                                                {txn.status === 'completed' && (
+                                                    <button
+                                                        onClick={() => setRefundModal({
+                                                            show: true,
+                                                            txn,
+                                                            amount: txn.amount,
+                                                            reason: txn.refund_reason || '',
+                                                            adjustPlan: true,
+                                                            loading: false,
+                                                            error: ''
+                                                        })}
+                                                        className="btn btn-ghost btn-xs text-xs flex items-center gap-1 text-red-600 hover:bg-red-50 hover:text-red-700"
+                                                        title="Issue Gateway Refund"
+                                                    >
+                                                        <ArrowUturnLeftIcon className="w-3.5 h-3.5" />
+                                                        Refund
+                                                    </button>
+                                                )}
+                                                {txn.status === 'refunded' && (
+                                                    <span className="text-[10px] font-bold text-red-600 px-1.5 py-0.5 bg-red-50 rounded">
+                                                        Refunded
+                                                    </span>
+                                                )}
+                                            </div>
                                         </td>
                                     </tr>
                                 ))
@@ -542,6 +601,118 @@ const SuperAdminBilling = () => {
                                 <button type="button" onClick={() => setPaymentModal({ ...paymentModal, show: false })} className="btn btn-ghost text-xs">Cancel</button>
                                 <button type="submit" className="btn btn-primary text-xs bg-emerald-600 hover:bg-emerald-700 border-emerald-600">
                                     Save Payment & Extend
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* ISSUE GATEWAY REFUND MODAL */}
+            {refundModal.show && refundModal.txn && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setRefundModal({ ...refundModal, show: false })}>
+                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200" onClick={e => e.stopPropagation()}>
+                        <div className="px-6 py-4 border-b border-neutral-100 flex justify-between items-center bg-red-50/70">
+                            <div>
+                                <h3 className="text-base font-black text-red-950 flex items-center gap-2">
+                                    <ArrowUturnLeftIcon className="w-5 h-5 text-red-600" />
+                                    Issue Gateway Refund
+                                </h3>
+                                <p className="text-xs text-red-700">Process full or partial refund for transaction #{refundModal.txn.id}</p>
+                            </div>
+                            <button onClick={() => setRefundModal({ ...refundModal, show: false })} className="text-neutral-400 hover:text-neutral-600">
+                                <XCircleIcon className="w-6 h-6" />
+                            </button>
+                        </div>
+
+                        {refundModal.error && (
+                            <div className="m-4 p-3 bg-red-50 border border-red-200 text-red-800 text-xs rounded-xl flex items-center gap-2">
+                                <ExclamationTriangleIcon className="w-4 h-4 text-red-600 shrink-0" />
+                                <span>{refundModal.error}</span>
+                            </div>
+                        )}
+
+                        <form onSubmit={handleProcessRefund} className="p-6 space-y-4">
+                            <div className="p-3.5 bg-neutral-50 rounded-2xl border border-neutral-200 text-xs space-y-1.5">
+                                <div className="flex justify-between">
+                                    <span className="text-neutral-500">Tenant:</span>
+                                    <span className="font-bold text-neutral-900">{refundModal.txn.tenant_name || refundModal.txn.tenant_id}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-neutral-500">Invoice:</span>
+                                    <span className="font-mono font-bold text-neutral-900">{refundModal.txn.invoice_number || `INV-${refundModal.txn.id}`}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-neutral-500">Gateway:</span>
+                                    <span className="font-bold uppercase text-neutral-900">{refundModal.txn.gateway}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-neutral-500">Original Amount:</span>
+                                    <span className="font-black text-neutral-900">{refundModal.txn.currency === 'INR' ? '₹' : '$'}{parseFloat(refundModal.txn.amount).toLocaleString()}</span>
+                                </div>
+                            </div>
+
+                            <div className="form-group">
+                                <label className="form-label block text-xs font-bold text-neutral-700 mb-1">
+                                    Refund Amount ({refundModal.txn.currency || 'INR'})
+                                </label>
+                                <input
+                                    type="number"
+                                    step="0.01"
+                                    max={refundModal.txn.amount}
+                                    min="1"
+                                    required
+                                    className="form-input w-full text-xs font-bold"
+                                    value={refundModal.amount}
+                                    onChange={(e) => setRefundModal({ ...refundModal, amount: e.target.value })}
+                                />
+                                <span className="text-[10px] text-neutral-400 mt-0.5 block">
+                                    Leave as original amount for 100% full refund.
+                                </span>
+                            </div>
+
+                            <div className="form-group">
+                                <label className="form-label block text-xs font-bold text-neutral-700 mb-1">
+                                    Refund Reason / Justification
+                                </label>
+                                <textarea
+                                    className="form-input w-full text-xs"
+                                    rows="2"
+                                    required
+                                    placeholder="e.g. Customer requested downgrade / duplicate payment resolution"
+                                    value={refundModal.reason}
+                                    onChange={(e) => setRefundModal({ ...refundModal, reason: e.target.value })}
+                                />
+                            </div>
+
+                            <div className="flex items-center gap-2 p-3 bg-amber-50/70 border border-amber-200 rounded-xl text-xs text-amber-900">
+                                <input
+                                    type="checkbox"
+                                    id="adjustPlan"
+                                    checked={refundModal.adjustPlan}
+                                    onChange={(e) => setRefundModal({ ...refundModal, adjustPlan: e.target.checked })}
+                                    className="rounded border-amber-300 text-amber-600 focus:ring-amber-500"
+                                />
+                                <label htmlFor="adjustPlan" className="font-semibold cursor-pointer">
+                                    Automatically revert subscription plan or deduct added seat capacity
+                                </label>
+                            </div>
+
+                            <div className="flex justify-end gap-3 pt-4 border-t border-neutral-100">
+                                <button
+                                    type="button"
+                                    disabled={refundModal.loading}
+                                    onClick={() => setRefundModal({ ...refundModal, show: false })}
+                                    className="btn btn-ghost text-xs"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={refundModal.loading}
+                                    className="btn btn-primary text-xs bg-red-600 hover:bg-red-700 border-red-600 text-white flex items-center gap-1.5"
+                                >
+                                    {refundModal.loading ? 'Processing Refund...' : 'Confirm & Process Refund'}
                                 </button>
                             </div>
                         </form>

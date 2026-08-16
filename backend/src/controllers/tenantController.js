@@ -968,8 +968,8 @@ const updateMyTenantBilling = asyncHandler(async (req, res) => {
  */
 const getInvoiceDetails = asyncHandler(async (req, res) => {
   const { invoiceId } = req.params;
-  const isSuperAdmin = req.user?.isSuperAdmin || req.user?.role === 'super_admin';
-  const tenantId = req.user?.tenantId || req.headers['x-tenant-id'];
+  const isSuperAdmin = req.user?.isSuperAdmin || req.user?.role === 'super_admin' || req.user?.role === 'super-admin';
+  const tenantId = req.user?.tenant_id || req.user?.tenantId || req.tenant?.tenant_id || req.headers['x-tenant-id'];
 
   const invoiceRes = await pool.query(`
     SELECT 

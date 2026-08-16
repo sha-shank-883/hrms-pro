@@ -189,6 +189,15 @@ app.get('/api/setup-db', async (req, res) => {
       ALTER TABLE shared.payment_logs ADD COLUMN IF NOT EXISTS razorpay_order_id VARCHAR(255);
       ALTER TABLE shared.payment_logs ADD COLUMN IF NOT EXISTS razorpay_payment_id VARCHAR(255);
       ALTER TABLE shared.payment_logs ADD COLUMN IF NOT EXISTS gateway VARCHAR(50) DEFAULT 'paypal';
+      ALTER TABLE shared.payment_logs ADD COLUMN IF NOT EXISTS refund_id VARCHAR(255);
+      ALTER TABLE shared.payment_logs ADD COLUMN IF NOT EXISTS refund_amount NUMERIC(10,2) DEFAULT 0;
+      ALTER TABLE shared.payment_logs ADD COLUMN IF NOT EXISTS refund_reason TEXT;
+      ALTER TABLE shared.payment_logs ADD COLUMN IF NOT EXISTS refund_status VARCHAR(50);
+      ALTER TABLE shared.payment_logs ADD COLUMN IF NOT EXISTS refunded_at TIMESTAMP;
+      ALTER TABLE shared.payment_logs ADD COLUMN IF NOT EXISTS seats_purchased INTEGER DEFAULT 15;
+      ALTER TABLE shared.payment_logs ADD COLUMN IF NOT EXISTS is_addon BOOLEAN DEFAULT false;
+      ALTER TABLE shared.payment_logs ADD COLUMN IF NOT EXISTS billing_cycle VARCHAR(20) DEFAULT 'monthly';
+      ALTER TABLE shared.payment_logs ADD COLUMN IF NOT EXISTS invoice_number VARCHAR(100);
 
       CREATE TABLE IF NOT EXISTS shared.demo_requests (
         id SERIAL PRIMARY KEY,

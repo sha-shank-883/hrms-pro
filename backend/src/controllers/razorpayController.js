@@ -277,14 +277,17 @@ const verifyRazorpayPayment = asyncHandler(async (req, res) => {
   );
 
   // 6. Record payment success in shared.payment_logs
+  const invoiceNumber = `INV-${tenantId.slice(-4).toUpperCase()}-${Date.now().toString().slice(-6)}`;
   try {
     await pool.query(
       `INSERT INTO shared.payment_logs
-         (tenant_id, plan_id, amount, currency, razorpay_order_id, razorpay_payment_id, gateway, status, created_at)
-       VALUES ($1, $2, $3, 'INR', $4, $5, 'razorpay', 'completed', CURRENT_TIMESTAMP)`,
-      [tenantId, `${plan.id}_${selectedSeats}_seats_${calculation.billingCycle}`, totalPrice, razorpay_order_id, razorpay_payment_id]
+         (tenant_id, plan_id, amount, currency, razorpay_order_id, razorpay_payment_id, gateway, status, seats_purchased, is_addon, billing_cycle, invoice_number, created_at)
+       VALUES ($1, $2, $3, 'INR', $4, $5, 'razorpay', 'completed', $6, $7, $8, $9, CURRENT_TIMESTAMP)`,
+      [tenantId, `${plan.id}_${selectedSeats}_seats_${calculation.billingCycle}`, totalPrice, razorpay_order_id, razorpay_payment_id, selectedSeats, isAddon, calculation.billingCycle, invoiceNumber]
     );
-  } catch (_) {}
+  } catch (logErr) {
+    console.error('Failed to write payment log:', logErr.message);
+  }
 
   // Send confirmation email
   try {

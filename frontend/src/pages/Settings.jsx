@@ -142,11 +142,22 @@ const Settings = () => {
     billing_cycle: 'monthly'
   });
   const [tenantInvoices, setTenantInvoices] = useState([]);
+  const [lastSubscriptionInfo, setLastSubscriptionInfo] = useState(null);
   const [activeInvoiceId, setActiveInvoiceId] = useState(null);
   const [showStatementModal, setShowStatementModal] = useState(false);
   const [savingBillingProfile, setSavingBillingProfile] = useState(false);
   const [billingProfileSuccess, setBillingProfileSuccess] = useState('');
   const [billingProfileError, setBillingProfileError] = useState('');
+
+  // Tenant Refund Request Modal
+  const [refundRequestModal, setRefundRequestModal] = useState({
+    show: false,
+    invoice: null,
+    reason: '',
+    loading: false,
+    success: '',
+    error: ''
+  });
 
   // Tenant Dynamic Notification & Web Push Settings
   const [notifSettings, setNotifSettings] = useState({
@@ -255,10 +266,12 @@ const Settings = () => {
   const loadBillingData = async () => {
     try {
       setBillingLoading(true);
-      const [subRes, empRes, myBillingRes] = await Promise.allSettled([
+      const [subRes, empRes, myBillingRes, lastSubRes, histRes] = await Promise.allSettled([
         paymentService.getSubscription(),
         employeeService.getAll({ status: 'active', limit: 1 }),
-        tenantService.getMyBilling()
+        tenantService.getMyBilling(),
+        paymentService.getLastSubscription(),
+        paymentService.getHistory()
       ]);
 
       if (subRes.status === 'fulfilled' && subRes.value?.data) {
@@ -267,12 +280,20 @@ const Settings = () => {
           setSeatQuantity(subRes.value.data.employeeLimit);
         }
       }
+      if (lastSubRes.status === 'fulfilled' && lastSubRes.value?.data) {
+        setLastSubscriptionInfo(lastSubRes.value.data);
+      }
       if (empRes.status === 'fulfilled' && empRes.value?.pagination) {
         setEmployeeCount(empRes.value.pagination.totalItems || 0);
       }
+      if (histRes.status === 'fulfilled' && histRes.value?.data) {
+        setTenantInvoices(histRes.value.data);
+      } else if (myBillingRes.status === 'fulfilled' && myBillingRes.value?.success) {
+        setTenantInvoices(myBillingRes.value.invoices || []);
+      }
+
       if (myBillingRes.status === 'fulfilled' && myBillingRes.value?.success) {
         const t = myBillingRes.value.tenant;
-        setTenantInvoices(myBillingRes.value.invoices || []);
         if (myBillingRes.value.employeeCount) {
           setEmployeeCount(myBillingRes.value.employeeCount);
         }
@@ -297,6 +318,32 @@ const Settings = () => {
       console.error('Failed to load billing data:', err);
     } finally {
       setBillingLoading(false);
+    }
+  };
+
+  const handleRequestRefund = async (e) => {
+    e.preventDefault();
+    setRefundRequestModal(prev => ({ ...prev, loading: true, error: '', success: '' }));
+    try {
+      const res = await paymentService.requestRefund({
+        paymentLogId: refundRequestModal.invoice.id,
+        reason: refundRequestModal.reason
+      });
+      setRefundRequestModal(prev => ({
+        ...prev,
+        loading: false,
+        success: res.message || 'Refund request submitted to Super Admin.'
+      }));
+      setTimeout(() => {
+        setRefundRequestModal({ show: false, invoice: null, reason: '', loading: false, success: '', error: '' });
+        loadBillingData();
+      }, 2000);
+    } catch (err) {
+      setRefundRequestModal(prev => ({
+        ...prev,
+        loading: false,
+        error: err.response?.data?.message || err.message || 'Failed to submit refund request'
+      }));
     }
   };
 
@@ -1096,24 +1143,47 @@ const Settings = () => {
                             </td>
                             <td className="p-3">
                               <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                                inv.status === 'completed'
+                                inv.status === 'refunded' || inv.refund_status === 'processed'
+                                  ? 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300'
+                                  : inv.refund_status === 'refund_requested'
+                                  ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
+                                  : inv.status === 'completed'
                                   ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
                                   : inv.status === 'pending'
                                   ? 'bg-amber-100 text-amber-800'
                                   : 'bg-red-100 text-red-800'
                               }`}>
-                                {inv.status}
+                                {inv.refund_status === 'refund_requested' ? 'Refund Requested' : inv.status}
                               </span>
                             </td>
                             <td className="p-3 text-right">
-                              <button
-                                type="button"
-                                onClick={() => setActiveInvoiceId(inv.id)}
-                                className="btn btn-secondary btn-xs text-xs flex items-center gap-1 text-emerald-700 hover:text-emerald-800 ml-auto"
-                              >
-                                <EyeIcon className="w-3.5 h-3.5" />
-                                View Invoice
-                              </button>
+                              <div className="flex items-center justify-end gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() => setActiveInvoiceId(inv.id)}
+                                  className="btn btn-secondary btn-xs text-xs flex items-center gap-1 text-emerald-700 hover:text-emerald-800"
+                                >
+                                  <EyeIcon className="w-3.5 h-3.5" />
+                                  Invoice
+                                </button>
+                                {inv.status === 'completed' && !inv.refund_status && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setRefundRequestModal({
+                                      show: true,
+                                      invoice: inv,
+                                      reason: '',
+                                      loading: false,
+                                      success: '',
+                                      error: ''
+                                    })}
+                                    className="btn btn-ghost btn-xs text-[11px] text-gray-500 hover:text-red-600"
+                                    title="Request Refund for this transaction"
+                                  >
+                                    Request Refund
+                                  </button>
+                                )}
+                              </div>
                             </td>
                           </tr>
                         ))
@@ -1122,6 +1192,93 @@ const Settings = () => {
                   </table>
                 </div>
               </div>
+
+              {/* Tenant Request Refund Modal */}
+              {refundRequestModal.show && refundRequestModal.invoice && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setRefundRequestModal({ ...refundRequestModal, show: false })}>
+                  <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200" onClick={e => e.stopPropagation()}>
+                    <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center bg-gray-50/80 dark:bg-gray-750">
+                      <div>
+                        <h3 className="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                          Request Payment Refund
+                        </h3>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          Submit refund request for Invoice #{refundRequestModal.invoice.invoice_number || refundRequestModal.invoice.id}
+                        </p>
+                      </div>
+                      <button onClick={() => setRefundRequestModal({ ...refundRequestModal, show: false })} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                        ✕
+                      </button>
+                    </div>
+
+                    {refundRequestModal.success && (
+                      <div className="m-4 p-3 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 text-emerald-800 dark:text-emerald-300 text-xs rounded-xl flex items-center gap-2">
+                        <FaCheckCircle className="text-emerald-600 shrink-0" />
+                        <span>{refundRequestModal.success}</span>
+                      </div>
+                    )}
+
+                    {refundRequestModal.error && (
+                      <div className="m-4 p-3 bg-red-50 dark:bg-red-950/50 border border-red-200 text-red-800 dark:text-red-300 text-xs rounded-xl flex items-center gap-2">
+                        <FaExclamationCircle className="text-red-600 shrink-0" />
+                        <span>{refundRequestModal.error}</span>
+                      </div>
+                    )}
+
+                    {!refundRequestModal.success && (
+                      <form onSubmit={handleRequestRefund} className="p-6 space-y-4">
+                        <div className="p-3.5 bg-gray-50 dark:bg-gray-750 rounded-2xl border border-gray-200 dark:border-gray-700 text-xs space-y-1.5">
+                          <div className="flex justify-between">
+                            <span className="text-gray-500">Plan & Seats:</span>
+                            <span className="font-bold text-gray-900 dark:text-white">{refundRequestModal.invoice.plan_id}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-500">Paid Amount:</span>
+                            <span className="font-black text-gray-900 dark:text-white">
+                              {refundRequestModal.invoice.currency === 'INR' ? '₹' : '$'}{parseFloat(refundRequestModal.invoice.amount).toLocaleString()}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-500">Date Paid:</span>
+                            <span className="text-gray-700 dark:text-gray-300">{new Date(refundRequestModal.invoice.created_at).toLocaleDateString()}</span>
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
+                            Reason for Refund Request
+                          </label>
+                          <textarea
+                            className="form-input w-full text-xs"
+                            rows="3"
+                            required
+                            placeholder="Please tell us why you are requesting a refund (e.g. accidental purchase, change of team sizing)..."
+                            value={refundRequestModal.reason}
+                            onChange={(e) => setRefundRequestModal({ ...refundRequestModal, reason: e.target.value })}
+                          />
+                        </div>
+
+                        <div className="flex justify-end gap-3 pt-3 border-t border-gray-100 dark:border-gray-700">
+                          <button
+                            type="button"
+                            onClick={() => setRefundRequestModal({ ...refundRequestModal, show: false })}
+                            className="btn btn-ghost text-xs"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="submit"
+                            disabled={refundRequestModal.loading}
+                            className="btn btn-primary text-xs bg-red-600 hover:bg-red-700 border-red-600 text-white"
+                          >
+                            {refundRequestModal.loading ? 'Submitting...' : 'Submit Refund Request'}
+                          </button>
+                        </div>
+                      </form>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {/* Printable Invoice Modal */}
               {activeInvoiceId && (

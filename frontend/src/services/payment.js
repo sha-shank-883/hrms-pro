@@ -49,4 +49,30 @@ export const paymentService = {
     const response = await api.get('/payments/subscription');
     return response.data;
   },
+
+  // Get tenant or global payment & transaction history
+  getHistory: async (tenantId) => {
+    const params = tenantId ? { tenantId } : {};
+    const response = await api.get('/payments/history', { params });
+    return response.data;
+  },
+
+  // Get last subscription overview
+  getLastSubscription: async (tenantId) => {
+    const params = tenantId ? { tenantId } : {};
+    const response = await api.get('/payments/last-subscription', { params });
+    return response.data;
+  },
+
+  // Process refund (Super Admin only)
+  processRefund: async (refundData) => {
+    const response = await api.post('/payments/refund', refundData);
+    return response.data;
+  },
+
+  // Tenant Admin: Request a refund
+  requestRefund: async (data) => {
+    const response = await api.post('/payments/request-refund', data);
+    return response.data;
+  },
 };

@@ -137,19 +137,25 @@ exports.provisionDemo = asyncHandler(async (req, res) => {
     const tenantSchemaSql = fs.readFileSync(tenantSchemaPath, 'utf8');
     await client.query(tenantSchemaSql);
 
-    const userResult = await client.query(
-      `INSERT INTO users (email, password_hash, role, is_active) 
-       VALUES ($1, $2, 'admin', true) RETURNING user_id`,
-      [email, password_hash]
-    );
-
-    const userId = userResult.rows[0].user_id;
+    const firstName = name.split(' ')[0] || 'Admin';
+    const lastName = name.split(' ').slice(1).join(' ') || 'User';
 
     await client.query(
-      `INSERT INTO employees (user_id, first_name, last_name, email, hire_date, status)
-       VALUES ($1, $2, $3, $4, CURRENT_DATE, 'active')`,
-      [userId, name.split(' ')[0], name.split(' ').slice(1).join(' ') || '', email]
+      `INSERT INTO users (email, password_hash, role, first_name, last_name, is_active) 
+       VALUES ($1, $2, 'admin', $3, $4, true)`,
+      [email, password_hash, firstName, lastName]
     );
+
+    // Seed default company departments
+    try {
+      await client.query(`
+        INSERT INTO departments (department_name, description) VALUES 
+        ('Management', 'Executive and Company Management'),
+        ('Human Resources', 'HR, People Ops and Recruitment'),
+        ('Engineering', 'Product & Software Engineering'),
+        ('Sales & Marketing', 'Go-To-Market and Growth')
+      `);
+    } catch (_) {}
 
     await client.query('SET search_path TO public');
     await client.query(

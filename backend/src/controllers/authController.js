@@ -131,24 +131,14 @@ const signupCompany = asyncHandler(async (req, res) => {
       await client.query(schemaSql);
     }
 
-    // 3. Insert Admin User into tenant schema
+    // 3. Insert Admin User into tenant schema (with full user identity)
     const userRes = await client.query(
-      `INSERT INTO users (email, password_hash, role, is_active) VALUES ($1, $2, 'admin', true) RETURNING *`,
-      [emailClean, hashedPassword]
+      `INSERT INTO users (email, password_hash, role, first_name, last_name, phone, is_active) VALUES ($1, $2, 'admin', $3, $4, $5, true) RETURNING *`,
+      [emailClean, hashedPassword, firstName, lastName, phone || null]
     );
     createdUser = userRes.rows[0];
 
-    // 4. Insert Employee Profile for the Admin
-    try {
-      await client.query(
-        `INSERT INTO employees (user_id, first_name, last_name, email, position, status, hire_date) VALUES ($1, $2, $3, $4, 'Founder / HR Admin', 'active', CURRENT_DATE)`,
-        [createdUser.user_id, firstName, lastName, emailClean]
-      );
-    } catch (empErr) {
-      console.warn('Admin employee profile insert warning:', empErr.message);
-    }
-
-    // 5. Insert default company departments
+    // 4. Seed default company departments
     try {
       await client.query(`
         INSERT INTO departments (department_name, description) VALUES 
@@ -595,7 +585,31 @@ const getProfile = asyncHandler(async (req, res) => {
   }
 
   const result = await query(
-    'SELECT u.user_id, u.email, u.role, u.permissions, u.created_at, u.is_two_factor_enabled, e.* FROM users u LEFT JOIN employees e ON u.user_id = e.user_id WHERE u.user_id = $1',
+    `SELECT 
+       u.user_id, 
+       u.email, 
+       u.role, 
+       u.permissions, 
+       u.created_at, 
+       u.is_two_factor_enabled,
+       COALESCE(e.first_name, u.first_name, '') as first_name,
+       COALESCE(e.last_name, u.last_name, '') as last_name,
+       COALESCE(e.phone, u.phone, '') as phone,
+       COALESCE(e.profile_image, u.avatar, '') as profile_image,
+       e.employee_id,
+       e.department_id,
+       e.position,
+       e.hire_date,
+       e.salary,
+       e.status,
+       e.gender,
+       e.date_of_birth,
+       e.address,
+       e.about_me,
+       e.social_links
+     FROM users u 
+     LEFT JOIN employees e ON u.user_id = e.user_id 
+     WHERE u.user_id = $1`,
     [req.user.userId]
   );
 
@@ -616,11 +630,19 @@ const getProfile = asyncHandler(async (req, res) => {
       profileData.is_custom_modules = entitlement.isCustom;
 
       const tenantResult = await query(
-        'SELECT subscription_expiry FROM shared.tenants WHERE tenant_id = $1',
+        'SELECT subscription_expiry, contact_person, contact_phone FROM shared.tenants WHERE tenant_id = $1',
         [tenantId]
       );
       if (tenantResult.rows.length > 0) {
         profileData.subscription_expiry = tenantResult.rows[0].subscription_expiry;
+        if (!profileData.first_name && tenantResult.rows[0].contact_person) {
+          const names = tenantResult.rows[0].contact_person.split(' ');
+          profileData.first_name = names[0];
+          profileData.last_name = names.slice(1).join(' ');
+        }
+        if (!profileData.phone && tenantResult.rows[0].contact_phone) {
+          profileData.phone = tenantResult.rows[0].contact_phone;
+        }
       }
     } else {
       profileData.tenant_modules = ['core_hr', 'attendance', 'leaves', 'tasks', 'documents'];
@@ -671,10 +693,34 @@ const updateProfile = asyncHandler(async (req, res) => {
     });
   }
 
-  // 2. Tenant User / Admin profile update
+  // 2. Tenant User / Admin profile update - Save to users table
   const tenantId = req.headers['x-tenant-id'] || req.user.tenant_id;
   
-  // Check if an employee record exists for this user
+  await query(
+    `UPDATE users SET
+      first_name = COALESCE($1, first_name),
+      last_name = COALESCE($2, last_name),
+      phone = COALESCE($3, phone),
+      avatar = COALESCE($4, avatar),
+      updated_at = CURRENT_TIMESTAMP
+    WHERE user_id = $5`,
+    [first_name || null, last_name || null, phone || null, profile_image || null, userId]
+  );
+
+  // If this user is an admin, also sync shared.tenants contact person
+  if (tenantId && (req.user.role === 'admin' || req.user.role === 'super_admin')) {
+    const contactName = `${first_name || ''} ${last_name || ''}`.trim();
+    if (contactName) {
+      try {
+        await pool.query(
+          `UPDATE shared.tenants SET contact_person = $1, contact_phone = COALESCE($2, contact_phone) WHERE tenant_id = $3`,
+          [contactName, phone || null, tenantId]
+        );
+      } catch (_) {}
+    }
+  }
+
+  // Check if an employee record exists for this user, and sync if present
   const empCheck = await query(
     'SELECT employee_id FROM employees WHERE user_id = $1',
     [userId]
@@ -712,44 +758,21 @@ const updateProfile = asyncHandler(async (req, res) => {
       ]
     );
     updatedEmployee = updateRes.rows[0];
-  } else {
-    // If no employee record exists yet (e.g. pure tenant admin), create an executive record
-    const empInsert = await query(
-      `INSERT INTO employees 
-        (user_id, first_name, last_name, email, phone, address, gender, date_of_birth, about_me, position, status, hire_date)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'Founder / Workspace Owner', 'active', CURRENT_DATE)
-      RETURNING *`,
-      [
-        userId,
-        first_name || 'Admin',
-        last_name || 'User',
-        req.user.email,
-        phone || null,
-        address || null,
-        gender || null,
-        date_of_birth || null,
-        about_me || null
-      ]
-    );
-    updatedEmployee = empInsert.rows[0];
   }
-
-  // Update touch timestamp on users table
-  await query('UPDATE users SET updated_at = CURRENT_TIMESTAMP WHERE user_id = $1', [userId]);
 
   res.json({
     success: true,
     message: 'Profile updated successfully',
     data: {
       userId,
-      employee_id: updatedEmployee?.employee_id,
-      first_name: updatedEmployee?.first_name,
-      last_name: updatedEmployee?.last_name,
-      phone: updatedEmployee?.phone,
+      employee_id: updatedEmployee?.employee_id || null,
+      first_name: first_name || updatedEmployee?.first_name || 'Admin',
+      last_name: last_name || updatedEmployee?.last_name || 'User',
+      phone: phone || updatedEmployee?.phone || null,
       email: req.user.email,
       role: req.user.role,
-      position: updatedEmployee?.position,
-      profile_image: updatedEmployee?.profile_image
+      position: updatedEmployee?.position || 'Workspace Administrator',
+      profile_image: profile_image || updatedEmployee?.profile_image || null
     }
   });
 });

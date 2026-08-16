@@ -1,12 +1,16 @@
 -- Tenant Schema Template
 -- This SQL file is run for EACH tenant to create their isolated tables.
 
--- Users table (Authentication)
+-- Users table (Authentication & User Identity)
 CREATE TABLE IF NOT EXISTS users (
   user_id SERIAL PRIMARY KEY,
   email VARCHAR(255) UNIQUE NOT NULL,
   password_hash VARCHAR(255) NOT NULL,
   role VARCHAR(50) DEFAULT 'employee',
+  first_name VARCHAR(100),
+  last_name VARCHAR(100),
+  phone VARCHAR(50),
+  avatar VARCHAR(500),
   permissions JSONB DEFAULT '[]'::jsonb,
   is_active BOOLEAN DEFAULT true,
   two_factor_secret VARCHAR(255),

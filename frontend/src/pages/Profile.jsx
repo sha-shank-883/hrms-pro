@@ -425,7 +425,11 @@ const Profile = () => {
         return;
       }
 
-      await employeeService.updatePartial(profile.employee_id, { profile_image: photoUrl });
+      if (isOwnProfile) {
+        await authService.updateProfile({ profile_image: photoUrl });
+      } else if (profile.employee_id) {
+        await employeeService.updatePartial(profile.employee_id, { profile_image: photoUrl });
+      }
 
       setSuccess('Profile picture updated successfully!');
       loadProfile(); // Reload to show new photo

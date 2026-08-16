@@ -11,7 +11,7 @@ import {
   FaMoneyBillWave, FaLaptop, FaChartLine, FaCheckCircle, FaTimesCircle, 
   FaClock, FaTasks, FaHistory, FaExternalLinkAlt, FaGraduationCap, 
   FaLinkedin, FaTwitter, FaGithub, FaUserTie, FaIdCard, FaEdit, FaSave, 
-  FaTimes, FaShieldAlt, FaQrcode, FaKey, FaCopy, FaCheck 
+  FaTimes, FaShieldAlt, FaQrcode, FaKey, FaCopy, FaCheck, FaCrown, FaUsers 
 } from 'react-icons/fa';
 import { PERMISSION_MODULES, getAllPermissions } from '../constants/permissions';
 

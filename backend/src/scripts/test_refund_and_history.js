@@ -88,7 +88,7 @@ async function runRefundAndHistoryTests() {
   console.log('\n5. Testing processRefund (Super Admin full refund & rollback)...');
   let processRefundOutput = null;
   const processRefundReq = {
-    user: { role: 'super-admin', email: 'superadmin@hrmspro.online' },
+    user: { role: 'super_admin', isSuperAdmin: true, email: 'superadmin@hrmspro.online' },
     ip: '127.0.0.1',
     body: {
       paymentLogId: paymentLog.id,

@@ -8,7 +8,12 @@ const { getPayPalAccessToken } = require('./paypalController');
  * Get payment history for current tenant (or all/filtered for Super Admin)
  */
 const getPaymentHistory = asyncHandler(async (req, res) => {
-  const isSuperAdmin = req.user && req.user.role === 'super-admin';
+  const isSuperAdmin = Boolean(
+    req.user?.isSuperAdmin ||
+    req.user?.role === 'super_admin' ||
+    req.user?.role === 'super-admin' ||
+    (req.user?.role === 'admin' && req.user?.is_super_admin)
+  );
   const tenantId = req.query.tenantId || (req.tenant ? req.tenant.tenant_id : null);
 
   let queryText = '';
@@ -151,7 +156,12 @@ const getLastSubscription = asyncHandler(async (req, res) => {
  * Process a Payment Refund (Super Admin Only)
  */
 const processRefund = asyncHandler(async (req, res) => {
-  const isSuperAdmin = req.user && req.user.role === 'super-admin';
+  const isSuperAdmin = Boolean(
+    req.user?.isSuperAdmin ||
+    req.user?.role === 'super_admin' ||
+    req.user?.role === 'super-admin' ||
+    (req.user?.role === 'admin' && req.user?.is_super_admin)
+  );
   if (!isSuperAdmin) {
     throw new UnauthorizedError('Only Super Admin can execute payment refunds');
   }

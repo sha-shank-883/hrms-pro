@@ -69,6 +69,7 @@ This document outlines a systematic plan to test every icon, button, navigation 
 | 1.3.20 | `GET /api/tenants/billing/overview` returns platform revenue, paid subscriptions, and transaction logs | Returns summary (Total INR/USD, MRR, Paid counts) + recent payment logs [PASSED] |
 | 1.3.21 | `GET /api/tenants/:tenantId/billing-profile` returns customer contact, address, tax ID, and invoice history | Returns complete billing profile & company payment history [PASSED] |
 | 1.3.22 | `PUT /api/tenants/:tenantId/billing-profile` updates customer contact person, email, phone, and billing terms | Database updated with contact and tax credentials [PASSED] |
+| 1.3.23 | `POST /api/payments/razorpay/create-order` preserves tenant auth session on gateway error | Returns HTTP 502/400 gateway error, prevents Axios logout trigger [PASSED] |
 | 1.3.23 | `POST /api/tenants/billing/record-manual` records offline payment and auto-extends subscription | Transaction saved with invoice number, subscription expiry extended [PASSED] |
 | 1.3.24 | `GET /api/notifications/badge-counts` computes live pending counts for leaves, attendance, tasks, chat | Returns structured count object with role-based aggregation [PASSED] |
 | 1.3.25 | `GET /api/notifications` returns in-app notification feed with pagination and unread filters | Returns user notification list with unread counter [PASSED] |

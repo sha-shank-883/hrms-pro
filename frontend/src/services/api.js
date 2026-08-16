@@ -36,12 +36,19 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Unauthorized - clear token and redirect to login
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
+      const msg = error.response?.data?.message || '';
+      const url = error.config?.url || '';
+      const isAuthUrl = url.includes('/auth/') || url.includes('/profile');
+      const isTokenExpired = msg.toLowerCase().includes('token') || msg.toLowerCase().includes('access token') || msg.toLowerCase().includes('unauthorized');
 
-      // Dispatch a custom event that can be handled by React
-      window.dispatchEvent(new CustomEvent('auth:logout'));
+      // Only perform auto-logout if it is a genuine JWT auth token failure
+      if (isAuthUrl || isTokenExpired || !url.includes('/payments/')) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+
+        // Dispatch a custom event that can be handled by React
+        window.dispatchEvent(new CustomEvent('auth:logout'));
+      }
     }
     return Promise.reject(error);
   }

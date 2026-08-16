@@ -45,7 +45,8 @@ const errorHandler = (err, req, res, next) => {
 
   console.error('Unhandled error:', err);
 
-  res.status(err.statusCode || 500).json({
+  // Non-operational errors should default to 500 to avoid misinterpreting 3rd-party 401s as JWT auth failures
+  res.status(500).json({
     success: false,
     message: err.message || 'Internal server error',
     ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),

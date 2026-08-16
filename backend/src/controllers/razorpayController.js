@@ -115,7 +115,14 @@ const createRazorpayOrder = asyncHandler(async (req, res) => {
     },
   };
 
-  const order = await razorpay.orders.create(options);
+  let order;
+  try {
+    order = await razorpay.orders.create(options);
+  } catch (rzpErr) {
+    console.error('Razorpay SDK Order Creation Failed:', rzpErr?.error || rzpErr?.message || rzpErr);
+    const rzpDesc = rzpErr?.error?.description || rzpErr?.message || 'Payment gateway authentication or connection failed';
+    throw new AppError(`Razorpay Gateway Error: ${rzpDesc}`, 502);
+  }
 
   // Best-effort database logging
   try {
@@ -163,7 +170,7 @@ const verifyRazorpayPayment = asyncHandler(async (req, res) => {
 
   const keySecret = process.env.RAZORPAY_KEY_SECRET;
   if (!keySecret) {
-    throw new AppError('Razorpay secret is not configured.', 503);
+    throw new AppError('Razorpay secret is not configured on this server.', 503);
   }
 
   // Cryptographic HMAC SHA256 Signature Verification

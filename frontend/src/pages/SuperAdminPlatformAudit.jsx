@@ -268,7 +268,7 @@ const SuperAdminPlatformAudit = () => {
 
               <div>
                 <span className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider block mb-1">Payload Details (JSONB)</span>
-                <pre className="p-3 bg-neutral-900 text-emerald-400 rounded-xl font-mono text-[11px] overflow-x-auto max-h-48 custom-scrollbar">
+                <pre className="p-3 bg-primary-950/90 dark:bg-gray-950 border border-primary-900/40 text-emerald-400 rounded-xl font-mono text-[11px] overflow-x-auto max-h-48 custom-scrollbar">
                   {JSON.stringify(selectedLog.details, null, 2)}
                 </pre>
               </div>

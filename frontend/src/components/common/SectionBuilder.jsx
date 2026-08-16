@@ -241,7 +241,7 @@ const SectionBuilder = ({ sections = [], onChange }) => {
                 </button>
                 {section.showCustomCss && (
                   <textarea
-                    className="w-full font-mono text-xs bg-neutral-900 text-green-500 p-4 rounded-lg border border-neutral-800 focus:outline-none"
+                    className="w-full font-mono text-xs bg-gray-950 dark:bg-black text-emerald-400 p-4 rounded-lg border border-gray-800 focus:outline-none focus:ring-1 focus:ring-primary-500"
                     rows="6"
                     value={section.customCss || ''}
                     onChange={(e) => updateSection(index, 'customCss', e.target.value)}

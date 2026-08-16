@@ -239,7 +239,7 @@ const Login = () => {
       </div>
 
       {/* Right Image Section */}
-      <div className="hidden lg:block relative w-0 flex-1 bg-neutral-900">
+      <div className="hidden lg:block relative w-0 flex-1 bg-gradient-to-br from-primary-950 via-primary-900 to-secondary-950">
         <img
           className="absolute inset-0 h-full w-full object-cover opacity-40 mix-blend-overlay"
           src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=1920&q=80"

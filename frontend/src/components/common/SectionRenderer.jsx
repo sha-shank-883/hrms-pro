@@ -53,10 +53,10 @@ const SectionRenderer = ({ sections, layoutTemplate }) => {
                 initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeInUp} transition={{ delay: 0.2 }}
                 className="flex flex-wrap justify-center gap-4 mb-20"
               >
-                <Link to="/demo" className="bg-primary-600 text-white font-black py-5 px-10 rounded-2xl text-lg hover:bg-neutral-900 dark:hover:bg-white dark:hover:text-black transition-all shadow-2xl shadow-primary-500/20 active:scale-95">
+                <Link to="/demo" className="bg-primary-600 text-white font-black py-5 px-10 rounded-2xl text-lg hover:bg-primary-700 dark:hover:bg-primary-500 transition-all shadow-2xl shadow-primary-500/20 active:scale-95">
                   {settings?.cta_label || 'Get a Demo'}
                 </Link>
-                <Link to="/pricing" className="bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white border border-neutral-200 dark:border-neutral-800 font-black py-5 px-10 rounded-2xl text-lg hover:neutral-50 transition-all active:scale-95">
+                <Link to="/pricing" className="bg-white dark:bg-gray-900 text-neutral-900 dark:text-white border border-neutral-200 dark:border-neutral-800 font-black py-5 px-10 rounded-2xl text-lg hover:bg-neutral-50 dark:hover:bg-gray-850 transition-all active:scale-95">
                   See Pricing
                 </Link>
               </motion.div>
@@ -79,12 +79,12 @@ const SectionRenderer = ({ sections, layoutTemplate }) => {
 
       case 'VideoHero':
         return (
-          <section key={section.id} className="pt-24 pb-20 bg-neutral-900 text-white overflow-hidden relative">
+          <section key={section.id} className="pt-24 pb-20 bg-gradient-to-br from-primary-950 via-primary-900 to-gray-950 text-white overflow-hidden relative">
             {sectionStyle}
             <div className="max-w-7xl mx-auto px-6 grid lg:grid-cols-2 gap-16 items-center">
               <div>
                 <motion.h2 initial="hidden" whileInView="visible" variants={fadeInUp} className="text-4xl md:text-6xl font-black mb-6 leading-tight">{section.title}</motion.h2>
-                <motion.p initial="hidden" whileInView="visible" transition={{ delay: 0.1 }} variants={fadeInUp} className="text-xl text-neutral-400 mb-8">{section.subtitle}</motion.p>
+                <motion.p initial="hidden" whileInView="visible" transition={{ delay: 0.1 }} variants={fadeInUp} className="text-xl text-primary-100/80 mb-8">{section.subtitle}</motion.p>
                 <Link to="/demo" className="inline-flex items-center gap-3 bg-primary-600 px-8 py-4 rounded-xl font-bold hover:bg-primary-700 transition-all active:scale-95 shadow-xl shadow-primary-500/10">
                    <FaPlay size={12}/> Watch Demo Video
                 </Link>
@@ -124,7 +124,7 @@ const SectionRenderer = ({ sections, layoutTemplate }) => {
                     initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeInUp} transition={{ delay: idx * 0.1 }}
                     className="group"
                   >
-                    <div className="w-16 h-16 rounded-2xl bg-neutral-50 dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 flex items-center justify-center text-3xl mb-6 shadow-sm group-hover:bg-primary-600 group-hover:text-white transition-all duration-300">
+                    <div className="w-16 h-16 rounded-2xl bg-neutral-50 dark:bg-gray-900 border border-neutral-100 dark:border-neutral-800 flex items-center justify-center text-3xl mb-6 shadow-sm group-hover:bg-primary-600 group-hover:text-white transition-all duration-300">
                       {renderIcon(item.icon)}
                     </div>
                     <h3 className="text-2xl font-black text-neutral-900 dark:text-white mb-4 group-hover:text-primary-600 transition-colors">{item.title}</h3>
@@ -138,14 +138,14 @@ const SectionRenderer = ({ sections, layoutTemplate }) => {
 
       case 'ComparisonTable':
         return (
-          <section key={section.id} className="py-32 bg-neutral-50 dark:bg-neutral-900/50">
+          <section key={section.id} className="py-32 bg-neutral-50 dark:bg-gray-900/50">
             {sectionStyle}
             <div className="max-w-4xl mx-auto px-6">
               <div className="text-center mb-16">
                 <h2 className="text-4xl font-black text-neutral-900 dark:text-white mb-4">Why Choose Us?</h2>
                 <p className="text-neutral-500">How HRMS Pro stacks up against traditional competitors.</p>
               </div>
-              <div className="bg-white dark:bg-neutral-900 rounded-[2rem] border border-neutral-200 dark:border-neutral-800 shadow-2xl overflow-hidden">
+              <div className="bg-white dark:bg-gray-900 rounded-[2rem] border border-neutral-200 dark:border-neutral-800 shadow-2xl overflow-hidden">
                  <table className="w-full">
                    <thead>
                      <tr className="border-b border-neutral-100 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-800/50">
@@ -221,7 +221,7 @@ const SectionRenderer = ({ sections, layoutTemplate }) => {
                    <motion.div 
                     key={item.id || idx}
                     whileHover={{ scale: 1.02 }}
-                    className="p-8 bg-neutral-50 dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 rounded-3xl"
+                    className="p-8 bg-neutral-50 dark:bg-gray-900 border border-neutral-100 dark:border-neutral-800 rounded-3xl"
                    >
                      <div className="text-3xl mb-6">{renderIcon(item.icon)}</div>
                      <h4 className="text-xl font-bold dark:text-white mb-3">{item.title}</h4>
@@ -245,17 +245,17 @@ const SectionRenderer = ({ sections, layoutTemplate }) => {
 
       case 'PricingPlans':
         return (
-          <section key={section.id} className="py-32 bg-neutral-900 text-white overflow-hidden">
+          <section key={section.id} className="py-32 bg-gradient-to-br from-primary-950 via-primary-900 to-gray-950 text-white overflow-hidden">
             {sectionStyle}
             <div className="max-w-7xl mx-auto px-6">
               <div className="text-center mb-20">
                 <h2 className="text-4xl md:text-6xl font-black mb-6 tracking-tighter">{section.title || 'Simple Pricing'}</h2>
-                <p className="text-xl text-neutral-400">{section.subtitle || 'Scale your business with ease.'}</p>
+                <p className="text-xl text-primary-100/80">{section.subtitle || 'Scale your business with ease.'}</p>
               </div>
               <div className="grid lg:grid-cols-3 gap-12 max-w-6xl mx-auto">
                  {section.plans?.map((plan, idx) => (
-                   <div key={plan.id || idx} className={`p-10 rounded-[3rem] ${plan.isPopular ? 'bg-primary-600 scale-105 shadow-3xl shadow-primary-500/20 relative' : 'bg-neutral-800'} transition-all`}>
-                      {plan.isPopular && <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-white text-primary-600 px-4 py-1 rounded-full font-black text-xs uppercase">Most Popular</div>}
+                   <div key={plan.id || idx} className={`p-10 rounded-[3rem] ${plan.isPopular ? 'bg-primary-600 scale-105 shadow-3xl shadow-primary-500/20 relative' : 'bg-white/10 dark:bg-gray-800/80 backdrop-blur-md border border-white/10 dark:border-gray-700'} transition-all`}>
+                      {plan.isPopular && <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-white text-primary-600 px-4 py-1 rounded-full font-black text-xs uppercase shadow-md">Most Popular</div>}
                       <h4 className="text-2xl font-black mb-2">{plan.name}</h4>
                       <div className="flex items-baseline gap-2 mb-8">
                         <span className="text-5xl font-black">{plan.price}</span>
@@ -280,14 +280,14 @@ const SectionRenderer = ({ sections, layoutTemplate }) => {
 
       case 'ResourceLibrary':
         return (
-          <section key={section.id} className="py-24 bg-neutral-50 dark:bg-neutral-900/50">
+          <section key={section.id} className="py-24 bg-neutral-50 dark:bg-gray-900/50">
             {sectionStyle}
             <div className="max-w-7xl mx-auto px-6 text-center">
               <h2 className="text-4xl font-black mb-6">{section.title}</h2>
               <p className="text-xl text-neutral-500 mb-12 max-w-2xl mx-auto">{section.subtitle}</p>
               <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
                 {(section.items || [1,2,3,4]).map((item, idx) => (
-                  <div key={idx} className="bg-white dark:bg-neutral-900 p-6 rounded-3xl border border-neutral-200 dark:border-neutral-800 text-left hover:shadow-xl transition-all">
+                  <div key={idx} className="bg-white dark:bg-gray-900 p-6 rounded-3xl border border-neutral-200 dark:border-neutral-800 text-left hover:shadow-xl transition-all">
                     <div className="w-12 h-12 bg-primary-100 dark:bg-primary-900/30 text-primary-600 rounded-xl flex items-center justify-center mb-4">
                        <FaBookOpen />
                     </div>

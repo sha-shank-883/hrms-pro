@@ -1,19 +1,38 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { authService } from '../services/auth';
+import api from '../services/api';
 
 const Signup = () => {
   const [formData, setFormData] = useState({
     companyName: '',
     fullName: '',
     email: '',
-    password: ''
+    password: '',
+    hp_website_contact: '', // Invisible honeypot
+    _bot_challenge: ''
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [pendingApproval, setPendingApproval] = useState(false);
   const [success, setSuccess] = useState(false);
   
   const navigate = useNavigate();
+
+  useEffect(() => {
+    // Fetch HMAC time-bound bot challenge token on component mount
+    const fetchChallenge = async () => {
+      try {
+        const res = await api.get('/auth/challenge');
+        if (res.data?.challenge) {
+          setFormData((prev) => ({ ...prev, _bot_challenge: res.data.challenge }));
+        }
+      } catch (err) {
+        console.warn('Challenge fetch skipped:', err.message);
+      }
+    };
+    fetchChallenge();
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -23,10 +42,14 @@ const Signup = () => {
     try {
       const res = await authService.signup(formData);
       if (res.success) {
-        setSuccess(true);
-        setTimeout(() => {
-          window.location.href = '/dashboard';
-        }, 2000);
+        if (res.pending_approval) {
+          setPendingApproval(true);
+        } else {
+          setSuccess(true);
+          setTimeout(() => {
+            window.location.href = '/dashboard';
+          }, 2000);
+        }
       } else {
         throw new Error(res.message || 'Failed to create account');
       }
@@ -37,15 +60,49 @@ const Signup = () => {
     }
   };
 
+  // State 1: Pending Super Admin Approval Screen
+  if (pendingApproval) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-neutral-50 px-4">
+        <div className="max-w-md w-full bg-white p-8 rounded-3xl shadow-xl text-center border border-neutral-100 animate-in fade-in zoom-in duration-200">
+          <div className="w-20 h-20 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-6">
+            <svg className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <h2 className="text-2xl font-black text-neutral-900 mb-2">Registration Received!</h2>
+          <span className="inline-block px-3 py-1 bg-amber-50 text-amber-800 text-xs font-bold rounded-full mb-4 border border-amber-200">
+            ⏳ Pending Super Admin Approval
+          </span>
+          <p className="text-sm text-neutral-600 mb-6 leading-relaxed">
+            Thank you for registering <strong>{formData.companyName}</strong>. Your workspace is currently being reviewed by our security team.
+          </p>
+          <div className="p-4 rounded-2xl bg-neutral-50 border border-neutral-200 text-xs text-neutral-500 text-left mb-6 space-y-1.5">
+            <p><strong>Admin Contact:</strong> {formData.email}</p>
+            <p><strong>Company:</strong> {formData.companyName}</p>
+            <p><strong>Next Step:</strong> You will receive an activation email once your workspace is approved.</p>
+          </div>
+          <Link
+            to="/login"
+            className="w-full inline-block py-3 px-4 rounded-xl text-sm font-bold text-white bg-primary-600 hover:bg-primary-700 transition-all shadow-sm"
+          >
+            Back to Sign In
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  // State 2: Instant Trial Activation Screen
   if (success) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-neutral-50 px-4">
-        <div className="max-w-md w-full bg-white p-8 rounded-3xl shadow-xl text-center border border-neutral-100">
+        <div className="max-w-md w-full bg-white p-8 rounded-3xl shadow-xl text-center border border-neutral-100 animate-in fade-in zoom-in duration-200">
           <div className="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-6">
             <svg className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
           </div>
           <h2 className="text-3xl font-extrabold text-neutral-900 mb-4">Account Created!</h2>
-          <p className="text-neutral-600 mb-8">We've set up your workspace. You will be redirected to the login page momentarily.</p>
+          <p className="text-neutral-600 mb-8">We've set up your workspace. Redirecting you to your dashboard...</p>
           <div className="animate-pulse flex justify-center">
             <div className="h-2 w-24 bg-primary-200 rounded-full overflow-hidden">
               <div className="h-full bg-primary-600 w-1/2 rounded-full"></div>
@@ -77,6 +134,18 @@ const Signup = () => {
           <div className="mt-8">
             <form onSubmit={handleSubmit} className="space-y-5">
               
+              {/* Invisible Honeypot field for bot trapping */}
+              <div style={{ display: 'none' }} aria-hidden="true">
+                <input
+                  type="text"
+                  name="hp_website_contact"
+                  tabIndex="-1"
+                  autoComplete="off"
+                  value={formData.hp_website_contact}
+                  onChange={(e) => setFormData({ ...formData, hp_website_contact: e.target.value })}
+                />
+              </div>
+
               <div>
                 <label className="block text-sm font-medium text-neutral-700">Company Name</label>
                 <div className="mt-1">
@@ -86,6 +155,7 @@ const Signup = () => {
                     onChange={(e) => setFormData({...formData, companyName: e.target.value})}
                     placeholder="Acme Corp"
                     required
+                    maxLength={100}
                     className="appearance-none block w-full px-4 py-3 border border-neutral-300 rounded-xl shadow-sm placeholder-neutral-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm transition-shadow"
                   />
                 </div>
@@ -100,6 +170,7 @@ const Signup = () => {
                     onChange={(e) => setFormData({...formData, fullName: e.target.value})}
                     placeholder="John Doe"
                     required
+                    maxLength={100}
                     className="appearance-none block w-full px-4 py-3 border border-neutral-300 rounded-xl shadow-sm placeholder-neutral-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm transition-shadow"
                   />
                 </div>
@@ -114,6 +185,7 @@ const Signup = () => {
                     onChange={(e) => setFormData({...formData, email: e.target.value})}
                     placeholder="john@acmecorp.com"
                     required
+                    maxLength={120}
                     className="appearance-none block w-full px-4 py-3 border border-neutral-300 rounded-xl shadow-sm placeholder-neutral-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm transition-shadow"
                   />
                 </div>
@@ -128,13 +200,15 @@ const Signup = () => {
                     onChange={(e) => setFormData({...formData, password: e.target.value})}
                     placeholder="Create a strong password"
                     required
+                    minLength={6}
+                    maxLength={100}
                     className="appearance-none block w-full px-4 py-3 border border-neutral-300 rounded-xl shadow-sm placeholder-neutral-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm transition-shadow"
                   />
                 </div>
               </div>
 
               {error && (
-                <div className="p-3 bg-red-50 border border-red-200 text-red-600 rounded-lg text-sm text-center">
+                <div className="p-3 bg-red-50 border border-red-200 text-red-600 rounded-xl text-sm text-center">
                   {error}
                 </div>
               )}

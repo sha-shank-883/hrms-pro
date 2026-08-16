@@ -2,15 +2,16 @@ const express = require('express');
 const router = express.Router();
 const leadController = require('../controllers/leadController');
 const { authenticateToken: protect, authorizeRole: authorize } = require('../middleware/auth');
+const { demoLeadRateLimiter, verifyBotChallenge } = require('../middleware/securityGuards');
 
 // Public route for demo sign up
-router.post('/demo', leadController.applyForDemo);
+router.post('/demo', demoLeadRateLimiter, verifyBotChallenge, leadController.applyForDemo);
 
 // Public route for lead magnet download
-router.post('/lead-magnet', leadController.downloadLeadMagnet);
+router.post('/lead-magnet', demoLeadRateLimiter, verifyBotChallenge, leadController.downloadLeadMagnet);
 
 // Public route for contact form inquiry
-router.post('/contact', leadController.submitContactInquiry);
+router.post('/contact', demoLeadRateLimiter, verifyBotChallenge, leadController.submitContactInquiry);
 
 // Protected Admin Route to view all leads
 // Only accessible by superadmin or admin on the default tenant (if applicable)

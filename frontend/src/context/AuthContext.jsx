@@ -54,11 +54,8 @@ export const AuthProvider = ({ children }) => {
     return () => window.removeEventListener('auth:logout', handleLogout);
   }, []);
 
-  const login = async (email, password) => {
-    
-    
-
-    const data = await authService.login(email, password);
+  const login = async (email, password, extra = {}) => {
+    const data = await authService.login(email, password, extra);
     
 
     if (data.requires2FA) {

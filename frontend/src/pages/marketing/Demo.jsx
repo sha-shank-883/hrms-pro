@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import api from '../../services/api';
 import { AnimatedSection } from '../../components/common/AnimatedSection';
 import SEO from '../../components/common/SEO';
@@ -16,10 +16,24 @@ const Demo = () => {
   const { t } = useWebsiteBuilder();
   const [formData, setFormData] = useState({
     name: '', email: '', company_name: '', phone: '', password: '', employees: '1-50', job_title: '',
+    hp_website_contact: '',
+    _bot_challenge: ''
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+
+  useEffect(() => {
+    const fetchChallenge = async () => {
+      try {
+        const res = await api.get('/auth/challenge');
+        if (res.data?.challenge) {
+          setFormData(prev => ({ ...prev, _bot_challenge: res.data.challenge }));
+        }
+      } catch (_) {}
+    };
+    fetchChallenge();
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -93,6 +107,18 @@ const Demo = () => {
 
         <div className="bg-white dark:bg-gray-900 p-8 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-800">
           <form onSubmit={handleSubmit} className="space-y-5">
+            {/* Invisible Honeypot field for bot trapping */}
+            <div style={{ display: 'none' }} aria-hidden="true">
+              <input
+                type="text"
+                name="hp_website_contact"
+                tabIndex="-1"
+                autoComplete="off"
+                value={formData.hp_website_contact}
+                onChange={(e) => setFormData({ ...formData, hp_website_contact: e.target.value })}
+              />
+            </div>
+
             {error && (
               <div className="p-4 bg-red-50 dark:bg-red-500/10 border border-red-100 dark:border-red-500/20 rounded-xl text-sm text-red-600 dark:text-red-400 font-medium">
                 {error}

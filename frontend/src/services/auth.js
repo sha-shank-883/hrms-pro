@@ -1,8 +1,8 @@
 import api from './api';
 
 export const authService = {
-  login: async (email, password) => {
-    const response = await api.post('/auth/login', { email, password });
+  login: async (email, password, extra = {}) => {
+    const response = await api.post('/auth/login', { email, password, ...extra });
     if (response.data.success && !response.data.requires2FA) {
       localStorage.setItem('token', response.data.data.token);
       localStorage.setItem('user', JSON.stringify(response.data.data.user));

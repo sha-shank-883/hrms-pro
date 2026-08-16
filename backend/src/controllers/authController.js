@@ -9,6 +9,17 @@ const QRCode = require('qrcode');
 const asyncHandler = require('../utils/asyncHandler');
 const { getTenantActiveModules } = require('../utils/moduleEntitlements');
 const { NotFoundError, UnauthorizedError, ForbiddenError, ValidationError, ConflictError } = require('../utils/errors');
+const {
+  generateChallengeToken,
+  checkAccountLockout,
+  trackFailedLogin,
+  recordSuccessfulLogin
+} = require('../middleware/securityGuards');
+
+const getChallengeToken = asyncHandler(async (req, res) => {
+  const challenge = generateChallengeToken();
+  res.json({ success: true, challenge });
+});
 
 const register = asyncHandler(async (req, res) => {
   const { email, password, role } = req.body;
@@ -78,12 +89,12 @@ const signupCompany = asyncHandler(async (req, res) => {
 
   // 2. Check if email already registered across active tenant schemas
   try {
-    const tenantsList = await pool.query('SELECT tenant_id FROM shared.tenants WHERE status = $1', ['active']);
+    const tenantsList = await pool.query('SELECT tenant_id FROM shared.tenants WHERE status IN ($1, $2)', ['active', 'pending_approval']);
     for (const t of tenantsList.rows) {
       try {
         const uCheck = await pool.query(`SELECT user_id FROM "${t.tenant_id}".users WHERE email = $1`, [emailClean]);
         if (uCheck.rows.length > 0) {
-          throw new ConflictError('An account with this email already exists. Please log in.');
+          throw new ConflictError('An account with this email address already exists. Please log in.');
         }
       } catch (_) {}
     }
@@ -91,9 +102,12 @@ const signupCompany = asyncHandler(async (req, res) => {
     if (err instanceof ConflictError) throw err;
   }
 
-  // 3. Generate unique tenant_id
-  let baseId = 'tenant_' + companyName.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 30);
-  if (!baseId || baseId === 'tenant_') baseId = 'tenant_company';
+  // 3. Generate unique tenant_id (slug sanitization)
+  let cleanSlug = companyName.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 30);
+  const reservedSlugs = ['shared', 'public', 'admin', 'system', 'api', 'dashboard', 'pg_catalog', 'information_schema', 'root', 'postgres'];
+  if (!cleanSlug || reservedSlugs.includes(cleanSlug)) cleanSlug = 'company';
+
+  let baseId = 'tenant_' + cleanSlug;
   let tenantId = baseId;
   let suffix = 1;
 
@@ -103,7 +117,20 @@ const signupCompany = asyncHandler(async (req, res) => {
     tenantId = `${baseId}${suffix++}`;
   }
 
-  // 4. Calculate 14-day Free Trial expiry
+  // 4. Check Platform Approval Policy
+  let requireApproval = true;
+  try {
+    const settingRes = await pool.query(
+      "SELECT value FROM shared.platform_settings WHERE key = 'require_signup_approval'"
+    );
+    if (settingRes.rows.length > 0) {
+      requireApproval = settingRes.rows[0].value === 'true';
+    }
+  } catch (_) {}
+
+  const initialStatus = requireApproval ? 'pending_approval' : 'active';
+
+  // 5. Calculate 14-day Free Trial expiry
   const expiryDate = new Date();
   expiryDate.setDate(expiryDate.getDate() + 14);
 
@@ -115,7 +142,7 @@ const signupCompany = asyncHandler(async (req, res) => {
 
   let createdUser = null;
 
-  // 5. Transaction to create tenant schema, tables, admin user, employee, and initial settings
+  // 6. Transaction to create tenant schema, tables, admin user, employee, and initial settings
   const fs = require('fs');
   const path = require('path');
 
@@ -151,21 +178,12 @@ const signupCompany = asyncHandler(async (req, res) => {
       console.warn('Default departments seed warning:', deptErr.message);
     }
 
-    // 6. Insert into shared.tenants
+    // 5. Insert into shared.tenants
     await client.query(`
       INSERT INTO shared.tenants 
         (tenant_id, name, status, subscription_plan, subscription_expiry, employee_limit, contact_person, contact_email, contact_phone)
-      VALUES ($1, $2, 'active', 'free', $3, 15, $4, $5, $6)
-    `, [tenantId, companyName.trim(), expiryDate, fullName.trim(), emailClean, phone || null]);
-  });
-
-  // 6. Generate Token
-  const token = generateToken({
-    user_id: createdUser.user_id,
-    userId: createdUser.user_id,
-    email: createdUser.email,
-    role: 'admin',
-    tenant_id: tenantId
+      VALUES ($1, $2, $3, 'free', $4, 15, $5, $6, $7)
+    `, [tenantId, companyName.trim(), initialStatus, expiryDate, fullName.trim(), emailClean, phone || null]);
   });
 
   const entitlement = await getTenantActiveModules(tenantId);
@@ -175,13 +193,40 @@ const signupCompany = asyncHandler(async (req, res) => {
     req.io.emit('notification:new', {
       id: `tenant_${tenantId}`,
       module: 'tenants',
-      title: `New Company Signed Up: ${companyName}`,
-      message: `${fullName} (${emailClean}) started a 14-day free trial.`,
+      title: requireApproval 
+        ? `New Company Pending Approval: ${companyName}` 
+        : `New Company Signed Up: ${companyName}`,
+      message: requireApproval 
+        ? `${fullName} (${emailClean}) registered ${companyName} and is awaiting review.` 
+        : `${fullName} (${emailClean}) started a 14-day free trial.`,
       action_url: '/super-admin',
       created_at: new Date()
     });
     req.io.emit('dashboard_update');
   }
+
+  // 8. If approval is required, return pending state response
+  if (requireApproval) {
+    return res.status(201).json({
+      success: true,
+      pending_approval: true,
+      message: 'Your registration was submitted successfully! It is currently awaiting Super Admin review and approval. You will receive an email once activated.',
+      data: {
+        tenantId,
+        companyName,
+        status: 'pending_approval'
+      }
+    });
+  }
+
+  // If instant approval enabled, generate token and proceed
+  const token = generateToken({
+    user_id: createdUser.user_id,
+    userId: createdUser.user_id,
+    email: createdUser.email,
+    role: 'admin',
+    tenant_id: tenantId
+  });
 
   res.status(201).json({
     success: true,
@@ -211,7 +256,17 @@ const signupCompany = asyncHandler(async (req, res) => {
 
 const login = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
-  const emailClean = email.trim().toLowerCase();
+  const emailClean = (email || '').trim().toLowerCase();
+
+  // 0. Anti-Brute-Force Account Lockout Check
+  const lockout = checkAccountLockout(emailClean);
+  if (lockout.isLocked) {
+    return res.status(429).json({
+      success: false,
+      locked: true,
+      message: lockout.message
+    });
+  }
 
   // 1. Check Global Super Admin Table First
   try {
@@ -225,8 +280,11 @@ const login = asyncHandler(async (req, res) => {
       const isPasswordValid = await bcrypt.compare(password, superAdmin.password_hash);
 
       if (!isPasswordValid) {
-        throw new UnauthorizedError('Invalid credentials');
+        trackFailedLogin(emailClean, req.ip);
+        throw new UnauthorizedError('Invalid email or password');
       }
+
+      recordSuccessfulLogin(emailClean);
 
       if (superAdmin.is_2fa_enabled) {
         const tempToken = generateToken({ ...superAdmin, role: 'super_admin', isSuperAdmin: true, is2FAPending: true }, '5m');
@@ -290,7 +348,7 @@ const login = asyncHandler(async (req, res) => {
     } catch (_) {}
   }
 
-  // Fallback: If not found or no tenant header, search all active tenants
+  // Fallback: If not found or no tenant header, search active tenants
   if (!user) {
     const tenantsList = await pool.query(
       'SELECT tenant_id FROM shared.tenants WHERE status = $1 ORDER BY created_at DESC',
@@ -314,7 +372,7 @@ const login = asyncHandler(async (req, res) => {
     }
   }
 
-  // 3. Auto-Restoration Fallback: Check if this email is the Owner / Contact Person of an active tenant whose admin was deleted
+  // 3. Auto-Restoration Fallback: Check if this email is the Owner / Contact Person of an active tenant
   if (!user) {
     try {
       const ownerTenantRes = await pool.query(
@@ -328,8 +386,6 @@ const login = asyncHandler(async (req, res) => {
 
       if (ownerTenantRes.rows.length > 0) {
         const t = ownerTenantRes.rows[0];
-        
-        // Check if demo request has their password hash
         const demoRes = await pool.query(
           `SELECT password_hash FROM shared.demo_requests WHERE LOWER(email) = LOWER($1) ORDER BY id DESC LIMIT 1`,
           [emailClean]
@@ -353,7 +409,6 @@ const login = asyncHandler(async (req, res) => {
           const firstName = names[0];
           const lastName = names.slice(1).join(' ') || 'Admin';
 
-          // Restore Admin User into tenant schema
           const restoreRes = await pool.query(
             `INSERT INTO "${t.tenant_id}".users 
               (email, password_hash, role, first_name, last_name, phone, is_active)
@@ -372,15 +427,85 @@ const login = asyncHandler(async (req, res) => {
     }
   }
 
+  // 4. Check if email belongs to a pending or suspended tenant
   if (!user) {
+    try {
+      const tenantStatusCheck = await pool.query(
+        `SELECT name, status, tenant_id FROM shared.tenants 
+         WHERE LOWER(contact_email) = LOWER($1) OR tenant_id = $2
+         ORDER BY created_at DESC LIMIT 1`,
+        [emailClean, resolvedTenantId || '']
+      );
+      if (tenantStatusCheck.rows.length > 0) {
+        const tStatus = tenantStatusCheck.rows[0];
+        if (tStatus.status === 'pending_approval') {
+          trackFailedLogin(emailClean, req.ip);
+          return res.status(403).json({
+            success: false,
+            pending_approval: true,
+            message: `Your company workspace "${tStatus.name}" is awaiting Super Admin review and approval. You will receive an email once activated.`
+          });
+        }
+        if (tStatus.status === 'suspended') {
+          trackFailedLogin(emailClean, req.ip);
+          return res.status(403).json({
+            success: false,
+            suspended: true,
+            message: `Your company workspace "${tStatus.name}" is currently suspended. Please contact platform support.`
+          });
+        }
+        if (tStatus.status === 'rejected') {
+          trackFailedLogin(emailClean, req.ip);
+          return res.status(403).json({
+            success: false,
+            rejected: true,
+            message: `Your organization registration for "${tStatus.name}" was declined.`
+          });
+        }
+      }
+    } catch (_) {}
+
+    // Constant-time dummy compare for timing attack prevention
+    const DUMMY_HASH = '$2a$10$e8w.oB1a5929U32u8bQW2uYfGv1f.Qf2rG8mG6tUqU5X0lQeW8q7i';
+    await bcrypt.compare(password, DUMMY_HASH).catch(() => {});
+    trackFailedLogin(emailClean, req.ip);
     throw new UnauthorizedError('Invalid email or password');
   }
 
   const isPasswordValid = await bcrypt.compare(password, user.password_hash);
 
   if (!isPasswordValid) {
-    throw new UnauthorizedError('Invalid credentials');
+    trackFailedLogin(emailClean, req.ip);
+    throw new UnauthorizedError('Invalid email or password');
   }
+
+  // Check if active tenant is suspended or pending
+  try {
+    const tenantCheck = await pool.query(
+      'SELECT status, name FROM shared.tenants WHERE tenant_id = $1',
+      [resolvedTenantId]
+    );
+    if (tenantCheck.rows.length > 0) {
+      const tState = tenantCheck.rows[0];
+      if (tState.status === 'pending_approval') {
+        return res.status(403).json({
+          success: false,
+          pending_approval: true,
+          message: `Your company workspace "${tState.name}" is awaiting Super Admin approval.`
+        });
+      }
+      if (tState.status === 'suspended') {
+        return res.status(403).json({
+          success: false,
+          suspended: true,
+          message: `Your company workspace "${tState.name}" is currently suspended.`
+        });
+      }
+    }
+  } catch (_) {}
+
+  // Successful login -> clear failed attempts
+  recordSuccessfulLogin(emailClean);
 
   if (user.is_two_factor_enabled) {
     const tempToken = generateToken({ ...user, tenant_id: resolvedTenantId, is2FAPending: true }, '5m');
@@ -1174,6 +1299,7 @@ const resetPassword = asyncHandler(async (req, res) => {
 });
 
 module.exports = {
+  getChallengeToken,
   register,
   signupCompany,
   login,

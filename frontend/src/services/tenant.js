@@ -171,6 +171,26 @@ export const tenantService = {
   triggerAllTenantBackups: async () => {
     const response = await api.post('/tenants/backups/trigger-all');
     return response.data;
+  },
+
+  approveTenant: async (tenantId) => {
+    const response = await api.post(`/tenants/${tenantId}/approve`);
+    return response.data;
+  },
+
+  rejectTenant: async (tenantId, reason) => {
+    const response = await api.post(`/tenants/${tenantId}/reject`, { reason });
+    return response.data;
+  },
+
+  getPlatformSettings: async () => {
+    const response = await api.get('/tenants/platform-settings');
+    return response.data;
+  },
+
+  updatePlatformSettings: async (settings) => {
+    const response = await api.put('/tenants/platform-settings', { settings });
+    return response.data;
   }
 };
 

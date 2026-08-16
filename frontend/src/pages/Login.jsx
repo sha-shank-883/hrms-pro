@@ -2,16 +2,20 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { authService } from '../services';
+import api from '../services/api';
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [tenantId, setTenantId] = useState('');
   const [error, setError] = useState('');
+  const [errorDetails, setErrorDetails] = useState(null);
   const [loading, setLoading] = useState(false);
   const [requires2FA, setRequires2FA] = useState(false);
   const [otp, setOtp] = useState('');
   const [tempUserId, setTempUserId] = useState(null);
+  const [honeypot, setHoneypot] = useState('');
+  const [botChallenge, setBotChallenge] = useState('');
 
   const { login, isAuthenticated } = useAuth();
   const navigate = useNavigate();
@@ -26,11 +30,23 @@ const Login = () => {
     } else {
       setTenantId('tenant_default');
     }
+
+    // Fetch challenge token
+    const fetchChallenge = async () => {
+      try {
+        const res = await api.get('/auth/challenge');
+        if (res.data?.challenge) {
+          setBotChallenge(res.data.challenge);
+        }
+      } catch (_) {}
+    };
+    fetchChallenge();
   }, [isAuthenticated, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setErrorDetails(null);
     setLoading(true);
 
     try {
@@ -41,7 +57,10 @@ const Login = () => {
         await authService.verify2FALogin(tempUserId, otp);
         window.location.href = '/dashboard';
       } else {
-        const response = await login(email, password);
+        const response = await login(email, password, {
+          hp_website_contact: honeypot,
+          _bot_challenge: botChallenge
+        });
         if (response.requires2FA) {
           setRequires2FA(true);
           setTempUserId(response.userId);
@@ -52,7 +71,22 @@ const Login = () => {
       }
     } catch (err) {
       console.error(err);
-      setError(err.response?.data?.message || 'Login failed. Please try again.');
+      const data = err.response?.data;
+      if (data?.pending_approval) {
+        setErrorDetails({
+          type: 'pending',
+          title: 'Workspace Pending Approval',
+          message: data.message || 'Your company workspace is currently awaiting Super Admin review.'
+        });
+      } else if (data?.locked) {
+        setErrorDetails({
+          type: 'locked',
+          title: 'Account Temporarily Locked',
+          message: data.message || 'Too many failed login attempts. Please wait 15 minutes before trying again.'
+        });
+      } else {
+        setError(data?.message || err.message || 'Login failed. Please verify your credentials.');
+      }
     } finally {
       setLoading(false);
     }
@@ -77,6 +111,18 @@ const Login = () => {
 
           <div className="mt-8">
             <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Invisible Honeypot field for bot trapping */}
+              <div style={{ display: 'none' }} aria-hidden="true">
+                <input
+                  type="text"
+                  name="hp_website_contact"
+                  tabIndex="-1"
+                  autoComplete="off"
+                  value={honeypot}
+                  onChange={(e) => setHoneypot(e.target.value)}
+                />
+              </div>
+
               {!requires2FA ? (
                 <>
                   <div>
@@ -88,6 +134,7 @@ const Login = () => {
                         onChange={(e) => setTenantId(e.target.value)}
                         placeholder="e.g., tenant_default"
                         required
+                        maxLength={60}
                         className="appearance-none block w-full px-4 py-3 border border-neutral-300 rounded-xl shadow-sm placeholder-neutral-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm transition-shadow"
                       />
                     </div>
@@ -102,6 +149,7 @@ const Login = () => {
                         onChange={(e) => setEmail(e.target.value)}
                         placeholder="admin@hrmspro.com"
                         required
+                        maxLength={120}
                         className="appearance-none block w-full px-4 py-3 border border-neutral-300 rounded-xl shadow-sm placeholder-neutral-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm transition-shadow"
                       />
                     </div>
@@ -123,6 +171,7 @@ const Login = () => {
                         onChange={(e) => setPassword(e.target.value)}
                         placeholder="••••••••"
                         required
+                        maxLength={100}
                         className="appearance-none block w-full px-4 py-3 border border-neutral-300 rounded-xl shadow-sm placeholder-neutral-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm transition-shadow"
                       />
                     </div>
@@ -146,8 +195,22 @@ const Login = () => {
                 </div>
               )}
 
+              {errorDetails && (
+                <div className={`p-4 rounded-xl text-sm border ${
+                  errorDetails.type === 'pending'
+                    ? 'bg-amber-50 border-amber-200 text-amber-900'
+                    : 'bg-red-50 border-red-200 text-red-900'
+                }`}>
+                  <div className="flex items-center gap-2 font-bold mb-1">
+                    <span>{errorDetails.type === 'pending' ? '⏳' : '🔒'}</span>
+                    <span>{errorDetails.title}</span>
+                  </div>
+                  <p className="text-xs leading-relaxed opacity-90">{errorDetails.message}</p>
+                </div>
+              )}
+
               {error && (
-                <div className="p-3 bg-red-50 border border-red-200 text-red-600 rounded-lg text-sm text-center">
+                <div className="p-3 bg-red-50 border border-red-200 text-red-600 rounded-xl text-sm text-center">
                   {error}
                 </div>
               )}

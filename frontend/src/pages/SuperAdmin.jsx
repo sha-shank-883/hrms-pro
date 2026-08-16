@@ -447,6 +447,33 @@ const SuperAdmin = () => {
         }
     };
 
+    const handleApproveTenant = async (tenant) => {
+        if (!window.confirm(`Approve and activate workspace for "${tenant.name}" (${tenant.tenant_id})?`)) return;
+        try {
+            setError('');
+            setSuccess('');
+            const res = await tenantService.approveTenant(tenant.tenant_id);
+            setSuccess(res.message || `Tenant "${tenant.name}" approved successfully!`);
+            loadData();
+        } catch (err) {
+            setError(err.response?.data?.message || 'Failed to approve tenant');
+        }
+    };
+
+    const handleRejectTenant = async (tenant) => {
+        const reason = window.prompt(`Are you sure you want to decline registration for "${tenant.name}"? Reason (optional):`);
+        if (reason === null) return;
+        try {
+            setError('');
+            setSuccess('');
+            const res = await tenantService.rejectTenant(tenant.tenant_id, reason);
+            setSuccess(res.message || `Tenant "${tenant.name}" declined`);
+            loadData();
+        } catch (err) {
+            setError(err.response?.data?.message || 'Failed to decline tenant');
+        }
+    };
+
     const handleRestoreBackup = (tenant) => {
         setRestoreTargetTenant(tenant);
         restoreFileInputRef.current.value = '';
@@ -661,6 +688,31 @@ const SuperAdmin = () => {
                 </div>
             </div>
 
+            {/* Pending Approvals Callout Banner */}
+            {tenants.filter(t => t.status === 'pending_approval').length > 0 && (
+                <div className="mb-6 p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex flex-col sm:flex-row items-center justify-between gap-3 animate-in fade-in">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2.5 rounded-xl bg-amber-500 text-white font-bold shrink-0">
+                            ⏳
+                        </div>
+                        <div>
+                            <h4 className="text-sm font-bold text-amber-900 dark:text-amber-200">
+                                {tenants.filter(t => t.status === 'pending_approval').length} Company Registrations Awaiting Super Admin Approval
+                            </h4>
+                            <p className="text-xs text-amber-800/80 dark:text-amber-300/80 mt-0.5">
+                                Review new self-serve signups to activate their free trial workspace and email credentials.
+                            </p>
+                        </div>
+                    </div>
+                    <button
+                        onClick={() => setFilterStatus('pending_approval')}
+                        className="btn btn-xs bg-amber-600 hover:bg-amber-700 text-white border-0 font-bold px-3 py-1.5 rounded-xl shrink-0"
+                    >
+                        Filter Pending ({tenants.filter(t => t.status === 'pending_approval').length})
+                    </button>
+                </div>
+            )}
+
             {/* Tenants List Table */}
             <div className="card p-0 overflow-hidden border border-neutral-200 shadow-xs rounded-2xl">
                 <div className="p-4 border-b border-neutral-100 flex flex-col sm:flex-row justify-between items-center gap-3 bg-neutral-50/60">
@@ -670,11 +722,12 @@ const SuperAdmin = () => {
                     </div>
                     <div className="flex items-center gap-2.5 w-full sm:w-auto">
                         <select
-                            className="form-input py-1 text-xs"
+                            className="form-input py-1 text-xs font-semibold"
                             value={filterStatus}
                             onChange={(e) => setFilterStatus(e.target.value)}
                         >
                             <option value="all">All Statuses</option>
+                            <option value="pending_approval">⏳ Pending Approval ({tenants.filter(t => t.status === 'pending_approval').length})</option>
                             <option value="active">Active</option>
                             <option value="inactive">Inactive</option>
                             <option value="suspended">Suspended</option>
@@ -724,11 +777,17 @@ const SuperAdmin = () => {
                                     const hasCustom = tenant.custom_modules && Array.isArray(tenant.custom_modules) && tenant.custom_modules.length > 0;
                                     const planConfig = plans.find(p => p.plan_id === tenant.subscription_plan) || {};
                                     const modCount = hasCustom ? tenant.custom_modules.length : (planConfig.modules?.length || 5);
+                                    const isPending = tenant.status === 'pending_approval';
 
                                     return (
-                                        <tr key={tenant.tenant_id} className="hover:bg-neutral-50/70 transition-colors">
+                                        <tr key={tenant.tenant_id} className={`hover:bg-neutral-50/70 transition-colors ${isPending ? 'bg-amber-50/30' : ''}`}>
                                             <td>
-                                                <div className="font-bold text-neutral-900 text-xs">{tenant.name}</div>
+                                                <div className="font-bold text-neutral-900 text-xs flex items-center gap-1.5">
+                                                    {tenant.name}
+                                                    {isPending && (
+                                                        <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping" title="Pending Approval"></span>
+                                                    )}
+                                                </div>
                                                 <div className="text-[11px] text-neutral-500 flex items-center gap-2 mt-0.5">
                                                     {tenant.contact_person && (
                                                         <span className="font-medium text-neutral-700">{tenant.contact_person}</span>
@@ -742,10 +801,17 @@ const SuperAdmin = () => {
                                                 <span className="bg-neutral-100 px-2 py-0.5 rounded text-[11px] font-semibold">{tenant.tenant_id}</span>
                                             </td>
                                             <td>
-                                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${tenant.status === 'active' ? 'bg-emerald-100 text-emerald-800' : 'bg-neutral-100 text-neutral-600'
+                                                {isPending ? (
+                                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-100 text-amber-800 border border-amber-300">
+                                                        ⏳ Pending Review
+                                                    </span>
+                                                ) : (
+                                                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                                        tenant.status === 'active' ? 'bg-emerald-100 text-emerald-800' : 'bg-neutral-100 text-neutral-600'
                                                     }`}>
-                                                    {tenant.status}
-                                                </span>
+                                                        {tenant.status}
+                                                    </span>
+                                                )}
                                             </td>
                                             <td>
                                                 <div className="flex flex-col items-start">
@@ -779,6 +845,25 @@ const SuperAdmin = () => {
                                             </td>
                                             <td className="text-right">
                                                 <div className="flex justify-end gap-1">
+                                                    {isPending && (
+                                                        <>
+                                                            <button
+                                                                onClick={() => handleApproveTenant(tenant)}
+                                                                className="btn btn-primary bg-emerald-600 hover:bg-emerald-700 border-emerald-600 text-white btn-xs text-xs font-bold shadow-xs"
+                                                                title="Approve registration and activate 14-day free trial"
+                                                            >
+                                                                <CheckCircleIcon className="w-3.5 h-3.5 mr-0.5" />
+                                                                Approve
+                                                            </button>
+                                                            <button
+                                                                onClick={() => handleRejectTenant(tenant)}
+                                                                className="btn btn-secondary text-rose-600 hover:bg-rose-50 border-rose-200 btn-xs text-xs"
+                                                                title="Decline registration request"
+                                                            >
+                                                                <XCircleIcon className="w-3.5 h-3.5" />
+                                                            </button>
+                                                        </>
+                                                    )}
                                                     <button
                                                         onClick={() => openManageModal(tenant, 'billing')}
                                                         className="btn btn-secondary btn-xs text-emerald-700 hover:text-emerald-800 text-xs"

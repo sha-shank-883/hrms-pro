@@ -1,5 +1,3 @@
-const express = require('express');
-const router = express.Router();
 const { 
   createTenant, getAllTenants, updateTenant, resetTenantAdminPassword, deleteTenant, 
   getBiometricDevices, registerBiometricDevice, deleteBiometricDevice, impersonateTenantAdmin, 
@@ -11,9 +9,14 @@ const {
   getActiveBroadcasts, getAllBroadcasts, createBroadcast, updateBroadcast, deleteBroadcast,
   getPlatformAuditLogs,
   getSystemHealthDiagnostics,
-  getBackupArchives, triggerAllTenantBackups, downloadBackupArchive
+  getBackupArchives, triggerAllTenantBackups, downloadBackupArchive,
+  approveTenant, rejectTenant, getPlatformSettings, updatePlatformSettings
 } = require('../controllers/tenantController');
 const { authenticateToken, authorizeRole, requireSuperAdmin } = require('../middleware/auth');
+
+// Platform Global Configuration & Security Policies (Super Admin)
+router.get('/platform-settings', authenticateToken, requireSuperAdmin, getPlatformSettings);
+router.put('/platform-settings', authenticateToken, requireSuperAdmin, updatePlatformSettings);
 
 // Active Broadcasts for Public/Tenant Header Banner
 router.get('/active-broadcasts', authenticateToken, getActiveBroadcasts);
@@ -56,6 +59,10 @@ router.put('/plans/configs/:planId', authenticateToken, requireSuperAdmin, updat
 // Specific Tenant Module Entitlements & Overrides
 router.get('/:tenantId/modules', authenticateToken, requireSuperAdmin, getTenantModules);
 router.put('/:tenantId/modules', authenticateToken, requireSuperAdmin, updateTenantModules);
+
+// Super Admin Approval Actions for Pending Registrations
+router.post('/:tenantId/approve', authenticateToken, requireSuperAdmin, approveTenant);
+router.post('/:tenantId/reject', authenticateToken, requireSuperAdmin, rejectTenant);
 
 const authController = require('../controllers/authController');
 router.post('/register', authController.signupCompany);

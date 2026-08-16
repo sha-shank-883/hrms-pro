@@ -1521,6 +1521,110 @@ const downloadBackupArchive = asyncHandler(async (req, res) => {
   res.send(typeof archive.snapshot_data === 'string' ? archive.snapshot_data : JSON.stringify(archive.snapshot_data, null, 2));
 });
 
+/**
+ * Super Admin Tenant Approval Actions & Platform Settings
+ */
+const approveTenant = asyncHandler(async (req, res) => {
+  const { tenantId } = req.params;
+  const tenant = await Tenant.findById(tenantId);
+  if (!tenant) {
+    throw new NotFoundError('Tenant not found');
+  }
+
+  await query('UPDATE shared.tenants SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE tenant_id = $2', ['active', tenantId]);
+
+  try {
+    const { sendEmail } = require('../services/emailService');
+    if (tenant.contact_email) {
+      await sendEmail({
+        to: tenant.contact_email,
+        subject: '🎉 Your HRMS Pro Company Workspace Has Been Approved!',
+        html: `
+          <div style="font-family: Arial, sans-serif; padding: 24px; color: #1e293b; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; rounded: 16px;">
+            <h2 style="color: #16a34a; margin-top: 0;">Welcome to HRMS Pro!</h2>
+            <p>Dear <b>${tenant.contact_person || 'Company Administrator'}</b>,</p>
+            <p>Great news! Your company workspace for <strong>${tenant.name}</strong> (Tenant ID: <code>${tenant.tenant_id}</code>) has been approved by the platform administrator.</p>
+            <p>Your 14-day free trial is now active. You can log in and start onboarding your team immediately.</p>
+            <div style="margin: 28px 0; text-align: center;">
+              <a href="${process.env.FRONTEND_URL || 'https://app.hrmspro.online'}/login" style="background-color: #16a34a; color: white; padding: 14px 28px; text-decoration: none; border-radius: 12px; font-weight: bold; display: inline-block;">
+                Log In to Your Workspace
+              </a>
+            </div>
+            <p style="color: #64748b; font-size: 13px; line-height: 1.5;">If you have questions or need assistance during setup, reply directly to this email or access our 24/7 in-app support chat.</p>
+          </div>
+        `
+      });
+    }
+  } catch (emailErr) {
+    console.warn('Tenant approval email warning:', emailErr.message);
+  }
+
+  if (req.io) {
+    req.io.emit('tenant_status_updated', { tenantId, status: 'active' });
+    req.io.emit('dashboard_update');
+  }
+
+  res.json({ success: true, message: `Tenant "${tenant.name}" has been approved and activated!`, tenantId });
+});
+
+const rejectTenant = asyncHandler(async (req, res) => {
+  const { tenantId } = req.params;
+  const { reason } = req.body;
+  const tenant = await Tenant.findById(tenantId);
+  if (!tenant) {
+    throw new NotFoundError('Tenant not found');
+  }
+
+  await query('UPDATE shared.tenants SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE tenant_id = $2', ['rejected', tenantId]);
+
+  if (req.io) {
+    req.io.emit('tenant_status_updated', { tenantId, status: 'rejected' });
+    req.io.emit('dashboard_update');
+  }
+
+  res.json({ success: true, message: `Tenant "${tenant.name}" registration has been declined.`, tenantId });
+});
+
+const getPlatformSettings = asyncHandler(async (req, res) => {
+  await query(`
+    CREATE TABLE IF NOT EXISTS shared.platform_settings (
+      key VARCHAR(100) PRIMARY KEY,
+      value TEXT,
+      description VARCHAR(255),
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+    INSERT INTO shared.platform_settings (key, value, description)
+    VALUES ('require_signup_approval', 'true', 'Require Super Admin approval before newly registered company tenants can log in')
+    ON CONFLICT (key) DO NOTHING;
+  `);
+
+  const result = await query('SELECT * FROM shared.platform_settings');
+  const settings = {};
+  result.rows.forEach(r => {
+    settings[r.key] = r.value === 'true' ? true : r.value === 'false' ? false : r.value;
+  });
+
+  res.json({ success: true, settings });
+});
+
+const updatePlatformSettings = asyncHandler(async (req, res) => {
+  const { settings } = req.body;
+  if (!settings || typeof settings !== 'object') {
+    throw new ValidationError('Settings object is required');
+  }
+
+  for (const [key, val] of Object.entries(settings)) {
+    await query(
+      `INSERT INTO shared.platform_settings (key, value, updated_at) 
+       VALUES ($1, $2, CURRENT_TIMESTAMP)
+       ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = CURRENT_TIMESTAMP`,
+      [key, String(val)]
+    );
+  }
+
+  res.json({ success: true, message: 'Platform settings updated successfully', settings });
+});
+
 module.exports = {
   createTenant, getAllTenants, updateTenant, resetTenantAdminPassword, deleteTenant,
   getBiometricDevices, registerBiometricDevice, deleteBiometricDevice, impersonateTenantAdmin,
@@ -1533,7 +1637,9 @@ module.exports = {
   getPlatformAuditLogs,
   getSystemHealthDiagnostics,
   getBackupArchives, triggerAllTenantBackups, downloadBackupArchive,
+  approveTenant, rejectTenant, getPlatformSettings, updatePlatformSettings,
   SYSTEM_MODULES
 };
+
 
 

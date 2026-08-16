@@ -243,8 +243,29 @@ const captureOrder = asyncHandler(async (req, res) => {
   }
 
   // 3. Calculate new expiry (today + durationDays: 30 or 365)
-  const expiry = new Date();
+  let expiry = new Date();
   expiry.setDate(expiry.getDate() + durationDays);
+
+  const isAddon = req.body.isAddon === true || req.body.mode === 'add_seats';
+  let finalSeatLimit = selectedSeats;
+
+  // If adding seats to existing active subscription
+  if (isAddon) {
+    const currentTenantRes = await pool.query(
+      `SELECT employee_limit, subscription_expiry FROM shared.tenants WHERE tenant_id = $1`,
+      [tenantId]
+    ).catch(() => ({ rows: [] }));
+
+    const currentLimit = currentTenantRes.rows[0]?.employee_limit || 15;
+    finalSeatLimit = currentLimit + selectedSeats;
+
+    const currentExpiry = currentTenantRes.rows[0]?.subscription_expiry ? new Date(currentTenantRes.rows[0].subscription_expiry) : null;
+    if (currentExpiry && currentExpiry > new Date()) {
+      if (expiry < currentExpiry) {
+        expiry = currentExpiry;
+      }
+    }
+  }
 
   // Ensure columns exist on shared.tenants
   await pool.query(`
@@ -263,7 +284,7 @@ const captureOrder = asyncHandler(async (req, res) => {
          auto_renew           = $5,
          updated_at           = CURRENT_TIMESTAMP
      WHERE tenant_id = $6`,
-    [plan.id, selectedSeats, expiry.toISOString(), calculation.billingCycle, Boolean(autoPay), tenantId]
+    [plan.id, finalSeatLimit, expiry.toISOString(), calculation.billingCycle, Boolean(autoPay), tenantId]
   );
 
   // 5. Record payment in shared.payment_logs

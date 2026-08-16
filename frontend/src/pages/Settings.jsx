@@ -574,12 +574,12 @@ const Settings = () => {
                     <button
                       type="button"
                       onClick={() => {
-                        const nextSeats = (subscriptionData?.employeeLimit || user?.employee_limit || 15) + 5;
-                        setSeatQuantity(nextSeats);
                         setCheckoutPlan({
                           id: subscriptionData?.plan || user?.subscription_plan || 'scale',
                           name: `${(subscriptionData?.plan || user?.subscription_plan || 'scale').toUpperCase()} Plan`,
-                          seats: nextSeats,
+                          seats: 5,
+                          mode: 'add_seats',
+                          isAddon: true,
                           currency: billingCurrency,
                         });
                       }}

@@ -7,15 +7,24 @@ export const paymentService = {
     return response.data;
   },
 
-  // Create a PayPal order for a plan (supports USD / INR and seats quantity)
-  createOrder: async (planId, currency = 'USD', seats = 10) => {
-    const response = await api.post('/payments/paypal/create-order', { planId, currency, seats });
+  // Create a PayPal order for a plan (supports USD / INR, seats quantity, cycle, autoPay)
+  createOrder: async (planId, currency = 'USD', seats = 10, billingCycle = 'monthly', autoPay = false) => {
+    const response = await api.post('/payments/paypal/create-order', { planId, currency, seats, billingCycle, autoPay });
     return response.data;
   },
 
   // Capture (finalize) a PayPal order after user approval
-  captureOrder: async (orderId, planId, currency = 'USD', seats = 10) => {
-    const response = await api.post('/payments/paypal/capture-order', { orderId, planId, currency, seats });
+  captureOrder: async (orderId, planId, currency = 'USD', seats = 10, billingCycle = 'monthly', autoPay = false, isAddon = false, mode = 'renew_plan') => {
+    const response = await api.post('/payments/paypal/capture-order', {
+      orderId,
+      planId,
+      currency,
+      seats,
+      billingCycle,
+      autoPay,
+      isAddon,
+      mode
+    });
     return response.data;
   },
 
@@ -25,8 +34,8 @@ export const paymentService = {
     return response.data;
   },
 
-  createRazorpayOrder: async (planId, seats = 10) => {
-    const response = await api.post('/payments/razorpay/create-order', { planId, seats });
+  createRazorpayOrder: async (planId, seats = 10, billingCycle = 'monthly', autoPay = false) => {
+    const response = await api.post('/payments/razorpay/create-order', { planId, seats, billingCycle, autoPay });
     return response.data;
   },
 

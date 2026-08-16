@@ -84,8 +84,23 @@ const SubscriptionCheckoutModal = ({ plan, onClose, onSuccess }) => {
   // Auto-Pay toggle
   const [autoPay, setAutoPay] = useState(true);
 
+  // Existing current limit
+  const currentSeatLimit = user?.employee_limit || 15;
+  const isExistingPaid = Boolean(user?.subscription_plan && user?.subscription_plan !== 'free' && !user?.subscription_expired);
+
+  // Mode: 'add_seats' (Add-on seats on top of existing capacity) vs 'renew_plan' (Set total capacity)
+  const [checkoutMode, setCheckoutMode] = useState(
+    plan?.mode || (isExistingPaid ? 'add_seats' : 'renew_plan')
+  );
+
+  const isAddonMode = checkoutMode === 'add_seats';
+
   // Dynamic Seats (editable in checkout)
-  const [seatCount, setSeatCount] = useState(Math.max(1, plan?.seats || (plan?.id === 'scale' ? 25 : 10)));
+  const [seatCount, setSeatCount] = useState(
+    Math.max(1, plan?.seats || (isAddonMode ? 5 : (plan?.id === 'scale' ? 25 : 15)))
+  );
+
+  const effectiveTotalSeats = isAddonMode ? currentSeatLimit + seatCount : seatCount;
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -200,9 +215,22 @@ const SubscriptionCheckoutModal = ({ plan, onClose, onSuccess }) => {
           onApprove: async (data) => {
             setLoading(true);
             try {
-              const response = await paymentService.captureOrder(data.orderID, planId, 'USD', seatCount, billingCycle, autoPay);
+              const response = await paymentService.captureOrder(
+                data.orderID,
+                planId,
+                'USD',
+                seatCount,
+                billingCycle,
+                autoPay,
+                isAddonMode,
+                checkoutMode
+              );
               setSuccess(true);
-              setSuccessMessage(`PayPal payment completed! ${planName} (${seatCount} Seats, ${isYearly ? 'Yearly' : 'Monthly'}) is active.`);
+              setSuccessMessage(
+                isAddonMode
+                  ? `Seats added successfully! New total capacity is ${effectiveTotalSeats} seats.`
+                  : `Payment completed! ${planName} with ${seatCount} seats is active.`
+              );
 
               if (refreshProfile) await refreshProfile();
 
@@ -243,7 +271,7 @@ const SubscriptionCheckoutModal = ({ plan, onClose, onSuccess }) => {
     return () => {
       isSubscribed = false;
     };
-  }, [selectedGateway, planId, seatCount, billingCycle, autoPay, success]);
+  }, [selectedGateway, planId, seatCount, billingCycle, autoPay, isAddonMode, checkoutMode, success]);
 
   // Handle Razorpay Payment Trigger
   const handleRazorpayPay = async () => {
@@ -270,7 +298,9 @@ const SubscriptionCheckoutModal = ({ plan, onClose, onSuccess }) => {
         amount: orderData.amount, // in paise
         currency: 'INR',
         name: 'HRMS Pro',
-        description: `${planName} (${seatCount} Seats • ${isYearly ? 'Yearly Plan' : 'Monthly Plan'})`,
+        description: isAddonMode
+          ? `Add +${seatCount} Seats to ${planName} (Total: ${effectiveTotalSeats} Seats)`
+          : `${planName} (${seatCount} Seats • ${isYearly ? 'Yearly Plan' : 'Monthly Plan'})`,
         image: 'https://hrmspro.online/logo.png',
         order_id: orderData.orderId,
         prefill: {
@@ -282,11 +312,13 @@ const SubscriptionCheckoutModal = ({ plan, onClose, onSuccess }) => {
           tenant_id: user?.tenant_id || '',
           plan_id: planId,
           seats: String(seatCount),
+          mode: checkoutMode,
+          is_addon: String(isAddonMode),
           billing_cycle: billingCycle,
           auto_pay: String(autoPay)
         },
         theme: {
-          color: planId === 'scale' ? '#f59e0b' : '#16a34a',
+          color: '#16a34a',
         },
         handler: async function (response) {
           setLoading(true);
@@ -298,13 +330,19 @@ const SubscriptionCheckoutModal = ({ plan, onClose, onSuccess }) => {
               razorpay_signature: response.razorpay_signature,
               planId: planId,
               seats: seatCount,
+              isAddon: isAddonMode,
+              mode: checkoutMode,
               billingCycle: billingCycle,
               autoPay: autoPay
             });
 
             if (verifyRes.success) {
               setSuccess(true);
-              setSuccessMessage(`Payment confirmed! ${planName} (${seatCount} Seats • ${isYearly ? '365 Days' : '30 Days'}) is active.`);
+              setSuccessMessage(
+                isAddonMode
+                  ? `Seats added successfully! New total capacity is ${effectiveTotalSeats} seats.`
+                  : `Payment confirmed! ${planName} (${seatCount} Seats • ${isYearly ? '365 Days' : '30 Days'}) is active.`
+              );
               if (refreshProfile) await refreshProfile();
 
               setTimeout(() => {
@@ -344,10 +382,10 @@ const SubscriptionCheckoutModal = ({ plan, onClose, onSuccess }) => {
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 md:p-6">
-      <div className="relative w-full max-w-xl max-h-[90vh] flex flex-col bg-white dark:bg-gray-850 rounded-3xl shadow-2xl border border-gray-100 dark:border-gray-750 overflow-hidden transition-all my-auto">
+      <div className="relative w-full max-w-xl max-h-[90vh] flex flex-col bg-white dark:bg-gray-850 rounded-3xl shadow-2xl border border-gray-200 dark:border-gray-750 overflow-hidden transition-all my-auto text-gray-900 dark:text-gray-100">
         
         {/* Header - Always visible at top */}
-        <div className="shrink-0 flex items-center justify-between p-4 sm:p-5 border-b border-gray-100 dark:border-gray-750 bg-gradient-to-r from-gray-50 via-white to-gray-50 dark:from-gray-800 dark:via-gray-850 dark:to-gray-800">
+        <div className="shrink-0 flex items-center justify-between p-4 sm:p-5 border-b border-gray-100 dark:border-gray-750 bg-gray-50/80 dark:bg-gray-800">
           <div className="flex items-center gap-3">
             <div className={`w-10 h-10 sm:w-11 sm:h-11 rounded-2xl flex items-center justify-center font-bold shadow-sm shrink-0 ${
               planId === 'scale' 
@@ -358,7 +396,7 @@ const SubscriptionCheckoutModal = ({ plan, onClose, onSuccess }) => {
             </div>
             <div>
               <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                Upgrade to {planName}
+                {isAddonMode ? `Add Seats to ${planName}` : `Upgrade to ${planName}`}
                 <span className={`text-[10px] sm:text-[11px] font-black px-2 py-0.5 rounded-full ${
                   planId === 'scale'
                     ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-300'
@@ -368,7 +406,9 @@ const SubscriptionCheckoutModal = ({ plan, onClose, onSuccess }) => {
                 </span>
               </h3>
               <p className="text-[11px] sm:text-xs text-gray-500 dark:text-gray-400">
-                Choose duration, seat capacity, and payment gateway
+                {isAddonMode
+                  ? `Current capacity: ${currentSeatLimit} Seats • Adding ${seatCount} Extra Seats`
+                  : 'Choose billing cycle, seat capacity, and payment gateway'}
               </p>
             </div>
           </div>
@@ -396,7 +436,7 @@ const SubscriptionCheckoutModal = ({ plan, onClose, onSuccess }) => {
               <div className="pt-2">
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200 rounded-lg text-xs font-bold">
                   <CheckBadgeIcon className="w-4 h-4 text-emerald-600" />
-                  Your VIP Status is now Active
+                  Your VIP Status is Active ({effectiveTotalSeats} Seats)
                 </span>
               </div>
             </div>
@@ -414,6 +454,42 @@ const SubscriptionCheckoutModal = ({ plan, onClose, onSuccess }) => {
 
           {!success && (
             <>
+              {/* Mode Switcher: Add Extra Seats vs Set Full Plan */}
+              {isExistingPaid && (
+                <div className="grid grid-cols-2 gap-2 p-1 bg-gray-100 dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCheckoutMode('add_seats');
+                      setSeatCount(5);
+                    }}
+                    className={`py-2 px-3 rounded-xl font-bold transition-all flex items-center justify-center gap-1.5 ${
+                      isAddonMode
+                        ? 'bg-white dark:bg-gray-700 text-primary-600 dark:text-primary-400 shadow-sm'
+                        : 'text-gray-500 dark:text-gray-400 hover:text-gray-900'
+                    }`}
+                  >
+                    <span>➕ Add Extra Seats</span>
+                    <span className="text-[10px] text-gray-400">({currentSeatLimit} + {seatCount})</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCheckoutMode('renew_plan');
+                      setSeatCount(Math.max(15, currentSeatLimit));
+                    }}
+                    className={`py-2 px-3 rounded-xl font-bold transition-all flex items-center justify-center gap-1.5 ${
+                      !isAddonMode
+                        ? 'bg-white dark:bg-gray-700 text-primary-600 dark:text-primary-400 shadow-sm'
+                        : 'text-gray-500 dark:text-gray-400 hover:text-gray-900'
+                    }`}
+                  >
+                    <span>🔄 Plan Capacity Total</span>
+                  </button>
+                </div>
+              )}
+
               {/* 1. Billing Cycle Toggle: Monthly vs Yearly (Save 20%) */}
               <div>
                 <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2">
@@ -461,22 +537,24 @@ const SubscriptionCheckoutModal = ({ plan, onClose, onSuccess }) => {
                 <div className="flex items-center justify-between mb-3">
                   <div>
                     <span className="text-xs font-bold text-gray-900 dark:text-white block">
-                      Employee Seats Capacity
+                      {isAddonMode ? 'Extra Seats to Add' : 'Total Seats Capacity'}
                     </span>
                     <span className="text-[11px] text-gray-500 dark:text-gray-400">
-                      Add or reduce seats for your organization
+                      {isAddonMode
+                        ? `Current: ${currentSeatLimit} Seats ➔ New Total: ${effectiveTotalSeats} Seats`
+                        : 'Set the total seat limit for your organization'}
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
-                      onClick={() => setSeatCount(Math.max(1, seatCount - 5))}
+                      onClick={() => setSeatCount(Math.max(1, seatCount - (isAddonMode ? 5 : 5)))}
                       className="w-8 h-8 rounded-lg bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 flex items-center justify-center text-gray-700 dark:text-gray-200 hover:bg-gray-100"
                     >
                       <MinusIcon className="w-3.5 h-3.5" />
                     </button>
                     <span className="w-14 text-center font-black text-base text-gray-900 dark:text-white">
-                      {seatCount}
+                      {isAddonMode ? `+${seatCount}` : seatCount}
                     </span>
                     <button
                       type="button"
@@ -490,7 +568,7 @@ const SubscriptionCheckoutModal = ({ plan, onClose, onSuccess }) => {
 
                 {/* Quick Presets */}
                 <div className="flex items-center gap-1.5 flex-wrap">
-                  {[5, 10, 25, 50, 100].map((preset) => (
+                  {(isAddonMode ? [5, 10, 20, 50] : [15, 25, 50, 100]).map((preset) => (
                     <button
                       key={preset}
                       type="button"
@@ -501,7 +579,7 @@ const SubscriptionCheckoutModal = ({ plan, onClose, onSuccess }) => {
                           : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-600 hover:border-primary-400'
                       }`}
                     >
-                      {preset} Seats
+                      {isAddonMode ? `+${preset} Seats` : `${preset} Seats`}
                     </button>
                   ))}
                 </div>
@@ -522,13 +600,13 @@ const SubscriptionCheckoutModal = ({ plan, onClose, onSuccess }) => {
                     }}
                     className={`relative p-3.5 rounded-2xl border-2 text-left transition-all ${
                       selectedGateway === 'razorpay'
-                        ? 'border-emerald-500 bg-emerald-50/40 dark:bg-emerald-950/30 shadow-md ring-1 ring-emerald-500'
+                        ? 'border-primary-500 bg-primary-50/40 dark:bg-primary-950/30 shadow-md ring-1 ring-primary-500'
                         : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 bg-white dark:bg-gray-800'
                     }`}
                   >
                     <div className="flex items-center justify-between mb-1">
                       <span className="font-bold text-sm text-gray-900 dark:text-white flex items-center gap-1">
-                        <CurrencyRupeeIcon className="w-4 h-4 text-emerald-600" />
+                        <CurrencyRupeeIcon className="w-4 h-4 text-primary-600" />
                         Razorpay
                       </span>
                       <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
@@ -538,7 +616,7 @@ const SubscriptionCheckoutModal = ({ plan, onClose, onSuccess }) => {
                     <p className="text-[10px] text-gray-500 dark:text-gray-400">
                       UPI, Cards, NetBanking
                     </p>
-                    <div className="mt-2 font-extrabold text-sm text-emerald-700 dark:text-emerald-400">
+                    <div className="mt-2 font-extrabold text-sm text-primary-700 dark:text-primary-400">
                       ₹{inrTotal.toLocaleString('en-IN')}{' '}
                       <span className="text-[10px] font-normal text-gray-500">INR</span>
                     </div>
@@ -608,9 +686,17 @@ const SubscriptionCheckoutModal = ({ plan, onClose, onSuccess }) => {
                   <span className="font-bold text-gray-900 dark:text-white">{planName}</span>
                 </div>
                 <div className="flex justify-between text-gray-600 dark:text-gray-300">
-                  <span>Capacity & Cycle:</span>
+                  <span>Capacity Calculation:</span>
                   <span className="font-bold text-gray-900 dark:text-white">
-                    {seatCount} Seats • {isYearly ? '12 Months (Yearly)' : '1 Month'}
+                    {isAddonMode
+                      ? `${currentSeatLimit} Current + ${seatCount} Added = ${effectiveTotalSeats} Seats Total`
+                      : `${seatCount} Seats Total`}
+                  </span>
+                </div>
+                <div className="flex justify-between text-gray-600 dark:text-gray-300">
+                  <span>Billing Duration:</span>
+                  <span className="font-bold text-gray-900 dark:text-white">
+                    {isYearly ? '12 Months (Yearly • 20% OFF)' : '1 Month (Monthly)'}
                   </span>
                 </div>
                 {isYearly && (
@@ -624,7 +710,7 @@ const SubscriptionCheckoutModal = ({ plan, onClose, onSuccess }) => {
                 <div className="pt-2 border-t border-gray-200 dark:border-gray-700 flex justify-between items-center text-sm font-black text-gray-900 dark:text-white">
                   <span>Total Payable:</span>
                   <div className="text-right">
-                    <span className={selectedGateway === 'razorpay' ? 'text-emerald-600 text-lg' : 'text-blue-600 text-lg'}>
+                    <span className={selectedGateway === 'razorpay' ? 'text-primary-600 text-lg' : 'text-blue-600 text-lg'}>
                       {selectedGateway === 'razorpay'
                         ? `₹${inrTotal.toLocaleString('en-IN')} INR`
                         : `$${usdTotal} USD`}
@@ -645,7 +731,7 @@ const SubscriptionCheckoutModal = ({ plan, onClose, onSuccess }) => {
                     type="button"
                     onClick={handleRazorpayPay}
                     disabled={loading || !razorpayReady}
-                    className="w-full py-3.5 px-6 rounded-2xl font-bold text-sm bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                    className="w-full py-3.5 px-6 rounded-2xl font-bold text-sm bg-primary-600 hover:bg-primary-700 text-white shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                   >
                     {loading ? (
                       <>
@@ -655,7 +741,7 @@ const SubscriptionCheckoutModal = ({ plan, onClose, onSuccess }) => {
                     ) : (
                       <>
                         <BoltIcon className="w-5 h-5" />
-                        Pay ₹{inrTotal.toLocaleString('en-IN')} via Razorpay ({isYearly ? 'Yearly' : 'Monthly'})
+                        Pay ₹{inrTotal.toLocaleString('en-IN')} via Razorpay ({isAddonMode ? `Add +${seatCount} Seats` : `${seatCount} Seats`})
                       </>
                     )}
                   </button>
@@ -678,7 +764,7 @@ const SubscriptionCheckoutModal = ({ plan, onClose, onSuccess }) => {
 
               {/* Security & Invoicing Guarantee Footer */}
               <div className="pt-1 text-center text-[11px] text-gray-400 flex items-center justify-center gap-1">
-                <ShieldCheckIcon className="w-4 h-4 text-emerald-500" />
+                <ShieldCheckIcon className="w-4 h-4 text-primary-500" />
                 GST Invoice & VIP Subscriber status activated instantly.
               </div>
             </>

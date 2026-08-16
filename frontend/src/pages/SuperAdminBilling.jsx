@@ -285,7 +285,7 @@ const SuperAdminBilling = () => {
         <div className="w-full pb-8">
             {/* Header */}
             <div className="page-header flex flex-col md:flex-row md:items-center justify-between gap-3 mb-6">
-                <div>
+                <div className="min-w-0 flex-1">
                     <h1 className="page-title text-xl font-bold text-neutral-900 flex items-center gap-2">
                         <CreditCardIcon className="w-6 h-6 text-emerald-600" />
                         Payments, Invoices & Revenue

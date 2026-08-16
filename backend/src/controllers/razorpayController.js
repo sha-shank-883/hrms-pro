@@ -162,6 +162,16 @@ const createRazorpayOrder = asyncHandler(async (req, res) => {
     totalPrice = Math.max(1, totalPrice - proratedCredit);
   }
 
+  // If purchasing Add-on seats for active plan, compute daily prorated cost for remaining days
+  if (isAddon && isCurrentActive && currentExpiry) {
+    const remainingDays = Math.max(1, Math.ceil((currentExpiry - new Date()) / (1000 * 60 * 60 * 24)));
+    const totalCycleDays = currentTenant.billing_cycle === 'yearly' ? 365 : 30;
+    const remainingRatio = Math.min(1, Math.max(0.01, remainingDays / totalCycleDays));
+
+    const fullAddonPrice = totalPrice;
+    totalPrice = Math.max(1, Math.round(fullAddonPrice * remainingRatio));
+  }
+
   const amountInPaise = totalPrice * 100;
   const razorpay = getRazorpayInstance();
   const receipt = `rcpt_${tenantId.slice(-8)}_${Date.now().toString().slice(-6)}`;
@@ -327,15 +337,19 @@ const verifyRazorpayPayment = asyncHandler(async (req, res) => {
     finalChargedPrice = Math.max(1, totalPrice - proratedCredit);
   }
 
-  // If adding seats to existing active subscription
+  // If adding seats to existing active subscription, compute daily prorated price & maintain expiry
   if (isAddon) {
     const currentLimit = currentTenant.employee_limit || 15;
     finalSeatLimit = currentLimit + selectedSeats;
 
-    if (currentExpiry && currentExpiry > new Date()) {
-      if (expiry < currentExpiry) {
-        expiry = currentExpiry;
-      }
+    if (isCurrentActive && currentExpiry) {
+      const remainingDays = Math.max(1, Math.ceil((currentExpiry - new Date()) / (1000 * 60 * 60 * 24)));
+      const totalCycleDays = currentTenant.billing_cycle === 'yearly' ? 365 : 30;
+      const remainingRatio = Math.min(1, Math.max(0.01, remainingDays / totalCycleDays));
+
+      const fullAddonPrice = totalPrice;
+      finalChargedPrice = Math.max(1, Math.round(fullAddonPrice * remainingRatio));
+      expiry = currentExpiry;
     }
   }
 

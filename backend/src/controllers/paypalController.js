@@ -186,6 +186,22 @@ const createOrder = asyncHandler(async (req, res) => {
     }
   }
 
+  // If purchasing Add-on seats for active plan, compute daily prorated cost for remaining days
+  if (isAddon && isCurrentActive && currentExpiry) {
+    const remainingDays = Math.max(1, Math.ceil((currentExpiry - new Date()) / (1000 * 60 * 60 * 24)));
+    const totalCycleDays = currentTenant.billing_cycle === 'yearly' ? 365 : 30;
+    const remainingRatio = Math.min(1, Math.max(0.01, remainingDays / totalCycleDays));
+
+    const fullAddonPrice = totalPrice;
+    totalPrice = Math.max(0.1, parseFloat((fullAddonPrice * remainingRatio).toFixed(2)));
+
+    if (selectedCurrency === 'USD') {
+      totalUSD = totalPrice.toFixed(2);
+    } else {
+      totalUSD = (totalPrice / 80).toFixed(2);
+    }
+  }
+
   // PayPal REST API charges in USD while converting to the selected employee seats
   const payPalCurrency = 'USD';
   const payPalValue = totalUSD;
@@ -343,15 +359,19 @@ const captureOrder = asyncHandler(async (req, res) => {
     finalChargedPrice = Math.max(1, parseFloat((totalPrice - proratedCredit).toFixed(2)));
   }
 
-  // If adding seats to existing active subscription
+  // If adding seats to existing active subscription, compute daily prorated price & maintain expiry
   if (isAddon) {
     const currentLimit = currentTenant.employee_limit || 15;
     finalSeatLimit = currentLimit + selectedSeats;
 
-    if (currentExpiry && currentExpiry > new Date()) {
-      if (expiry < currentExpiry) {
-        expiry = currentExpiry;
-      }
+    if (isCurrentActive && currentExpiry) {
+      const remainingDays = Math.max(1, Math.ceil((currentExpiry - new Date()) / (1000 * 60 * 60 * 24)));
+      const totalCycleDays = currentTenant.billing_cycle === 'yearly' ? 365 : 30;
+      const remainingRatio = Math.min(1, Math.max(0.01, remainingDays / totalCycleDays));
+
+      const fullAddonPrice = totalPrice;
+      finalChargedPrice = Math.max(0.1, parseFloat((fullAddonPrice * remainingRatio).toFixed(2)));
+      expiry = currentExpiry;
     }
   }
 

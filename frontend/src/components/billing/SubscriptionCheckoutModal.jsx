@@ -172,8 +172,33 @@ const SubscriptionCheckoutModal = ({ plan, onClose, onSuccess }) => {
     usdProratedCredit = parseFloat((currentPaidValueUSD * remainingRatio).toFixed(2));
   }
 
-  const finalPayableINR = Math.max(1, inrTotal - inrProratedCredit);
-  const finalPayableUSD = Math.max(1, parseFloat((parseFloat(usdTotal) - usdProratedCredit).toFixed(2))).toFixed(2);
+  // Daily Proration for Add-on Seats
+  let addonDaysRemaining = 0;
+  let addonTotalDays = user?.billing_cycle === 'yearly' ? 365 : 30;
+  let inrAddonProratedPrice = inrTotal;
+  let usdAddonProratedPrice = usdTotal;
+  let inrAddonDiscount = 0;
+  let usdAddonDiscount = 0;
+
+  if (isAddonMode && isExistingPaid && user?.subscription_expiry) {
+    addonDaysRemaining = Math.max(1, Math.ceil((new Date(user.subscription_expiry) - new Date()) / (1000 * 60 * 60 * 24)));
+    addonTotalDays = user?.billing_cycle === 'yearly' ? 365 : 30;
+    const addonRatio = Math.min(1, Math.max(0.01, addonDaysRemaining / addonTotalDays));
+
+    inrAddonProratedPrice = Math.max(1, Math.round(inrTotal * addonRatio));
+    usdAddonProratedPrice = Math.max(0.1, parseFloat((parseFloat(usdTotal) * addonRatio).toFixed(2))).toFixed(2);
+
+    inrAddonDiscount = inrTotal - inrAddonProratedPrice;
+    usdAddonDiscount = parseFloat((parseFloat(usdTotal) - parseFloat(usdAddonProratedPrice)).toFixed(2));
+  }
+
+  const finalPayableINR = isAddonMode
+    ? inrAddonProratedPrice
+    : Math.max(1, inrTotal - inrProratedCredit);
+
+  const finalPayableUSD = isAddonMode
+    ? usdAddonProratedPrice
+    : Math.max(1, parseFloat((parseFloat(usdTotal) - usdProratedCredit).toFixed(2))).toFixed(2);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -705,6 +730,19 @@ const SubscriptionCheckoutModal = ({ plan, onClose, onSuccess }) => {
                     <span>Yearly 20% Discount Savings:</span>
                     <span>
                       {selectedGateway === 'razorpay' ? `-₹${inrSavings.toLocaleString('en-IN')}` : `-$${usdSavings}`}
+                    </span>
+                  </div>
+                )}
+                {isAddonMode && isExistingPaid && addonDaysRemaining > 0 && (
+                  <div className="flex justify-between text-indigo-600 dark:text-indigo-400 font-bold bg-indigo-50 dark:bg-indigo-950/50 p-2.5 rounded-xl border border-indigo-200 dark:border-indigo-800">
+                    <span className="flex items-center gap-1 text-[11px]">
+                      <SparklesIcon className="w-3.5 h-3.5 shrink-0" />
+                      Daily Proration ({addonDaysRemaining} of {addonTotalDays} days left in cycle):
+                    </span>
+                    <span className="text-[11px]">
+                      {selectedGateway === 'razorpay'
+                        ? `-₹${inrAddonDiscount.toLocaleString('en-IN')}`
+                        : `-$${usdAddonDiscount}`}
                     </span>
                   </div>
                 )}

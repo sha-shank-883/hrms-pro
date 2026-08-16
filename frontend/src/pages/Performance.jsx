@@ -411,9 +411,9 @@ const Performance = () => {
             {/* Create/Edit Goal Modal */}
             {
                 showGoalModal && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-neutral-900/50 backdrop-blur-sm" onClick={() => setShowGoalModal(false)}>
-                        <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in duration-200" onClick={(e) => e.stopPropagation()}>
-                            <div className="px-6 py-4 border-b border-neutral-100 flex justify-between items-center bg-neutral-50/50">
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-sm" onClick={() => setShowGoalModal(false)}>
+                        <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200" onClick={(e) => e.stopPropagation()}>
+                            <div className="px-6 py-4 border-b border-neutral-100 flex justify-between items-center bg-neutral-50/50 shrink-0">
                                 <div>
                                     <h2 className="text-lg font-bold text-neutral-800">{editingGoal ? 'Edit Goal' : 'Set New Goal'}</h2>
                                     <p className="text-sm text-neutral-500">Define your objectives and success criteria</p>

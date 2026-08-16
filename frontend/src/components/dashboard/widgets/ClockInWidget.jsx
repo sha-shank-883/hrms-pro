@@ -180,12 +180,12 @@ const ClockInWidget = ({ employeeData }) => {
                 <div className="relative group">
                     <div className={`absolute -inset-4 rounded-full opacity-20 blur-2xl transition-all duration-700 group-hover:opacity-40 ${status === 'in' ? 'bg-red-500' : 'bg-primary-500'}`}></div>
                     <button
-                        className={`relative rounded-full w-40 h-40 flex flex-col items-center justify-center transition-all duration-300 border-[12px] shadow-xl hover:-translate-y-1 ${status === 'in' ? 'bg-white border-red-50 text-red-600 hover:border-red-100 hover:shadow-red-100' : 'bg-neutral-900 border-neutral-800 text-white hover:bg-black hover:border-neutral-900'}`}
+                        className={`relative rounded-full w-40 h-40 flex flex-col items-center justify-center transition-all duration-300 border-[12px] shadow-xl hover:-translate-y-1 ${status === 'in' ? 'bg-white border-red-50 text-red-600 hover:border-red-100 hover:shadow-red-100' : 'bg-primary-600 border-primary-500 text-white hover:bg-primary-700 hover:border-primary-600 shadow-primary-500/25'}`}
                         onClick={handleClockAction}
                         disabled={loading}
                     >
-                        <div className={`mb-3 p-4 rounded-2xl transition-colors ${status === 'in' ? 'bg-red-50' : 'bg-neutral-800'}`}>
-                            <FaClock size={28} className={status === 'in' ? 'text-red-500' : 'text-primary-400'} />
+                        <div className={`mb-3 p-4 rounded-2xl transition-colors ${status === 'in' ? 'bg-red-50' : 'bg-primary-700/80'}`}>
+                            <FaClock size={28} className={status === 'in' ? 'text-red-500' : 'text-white'} />
                         </div>
                         <span className="font-bold text-sm tracking-wider">{loading ? 'Processing...' : (status === 'in' ? 'CLOCK OUT' : 'CLOCK IN')}</span>
                     </button>
@@ -212,7 +212,7 @@ const ClockInWidget = ({ employeeData }) => {
                 </div>
 
                 {/* Footer / Geolocation Status */}
-                <div className="mt-6 w-full flex items-center justify-center gap-3 py-3 px-4 bg-neutral-900 rounded-xl shadow-inner">
+                <div className="mt-6 w-full flex items-center justify-center gap-3 py-3 px-4 bg-gray-900 dark:bg-gray-800 text-white rounded-xl shadow-inner">
                     {location ? (
                         <>
                             <div className="flex h-2.5 w-2.5 relative">

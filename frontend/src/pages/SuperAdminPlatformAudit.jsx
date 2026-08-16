@@ -236,8 +236,8 @@ const SuperAdminPlatformAudit = () => {
 
       {/* Inspect Log Detail Modal */}
       {selectedLog && (
-        <div className="fixed inset-0 bg-neutral-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl max-w-lg w-full border border-neutral-200 shadow-xl overflow-hidden">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 z-50 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] flex flex-col border border-neutral-200 shadow-xl overflow-hidden">
             <div className="p-4 border-b border-neutral-100 bg-neutral-50 flex items-center justify-between">
               <h3 className="text-sm font-bold text-neutral-900 flex items-center gap-2">
                 <ShieldCheckIcon className="w-4 h-4 text-red-600" />

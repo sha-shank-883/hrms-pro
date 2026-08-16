@@ -179,7 +179,7 @@ const DemoRequests = () => {
           <button
             onClick={() => fileInputRef.current?.click()}
             disabled={actionLoading === 'restore'}
-            className="px-4 py-2 bg-primary-600 text-white rounded-xl text-sm font-bold shadow-sm hover:bg-neutral-900 transition-colors flex items-center gap-2 disabled:opacity-50"
+            className="px-4 py-2 bg-primary-600 text-white rounded-xl text-sm font-bold shadow-sm hover:bg-primary-700 transition-colors flex items-center gap-2 disabled:opacity-50"
           >
             <FaUpload /> {actionLoading === 'restore' ? 'Restoring...' : 'Restore Backup'}
           </button>
@@ -291,7 +291,7 @@ const DemoRequests = () => {
 
       {/* Edit Tenant Modal */}
       {editModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-neutral-900/50 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-sm">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between p-6 border-b border-neutral-100 bg-neutral-50/50">
               <h3 className="text-lg font-bold text-neutral-900">Manage Tenant: {selectedTenant?.company_name}</h3>
@@ -349,7 +349,7 @@ const DemoRequests = () => {
 
       {/* Delete Confirmation Modal */}
       {deleteModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-neutral-900/50 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-sm">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between p-6 border-b border-red-100 bg-red-50/50">
               <h3 className="text-lg font-bold text-red-700 flex items-center gap-2">

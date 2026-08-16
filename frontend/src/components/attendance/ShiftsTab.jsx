@@ -96,7 +96,7 @@ const ShiftsTab = () => {
             {/* Shift Definitions */}
             <div className="lg:col-span-5 space-y-6">
                 <div className="card border-0 shadow-sm overflow-hidden">
-                    <div className="p-5 bg-neutral-900 border-b border-neutral-800">
+                    <div className="p-5 bg-gradient-to-r from-primary-900 to-primary-950 dark:from-gray-900 dark:to-gray-850 border-b border-primary-800 dark:border-gray-800">
                         <h3 className="text-white text-lg font-bold flex items-center gap-3">
                             <div className="w-8 h-8 rounded-lg bg-primary-600 flex items-center justify-center">
                                 <FaClock size={16} />
@@ -163,7 +163,7 @@ const ShiftsTab = () => {
             {/* Shift Assignments */}
             <div className="lg:col-span-7 space-y-6">
                 <div className="card border-0 shadow-sm overflow-hidden">
-                    <div className="p-5 bg-neutral-900 border-b border-neutral-800">
+                    <div className="p-5 bg-gradient-to-r from-primary-900 to-primary-950 dark:from-gray-900 dark:to-gray-850 border-b border-primary-800 dark:border-gray-800">
                         <h3 className="text-white text-lg font-bold flex items-center gap-3">
                             <div className="w-8 h-8 rounded-lg bg-orange-500 flex items-center justify-center">
                                 <FaCalendarAlt size={16} />

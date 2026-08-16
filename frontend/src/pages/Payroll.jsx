@@ -439,17 +439,17 @@ const Payroll = () => {
               <span className="text-sm font-medium text-neutral-500">{payrollStatistics.cancelled_records} records</span>
             </div>
 
-            <div className="card p-4 bg-neutral-900 border-neutral-800">
+            <div className="card p-4 bg-primary-900 dark:bg-gray-800 text-white border-primary-800 dark:border-gray-700 shadow-md">
               <div className="flex justify-between items-start mb-4">
-                <div className="p-2 bg-neutral-800 text-neutral-200 rounded-lg border border-neutral-700">
+                <div className="p-2 bg-primary-800/80 text-primary-200 rounded-lg border border-primary-700">
                   <FaMoneyBillWave size={16} />
                 </div>
-                <span className="text-xs font-bold uppercase tracking-wide text-neutral-400" style={{ fontSize: '10px' }}>Total Outflow</span>
+                <span className="text-xs font-bold uppercase tracking-wide text-primary-200" style={{ fontSize: '10px' }}>Total Outflow</span>
               </div>
               <div className="mb-1">
                 <h3 className="text-2xl font-bold text-white tracking-tight">{currencySymbol}{parseFloat(payrollStatistics.total_amount).toFixed(2)}</h3>
               </div>
-              <span className="text-sm font-medium text-neutral-400">{payrollStatistics.total_records} records processed</span>
+              <span className="text-sm font-medium text-primary-200/80">{payrollStatistics.total_records} records processed</span>
             </div>
           </div>
 

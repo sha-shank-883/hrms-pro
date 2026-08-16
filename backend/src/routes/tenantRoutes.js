@@ -1,3 +1,5 @@
+const express = require('express');
+const router = express.Router();
 const { 
   createTenant, getAllTenants, updateTenant, resetTenantAdminPassword, deleteTenant, 
   getBiometricDevices, registerBiometricDevice, deleteBiometricDevice, impersonateTenantAdmin, 

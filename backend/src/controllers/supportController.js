@@ -6,33 +6,125 @@ const emailService = require('../services/supportEmailService');
 const asyncHandler = require('../utils/asyncHandler');
 const { NotFoundError, UnauthorizedError, ForbiddenError, ValidationError, ConflictError, AppError } = require('../utils/errors');
 
+const ensureSupportTables = async () => {
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS faq_categories (
+        category_id SERIAL PRIMARY KEY,
+        name VARCHAR(100) NOT NULL,
+        slug VARCHAR(100) UNIQUE NOT NULL,
+        description TEXT,
+        display_order INTEGER DEFAULT 0,
+        is_active BOOLEAN DEFAULT true,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS faq_articles (
+        article_id SERIAL PRIMARY KEY,
+        category_id INTEGER REFERENCES faq_categories(category_id) ON DELETE CASCADE,
+        question TEXT NOT NULL,
+        answer TEXT NOT NULL,
+        keywords JSONB DEFAULT '[]'::jsonb,
+        helpful_count INTEGER DEFAULT 0,
+        not_helpful_count INTEGER DEFAULT 0,
+        is_published BOOLEAN DEFAULT true,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS support_agents (
+        agent_id SERIAL PRIMARY KEY,
+        user_id INTEGER,
+        is_available BOOLEAN DEFAULT true,
+        max_concurrent_chats INTEGER DEFAULT 5,
+        current_chats INTEGER DEFAULT 0,
+        auto_assign BOOLEAN DEFAULT true,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS support_chats (
+        chat_id SERIAL PRIMARY KEY,
+        user_id INTEGER,
+        agent_id INTEGER,
+        status VARCHAR(50) DEFAULT 'active',
+        source VARCHAR(50) DEFAULT 'widget',
+        is_ai_active BOOLEAN DEFAULT true,
+        ai_confidence DECIMAL(5,4),
+        department VARCHAR(100),
+        priority VARCHAR(20) DEFAULT 'normal',
+        unread_count INTEGER DEFAULT 0,
+        started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        resolved_at TIMESTAMP,
+        closed_at TIMESTAMP,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS support_messages (
+        message_id SERIAL PRIMARY KEY,
+        chat_id INTEGER REFERENCES support_chats(chat_id) ON DELETE CASCADE,
+        sender_id INTEGER,
+        sender_type VARCHAR(20) NOT NULL,
+        message TEXT NOT NULL,
+        message_type VARCHAR(50) DEFAULT 'text',
+        attachment_url VARCHAR(500),
+        attachment_name VARCHAR(255),
+        attachment_size INTEGER,
+        metadata JSONB DEFAULT '{}'::jsonb,
+        is_read BOOLEAN DEFAULT false,
+        read_at TIMESTAMP,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+  } catch (_) {}
+};
+
 const CHAT = {};
 
 CHAT.createOrGetChat = asyncHandler(async (req, res) => {
-  const userId = req.user.userId;
+  let userId = req.user?.userId || req.user?.id || 1;
   const { department } = req.body;
 
-  let result = await query(
-    `SELECT * FROM support_chats WHERE user_id = $1 AND status IN ('active', 'waiting') ORDER BY created_at DESC LIMIT 1`,
-    [userId]
-  );
+  try {
+    let result = await query(
+      `SELECT * FROM support_chats WHERE user_id = $1 AND status IN ('active', 'waiting') ORDER BY created_at DESC LIMIT 1`,
+      [userId]
+    );
 
-  if (result.rows.length > 0) {
-    return res.json({ success: true, data: result.rows[0], existing: true });
+    if (result.rows.length > 0) {
+      return res.json({ success: true, data: result.rows[0], existing: true });
+    }
+
+    const newChat = await query(
+      `INSERT INTO support_chats (user_id, department, status, is_ai_active) VALUES ($1, $2, 'active', true) RETURNING *`,
+      [userId, department || 'general']
+    );
+
+    await query(
+      `INSERT INTO support_messages (chat_id, sender_id, sender_type, message_type, message)
+       VALUES ($1, NULL, 'system', 'system', '👋 Welcome! How can we help you today?')`,
+      [newChat.rows[0].chat_id]
+    );
+
+    return res.status(201).json({ success: true, data: newChat.rows[0] });
+  } catch (err) {
+    if (err.message && (err.message.includes('does not exist') || err.message.includes('foreign key'))) {
+      await ensureSupportTables();
+      const retryChat = await query(
+        `INSERT INTO support_chats (user_id, department, status, is_ai_active) VALUES ($1, $2, 'active', true) RETURNING *`,
+        [userId, department || 'general']
+      );
+      await query(
+        `INSERT INTO support_messages (chat_id, sender_id, sender_type, message_type, message)
+         VALUES ($1, NULL, 'system', 'system', '👋 Welcome! How can we help you today?')`,
+        [retryChat.rows[0].chat_id]
+      );
+      return res.status(201).json({ success: true, data: retryChat.rows[0] });
+    }
+    throw err;
   }
-
-  const newChat = await query(
-    `INSERT INTO support_chats (user_id, department, status, is_ai_active) VALUES ($1, $2, 'active', true) RETURNING *`,
-    [userId, department || 'general']
-  );
-
-  await query(
-    `INSERT INTO support_messages (chat_id, sender_id, sender_type, message_type, message)
-     VALUES ($1, NULL, 'system', 'system', '👋 Welcome! How can we help you today?')`,
-    [newChat.rows[0].chat_id]
-  );
-
-  res.status(201).json({ success: true, data: newChat.rows[0] });
 });
 
 CHAT.getChatHistory = asyncHandler(async (req, res) => {

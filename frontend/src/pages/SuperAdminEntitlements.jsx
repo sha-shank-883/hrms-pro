@@ -114,17 +114,17 @@ const SuperAdminEntitlements = () => {
     return (
         <div className="w-full pb-8">
             {/* Header */}
-            <div className="page-header flex flex-col md:flex-row md:items-center justify-between gap-3 mb-6">
-                <div>
-                    <h1 className="page-title text-xl font-bold text-neutral-900 flex items-center gap-2">
-                        <Squares2X2Icon className="w-6 h-6 text-indigo-600" />
-                        Tenant Module Entitlements Matrix
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-neutral-200">
+                <div className="min-w-0 flex-1">
+                    <h1 className="text-xl font-bold text-neutral-900 flex items-center gap-2">
+                        <Squares2X2Icon className="w-6 h-6 text-indigo-600 shrink-0" />
+                        <span className="truncate">Tenant Module Entitlements Matrix</span>
                     </h1>
-                    <p className="mt-0.5 text-xs text-neutral-500">
+                    <p className="mt-0.5 text-xs text-neutral-500 max-w-2xl leading-relaxed">
                         Live module checklist across all companies. Easily grant custom module access regardless of purchased plan tier.
                     </p>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-3 shrink-0">
                     <div className="relative w-64">
                         <MagnifyingGlassIcon className="w-3.5 h-3.5 text-neutral-400 absolute left-3 top-1/2 -translate-y-1/2" />
                         <input

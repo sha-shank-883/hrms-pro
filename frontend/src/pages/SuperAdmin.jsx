@@ -506,17 +506,17 @@ const SuperAdmin = () => {
     return (
         <div className="w-full pb-8">
             {/* Header */}
-            <div className="page-header flex flex-col md:flex-row md:items-center justify-between gap-3 mb-6">
-                <div>
-                    <h1 className="page-title text-xl font-bold text-neutral-900 flex items-center gap-2">
-                        <ShieldCheckIcon className="w-6 h-6 text-primary-600" />
-                        Company Tenants Directory
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-neutral-200">
+                <div className="min-w-0 flex-1">
+                    <h1 className="text-xl font-bold text-neutral-900 flex items-center gap-2">
+                        <ShieldCheckIcon className="w-6 h-6 text-primary-600 shrink-0" />
+                        <span className="truncate">Company Tenants Directory</span>
                     </h1>
-                    <p className="mt-0.5 text-xs text-neutral-500">
+                    <p className="mt-0.5 text-xs text-neutral-500 max-w-2xl leading-relaxed">
                         Multi-tenant control plane, customer account management, database snapshots, and workspace access
                     </p>
                 </div>
-                <div className="flex flex-wrap items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2 shrink-0">
                     <button onClick={loadData} className="btn btn-secondary btn-xs text-xs">
                         <ArrowPathIcon className="w-3.5 h-3.5 mr-1" />
                         Refresh

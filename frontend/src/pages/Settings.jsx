@@ -1288,21 +1288,27 @@ const Settings = () => {
                                   Invoice
                                 </button>
                                 {inv.status === 'completed' && !inv.refund_status && (
-                                  <button
-                                    type="button"
-                                    onClick={() => setRefundRequestModal({
-                                      show: true,
-                                      invoice: inv,
-                                      reason: '',
-                                      loading: false,
-                                      success: '',
-                                      error: ''
-                                    })}
-                                    className="btn btn-ghost btn-xs text-[11px] text-gray-500 hover:text-red-600"
-                                    title="Request Refund for this transaction"
-                                  >
-                                    Request Refund
-                                  </button>
+                                  inv.isEligibleForRefund ? (
+                                    <button
+                                      type="button"
+                                      onClick={() => setRefundRequestModal({
+                                        show: true,
+                                        invoice: inv,
+                                        reason: '',
+                                        loading: false,
+                                        success: '',
+                                        error: ''
+                                      })}
+                                      className="btn btn-ghost btn-xs text-[11px] text-amber-600 hover:text-red-600 font-semibold"
+                                      title={`Request Refund (${inv.isAddon ? `${inv.refundWindowHoursRemaining}h left` : `${inv.refundWindowDaysRemaining}d left`})`}
+                                    >
+                                      Request Refund ({inv.isAddon ? `${inv.refundWindowHoursRemaining}h left` : `${inv.refundWindowDaysRemaining}d left`})
+                                    </button>
+                                  ) : (
+                                    <span className="text-[10px] text-gray-400 italic px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700">
+                                      Refund Expired
+                                    </span>
+                                  )
                                 )}
                               </div>
                             </td>
@@ -1348,22 +1354,40 @@ const Settings = () => {
 
                     {!refundRequestModal.success && (
                       <form onSubmit={handleRequestRefund} className="p-6 space-y-4">
-                        <div className="p-3.5 bg-gray-50 dark:bg-gray-750 rounded-2xl border border-gray-200 dark:border-gray-700 text-xs space-y-1.5">
-                          <div className="flex justify-between">
-                            <span className="text-gray-500">Plan & Seats:</span>
-                            <span className="font-bold text-gray-900 dark:text-white">{refundRequestModal.invoice.plan_id}</span>
+                        <div className="p-3.5 bg-gray-50 dark:bg-gray-750 rounded-2xl border border-gray-200 dark:border-gray-700 text-xs space-y-2">
+                          <div className="flex justify-between items-center">
+                            <span className="text-gray-500">Transaction Type:</span>
+                            <span className="font-bold text-gray-900 dark:text-white">
+                              {refundRequestModal.invoice.isAddon ? 'Seat Add-on (24h Window)' : 'Subscription Plan (7-Day Window)'}
+                            </span>
                           </div>
-                          <div className="flex justify-between">
-                            <span className="text-gray-500">Paid Amount:</span>
-                            <span className="font-black text-gray-900 dark:text-white">
+                          <div className="flex justify-between items-center">
+                            <span className="text-gray-500">Gross Paid Amount:</span>
+                            <span className="font-bold text-gray-900 dark:text-white">
                               {refundRequestModal.invoice.currency === 'INR' ? '₹' : '$'}{parseFloat(refundRequestModal.invoice.amount).toLocaleString()}
                             </span>
                           </div>
-                          <div className="flex justify-between">
-                            <span className="text-gray-500">Date Paid:</span>
-                            <span className="text-gray-700 dark:text-gray-300">{new Date(refundRequestModal.invoice.created_at).toLocaleDateString()}</span>
+                          <div className="flex justify-between items-center text-red-600 dark:text-red-400 font-semibold">
+                            <span>Less 3% Processing & Tax Fee:</span>
+                            <span>
+                              - {refundRequestModal.invoice.currency === 'INR' ? '₹' : '$'}
+                              {(parseFloat(refundRequestModal.invoice.amount) * 0.03).toFixed(2)}
+                            </span>
+                          </div>
+                          <div className="pt-2 border-t border-gray-200 dark:border-gray-600 flex justify-between items-center text-sm">
+                            <span className="font-bold text-gray-900 dark:text-white">Net Estimated Refund:</span>
+                            <span className="font-black text-emerald-600 dark:text-emerald-400">
+                              {refundRequestModal.invoice.currency === 'INR' ? '₹' : '$'}
+                              {(parseFloat(refundRequestModal.invoice.amount) * 0.97).toFixed(2)}
+                            </span>
                           </div>
                         </div>
+
+                        {!refundRequestModal.invoice.isAddon && (
+                          <div className="p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-xl text-[11px] text-amber-800 dark:text-amber-300 leading-relaxed">
+                            <strong>Note:</strong> Refunding your primary subscription plan will automatically refund all active seat add-ons for this billing cycle (with 3% processing fee deducted) and revert your account to the Free tier.
+                          </div>
+                        )}
 
                         <div>
                           <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
@@ -1373,7 +1397,7 @@ const Settings = () => {
                             className="form-input w-full text-xs"
                             rows="3"
                             required
-                            placeholder="Please tell us why you are requesting a refund (e.g. accidental purchase, change of team sizing)..."
+                            placeholder="Please explain the reason for your refund request..."
                             value={refundRequestModal.reason}
                             onChange={(e) => setRefundRequestModal({ ...refundRequestModal, reason: e.target.value })}
                           />
@@ -1390,9 +1414,9 @@ const Settings = () => {
                           <button
                             type="submit"
                             disabled={refundRequestModal.loading}
-                            className="btn btn-primary text-xs bg-red-600 hover:bg-red-700 border-red-600 text-white"
+                            className="btn btn-primary text-xs bg-red-600 hover:bg-red-700 border-red-600 text-white font-bold"
                           >
-                            {refundRequestModal.loading ? 'Submitting...' : 'Submit Refund Request'}
+                            {refundRequestModal.loading ? 'Submitting...' : 'Confirm Refund Request'}
                           </button>
                         </div>
                       </form>

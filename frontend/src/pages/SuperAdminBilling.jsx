@@ -643,33 +643,32 @@ const SuperAdminBilling = () => {
                                     <span className="font-mono font-bold text-neutral-900">{refundModal.txn.invoice_number || `INV-${refundModal.txn.id}`}</span>
                                 </div>
                                 <div className="flex justify-between">
+                                    <span className="text-neutral-500">Type:</span>
+                                    <span className="font-bold text-neutral-900">{refundModal.txn.is_addon ? 'Seat Add-on' : 'Subscription Plan'}</span>
+                                </div>
+                                <div className="flex justify-between">
                                     <span className="text-neutral-500">Gateway:</span>
                                     <span className="font-bold uppercase text-neutral-900">{refundModal.txn.gateway}</span>
                                 </div>
                                 <div className="flex justify-between">
-                                    <span className="text-neutral-500">Original Amount:</span>
+                                    <span className="text-neutral-500">Gross Paid Amount:</span>
                                     <span className="font-black text-neutral-900">{refundModal.txn.currency === 'INR' ? '₹' : '$'}{parseFloat(refundModal.txn.amount).toLocaleString()}</span>
+                                </div>
+                                <div className="flex justify-between text-red-600 font-semibold">
+                                    <span>Less 3% Processing Fee:</span>
+                                    <span>- {refundModal.txn.currency === 'INR' ? '₹' : '$'}{(parseFloat(refundModal.txn.amount) * 0.03).toFixed(2)}</span>
+                                </div>
+                                <div className="pt-1.5 border-t border-neutral-200 flex justify-between font-black text-emerald-700">
+                                    <span>Net Gateway Refund:</span>
+                                    <span>{refundModal.txn.currency === 'INR' ? '₹' : '$'}{(parseFloat(refundModal.txn.amount) * 0.97).toFixed(2)}</span>
                                 </div>
                             </div>
 
-                            <div className="form-group">
-                                <label className="form-label block text-xs font-bold text-neutral-700 mb-1">
-                                    Refund Amount ({refundModal.txn.currency || 'INR'})
-                                </label>
-                                <input
-                                    type="number"
-                                    step="0.01"
-                                    max={refundModal.txn.amount}
-                                    min="1"
-                                    required
-                                    className="form-input w-full text-xs font-bold"
-                                    value={refundModal.amount}
-                                    onChange={(e) => setRefundModal({ ...refundModal, amount: e.target.value })}
-                                />
-                                <span className="text-[10px] text-neutral-400 mt-0.5 block">
-                                    Leave as original amount for 100% full refund.
-                                </span>
-                            </div>
+                            {!refundModal.txn.is_addon && (
+                                <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl text-[11px] text-blue-900 leading-relaxed">
+                                    💡 <strong>Cascading Policy:</strong> Refunding this main subscription plan will automatically refund all active add-on seat transactions purchased for this cycle (minus 3% fee) and reset the tenant to the Free tier.
+                                </div>
+                            )}
 
                             <div className="form-group">
                                 <label className="form-label block text-xs font-bold text-neutral-700 mb-1">

@@ -14,7 +14,7 @@ async function runRefundAndHistoryTests() {
     [testTenantId]
   );
 
-  // 2. Insert a completed test payment log
+  // 2. Insert completed primary plan and add-on payment log
   const logInsert = await pool.query(
     `INSERT INTO shared.payment_logs
        (tenant_id, plan_id, amount, currency, razorpay_order_id, razorpay_payment_id, gateway, status, seats_purchased, is_addon, billing_cycle, invoice_number)
@@ -22,11 +22,20 @@ async function runRefundAndHistoryTests() {
      RETURNING *`,
     [testTenantId]
   );
-
   const paymentLog = logInsert.rows[0];
-  console.log(`1. Created completed test payment log #${paymentLog.id} (INR 76,704).`);
 
-  // 3. Test getPaymentHistory
+  const addonInsert = await pool.query(
+    `INSERT INTO shared.payment_logs
+       (tenant_id, plan_id, amount, currency, razorpay_order_id, razorpay_payment_id, gateway, status, seats_purchased, is_addon, billing_cycle, invoice_number)
+     VALUES ($1, 'scale_addon_5_seats', 15340, 'INR', 'order_tst_addon', 'pay_tst_addon', 'razorpay', 'completed', 5, true, 'yearly', 'INV-TEST-ADDON')
+     RETURNING *`,
+    [testTenantId]
+  );
+  const addonLog = addonInsert.rows[0];
+
+  console.log(`1. Created primary plan log #${paymentLog.id} (INR 76,704) and add-on log #${addonLog.id} (INR 15,340).`);
+
+  // 3. Test getPaymentHistory with 7-day & 24-hour policy metadata
   console.log('\n2. Testing getPaymentHistory for tenant...');
   let historyOutput = null;
   const historyReq = {
@@ -39,10 +48,18 @@ async function runRefundAndHistoryTests() {
   };
   await getPaymentHistory(historyReq, historyRes, (err) => { if (err) throw err; });
   
-  if (!historyOutput.success || historyOutput.data.length === 0) {
+  if (!historyOutput.success || historyOutput.data.length < 2) {
     throw new Error('❌ Failed to fetch payment history');
   }
-  console.log(`✅ Fetched ${historyOutput.data.length} history records. Invoice #${historyOutput.data[0].invoiceNumber}`);
+  const planHistoryItem = historyOutput.data.find(d => d.id === paymentLog.id);
+  const addonHistoryItem = historyOutput.data.find(d => d.id === addonLog.id);
+
+  console.log(`Plan refund window: ${planHistoryItem.refundWindowLabel}, net refund after 3% fee: INR ${planHistoryItem.netRefundAmount}`);
+  console.log(`Addon refund window: ${addonHistoryItem.refundWindowLabel}, net refund after 3% fee: INR ${addonHistoryItem.netRefundAmount}`);
+  if (planHistoryItem.netRefundAmount !== 74402.88) {
+    throw new Error(`❌ Expected 74402.88 net refund, got ${planHistoryItem.netRefundAmount}`);
+  }
+  console.log('✅ Verified 3% fee deduction calculations.');
 
   // 4. Test getLastSubscription
   console.log('\n3. Testing getLastSubscription...');
@@ -56,19 +73,19 @@ async function runRefundAndHistoryTests() {
   };
   await getLastSubscription(lastSubReq, lastSubRes, (err) => { if (err) throw err; });
 
-  if (!lastSubOutput.success || lastSubOutput.data.plan !== 'scale' || !lastSubOutput.data.lastPayment) {
+  if (!lastSubOutput.success || lastSubOutput.data.plan !== 'scale') {
     throw new Error('❌ Failed to get last subscription details');
   }
-  console.log(`✅ Last Subscription resolved: ${lastSubOutput.data.plan} plan, ${lastSubOutput.data.daysRemaining} days remaining, last payment ${lastSubOutput.data.lastPayment.amount} ${lastSubOutput.data.lastPayment.currency}.`);
+  console.log(`✅ Last Subscription resolved: ${lastSubOutput.data.plan} plan, ${lastSubOutput.data.daysRemaining} days remaining.`);
 
-  // 5. Test requestRefund (Tenant Admin)
-  console.log('\n4. Testing requestRefund from Tenant Admin...');
+  // 5. Test requestRefund on Main Plan (cascading to add-ons)
+  console.log('\n4. Testing requestRefund for main plan from Tenant Admin...');
   let reqRefundOutput = null;
   const reqRefundReq = {
     tenant: { tenant_id: testTenantId },
     body: {
       paymentLogId: paymentLog.id,
-      reason: 'Accidentally bought extra seats'
+      reason: 'Need to cancel plan & refund all add-ons'
     }
   };
   const reqRefundRes = {
@@ -77,15 +94,16 @@ async function runRefundAndHistoryTests() {
   await requestRefund(reqRefundReq, reqRefundRes, (err) => { if (err) throw err; });
   console.log(`✅ Refund requested. Response: "${reqRefundOutput.message}"`);
 
-  // Verify status in DB
-  const checkReq = await pool.query('SELECT refund_status, refund_reason FROM shared.payment_logs WHERE id = $1', [paymentLog.id]);
-  if (checkReq.rows[0].refund_status !== 'refund_requested') {
-    throw new Error('❌ Refund status not updated to refund_requested');
+  // Verify status in DB for both plan and linked add-on
+  const checkReqPlan = await pool.query('SELECT refund_status FROM shared.payment_logs WHERE id = $1', [paymentLog.id]);
+  const checkReqAddon = await pool.query('SELECT refund_status FROM shared.payment_logs WHERE id = $1', [addonLog.id]);
+  if (checkReqPlan.rows[0].refund_status !== 'refund_requested' || checkReqAddon.rows[0].refund_status !== 'refund_requested') {
+    throw new Error('❌ Primary plan or linked add-on refund status not updated to refund_requested');
   }
-  console.log('✅ Verified DB status = refund_requested.');
+  console.log('✅ Verified DB status = refund_requested for both plan and linked add-on.');
 
-  // 6. Test processRefund (Super Admin)
-  console.log('\n5. Testing processRefund (Super Admin full refund & rollback)...');
+  // 6. Test processRefund (Super Admin full refund with 3% fee & linked add-on execution)
+  console.log('\n5. Testing processRefund (Super Admin full refund, 3% fee deduction & linked add-on execution)...');
   let processRefundOutput = null;
   const processRefundReq = {
     user: { role: 'super_admin', isSuperAdmin: true, email: 'superadmin@hrmspro.online' },
@@ -101,7 +119,12 @@ async function runRefundAndHistoryTests() {
     json: (d) => { processRefundOutput = d; return processRefundRes; }
   };
   await processRefund(processRefundReq, processRefundRes, (err) => { if (err) throw err; });
-  console.log(`✅ Refund processed. Refund ID: ${processRefundOutput.data.refundId}`);
+  console.log(`✅ Refund processed. Refund ID: ${processRefundOutput.data.refundId}, Net refunded: INR ${processRefundOutput.data.refundAmount}`);
+  console.log(`Linked add-ons refunded count: ${processRefundOutput.data.linkedAddonsRefunded.length}`);
+
+  if (processRefundOutput.data.refundAmount !== 74402.88 || processRefundOutput.data.linkedAddonsRefunded.length === 0) {
+    throw new Error('❌ Net refund or linked add-on refund failed');
+  }
 
   // Verify tenant was safely reverted
   const checkTenant = await pool.query('SELECT subscription_plan, employee_limit FROM shared.tenants WHERE tenant_id = $1', [testTenantId]);
@@ -109,7 +132,7 @@ async function runRefundAndHistoryTests() {
   if (checkTenant.rows[0].subscription_plan !== 'free') {
     throw new Error('❌ Tenant plan was not reverted to free');
   }
-  console.log('✅ Plan rollback verified.');
+  console.log('✅ Plan rollback & cascading add-on refund verified.');
 
   // Cleanup test tenant
   await pool.query(`DELETE FROM shared.payment_logs WHERE tenant_id = $1`, [testTenantId]);

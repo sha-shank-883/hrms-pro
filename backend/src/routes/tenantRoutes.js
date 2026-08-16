@@ -57,6 +57,9 @@ router.put('/plans/configs/:planId', authenticateToken, requireSuperAdmin, updat
 router.get('/:tenantId/modules', authenticateToken, requireSuperAdmin, getTenantModules);
 router.put('/:tenantId/modules', authenticateToken, requireSuperAdmin, updateTenantModules);
 
+const authController = require('../controllers/authController');
+router.post('/register', authController.signupCompany);
+
 router.post('/', authenticateToken, authorizeRole('admin'), requireSuperAdmin, createTenant);
 router.get('/', authenticateToken, authorizeRole('admin'), requireSuperAdmin, getAllTenants);
 router.put('/:tenantId', authenticateToken, authorizeRole('admin'), requireSuperAdmin, updateTenant);

@@ -64,14 +64,29 @@ const updateTenant = asyncHandler(async (req, res) => {
   delete tenantUpdates.tenantId;
   delete tenantUpdates.tenant_id;
 
+  // Support tenant_name as alias for name
+  if (tenantUpdates.tenant_name && !tenantUpdates.name) {
+    tenantUpdates.name = tenantUpdates.tenant_name;
+  }
+
+  let updatedTenant = null;
+
   await transaction(async (client) => {
-    const allowedFields = ['name', 'status', 'domain', 'db_name', 'subscription_plan', 'subscription_expiry', 'custom_modules', 'employee_limit'];
+    const allowedFields = [
+      'name', 'status', 'domain', 'db_name', 'subscription_plan',
+      'subscription_expiry', 'custom_modules', 'employee_limit',
+      'contact_person', 'contact_email', 'contact_phone',
+      'billing_address', 'city', 'country', 'tax_id',
+      'billing_currency', 'billing_cycle'
+    ];
     const filteredUpdates = {};
 
     Object.keys(tenantUpdates).forEach(key => {
       if (allowedFields.includes(key)) {
         if (key === 'subscription_expiry' && tenantUpdates[key] === '') {
           filteredUpdates[key] = null;
+        } else if (key === 'employee_limit' && tenantUpdates[key] !== undefined) {
+          filteredUpdates[key] = parseInt(tenantUpdates[key], 10) || 15;
         } else {
           filteredUpdates[key] = tenantUpdates[key];
         }
@@ -79,10 +94,12 @@ const updateTenant = asyncHandler(async (req, res) => {
     });
 
     if (Object.keys(filteredUpdates).length > 0) {
-      const updatedTenant = await Tenant.update(tenantId, filteredUpdates);
+      updatedTenant = await Tenant.update(tenantId, filteredUpdates);
       if (!updatedTenant) {
         throw new NotFoundError('Tenant not found');
       }
+    } else {
+      updatedTenant = await Tenant.findById(tenantId);
     }
 
     if (adminEmail) {
@@ -94,7 +111,11 @@ const updateTenant = asyncHandler(async (req, res) => {
     }
   });
 
-  res.json({ message: 'Tenant updated successfully' });
+  res.json({
+    success: true,
+    message: 'Tenant updated successfully',
+    tenant: updatedTenant
+  });
 });
 
 const resetTenantAdminPassword = asyncHandler(async (req, res) => {
@@ -820,6 +841,19 @@ const recordManualPayment = asyncHandler(async (req, res) => {
       updated_at = CURRENT_TIMESTAMP
     WHERE tenant_id = $3
   `, [plan_id, newExpiry, tenant_id]);
+
+  // Real-time Super Admin Notification via Socket.IO
+  if (req.io) {
+    req.io.emit('notification:new', {
+      id: `pay_${paymentRes.rows[0]?.id || Date.now()}`,
+      module: 'billing',
+      title: `Payment Logged: ${currency} ${amount}`,
+      message: `Tenant "${tenant_id}" payment of ${currency} ${amount} recorded (${gateway}).`,
+      action_url: '/super-admin/billing',
+      created_at: new Date()
+    });
+    req.io.emit('dashboard_update');
+  }
 
   res.json({
     success: true,

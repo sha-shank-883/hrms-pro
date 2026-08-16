@@ -311,9 +311,9 @@ const Profile = () => {
     const errors = {};
     if (!formData.first_name?.trim()) errors.first_name = "First Name is required";
     if (!formData.last_name?.trim()) errors.last_name = "Last Name is required";
-    if (!formData.phone?.trim()) errors.phone = "Phone is required";
     
-    if (user.role === 'admin') {
+    // Only require department/position/salary when an admin is configuring another employee's profile
+    if (!isOwnProfile && user.role === 'admin') {
       if (!formData.department_id) errors.department_id = "Department is required";
       if (!formData.position?.trim()) errors.position = "Position is required";
       if (!formData.salary) errors.salary = "Salary is required";
@@ -328,7 +328,11 @@ const Profile = () => {
     setLoading(true);
 
     try {
-      await employeeService.update(profile.employee_id, formData);
+      if (isOwnProfile) {
+        await authService.updateProfile(formData);
+      } else if (profile.employee_id) {
+        await employeeService.update(profile.employee_id, formData);
+      }
       setSuccess('Profile updated successfully!');
       setIsEditing(false);
       loadProfile();

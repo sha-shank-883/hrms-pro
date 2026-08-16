@@ -28,9 +28,12 @@ const adminChangePasswordValidation = [
 ];
 
 // Routes
+router.post('/signup', authController.signupCompany);
+router.post('/register-company', authController.signupCompany);
 router.post('/register', registerValidation, validate, authController.register);
 router.post('/login', loginValidation, validate, logAction('LOGIN', 'USER'), authController.login);
 router.get('/profile', authenticateToken, authController.getProfile);
+router.put('/profile', authenticateToken, logAction('UPDATE_PROFILE', 'USER'), authController.updateProfile);
 router.put('/change-password', authenticateToken, changePasswordValidation, validate, logAction('CHANGE_PASSWORD', 'USER'), authController.changePassword);
 router.put('/change-password/:userId', authenticateToken, adminChangePasswordValidation, validate, logAction('ADMIN_CHANGE_PASSWORD', 'USER'), authController.adminChangeUserPassword);
 router.put('/permissions/:userId', authenticateToken, logAction('ADMIN_UPDATE_PERMISSIONS', 'USER'), authController.adminUpdatePermissions);

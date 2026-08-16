@@ -266,6 +266,19 @@ const captureOrder = asyncHandler(async (req, res) => {
     console.error('[PayPal] Confirmation email failed:', emailErr.message);
   }
 
+  // Real-time Super Admin Notification via Socket.IO
+  if (req.io) {
+    req.io.emit('notification:new', {
+      id: `pay_${Date.now()}`,
+      module: 'billing',
+      title: `Payment Received: ${symbol}${totalPrice} (${selectedCurrency})`,
+      message: `Tenant "${tenantId}" subscribed to ${plan.name} (${selectedSeats} seats) via PayPal.`,
+      action_url: '/super-admin/billing',
+      created_at: new Date()
+    });
+    req.io.emit('dashboard_update');
+  }
+
   res.json({
     success: true,
     message: `${plan.name} plan with ${selectedSeats} seats activated successfully.`,

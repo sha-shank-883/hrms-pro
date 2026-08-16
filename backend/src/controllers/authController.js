@@ -1,6 +1,6 @@
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
-const { pool, query } = require('../config/database');
+const { pool, query, transaction } = require('../config/database');
 const { generateToken } = require('../middleware/auth');
 const { validatePassword } = require('../utils/passwordValidator');
 const { sendEmailSync } = require('../services/emailService');
@@ -53,14 +53,181 @@ const register = asyncHandler(async (req, res) => {
   });
 });
 
+const signupCompany = asyncHandler(async (req, res) => {
+  const { companyName, fullName, email, password, phone } = req.body;
+
+  if (!companyName || !fullName || !email || !password) {
+    throw new ValidationError('Company name, full name, work email, and password are required');
+  }
+
+  const emailClean = email.trim().toLowerCase();
+  const passwordValidation = await validatePassword(password);
+  if (!passwordValidation.isValid) {
+    throw new ValidationError(passwordValidation.errors.join(' '));
+  }
+
+  // 1. Check if email belongs to Super Admin
+  try {
+    const saCheck = await pool.query('SELECT id FROM shared.super_admins WHERE email = $1', [emailClean]);
+    if (saCheck.rows.length > 0) {
+      throw new ConflictError('An account with this email address already exists. Please log in.');
+    }
+  } catch (err) {
+    if (err instanceof ConflictError) throw err;
+  }
+
+  // 2. Check if email already registered across active tenant schemas
+  try {
+    const tenantsList = await pool.query('SELECT tenant_id FROM shared.tenants WHERE status = $1', ['active']);
+    for (const t of tenantsList.rows) {
+      try {
+        const uCheck = await pool.query(`SELECT user_id FROM "${t.tenant_id}".users WHERE email = $1`, [emailClean]);
+        if (uCheck.rows.length > 0) {
+          throw new ConflictError('An account with this email already exists. Please log in.');
+        }
+      } catch (_) {}
+    }
+  } catch (err) {
+    if (err instanceof ConflictError) throw err;
+  }
+
+  // 3. Generate unique tenant_id
+  let baseId = 'tenant_' + companyName.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 30);
+  if (!baseId || baseId === 'tenant_') baseId = 'tenant_company';
+  let tenantId = baseId;
+  let suffix = 1;
+
+  while (true) {
+    const tExist = await pool.query('SELECT tenant_id FROM shared.tenants WHERE tenant_id = $1', [tenantId]);
+    if (tExist.rows.length === 0) break;
+    tenantId = `${baseId}${suffix++}`;
+  }
+
+  // 4. Calculate 14-day Free Trial expiry
+  const expiryDate = new Date();
+  expiryDate.setDate(expiryDate.getDate() + 14);
+
+  const salt = await bcrypt.genSalt(10);
+  const hashedPassword = await bcrypt.hash(password, salt);
+  const nameParts = fullName.trim().split(' ');
+  const firstName = nameParts[0] || fullName.trim();
+  const lastName = nameParts.slice(1).join(' ') || 'Admin';
+
+  let createdUser = null;
+
+  // 5. Transaction to create tenant schema, tables, admin user, employee, and initial settings
+  const fs = require('fs');
+  const path = require('path');
+
+  await transaction(async (client) => {
+    // 1. Create Schema
+    await client.query(`CREATE SCHEMA IF NOT EXISTS "${tenantId}"`);
+
+    // 2. Set search path and execute tenant schema
+    await client.query(`SET search_path TO "${tenantId}"`);
+    const schemaPath = path.join(__dirname, '../config/tenant_schema.sql');
+    if (fs.existsSync(schemaPath)) {
+      const schemaSql = fs.readFileSync(schemaPath, 'utf8');
+      await client.query(schemaSql);
+    }
+
+    // 3. Insert Admin User into tenant schema
+    const userRes = await client.query(
+      `INSERT INTO users (email, password_hash, role, is_active) VALUES ($1, $2, 'admin', true) RETURNING *`,
+      [emailClean, hashedPassword]
+    );
+    createdUser = userRes.rows[0];
+
+    // 4. Insert Employee Profile for the Admin
+    try {
+      await client.query(
+        `INSERT INTO employees (user_id, first_name, last_name, email, position, status, hire_date) VALUES ($1, $2, $3, $4, 'Founder / HR Admin', 'active', CURRENT_DATE)`,
+        [createdUser.user_id, firstName, lastName, emailClean]
+      );
+    } catch (empErr) {
+      console.warn('Admin employee profile insert warning:', empErr.message);
+    }
+
+    // 5. Insert default company departments
+    try {
+      await client.query(`
+        INSERT INTO departments (department_name, description) VALUES 
+        ('Management', 'Executive and Company Management'),
+        ('Human Resources', 'HR, People Ops and Recruitment'),
+        ('Engineering', 'Product & Software Engineering'),
+        ('Sales & Marketing', 'Go-To-Market and Growth')
+      `);
+    } catch (deptErr) {
+      console.warn('Default departments seed warning:', deptErr.message);
+    }
+
+    // 6. Insert into shared.tenants
+    await client.query(`
+      INSERT INTO shared.tenants 
+        (tenant_id, name, status, subscription_plan, subscription_expiry, employee_limit, contact_person, contact_email, contact_phone)
+      VALUES ($1, $2, 'active', 'free', $3, 15, $4, $5, $6)
+    `, [tenantId, companyName.trim(), expiryDate, fullName.trim(), emailClean, phone || null]);
+  });
+
+  // 6. Generate Token
+  const token = generateToken({
+    user_id: createdUser.user_id,
+    userId: createdUser.user_id,
+    email: createdUser.email,
+    role: 'admin',
+    tenant_id: tenantId
+  });
+
+  const entitlement = await getTenantActiveModules(tenantId);
+
+  // 7. Real-time notification to Super Admin
+  if (req.io) {
+    req.io.emit('notification:new', {
+      id: `tenant_${tenantId}`,
+      module: 'tenants',
+      title: `New Company Signed Up: ${companyName}`,
+      message: `${fullName} (${emailClean}) started a 14-day free trial.`,
+      action_url: '/super-admin',
+      created_at: new Date()
+    });
+    req.io.emit('dashboard_update');
+  }
+
+  res.status(201).json({
+    success: true,
+    message: 'Account created successfully! Starting your 14-day free trial.',
+    data: {
+      user: {
+        userId: createdUser.user_id,
+        email: createdUser.email,
+        role: 'admin',
+        first_name: firstName,
+        last_name: lastName,
+        tenant_id: tenantId,
+        subscription_plan: entitlement.plan,
+        subscription_expired: entitlement.isExpired,
+        tenant_modules: entitlement.modules,
+      },
+      tenant: {
+        tenantId,
+        name: companyName,
+        plan: 'free',
+        trialExpires: expiryDate
+      },
+      token
+    }
+  });
+});
+
 const login = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
+  const emailClean = email.trim().toLowerCase();
 
   // 1. Check Global Super Admin Table First
   try {
     const superAdminRes = await pool.query(
       'SELECT * FROM shared.super_admins WHERE email = $1 AND is_active = true',
-      [email]
+      [emailClean]
     );
 
     if (superAdminRes.rows.length > 0) {
@@ -114,17 +281,52 @@ const login = asyncHandler(async (req, res) => {
     console.error('Super Admin lookup check error:', err.message);
   }
 
-  // 2. Standard Tenant User Lookup
-  const result = await query(
-    'SELECT u.*, e.employee_id, e.first_name, e.last_name FROM users u LEFT JOIN employees e ON u.user_id = e.user_id WHERE u.email = $1 AND u.is_active = true',
-    [email]
-  );
+  // 2. Smart Tenant User Lookup across Active Tenant Schemas
+  let user = null;
+  let resolvedTenantId = req.headers['x-tenant-id'] || null;
 
-  if (result.rows.length === 0) {
-    throw new UnauthorizedError('Invalid credentials');
+  if (resolvedTenantId) {
+    try {
+      const result = await pool.query(
+        `SELECT u.*, e.employee_id, e.first_name, e.last_name 
+         FROM "${resolvedTenantId}".users u 
+         LEFT JOIN "${resolvedTenantId}".employees e ON u.user_id = e.user_id 
+         WHERE LOWER(u.email) = LOWER($1) AND (u.is_active IS TRUE OR u.is_active IS NULL)`,
+        [emailClean]
+      );
+      if (result.rows.length > 0) {
+        user = result.rows[0];
+      }
+    } catch (_) {}
   }
 
-  const user = result.rows[0];
+  // Fallback: If not found or no tenant header, search all active tenants
+  if (!user) {
+    const tenantsList = await pool.query(
+      'SELECT tenant_id FROM shared.tenants WHERE status = $1 ORDER BY created_at DESC',
+      ['active']
+    );
+    for (const t of tenantsList.rows) {
+      try {
+        const result = await pool.query(
+          `SELECT u.*, e.employee_id, e.first_name, e.last_name 
+           FROM "${t.tenant_id}".users u 
+           LEFT JOIN "${t.tenant_id}".employees e ON u.user_id = e.user_id 
+           WHERE LOWER(u.email) = LOWER($1) AND (u.is_active IS TRUE OR u.is_active IS NULL)`,
+          [emailClean]
+        );
+        if (result.rows.length > 0) {
+          user = result.rows[0];
+          resolvedTenantId = t.tenant_id;
+          break;
+        }
+      } catch (_) {}
+    }
+  }
+
+  if (!user) {
+    throw new UnauthorizedError('Invalid email or password');
+  }
 
   const isPasswordValid = await bcrypt.compare(password, user.password_hash);
 
@@ -133,25 +335,32 @@ const login = asyncHandler(async (req, res) => {
   }
 
   if (user.is_two_factor_enabled) {
-    const tempToken = generateToken({ ...user, is2FAPending: true }, '5m');
+    const tempToken = generateToken({ ...user, tenant_id: resolvedTenantId, is2FAPending: true }, '5m');
 
     return res.json({
       success: true,
       message: '2FA required',
       requires2FA: true,
       tempToken: tempToken,
-      userId: user.user_id
+      userId: user.user_id,
+      tenantId: resolvedTenantId
     });
   }
 
-  await query(
-    'UPDATE users SET updated_at = CURRENT_TIMESTAMP WHERE user_id = $1',
-    [user.user_id]
-  );
+  try {
+    await pool.query(
+      `UPDATE "${resolvedTenantId}".users SET updated_at = CURRENT_TIMESTAMP WHERE user_id = $1`,
+      [user.user_id]
+    );
+  } catch (_) {}
 
-  const token = generateToken(user);
-  const tenantId = req.headers['x-tenant-id'] || 'tenant_default';
-  const entitlement = await getTenantActiveModules(tenantId);
+  const token = generateToken({
+    ...user,
+    userId: user.user_id,
+    tenant_id: resolvedTenantId
+  });
+
+  const entitlement = await getTenantActiveModules(resolvedTenantId);
 
   res.json({
     success: true,
@@ -165,7 +374,7 @@ const login = asyncHandler(async (req, res) => {
         employee_id: user.employee_id,
         first_name: user.first_name,
         last_name: user.last_name,
-        tenant_id: tenantId,
+        tenant_id: resolvedTenantId,
         subscription_plan: entitlement.plan,
         subscription_expired: entitlement.isExpired,
         tenant_modules: entitlement.modules,
@@ -427,6 +636,124 @@ const getProfile = asyncHandler(async (req, res) => {
   });
 });
 
+const updateProfile = asyncHandler(async (req, res) => {
+  const userId = req.user.userId;
+  const {
+    first_name,
+    last_name,
+    phone,
+    date_of_birth,
+    gender,
+    address,
+    about_me,
+    profile_image,
+    social_links
+  } = req.body;
+
+  // 1. Super Admin profile update
+  if (req.user.isSuperAdmin || req.user.role === 'super_admin') {
+    const fullName = `${first_name || ''} ${last_name || ''}`.trim() || req.body.full_name || 'Super Admin';
+    await pool.query(
+      'UPDATE shared.super_admins SET full_name = $1 WHERE id = $2 OR email = $3',
+      [fullName, userId, req.user.email]
+    );
+
+    return res.json({
+      success: true,
+      message: 'Profile updated successfully',
+      data: {
+        userId,
+        first_name: first_name || fullName.split(' ')[0],
+        last_name: last_name || fullName.split(' ').slice(1).join(' '),
+        email: req.user.email,
+        role: 'super_admin'
+      }
+    });
+  }
+
+  // 2. Tenant User / Admin profile update
+  const tenantId = req.headers['x-tenant-id'] || req.user.tenant_id;
+  
+  // Check if an employee record exists for this user
+  const empCheck = await query(
+    'SELECT employee_id FROM employees WHERE user_id = $1',
+    [userId]
+  );
+
+  let updatedEmployee = null;
+
+  if (empCheck.rows.length > 0) {
+    const empId = empCheck.rows[0].employee_id;
+    const updateRes = await query(
+      `UPDATE employees SET
+        first_name = COALESCE($1, first_name),
+        last_name = COALESCE($2, last_name),
+        phone = COALESCE($3, phone),
+        date_of_birth = COALESCE($4, date_of_birth),
+        gender = COALESCE($5, gender),
+        address = COALESCE($6, address),
+        about_me = COALESCE($7, about_me),
+        profile_image = COALESCE($8, profile_image),
+        social_links = COALESCE($9, social_links),
+        updated_at = CURRENT_TIMESTAMP
+      WHERE employee_id = $10
+      RETURNING *`,
+      [
+        first_name || null,
+        last_name || null,
+        phone || null,
+        date_of_birth || null,
+        gender || null,
+        address || null,
+        about_me || null,
+        profile_image || null,
+        social_links ? JSON.stringify(social_links) : null,
+        empId
+      ]
+    );
+    updatedEmployee = updateRes.rows[0];
+  } else {
+    // If no employee record exists yet (e.g. pure tenant admin), create an executive record
+    const empInsert = await query(
+      `INSERT INTO employees 
+        (user_id, first_name, last_name, email, phone, address, gender, date_of_birth, about_me, position, status, hire_date)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'Founder / Workspace Owner', 'active', CURRENT_DATE)
+      RETURNING *`,
+      [
+        userId,
+        first_name || 'Admin',
+        last_name || 'User',
+        req.user.email,
+        phone || null,
+        address || null,
+        gender || null,
+        date_of_birth || null,
+        about_me || null
+      ]
+    );
+    updatedEmployee = empInsert.rows[0];
+  }
+
+  // Update touch timestamp on users table
+  await query('UPDATE users SET updated_at = CURRENT_TIMESTAMP WHERE user_id = $1', [userId]);
+
+  res.json({
+    success: true,
+    message: 'Profile updated successfully',
+    data: {
+      userId,
+      employee_id: updatedEmployee?.employee_id,
+      first_name: updatedEmployee?.first_name,
+      last_name: updatedEmployee?.last_name,
+      phone: updatedEmployee?.phone,
+      email: req.user.email,
+      role: req.user.role,
+      position: updatedEmployee?.position,
+      profile_image: updatedEmployee?.profile_image
+    }
+  });
+});
+
 const changePassword = asyncHandler(async (req, res) => {
   const { currentPassword, newPassword } = req.body;
 
@@ -628,8 +955,10 @@ const resetPassword = asyncHandler(async (req, res) => {
 
 module.exports = {
   register,
+  signupCompany,
   login,
   getProfile,
+  updateProfile,
   changePassword,
   adminChangeUserPassword,
   adminUpdatePermissions,

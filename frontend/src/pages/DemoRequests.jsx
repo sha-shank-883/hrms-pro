@@ -6,7 +6,7 @@ const DemoRequests = () => {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(null);
-  
+
   const fileInputRef = useRef(null);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -87,16 +87,16 @@ const DemoRequests = () => {
       setActionLoading('backup');
       const token = localStorage.getItem('token');
       const tenantId = localStorage.getItem('tenant_id');
-      
+
       const response = await fetch(`${import.meta.env.VITE_API_URL || '/api'}/leads/${selectedTenant.id}/backup`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'x-tenant-id': tenantId
         }
       });
-      
+
       if (!response.ok) throw new Error('Backup failed');
-      
+
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -145,7 +145,7 @@ const DemoRequests = () => {
     try {
       setActionLoading('restore');
       const text = await file.text();
-      
+
       const res = await api.post('/leads/restore', { backup: text });
       if (res.data.success) {
         alert('Tenant successfully restored from backup!');
@@ -169,17 +169,17 @@ const DemoRequests = () => {
           <p className="text-sm text-neutral-500">View demo requests and manage provisioned HRMS tenants.</p>
         </div>
         <div>
-          <input 
-            type="file" 
-            accept=".json" 
-            ref={fileInputRef} 
-            onChange={handleRestoreBackup} 
-            className="hidden" 
+          <input
+            type="file"
+            accept=".json"
+            ref={fileInputRef}
+            onChange={handleRestoreBackup}
+            className="hidden"
           />
-          <button 
+          <button
             onClick={() => fileInputRef.current?.click()}
             disabled={actionLoading === 'restore'}
-            className="px-4 py-2 bg-neutral-800 text-white rounded-xl text-sm font-bold shadow-sm hover:bg-neutral-900 transition-colors flex items-center gap-2 disabled:opacity-50"
+            className="px-4 py-2 bg-primary-600 text-white rounded-xl text-sm font-bold shadow-sm hover:bg-neutral-900 transition-colors flex items-center gap-2 disabled:opacity-50"
           >
             <FaUpload /> {actionLoading === 'restore' ? 'Restoring...' : 'Restore Backup'}
           </button>
@@ -247,14 +247,14 @@ const DemoRequests = () => {
                     <td className="px-6 py-4 text-right">
                       {req.status === 'pending' ? (
                         <div className="flex justify-end gap-2">
-                          <button 
+                          <button
                             onClick={() => handleProvision(req.id)}
                             disabled={actionLoading === req.id}
                             className="px-3 py-1.5 bg-primary-600 text-white rounded-lg text-sm font-medium hover:bg-primary-700 disabled:opacity-50 flex items-center gap-2 transition-colors"
                           >
                             {actionLoading === req.id ? 'Provisioning...' : <><FaCheckCircle /> Approve</>}
                           </button>
-                          <button 
+                          <button
                             onClick={() => openDeleteModal(req)}
                             className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                             title="Delete Request"
@@ -264,14 +264,14 @@ const DemoRequests = () => {
                         </div>
                       ) : (
                         <div className="flex justify-end gap-2">
-                          <button 
+                          <button
                             onClick={() => openEditModal(req)}
                             className="p-2 text-neutral-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
                             title="Manage Tenant"
                           >
                             <FaEdit className="text-lg" />
                           </button>
-                          <button 
+                          <button
                             onClick={() => openDeleteModal(req)}
                             className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                             title="Delete Tenant"
@@ -299,14 +299,14 @@ const DemoRequests = () => {
                 <FaTimes />
               </button>
             </div>
-            
+
             <div className="p-6 space-y-4">
               <div>
                 <label className="block text-sm font-medium text-neutral-700 mb-1">Subscription Plan</label>
-                <select 
+                <select
                   className="w-full border border-neutral-200 rounded-xl px-4 py-2 focus:ring-2 focus:ring-primary-500 focus:outline-none"
                   value={tenantUpdates.subscription_plan}
-                  onChange={e => setTenantUpdates({...tenantUpdates, subscription_plan: e.target.value})}
+                  onChange={e => setTenantUpdates({ ...tenantUpdates, subscription_plan: e.target.value })}
                 >
                   <option value="free">Free</option>
                   <option value="pro">Pro</option>
@@ -316,10 +316,10 @@ const DemoRequests = () => {
 
               <div>
                 <label className="block text-sm font-medium text-neutral-700 mb-1">Tenant Status</label>
-                <select 
+                <select
                   className="w-full border border-neutral-200 rounded-xl px-4 py-2 focus:ring-2 focus:ring-primary-500 focus:outline-none"
                   value={tenantUpdates.status}
-                  onChange={e => setTenantUpdates({...tenantUpdates, status: e.target.value})}
+                  onChange={e => setTenantUpdates({ ...tenantUpdates, status: e.target.value })}
                 >
                   <option value="active">Active</option>
                   <option value="suspended">Suspended</option>
@@ -329,13 +329,13 @@ const DemoRequests = () => {
             </div>
 
             <div className="p-6 bg-neutral-50 flex justify-end gap-3 border-t border-neutral-100">
-              <button 
+              <button
                 onClick={() => setEditModalOpen(false)}
                 className="px-4 py-2 text-sm font-medium text-neutral-600 hover:bg-neutral-200 rounded-xl transition-colors"
               >
                 Cancel
               </button>
-              <button 
+              <button
                 onClick={handleUpdateTenant}
                 disabled={actionLoading === 'update'}
                 className="px-6 py-2 bg-primary-600 text-white text-sm font-bold rounded-xl shadow-sm hover:bg-primary-700 hover:shadow disabled:opacity-50 transition-all"
@@ -359,18 +359,18 @@ const DemoRequests = () => {
                 <FaTimes />
               </button>
             </div>
-            
+
             <div className="p-6 space-y-4">
               <p className="text-neutral-700">
                 Are you sure you want to permanently delete the demo account for <b>{selectedTenant?.company_name}</b>?
               </p>
-              
+
               {selectedTenant?.status === 'provisioned' && (
                 <div className="bg-amber-50 p-4 rounded-xl border border-amber-100">
                   <p className="text-sm text-amber-800 mb-3 font-medium">
                     This will irreversibly drop their database schema. It is highly recommended to download a full backup first.
                   </p>
-                  <button 
+                  <button
                     onClick={handleDownloadBackup}
                     disabled={actionLoading === 'backup'}
                     className="w-full flex justify-center items-center gap-2 px-4 py-2 bg-amber-600 text-white rounded-xl text-sm font-bold shadow-sm hover:bg-amber-700 disabled:opacity-50 transition-colors"
@@ -394,13 +394,13 @@ const DemoRequests = () => {
             </div>
 
             <div className="p-6 bg-neutral-50 flex justify-end gap-3 border-t border-neutral-100">
-              <button 
+              <button
                 onClick={() => setDeleteModalOpen(false)}
                 className="px-4 py-2 text-sm font-medium text-neutral-600 hover:bg-neutral-200 rounded-xl transition-colors"
               >
                 Cancel
               </button>
-              <button 
+              <button
                 onClick={handleDeleteTenant}
                 disabled={actionLoading === 'delete' || !twoFactorToken || twoFactorToken.length !== 6}
                 className="px-6 py-2 bg-red-600 text-white text-sm font-bold rounded-xl shadow-sm hover:bg-red-700 hover:shadow disabled:opacity-50 transition-all"

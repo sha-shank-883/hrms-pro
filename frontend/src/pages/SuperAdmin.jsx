@@ -149,6 +149,9 @@ const SuperAdmin = () => {
     const openManageModal = async (tenant, initialTab = 'overview') => {
         setManageModal({ show: true, tenant, tab: initialTab });
         setManageFormData({
+            name: tenant.name || '',
+            domain: tenant.domain || '',
+            employee_limit: tenant.employee_limit || 15,
             status: tenant.status,
             subscription_plan: tenant.subscription_plan || 'free',
             subscription_expiry: tenant.subscription_expiry ? tenant.subscription_expiry.split('T')[0] : '',
@@ -201,13 +204,21 @@ const SuperAdmin = () => {
     const handleManageSubmit = async (e) => {
         e.preventDefault();
         try {
-            await tenantService.update(manageModal.tenant.tenant_id, manageFormData);
-            setSuccess('Tenant updated successfully');
+            setError('');
+            const res = await tenantService.update(manageModal.tenant.tenant_id, manageFormData);
+            setSuccess(res.message || 'Tenant updated successfully');
             fetchTenants();
-            setManageModal(prev => ({ ...prev, tenant: { ...prev.tenant, ...manageFormData } }));
+            setManageModal(prev => ({
+                ...prev,
+                tenant: {
+                    ...prev.tenant,
+                    ...manageFormData,
+                    ...(res.tenant || {})
+                }
+            }));
             setManageFormData(prev => ({ ...prev, adminEmail: '' }));
         } catch (err) {
-            setError('Failed to update tenant');
+            setError(err.response?.data?.message || 'Failed to update tenant');
         }
     };
 
@@ -913,6 +924,40 @@ const SuperAdmin = () => {
                             {/* TAB 1: OVERVIEW */}
                             {manageModal.tab === 'overview' && (
                                 <form onSubmit={handleManageSubmit} className="space-y-4">
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        <div className="form-group">
+                                            <label className="form-label block text-xs font-bold text-neutral-700 mb-1">Company / Tenant Name</label>
+                                            <input
+                                                type="text"
+                                                required
+                                                className="form-input w-full text-xs font-bold"
+                                                value={manageFormData.name || ''}
+                                                onChange={(e) => setManageFormData({ ...manageFormData, name: e.target.value })}
+                                                placeholder="e.g. Acme Corporation"
+                                            />
+                                        </div>
+                                        <div className="form-group">
+                                            <label className="form-label block text-xs font-bold text-neutral-700 mb-1">Domain / Subdomain</label>
+                                            <input
+                                                type="text"
+                                                className="form-input w-full text-xs font-mono"
+                                                value={manageFormData.domain || ''}
+                                                onChange={(e) => setManageFormData({ ...manageFormData, domain: e.target.value })}
+                                                placeholder="acme.hrmspro.online"
+                                            />
+                                        </div>
+                                        <div className="form-group">
+                                            <label className="form-label block text-xs font-bold text-neutral-700 mb-1">Seat / Employee Limit</label>
+                                            <input
+                                                type="number"
+                                                min="1"
+                                                className="form-input w-full text-xs font-bold"
+                                                value={manageFormData.employee_limit || 15}
+                                                onChange={(e) => setManageFormData({ ...manageFormData, employee_limit: parseInt(e.target.value, 10) || 1 })}
+                                            />
+                                        </div>
+                                    </div>
+
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div className="form-group">
                                             <label className="form-label block text-xs font-bold text-neutral-700 mb-1">Tenant Status</label>

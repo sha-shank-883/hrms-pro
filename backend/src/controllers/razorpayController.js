@@ -275,6 +275,19 @@ const verifyRazorpayPayment = asyncHandler(async (req, res) => {
     console.error('Failed to send payment confirmation email:', emailErr);
   }
 
+  // Real-time Super Admin Notification via Socket.IO
+  if (req.io) {
+    req.io.emit('notification:new', {
+      id: `pay_${Date.now()}`,
+      module: 'billing',
+      title: `Payment Received: ₹${totalPrice.toLocaleString('en-IN')}`,
+      message: `Tenant "${tenantId}" subscribed to ${plan.name} (${selectedSeats} seats) via Razorpay.`,
+      action_url: '/super-admin/billing',
+      created_at: new Date()
+    });
+    req.io.emit('dashboard_update');
+  }
+
   res.json({
     success: true,
     message: `Payment successful. ${plan.name} plan with ${selectedSeats} seats is now active.`,

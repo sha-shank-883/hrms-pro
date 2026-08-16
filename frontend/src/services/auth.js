@@ -6,6 +6,21 @@ export const authService = {
     if (response.data.success && !response.data.requires2FA) {
       localStorage.setItem('token', response.data.data.token);
       localStorage.setItem('user', JSON.stringify(response.data.data.user));
+      if (response.data.data.user?.tenant_id) {
+        localStorage.setItem('tenant_id', response.data.data.user.tenant_id);
+      }
+    }
+    return response.data;
+  },
+
+  signup: async (formData) => {
+    const response = await api.post('/auth/signup', formData);
+    if (response.data.success && response.data.data?.token) {
+      localStorage.setItem('token', response.data.data.token);
+      localStorage.setItem('user', JSON.stringify(response.data.data.user));
+      if (response.data.data.user?.tenant_id) {
+        localStorage.setItem('tenant_id', response.data.data.user.tenant_id);
+      }
     }
     return response.data;
   },
@@ -22,10 +37,16 @@ export const authService = {
   logout: () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    localStorage.removeItem('tenant_id');
   },
 
   getProfile: async () => {
     const response = await api.get('/auth/profile');
+    return response.data;
+  },
+
+  updateProfile: async (data) => {
+    const response = await api.put('/auth/profile', data);
     return response.data;
   },
 

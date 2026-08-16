@@ -8,12 +8,12 @@ const { NotFoundError, ForbiddenError, ValidationError } = require('../utils/err
 const getModuleBadgeCounts = asyncHandler(async (req, res) => {
   const userId = req.user?.userId || req.user?.id;
   const role = req.user?.role || 'employee';
-  const hasTenantHeader = Boolean(req.headers['x-tenant-id']);
-  const isSuperAdmin = (req.user?.isSuperAdmin || role === 'super_admin') && !hasTenantHeader;
+  const isSuperAdmin = Boolean(req.user?.isSuperAdmin || role === 'super_admin');
 
   // 1. Super Admin Platform-Level Notifications
   if (isSuperAdmin) {
     let leadsCount = 0;
+    let contactCount = 0;
     let billingCount = 0;
     let newTenantsCount = 0;
 
@@ -28,11 +28,21 @@ const getModuleBadgeCounts = asyncHandler(async (req, res) => {
     } catch (err) {}
 
     try {
-      // Pending / Recent Payments (last 24 hours)
+      // Inbound Contact Inquiries (last 7 days)
+      const contactRes = await query(`
+        SELECT COUNT(*) as count 
+        FROM shared.contact_inquiries 
+        WHERE submitted_at >= NOW() - INTERVAL '7 days'
+      `);
+      contactCount = parseInt(contactRes.rows[0]?.count || 0, 10);
+    } catch (err) {}
+
+    try {
+      // Pending / Recent Payments (last 48 hours)
       const payRes = await query(`
         SELECT COUNT(*) as count 
         FROM shared.payment_logs 
-        WHERE status = 'pending' OR created_at >= NOW() - INTERVAL '24 hours'
+        WHERE status = 'pending' OR created_at >= NOW() - INTERVAL '48 hours'
       `);
       billingCount = parseInt(payRes.rows[0]?.count || 0, 10);
     } catch (err) {}
@@ -47,13 +57,14 @@ const getModuleBadgeCounts = asyncHandler(async (req, res) => {
       newTenantsCount = parseInt(tenantRes.rows[0]?.count || 0, 10);
     } catch (err) {}
 
-    const total = leadsCount + billingCount;
+    const totalLeads = leadsCount + contactCount;
+    const total = totalLeads + billingCount + newTenantsCount;
 
     return res.json({
       success: true,
       isSuperAdmin: true,
       counts: {
-        leads: leadsCount,
+        leads: totalLeads,
         billing: billingCount,
         tenants: newTenantsCount,
         notifications: total,
@@ -151,9 +162,9 @@ const getModuleBadgeCounts = asyncHandler(async (req, res) => {
  */
 const getUserNotifications = asyncHandler(async (req, res) => {
   const userId = req.user?.userId || req.user?.id;
-  const hasTenantHeader = Boolean(req.headers['x-tenant-id']);
-  const isSuperAdmin = (req.user?.isSuperAdmin || req.user?.role === 'super_admin') && !hasTenantHeader;
-  const limit = parseInt(req.query.limit, 10) || 20;
+  const role = req.user?.role || 'employee';
+  const isSuperAdmin = Boolean(req.user?.isSuperAdmin || role === 'super_admin');
+  const limit = parseInt(req.query.limit, 10) || 25;
   const offset = parseInt(req.query.offset, 10) || 0;
   const unreadOnly = req.query.unread === 'true';
 
@@ -161,37 +172,59 @@ const getUserNotifications = asyncHandler(async (req, res) => {
     // Generate platform notifications dynamically from shared logs & leads
     const feed = [];
 
+    // 1. Inbound Demo Requests
     try {
       const leadsRes = await query(`
-        SELECT id, name, email, company_name, created_at, status
+        SELECT id, name, email, company_name, phone, created_at, status
         FROM shared.demo_requests
-        ORDER BY created_at DESC LIMIT 5
+        ORDER BY created_at DESC LIMIT 15
       `);
       leadsRes.rows.forEach(r => {
         feed.push({
-          id: `lead_${r.id}`,
+          id: `demo_${r.id}`,
           module: 'leads',
-          title: `New Demo Lead: ${r.company_name || r.name}`,
-          message: `${r.name} (${r.email}) requested a product demo. Status: ${r.status}`,
+          title: `Demo Request: ${r.company_name || r.name}`,
+          message: `${r.name} (${r.email}) requested a live demo. Status: ${r.status}`,
           action_url: '/super-admin/demo-requests',
-          is_read: r.status !== 'pending',
+          is_read: r.status === 'provisioned',
           created_at: r.created_at
         });
       });
     } catch (e) {}
 
+    // 2. Inbound Contact Form Inquiries
+    try {
+      const contactRes = await query(`
+        SELECT id, name, email, company, subject, submitted_at
+        FROM shared.contact_inquiries
+        ORDER BY submitted_at DESC LIMIT 10
+      `);
+      contactRes.rows.forEach(c => {
+        feed.push({
+          id: `contact_${c.id}`,
+          module: 'leads',
+          title: `Contact Inquiry: ${c.subject}`,
+          message: `From ${c.name} (${c.email})${c.company ? ` • ${c.company}` : ''}`,
+          action_url: '/super-admin/demo-requests',
+          is_read: false,
+          created_at: c.submitted_at
+        });
+      });
+    } catch (e) {}
+
+    // 3. Customer Payments & Billing Logs
     try {
       const payRes = await query(`
-        SELECT id, tenant_id, amount, currency, status, invoice_number, created_at
+        SELECT id, tenant_id, amount, currency, status, gateway, invoice_number, created_at
         FROM shared.payment_logs
-        ORDER BY created_at DESC LIMIT 5
+        ORDER BY created_at DESC LIMIT 15
       `);
       payRes.rows.forEach(p => {
         feed.push({
           id: `pay_${p.id}`,
           module: 'billing',
           title: `Payment: ${p.currency} ${p.amount} (${p.tenant_id})`,
-          message: `Invoice #${p.invoice_number || p.id} status is ${p.status}.`,
+          message: `Gateway: ${p.gateway || 'manual'} • Invoice #${p.invoice_number || p.id} is ${p.status}.`,
           action_url: '/super-admin/billing',
           is_read: p.status === 'completed',
           created_at: p.created_at
@@ -199,7 +232,27 @@ const getUserNotifications = asyncHandler(async (req, res) => {
       });
     } catch (e) {}
 
-    // Sort by created_at DESC
+    // 4. New Tenant Registrations
+    try {
+      const tenantRes = await query(`
+        SELECT tenant_id, name, subscription_plan, status, created_at
+        FROM shared.tenants
+        ORDER BY created_at DESC LIMIT 10
+      `);
+      tenantRes.rows.forEach(t => {
+        feed.push({
+          id: `tenant_${t.tenant_id}`,
+          module: 'tenants',
+          title: `Company Registered: ${t.name}`,
+          message: `ID: ${t.tenant_id} • Plan: ${t.subscription_plan || 'free'} (${t.status})`,
+          action_url: '/super-admin',
+          is_read: true,
+          created_at: t.created_at
+        });
+      });
+    } catch (e) {}
+
+    // Sort all platform activity chronologically
     feed.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
     return res.json({

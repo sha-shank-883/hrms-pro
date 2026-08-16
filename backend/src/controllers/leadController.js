@@ -86,6 +86,18 @@ exports.applyForDemo = asyncHandler(async (req, res) => {
     console.error('Error sending admin notification email:', emailErr);
   }
 
+  if (req.io) {
+    req.io.emit('notification:new', {
+      id: `demo_${Date.now()}`,
+      module: 'leads',
+      title: `New Demo Lead: ${company_name}`,
+      message: `${name} (${email}) requested a live demo.`,
+      action_url: '/super-admin/demo-requests',
+      created_at: new Date()
+    });
+    req.io.emit('dashboard_update');
+  }
+
   res.status(201).json({
     success: true,
     message: 'Demo request submitted successfully. We will contact you soon.'
@@ -521,6 +533,18 @@ exports.submitContactInquiry = asyncHandler(async (req, res) => {
     });
   } catch (emailErr) {
     console.error('Error sending customer acknowledgment email:', emailErr);
+  }
+
+  if (req.io) {
+    req.io.emit('notification:new', {
+      id: `contact_${Date.now()}`,
+      module: 'leads',
+      title: `Contact Inquiry: ${subject}`,
+      message: `From ${name} (${email})${company ? ` • ${company}` : ''}`,
+      action_url: '/super-admin/demo-requests',
+      created_at: new Date()
+    });
+    req.io.emit('dashboard_update');
   }
 
   res.status(200).json({ success: true, message: 'Your message has been sent successfully. We will get back to you soon.' });

@@ -70,6 +70,11 @@ This document outlines a systematic plan to test every icon, button, navigation 
 | 1.3.21 | `GET /api/tenants/:tenantId/billing-profile` returns customer contact, address, tax ID, and invoice history | Returns complete billing profile & company payment history [PASSED] |
 | 1.3.22 | `PUT /api/tenants/:tenantId/billing-profile` updates customer contact person, email, phone, and billing terms | Database updated with contact and tax credentials [PASSED] |
 | 1.3.23 | `POST /api/payments/razorpay/create-order` preserves tenant auth session on gateway error | Returns HTTP 502/400 gateway error, prevents Axios logout trigger [PASSED] |
+| 1.3.24 | `PUT /api/tenants/:tenantId` allows super admin to edit company name, domain, seat capacity, contact & billing metadata | Updates `shared.tenants` with sanitized inputs and returns updated tenant [PASSED] |
+| 1.3.25 | Inbound demo requests and payments trigger Super Admin platform notifications | Real-time Socket.IO broadcasts + feed aggregation and dynamic badge counts [PASSED] |
+| 1.3.26 | `POST /api/auth/signup` provisions new self-serve company workspace with 14-day trial | Generates isolated schema, Admin user, departments, employee record, and JWT [PASSED] |
+| 1.3.27 | `POST /api/auth/login` auto-resolves tenant schema from user email | Automatically discovers workspace without requiring manual x-tenant-id header [PASSED] |
+| 1.3.28 | `PUT /api/auth/profile` allows Tenant Admin/Owner to edit personal details frictionlessly | Updates user/employee profile without requiring salary or department assignment [PASSED] |
 | 1.3.23 | `POST /api/tenants/billing/record-manual` records offline payment and auto-extends subscription | Transaction saved with invoice number, subscription expiry extended [PASSED] |
 | 1.3.24 | `GET /api/notifications/badge-counts` computes live pending counts for leaves, attendance, tasks, chat | Returns structured count object with role-based aggregation [PASSED] |
 | 1.3.25 | `GET /api/notifications` returns in-app notification feed with pagination and unread filters | Returns user notification list with unread counter [PASSED] |

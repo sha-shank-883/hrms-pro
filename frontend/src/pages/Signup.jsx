@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import api from '../services/api';
+import { authService } from '../services/auth';
 
 const Signup = () => {
   const [formData, setFormData] = useState({
@@ -21,19 +21,17 @@ const Signup = () => {
     setError('');
     
     try {
-      // In a real app, you would hit a tenant registration endpoint
-      // const res = await api.post('/tenants/register', formData);
-      
-      // Simulating network delay
-      await new Promise(r => setTimeout(r, 1500));
-      
-      setSuccess(true);
-      setTimeout(() => {
-        navigate('/login');
-      }, 3000);
-      
+      const res = await authService.signup(formData);
+      if (res.success) {
+        setSuccess(true);
+        setTimeout(() => {
+          window.location.href = '/dashboard';
+        }, 2000);
+      } else {
+        throw new Error(res.message || 'Failed to create account');
+      }
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to create account. Please try again.');
+      setError(err.response?.data?.message || err.message || 'Failed to create account. Please try again.');
     } finally {
       setLoading(false);
     }

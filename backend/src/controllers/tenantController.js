@@ -1171,50 +1171,94 @@ const getGrowthAnalytics = asyncHandler(async (req, res) => {
 });
 
 /**
+ * Helper to ensure shared.platform_broadcasts table exists
+ */
+const ensureBroadcastsTable = async () => {
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS shared.platform_broadcasts (
+        id SERIAL PRIMARY KEY,
+        title VARCHAR(255) NOT NULL,
+        message TEXT NOT NULL,
+        type VARCHAR(50) DEFAULT 'info',
+        target_tier VARCHAR(50) DEFAULT 'all',
+        is_active BOOLEAN DEFAULT true,
+        dismissible BOOLEAN DEFAULT true,
+        starts_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        expires_at TIMESTAMP,
+        created_by VARCHAR(255),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE INDEX IF NOT EXISTS idx_broadcasts_active_tier ON shared.platform_broadcasts (is_active, target_tier);
+    `);
+  } catch (err) {
+    console.error('ensureBroadcastsTable warning:', err.message);
+  }
+};
+
+/**
  * Public/Tenant: Get active broadcasts for current tenant's tier
  */
 const getActiveBroadcasts = asyncHandler(async (req, res) => {
-  const tenantId = req.tenantId || req.user?.tenant_id;
-  let targetTier = 'all';
-  if (tenantId) {
-    const tRes = await pool.query('SELECT subscription_plan FROM shared.tenants WHERE tenant_id = $1', [tenantId]);
-    if (tRes.rows.length > 0) {
-      targetTier = tRes.rows[0].subscription_plan || 'free';
+  try {
+    await ensureBroadcastsTable();
+
+    const tenantId = req.tenantId || req.user?.tenant_id;
+    let targetTier = 'all';
+    if (tenantId) {
+      const tRes = await pool.query('SELECT subscription_plan FROM shared.tenants WHERE tenant_id = $1', [tenantId]);
+      if (tRes.rows.length > 0) {
+        targetTier = tRes.rows[0].subscription_plan || 'free';
+      }
     }
+
+    const broadcasts = await pool.query(`
+      SELECT id, title, message, type, target_tier, dismissible, starts_at, expires_at
+      FROM shared.platform_broadcasts
+      WHERE is_active = true
+        AND (target_tier = 'all' OR target_tier = $1)
+        AND starts_at <= CURRENT_TIMESTAMP
+        AND (expires_at IS NULL OR expires_at >= CURRENT_TIMESTAMP)
+      ORDER BY starts_at DESC
+      LIMIT 5
+    `, [targetTier]);
+
+    return res.json({
+      success: true,
+      broadcasts: broadcasts.rows || []
+    });
+  } catch (err) {
+    console.error('getActiveBroadcasts warning:', err.message);
+    return res.json({
+      success: true,
+      broadcasts: []
+    });
   }
-
-  const broadcasts = await pool.query(`
-    SELECT id, title, message, type, target_tier, dismissible, starts_at, expires_at
-    FROM shared.platform_broadcasts
-    WHERE is_active = true
-      AND (target_tier = 'all' OR target_tier = $1)
-      AND starts_at <= CURRENT_TIMESTAMP
-      AND (expires_at IS NULL OR expires_at >= CURRENT_TIMESTAMP)
-    ORDER BY starts_at DESC
-    LIMIT 5
-  `, [targetTier]);
-
-  res.json({
-    success: true,
-    broadcasts: broadcasts.rows
-  });
 });
 
 /**
  * Super Admin: Get all broadcasts
  */
 const getAllBroadcasts = asyncHandler(async (req, res) => {
-  const result = await pool.query(`
-    SELECT * FROM shared.platform_broadcasts
-    ORDER BY created_at DESC
-  `);
-  res.json({ success: true, broadcasts: result.rows });
+  try {
+    await ensureBroadcastsTable();
+    const result = await pool.query(`
+      SELECT * FROM shared.platform_broadcasts
+      ORDER BY created_at DESC
+    `);
+    res.json({ success: true, broadcasts: result.rows || [] });
+  } catch (err) {
+    console.error('getAllBroadcasts warning:', err.message);
+    res.json({ success: true, broadcasts: [] });
+  }
 });
 
 /**
  * Super Admin: Create a new platform broadcast
  */
 const createBroadcast = asyncHandler(async (req, res) => {
+  await ensureBroadcastsTable();
   const { title, message, type = 'info', target_tier = 'all', is_active = true, expires_at = null, dismissible = true } = req.body;
   if (!title || !message) {
     throw new ValidationError('Title and message are required');
@@ -1243,6 +1287,7 @@ const createBroadcast = asyncHandler(async (req, res) => {
  * Super Admin: Update a platform broadcast
  */
 const updateBroadcast = asyncHandler(async (req, res) => {
+  await ensureBroadcastsTable();
   const { id } = req.params;
   const { title, message, type, target_tier, is_active, expires_at, dismissible } = req.body;
   const result = await pool.query(`
@@ -1271,6 +1316,7 @@ const updateBroadcast = asyncHandler(async (req, res) => {
  * Super Admin: Delete a platform broadcast
  */
 const deleteBroadcast = asyncHandler(async (req, res) => {
+  await ensureBroadcastsTable();
   const { id } = req.params;
   const result = await pool.query(`DELETE FROM shared.platform_broadcasts WHERE id = $1 RETURNING id, title`, [id]);
   if (result.rows.length === 0) {

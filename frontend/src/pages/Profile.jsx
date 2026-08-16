@@ -87,6 +87,8 @@ const Profile = () => {
     }
   };
 
+  const handleEnable2FA = handleOpen2FAModal;
+
   const handleVerify2FA = async (e) => {
     e.preventDefault();
     if (!otp || otp.trim().length !== 6) {
@@ -242,29 +244,41 @@ const Profile = () => {
           const userResponse = await authService.getProfile();
           userData = userResponse.data;
         } catch (e) {
-          throw new Error('Failed to load user profile');
+          console.warn('Profile fetch warning, falling back to session user:', e);
+          userData = user ? {
+            user_id: user.userId || user.id,
+            email: user.email,
+            first_name: user.first_name || (user.name ? user.name.split(' ')[0] : 'Admin'),
+            last_name: user.last_name || (user.name ? user.name.split(' ').slice(1).join(' ') : 'User'),
+            role: user.role,
+            is_two_factor_enabled: false
+          } : null;
         }
 
         try {
-          const employeeResponse = await employeeService.getByUserId(user.userId);
-          employeeData = employeeResponse.data;
+          if (user?.userId) {
+            const employeeResponse = await employeeService.getByUserId(user.userId);
+            employeeData = employeeResponse.data;
+          }
         } catch (e) {
-
+          // Expected 404 for Tenant Admins / Owners without employee records
+          employeeData = null;
         }
       }
 
       if (employeeData || userData) {
         setProfile({
           ...(employeeData || {}),
+          ...(userData || {}),
           // Fallback to user data if employee data missing
-          first_name: employeeData?.first_name || 'Admin',
-          last_name: employeeData?.last_name || 'User',
+          first_name: employeeData?.first_name || userData?.first_name || 'Admin',
+          last_name: employeeData?.last_name || userData?.last_name || 'User',
           email: employeeData?.email || userData?.email,
-          position: employeeData?.position || 'Administrator',
-          status: employeeData?.status || 'Active',
-          user_id: userData?.user_id || employeeData?.user_id,
-          employee_id: employeeData?.employee_id || null, // Might be null
-          is_two_factor_enabled: userData ? userData.is_two_factor_enabled : (employeeData?.is_two_factor_enabled || false)
+          position: employeeData?.position || (userData?.role === 'super_admin' ? 'Super Admin' : (userData?.role === 'admin' ? 'Company Owner' : 'Employee')),
+          status: employeeData?.status || 'active',
+          user_id: userData?.user_id || employeeData?.user_id || user?.userId,
+          employee_id: employeeData?.employee_id || null,
+          is_two_factor_enabled: Boolean(userData?.is_two_factor_enabled || userData?.is_2fa_enabled || employeeData?.is_two_factor_enabled)
         });
 
         // Initialize form data only if employee data exists, or with defaults
@@ -827,7 +841,7 @@ const Profile = () => {
                               ? 'bg-danger-50 text-danger hover:bg-danger-100'
                               : 'bg-primary-50 text-primary-600 hover:bg-primary-100'
                               }`}
-                            onClick={profile.is_two_factor_enabled ? handleDisable2FA : handleEnable2FA}
+                            onClick={profile.is_two_factor_enabled ? handleDisable2FA : handleOpen2FAModal}
                           >
                             {profile.is_two_factor_enabled ? 'Disable' : 'Enable'}
                           </button>

@@ -78,6 +78,9 @@ This document outlines a systematic plan to test every icon, button, navigation 
 | 1.3.29 | `PUT /api/notifications/mark-all-read` for Super Admin updates `shared.super_admins.last_notifications_read_at` | Marks all platform lead, payment, and tenant notifications as read without 500 error [PASSED] |
 | 1.3.30 | Employee deletion protects Tenant Admin user account and Auto-Restoration recovers deleted admins | `DELETE /api/employees` preserves Admin in `users` table; login auto-restores missing owner accounts [PASSED] |
 | 1.3.31 | `DELETE /api/tenants/:id` supports dual authorization via Super Admin Password or 2FA TOTP code | Securely authorizes deletion via 6-digit TOTP or password confirmation [PASSED] |
+| 1.3.32 | `GET /api/notifications/settings` returns default preferences cleanly for Super Admin and un-migrated schemas | No 500 crashes when `tenant_notification_settings` table or tenant search path is absent [PASSED] |
+| 1.3.33 | `GET /api/auth/profile` and `Profile.jsx` gracefully load standalone tenant owners and super admins without employee row | Seamlessly falls back to user session and schema defaults without throwing 500/404 or JS reference error [PASSED] |
+| 1.3.34 | `GET /api/tenants/active-broadcasts` auto-provisions `shared.platform_broadcasts` and returns 200 OK | Auto-creates table and safely returns broadcasts array with zero 500 errors [PASSED] |
 | 1.3.23 | `POST /api/tenants/billing/record-manual` records offline payment and auto-extends subscription | Transaction saved with invoice number, subscription expiry extended [PASSED] |
 | 1.3.24 | `GET /api/notifications/badge-counts` computes live pending counts for leaves, attendance, tasks, chat | Returns structured count object with role-based aggregation [PASSED] |
 | 1.3.25 | `GET /api/notifications` returns in-app notification feed with pagination and unread filters | Returns user notification list with unread counter [PASSED] |

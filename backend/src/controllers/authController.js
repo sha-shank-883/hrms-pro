@@ -614,70 +614,125 @@ const disable2FA = asyncHandler(async (req, res) => {
 });
 
 const getProfile = asyncHandler(async (req, res) => {
-  // Check if Super Admin
-  if (req.user.isSuperAdmin || req.user.role === 'super_admin') {
-    const superRes = await pool.query(
-      'SELECT id as user_id, email, full_name, is_2fa_enabled, created_at FROM shared.super_admins WHERE id = $1 OR email = $2',
-      [req.user.userId, req.user.email]
-    );
+  const userId = req.user.userId || req.user.id;
+  const userEmail = req.user.email;
 
-    if (superRes.rows.length > 0) {
-      const admin = superRes.rows[0];
-      return res.json({
-        success: true,
-        data: {
-          user_id: admin.user_id,
-          userId: admin.user_id,
-          email: admin.email,
-          role: 'super_admin',
-          isSuperAdmin: true,
-          first_name: admin.full_name || 'Super',
-          last_name: 'Admin',
-          permissions: ['all'],
-          tenant_modules: ['all'],
-          is_two_factor_enabled: admin.is_2fa_enabled,
-          created_at: admin.created_at
-        }
-      });
+  // 1. Check if Super Admin
+  if (req.user.isSuperAdmin || req.user.role === 'super_admin') {
+    try {
+      const superRes = await pool.query(
+        'SELECT id as user_id, email, full_name, is_2fa_enabled, created_at FROM shared.super_admins WHERE id = $1 OR email = $2',
+        [userId, userEmail]
+      );
+
+      if (superRes.rows.length > 0) {
+        const admin = superRes.rows[0];
+        return res.json({
+          success: true,
+          data: {
+            user_id: admin.user_id,
+            userId: admin.user_id,
+            email: admin.email,
+            role: 'super_admin',
+            isSuperAdmin: true,
+            first_name: admin.full_name || 'Super',
+            last_name: 'Admin',
+            permissions: ['all'],
+            tenant_modules: ['all'],
+            is_two_factor_enabled: Boolean(admin.is_2fa_enabled),
+            is_2fa_enabled: Boolean(admin.is_2fa_enabled),
+            created_at: admin.created_at
+          }
+        });
+      }
+    } catch (saErr) {
+      console.error('Super Admin getProfile lookup warning:', saErr.message);
     }
   }
 
-  const result = await query(
-    `SELECT 
-       u.user_id, 
-       u.email, 
-       u.role, 
-       u.permissions, 
-       u.created_at, 
-       u.is_two_factor_enabled,
-       COALESCE(e.first_name, u.first_name, '') as first_name,
-       COALESCE(e.last_name, u.last_name, '') as last_name,
-       COALESCE(e.phone, u.phone, '') as phone,
-       COALESCE(e.profile_image, u.avatar, '') as profile_image,
-       e.employee_id,
-       e.department_id,
-       e.position,
-       e.hire_date,
-       e.salary,
-       e.status,
-       e.gender,
-       e.date_of_birth,
-       e.address,
-       e.about_me,
-       e.social_links
-     FROM users u 
-     LEFT JOIN employees e ON u.user_id = e.user_id 
-     WHERE u.user_id = $1`,
-    [req.user.userId]
-  );
+  // 2. Tenant User / Admin Lookup
+  let profileData = null;
 
-  if (result.rows.length === 0) {
-    throw new NotFoundError('User not found');
+  try {
+    // Ensure identity columns exist in tenant users table
+    await query(`
+      ALTER TABLE users 
+      ADD COLUMN IF NOT EXISTS first_name VARCHAR(100),
+      ADD COLUMN IF NOT EXISTS last_name VARCHAR(100),
+      ADD COLUMN IF NOT EXISTS phone VARCHAR(50),
+      ADD COLUMN IF NOT EXISTS avatar TEXT,
+      ADD COLUMN IF NOT EXISTS is_two_factor_enabled BOOLEAN DEFAULT false
+    `).catch(() => {});
+
+    const result = await query(
+      `SELECT 
+         u.user_id, 
+         u.email, 
+         u.role, 
+         u.permissions, 
+         u.created_at, 
+         COALESCE(u.is_two_factor_enabled, false) as is_two_factor_enabled,
+         COALESCE(e.first_name, u.first_name, '') as first_name,
+         COALESCE(e.last_name, u.last_name, '') as last_name,
+         COALESCE(e.phone, u.phone, '') as phone,
+         COALESCE(e.profile_image, u.avatar, '') as profile_image,
+         e.employee_id,
+         e.department_id,
+         e.position,
+         e.hire_date,
+         e.salary,
+         e.status,
+         e.gender,
+         e.date_of_birth,
+         e.address,
+         e.about_me,
+         e.social_links
+       FROM users u 
+       LEFT JOIN employees e ON u.user_id = e.user_id 
+       WHERE u.user_id = $1 OR LOWER(u.email) = LOWER($2)`,
+      [userId, userEmail]
+    );
+
+    if (result.rows.length > 0) {
+      profileData = result.rows[0];
+    }
+  } catch (err) {
+    console.error('Tenant user getProfile query warning:', err.message);
   }
 
-  const profileData = result.rows[0];
+  // 3. Fallback for Super Admin if token had role='admin' but exists in shared.super_admins
+  if (!profileData) {
+    try {
+      const saFallback = await pool.query(
+        'SELECT id as user_id, email, full_name, is_2fa_enabled, created_at FROM shared.super_admins WHERE LOWER(email) = LOWER($1)',
+        [userEmail]
+      );
+      if (saFallback.rows.length > 0) {
+        const admin = saFallback.rows[0];
+        return res.json({
+          success: true,
+          data: {
+            user_id: admin.user_id,
+            userId: admin.user_id,
+            email: admin.email,
+            role: 'super_admin',
+            isSuperAdmin: true,
+            first_name: admin.full_name || 'Super',
+            last_name: 'Admin',
+            permissions: ['all'],
+            tenant_modules: ['all'],
+            is_two_factor_enabled: Boolean(admin.is_2fa_enabled),
+            is_2fa_enabled: Boolean(admin.is_2fa_enabled),
+            created_at: admin.created_at
+          }
+        });
+      }
+    } catch (_) {}
 
-  // Attach subscription info and active modules from shared.tenants if tenant header present
+    throw new NotFoundError('User profile not found');
+  }
+
+  // 4. Attach subscription info and active modules from shared.tenants
   try {
     const tenantId = req.headers['x-tenant-id'] || req.user.tenant_id;
     if (tenantId) {
@@ -687,7 +742,7 @@ const getProfile = asyncHandler(async (req, res) => {
       profileData.tenant_modules = entitlement.modules;
       profileData.is_custom_modules = entitlement.isCustom;
 
-      const tenantResult = await query(
+      const tenantResult = await pool.query(
         'SELECT subscription_expiry, contact_person, contact_phone FROM shared.tenants WHERE tenant_id = $1',
         [tenantId]
       );
@@ -705,14 +760,14 @@ const getProfile = asyncHandler(async (req, res) => {
     } else {
       profileData.tenant_modules = ['core_hr', 'attendance', 'leaves', 'tasks', 'documents'];
     }
-  } catch (subErr) {
-    console.error('Failed to fetch subscription info:', subErr.message);
+  } catch (tenantErr) {
+    console.error('Tenant subscription attachment warning:', tenantErr.message);
     profileData.tenant_modules = ['core_hr', 'attendance', 'leaves', 'tasks', 'documents'];
   }
 
   res.json({
     success: true,
-    data: profileData,
+    data: profileData
   });
 });
 

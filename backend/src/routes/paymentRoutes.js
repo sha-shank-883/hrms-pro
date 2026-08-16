@@ -2,7 +2,21 @@ const express = require('express');
 const router = express.Router();
 const { getPlans, createOrder, captureOrder, getSubscription } = require('../controllers/paypalController');
 const { getRazorpayKey, createRazorpayOrder, verifyRazorpayPayment } = require('../controllers/razorpayController');
-const { getPaymentHistory, getLastSubscription, processRefund, requestRefund } = require('../controllers/paymentManagementController');
+const { 
+  getPaymentHistory, 
+  getLastSubscription, 
+  processRefund, 
+  requestRefund,
+  manualGrantSubscription,
+  activateFreeCouponSubscription
+} = require('../controllers/paymentManagementController');
+const {
+  createCoupon,
+  getCoupons,
+  updateCoupon,
+  deleteCoupon,
+  validateCoupon
+} = require('../controllers/couponController');
 const { authenticateToken } = require('../middleware/auth');
 const tenantMiddleware = require('../middleware/tenantMiddleware');
 
@@ -32,5 +46,16 @@ router.post('/refund', authenticateToken, processRefund);
 
 // Protected: tenant refund request
 router.post('/request-refund', authenticateToken, tenantMiddleware, requestRefund);
+
+// Protected: Super Admin manual subscription allotment / gift / cash grant
+router.post('/manual-grant', authenticateToken, manualGrantSubscription);
+
+// Protected: Promo & Gift Coupons Management
+router.get('/coupons', authenticateToken, getCoupons);
+router.post('/coupons', authenticateToken, createCoupon);
+router.put('/coupons/:id', authenticateToken, updateCoupon);
+router.delete('/coupons/:id', authenticateToken, deleteCoupon);
+router.post('/coupons/validate', authenticateToken, tenantMiddleware, validateCoupon);
+router.post('/coupons/activate-free', authenticateToken, tenantMiddleware, activateFreeCouponSubscription);
 
 module.exports = router;

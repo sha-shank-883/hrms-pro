@@ -59,7 +59,7 @@ const BatchActions = () => {
   const [actionLoading, setActionLoading] = useState(null);
 
   useEffect(() => {
-    employeeService.getAll().then(r => setEmployees(r.data || [])).catch(() => {});
+    employeeService.getAll().then(r => setEmployees(r.data || [])).catch(() => { });
     if (activeTab === 'email-queue') loadQueue();
   }, [activeTab]);
 
@@ -235,7 +235,7 @@ const BatchActions = () => {
                 <h3 className="font-semibold text-green-800 mb-3 flex items-center gap-2">
                   <FaCheckCircle /> Generation Complete
                 </h3>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-4 md:grid-cols-4 gap-4">
                   <div className="bg-white rounded-xl p-4 text-center border border-green-100">
                     <div className="text-2xl font-bold text-primary-600">{bulkResult.total || 0}</div>
                     <div className="text-xs text-gray-500 mt-1">Total Payslips</div>
@@ -315,7 +315,7 @@ const BatchActions = () => {
                   </tr>
                 </thead>
                 <tbody>
-                    {queueItems.map(item => (
+                  {queueItems.map(item => (
                     <tr key={item.queue_id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-6 py-4 font-medium text-gray-900">{item.employee_name || `Emp #${item.employee_id}`}</td>
                       <td className="px-6 py-4 text-sm text-gray-500">#{item.payslip_id}</td>

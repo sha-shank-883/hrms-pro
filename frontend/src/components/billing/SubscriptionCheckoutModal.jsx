@@ -14,9 +14,12 @@ import {
   PlusIcon,
   MinusIcon,
   CheckBadgeIcon,
-  CalendarDaysIcon
+  CalendarDaysIcon,
+  TicketIcon,
+  GiftIcon,
+  TagIcon
 } from '@heroicons/react/24/outline';
-import { FaPaypal, FaLock, FaCrown, FaShieldAlt } from 'react-icons/fa';
+import { FaPaypal, FaLock, FaCrown, FaShieldAlt, FaGift } from 'react-icons/fa';
 
 /**
  * Loads Razorpay script on demand
@@ -192,13 +195,97 @@ const SubscriptionCheckoutModal = ({ plan, onClose, onSuccess }) => {
     usdAddonDiscount = parseFloat((parseFloat(usdTotal) - parseFloat(usdAddonProratedPrice)).toFixed(2));
   }
 
-  const finalPayableINR = isAddonMode
+  const baseFinalINR = isAddonMode
     ? inrAddonProratedPrice
     : Math.max(1, inrTotal - inrProratedCredit);
 
-  const finalPayableUSD = isAddonMode
+  const baseFinalUSD = isAddonMode
     ? usdAddonProratedPrice
     : Math.max(1, parseFloat((parseFloat(usdTotal) - usdProratedCredit).toFixed(2))).toFixed(2);
+
+  // Coupon / Promo Code State
+  const [couponInput, setCouponInput] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState(null);
+  const [couponLoading, setCouponLoading] = useState(false);
+  const [couponError, setCouponError] = useState('');
+  const [freeGiftActivating, setFreeGiftActivating] = useState(false);
+
+  const handleApplyCoupon = async (e) => {
+    e?.preventDefault();
+    if (!couponInput.trim()) return;
+    setCouponLoading(true);
+    setCouponError('');
+    try {
+      const rawPrice = selectedGateway === 'razorpay' ? baseFinalINR : parseFloat(baseFinalUSD);
+      const res = await paymentService.validateCoupon({
+        code: couponInput.trim(),
+        planId,
+        seats: seatCount,
+        billingCycle,
+        rawPrice
+      });
+      if (res.success) {
+        setAppliedCoupon(res.data);
+        setError(null);
+      }
+    } catch (err) {
+      setAppliedCoupon(null);
+      setCouponError(err.response?.data?.message || err.message || 'Invalid or expired promo code');
+    } finally {
+      setCouponLoading(false);
+    }
+  };
+
+  const handleRemoveCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponInput('');
+    setCouponError('');
+  };
+
+  const handleActivateFreeGift = async () => {
+    if (!appliedCoupon?.code) return;
+    setFreeGiftActivating(true);
+    setError(null);
+    try {
+      const res = await paymentService.activateFreeCoupon({
+        code: appliedCoupon.code,
+        planId,
+        seats: seatCount,
+        billingCycle
+      });
+      if (res.success) {
+        if (refreshProfile) await refreshProfile();
+        setSuccessMessage(res.message || 'Free Gift Subscription Activated!');
+        setSuccess(true);
+        if (onSuccess) onSuccess(res.data);
+        setTimeout(() => {
+          if (onClose) onClose();
+        }, 2500);
+      }
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Failed to activate free subscription');
+    } finally {
+      setFreeGiftActivating(false);
+    }
+  };
+
+  // Compute coupon discount
+  let couponDiscountINR = 0;
+  let couponDiscountUSD = 0;
+
+  if (appliedCoupon) {
+    if (appliedCoupon.discountType === 'percentage') {
+      couponDiscountINR = Math.round((baseFinalINR * appliedCoupon.discountValue) / 100);
+      couponDiscountUSD = parseFloat(((parseFloat(baseFinalUSD) * appliedCoupon.discountValue) / 100).toFixed(2));
+    } else {
+      couponDiscountINR = Math.min(baseFinalINR, Math.round(appliedCoupon.discountValue));
+      couponDiscountUSD = Math.min(parseFloat(baseFinalUSD), appliedCoupon.discountValue).toFixed(2);
+    }
+  }
+
+  const finalPayableINR = Math.max(0, baseFinalINR - couponDiscountINR);
+  const finalPayableUSD = Math.max(0, parseFloat((parseFloat(baseFinalUSD) - couponDiscountUSD).toFixed(2))).toFixed(2);
+  const is100PercentFree = Boolean(appliedCoupon && (finalPayableINR === 0 || finalPayableUSD === '0.00' || appliedCoupon.isFreeGift));
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -345,8 +432,15 @@ const SubscriptionCheckoutModal = ({ plan, onClose, onSuccess }) => {
     setError(null);
 
     try {
-      // 1. Create order on backend (server calculates strict price & 20% yearly discount)
-      const res = await paymentService.createRazorpayOrder(planId, seatCount, billingCycle, autoPay);
+      // 1. Create order on backend (server calculates strict price, 20% yearly discount, and coupon discounts)
+      const res = await paymentService.createRazorpayOrder(
+        planId,
+        seatCount,
+        billingCycle,
+        autoPay,
+        isAddonMode,
+        appliedCoupon?.code
+      );
       if (!res.success || !res.data?.orderId) {
         throw new Error(res.message || 'Failed to create Razorpay payment order');
       }
@@ -376,7 +470,8 @@ const SubscriptionCheckoutModal = ({ plan, onClose, onSuccess }) => {
           mode: checkoutMode,
           is_addon: String(isAddonMode),
           billing_cycle: billingCycle,
-          auto_pay: String(autoPay)
+          auto_pay: String(autoPay),
+          coupon_code: appliedCoupon?.code || ''
         },
         theme: {
           color: '#16a34a',
@@ -394,7 +489,9 @@ const SubscriptionCheckoutModal = ({ plan, onClose, onSuccess }) => {
               isAddon: isAddonMode,
               mode: checkoutMode,
               billingCycle: billingCycle,
-              autoPay: autoPay
+              autoPay: autoPay,
+              couponCode: appliedCoupon?.code,
+              couponDiscount: couponDiscountINR
             });
 
             if (verifyRes.success) {
@@ -705,6 +802,80 @@ const SubscriptionCheckoutModal = ({ plan, onClose, onSuccess }) => {
                 </label>
               </div>
 
+              {/* 4.5 Promo Code & Gift Voucher Card */}
+              <div className="p-3.5 rounded-2xl bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-bold text-gray-900 dark:text-white flex items-center gap-1.5">
+                    <TicketIcon className="w-4 h-4 text-amber-500" />
+                    Promo Code or Gift Voucher
+                  </span>
+                  {appliedCoupon && (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300">
+                      Applied
+                    </span>
+                  )}
+                </div>
+
+                {!appliedCoupon ? (
+                  <form onSubmit={handleApplyCoupon} className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="e.g. WELCOME50, GIFT100"
+                      value={couponInput}
+                      onChange={(e) => {
+                        setCouponInput(e.target.value.toUpperCase());
+                        setCouponError('');
+                      }}
+                      className="form-input text-xs uppercase font-mono tracking-wider py-1.5 flex-1 rounded-xl bg-white dark:bg-gray-700 border-gray-200 dark:border-gray-600"
+                    />
+                    <button
+                      type="submit"
+                      disabled={couponLoading || !couponInput.trim()}
+                      className="px-3.5 py-1.5 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-bold text-xs hover:bg-black dark:hover:bg-gray-100 transition-all disabled:opacity-40 flex items-center gap-1 shrink-0"
+                    >
+                      {couponLoading ? (
+                        <ArrowPathIcon className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        'Apply'
+                      )}
+                    </button>
+                  </form>
+                ) : (
+                  <div className="flex items-center justify-between p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800">
+                    <div className="flex items-center gap-2">
+                      <TagIcon className="w-4 h-4 text-emerald-600" />
+                      <div>
+                        <span className="font-mono font-black text-xs text-emerald-800 dark:text-emerald-300">
+                          {appliedCoupon.code}
+                        </span>
+                        <span className="text-[10px] text-emerald-600 dark:text-emerald-400 ml-1.5">
+                          ({appliedCoupon.discountType === 'percentage' ? `${appliedCoupon.discountValue}% OFF` : `Discount applied`})
+                        </span>
+                        {appliedCoupon.isFreeGift && (
+                          <p className="text-[10px] font-bold text-amber-600 dark:text-amber-400">
+                            🎉 100% Free Gift Voucher! No payment required.
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleRemoveCoupon}
+                      className="text-xs text-red-500 hover:text-red-700 font-bold px-2 py-1"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                )}
+
+                {couponError && (
+                  <p className="text-[11px] text-red-500 mt-1.5 flex items-center gap-1">
+                    <ExclamationCircleIcon className="w-3.5 h-3.5 shrink-0" />
+                    {couponError}
+                  </p>
+                )}
+              </div>
+
               {/* 5. Order Breakdown Box */}
               <div className="p-4 rounded-2xl bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 space-y-2 text-xs">
                 <div className="flex justify-between text-gray-600 dark:text-gray-300">
@@ -757,6 +928,17 @@ const SubscriptionCheckoutModal = ({ plan, onClose, onSuccess }) => {
                     </span>
                   </div>
                 )}
+                {appliedCoupon && (
+                  <div className="flex justify-between text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-50 dark:bg-emerald-950/50 p-2 rounded-xl border border-emerald-200 dark:border-emerald-800">
+                    <span className="flex items-center gap-1">
+                      <TicketIcon className="w-3.5 h-3.5" />
+                      Promo Code ({appliedCoupon.code}) Discount:
+                    </span>
+                    <span>
+                      {selectedGateway === 'razorpay' ? `-₹${couponDiscountINR.toLocaleString('en-IN')}` : `-$${couponDiscountUSD}`}
+                    </span>
+                  </div>
+                )}
                 <div className="pt-2 border-t border-gray-200 dark:border-gray-700 flex justify-between items-center text-sm font-black text-gray-900 dark:text-white">
                   <span>Total Payable:</span>
                   <div className="text-right">
@@ -774,8 +956,29 @@ const SubscriptionCheckoutModal = ({ plan, onClose, onSuccess }) => {
                 </div>
               </div>
 
-              {/* 6. Active Gateway Action Button */}
-              {selectedGateway === 'razorpay' ? (
+              {/* 6. Active Gateway Action Button OR 100% Free Gift Voucher Button */}
+              {is100PercentFree ? (
+                <div className="space-y-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={handleActivateFreeGift}
+                    disabled={freeGiftActivating}
+                    className="w-full py-4 px-6 rounded-2xl font-black text-sm bg-gradient-to-r from-amber-500 via-emerald-600 to-teal-600 hover:from-amber-600 hover:to-teal-700 text-white shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2 disabled:opacity-50 animate-pulse"
+                  >
+                    {freeGiftActivating ? (
+                      <>
+                        <ArrowPathIcon className="w-5 h-5 animate-spin" />
+                        Activating Free Gift Plan...
+                      </>
+                    ) : (
+                      <>
+                        <GiftIcon className="w-5 h-5 text-amber-200" />
+                        🎁 Activate 100% Free Gift Subscription ({seatCount} Seats)
+                      </>
+                    )}
+                  </button>
+                </div>
+              ) : selectedGateway === 'razorpay' ? (
                 <div className="space-y-2 pt-1">
                   <button
                     type="button"

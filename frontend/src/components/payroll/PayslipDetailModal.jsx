@@ -125,8 +125,8 @@ const PayslipDetailModal = ({ payslip, onClose, onUpdate }) => {
               <thead><tr><th>Earnings</th><th class="amount-right">Amount</th></tr></thead>
               <tbody>
                 ${earnings.length > 0 ? earnings.map(e =>
-                  `<tr><td>${e.component_name}</td><td class="amount-right">${currency}${parseFloat(e.amount).toLocaleString()}</td></tr>`
-                ).join('') : `
+      `<tr><td>${e.component_name}</td><td class="amount-right">${currency}${parseFloat(e.amount).toLocaleString()}</td></tr>`
+    ).join('') : `
                   <tr><td>Basic Salary</td><td class="amount-right">${currency}${parseFloat(payslip.basic_salary || 0).toLocaleString()}</td></tr>
                   <tr><td>Total Earnings</td><td class="amount-right">${currency}${parseFloat(payslip.gross_pay || payslip.net_salary || 0).toLocaleString()}</td></tr>
                 `}
@@ -137,8 +137,8 @@ const PayslipDetailModal = ({ payslip, onClose, onUpdate }) => {
               <thead><tr><th>Deductions</th><th class="amount-right">Amount</th></tr></thead>
               <tbody>
                 ${deductions.length > 0 ? deductions.map(d =>
-                  `<tr><td>${d.component_name}</td><td class="amount-right">${currency}${parseFloat(d.amount).toLocaleString()}</td></tr>`
-                ).join('') : `
+      `<tr><td>${d.component_name}</td><td class="amount-right">${currency}${parseFloat(d.amount).toLocaleString()}</td></tr>`
+    ).join('') : `
                   <tr><td>Tax</td><td class="amount-right">${currency}${parseFloat(payslip.tax || 0).toLocaleString()}</td></tr>
                   <tr><td>Other Deductions</td><td class="amount-right">${currency}${parseFloat(payslip.deductions || 0).toLocaleString()}</td></tr>
                 `}
@@ -212,7 +212,7 @@ const PayslipDetailModal = ({ payslip, onClose, onUpdate }) => {
           ) : (
             <>
               <div className="bg-gray-50 rounded-xl p-5 border border-gray-200">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-4 md:grid-cols-4 gap-4">
                   <div>
                     <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Employee</div>
                     <div className="font-semibold text-gray-900 flex items-center gap-2">

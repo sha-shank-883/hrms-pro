@@ -34,8 +34,8 @@ export const paymentService = {
     return response.data;
   },
 
-  createRazorpayOrder: async (planId, seats = 10, billingCycle = 'monthly', autoPay = false) => {
-    const response = await api.post('/payments/razorpay/create-order', { planId, seats, billingCycle, autoPay });
+  createRazorpayOrder: async (planId, seats = 10, billingCycle = 'monthly', autoPay = false, isAddon = false, couponCode = null) => {
+    const response = await api.post('/payments/razorpay/create-order', { planId, seats, billingCycle, autoPay, isAddon, couponCode });
     return response.data;
   },
 
@@ -75,4 +75,43 @@ export const paymentService = {
     const response = await api.post('/payments/request-refund', data);
     return response.data;
   },
+
+  // Super Admin: Manually grant/gift a subscription plan to any tenant (Cash, Gift, Bank Wire, VIP Offer)
+  manualGrantSubscription: async (grantData) => {
+    const response = await api.post('/payments/manual-grant', grantData);
+    return response.data;
+  },
+
+  // Super Admin: Promo & Gift Coupons Management
+  getCoupons: async () => {
+    const response = await api.get('/payments/coupons');
+    return response.data;
+  },
+
+  createCoupon: async (couponData) => {
+    const response = await api.post('/payments/coupons', couponData);
+    return response.data;
+  },
+
+  updateCoupon: async (id, updateData) => {
+    const response = await api.put(`/payments/coupons/${id}`, updateData);
+    return response.data;
+  },
+
+  deleteCoupon: async (id) => {
+    const response = await api.delete(`/payments/coupons/${id}`);
+    return response.data;
+  },
+
+  // Tenant Checkout: Validate Promo or Gift Coupon
+  validateCoupon: async (validationData) => {
+    const response = await api.post('/payments/coupons/validate', validationData);
+    return response.data;
+  },
+
+  // Tenant Checkout: Activate 100% Free Gift Voucher Plan
+  activateFreeCoupon: async (activationData) => {
+    const response = await api.post('/payments/coupons/activate-free', activationData);
+    return response.data;
+  }
 };

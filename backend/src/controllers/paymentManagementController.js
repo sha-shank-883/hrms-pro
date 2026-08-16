@@ -535,9 +535,220 @@ const requestRefund = asyncHandler(async (req, res) => {
   });
 });
 
+/**
+ * Super Admin: Manually allot/grant a subscription plan to any tenant
+ * Supports Gift/Offer (0 INR/USD), Cash Payments, Bank Wire, and VIP loyalty grants
+ */
+const manualGrantSubscription = asyncHandler(async (req, res) => {
+  await ensurePaymentLogColumns();
+  const isSuperAdmin = Boolean(
+    req.user?.isSuperAdmin ||
+    req.user?.role === 'super_admin' ||
+    req.user?.role === 'super-admin' ||
+    (req.user?.role === 'admin' && req.user?.is_super_admin)
+  );
+  if (!isSuperAdmin) {
+    throw new UnauthorizedError('Only Super Admin can manually grant subscriptions');
+  }
+
+  const {
+    tenantId,
+    planId = 'scale',
+    seats = 25,
+    durationMonths = 1,
+    customExpiry = null,
+    grantType = 'gift', // 'gift' | 'cash' | 'bank_transfer' | 'vip_offer' | 'promotional'
+    amountPaid = 0,
+    currency = 'INR',
+    notes = ''
+  } = req.body;
+
+  if (!tenantId) {
+    throw new ValidationError('target tenantId is required');
+  }
+
+  // 1. Verify tenant exists
+  const tenantRes = await pool.query('SELECT * FROM shared.tenants WHERE tenant_id = $1', [tenantId]);
+  if (tenantRes.rows.length === 0) {
+    throw new NotFoundError(`Tenant "${tenantId}" not found`);
+  }
+
+  const selectedSeats = parseInt(seats, 10) || 15;
+  const expiryDate = customExpiry 
+    ? new Date(customExpiry)
+    : new Date(Date.now() + (parseInt(durationMonths, 10) || 1) * 30 * 86400000);
+
+  const cycle = (parseInt(durationMonths, 10) >= 12) ? 'yearly' : 'monthly';
+
+  // 2. Update tenant subscription
+  await pool.query(
+    `UPDATE shared.tenants
+     SET subscription_plan = $1,
+         employee_limit = $2,
+         subscription_expiry = $3,
+         billing_cycle = $4,
+         updated_at = CURRENT_TIMESTAMP
+     WHERE tenant_id = $5`,
+    [planId, selectedSeats, expiryDate, cycle, tenantId]
+  );
+
+  // 3. Create payment log record
+  const invoiceNumber = `INV-GRANT-${tenantId.slice(-4).toUpperCase()}-${Date.now().toString().slice(-6)}`;
+  const grantAmount = parseFloat(amountPaid) || 0;
+  const grantNote = `[${grantType.toUpperCase()}] ${notes || 'Manual Super Admin Grant'}`;
+
+  await pool.query(
+    `INSERT INTO shared.payment_logs
+       (tenant_id, plan_id, amount, currency, gateway, status, seats_purchased, is_addon, billing_cycle, invoice_number, notes, created_at)
+     VALUES ($1, $2, $3, $4, 'manual', 'completed', $5, false, $6, $7, $8, CURRENT_TIMESTAMP)`,
+    [
+      tenantId,
+      `${planId}_${selectedSeats}_seats_grant`,
+      grantAmount,
+      currency,
+      selectedSeats,
+      cycle,
+      invoiceNumber,
+      grantNote
+    ]
+  );
+
+  // 4. Audit Log
+  try {
+    await pool.query(
+      `INSERT INTO shared.platform_audit_logs (actor_email, action, target_tenant_id, details, ip_address, created_at)
+       VALUES ($1, 'SUBSCRIPTION_MANUAL_GRANT', $2, $3, $4, CURRENT_TIMESTAMP)`,
+      [
+        req.user?.email || 'superadmin@hrmspro.online',
+        tenantId,
+        JSON.stringify({
+          planId,
+          seats: selectedSeats,
+          expiryDate,
+          grantType,
+          amountPaid: grantAmount,
+          currency,
+          notes: grantNote
+        }),
+        req.ip || '127.0.0.1'
+      ]
+    );
+  } catch (_) {}
+
+  res.json({
+    success: true,
+    message: `Successfully granted ${planId.toUpperCase()} plan (${selectedSeats} seats) to "${tenantRes.rows[0].name}" until ${expiryDate.toLocaleDateString()}`,
+    data: {
+      tenantId,
+      plan: planId,
+      seats: selectedSeats,
+      expiryDate,
+      grantType,
+      amountPaid: grantAmount,
+      invoiceNumber
+    }
+  });
+});
+
+/**
+ * Tenant: Activate Free Gift Subscription via 100% Coupon Voucher
+ */
+const activateFreeCouponSubscription = asyncHandler(async (req, res) => {
+  await ensurePaymentLogColumns();
+  const { code, planId = 'hatch', seats = 15, billingCycle = 'monthly' } = req.body;
+  const tenantId = req.tenant.tenant_id;
+
+  if (!code || !code.trim()) {
+    throw new ValidationError('Coupon code is required');
+  }
+
+  const cleanCode = code.trim().toUpperCase();
+
+  // 1. Fetch coupon and validate
+  const couponRes = await pool.query(
+    'SELECT * FROM shared.coupons WHERE UPPER(code) = $1 AND is_active = true',
+    [cleanCode]
+  );
+
+  if (couponRes.rows.length === 0) {
+    throw new ValidationError(`Coupon "${cleanCode}" is invalid or inactive`);
+  }
+
+  const coupon = couponRes.rows[0];
+  const isFree = (coupon.discount_type === 'percentage' && parseFloat(coupon.discount_value) >= 100);
+
+  if (!isFree) {
+    throw new ValidationError(`Coupon "${cleanCode}" is a discount coupon, not a 100% free gift voucher. Please proceed via Razorpay or PayPal.`);
+  }
+
+  // Check limits
+  if (coupon.max_uses !== null && coupon.used_count >= coupon.max_uses) {
+    throw new ValidationError(`Coupon "${cleanCode}" has reached maximum usage limit`);
+  }
+
+  const selectedSeats = parseInt(seats, 10) || 15;
+  const durationDays = billingCycle === 'yearly' ? 365 : 30;
+  const expiryDate = new Date(Date.now() + durationDays * 86400000);
+
+  // 2. Update tenant
+  await pool.query(
+    `UPDATE shared.tenants
+     SET subscription_plan = $1,
+         employee_limit = $2,
+         subscription_expiry = $3,
+         billing_cycle = $4,
+         updated_at = CURRENT_TIMESTAMP
+     WHERE tenant_id = $5`,
+    [planId, selectedSeats, expiryDate, billingCycle, tenantId]
+  );
+
+  // 3. Create payment log record ($0 / ₹0 gift)
+  const invoiceNumber = `INV-GIFT-${tenantId.slice(-4).toUpperCase()}-${Date.now().toString().slice(-6)}`;
+  const logRes = await pool.query(
+    `INSERT INTO shared.payment_logs
+       (tenant_id, plan_id, amount, currency, gateway, status, seats_purchased, is_addon, billing_cycle, invoice_number, coupon_code, discount_amount, notes, created_at)
+     VALUES ($1, $2, 0, 'INR', 'coupon_gift', 'completed', $3, false, $4, $5, $6, 0, $7, CURRENT_TIMESTAMP)
+     RETURNING *`,
+    [
+      tenantId,
+      `${planId}_${selectedSeats}_seats_gift`,
+      selectedSeats,
+      billingCycle,
+      invoiceNumber,
+      cleanCode,
+      `Activated via 100% Free Gift Voucher "${cleanCode}"`
+    ]
+  );
+
+  // 4. Track coupon usage
+  await pool.query(
+    `INSERT INTO shared.coupon_usages (coupon_id, tenant_id, payment_log_id, discount_amount, used_at)
+     VALUES ($1, $2, $3, 0, CURRENT_TIMESTAMP)`,
+    [coupon.id, tenantId, logRes.rows[0].id]
+  );
+
+  await pool.query(
+    'UPDATE shared.coupons SET used_count = used_count + 1, updated_at = CURRENT_TIMESTAMP WHERE id = $1',
+    [coupon.id]
+  );
+
+  res.json({
+    success: true,
+    message: `🎉 Free Gift Voucher "${cleanCode}" successfully redeemed! Your ${planId.toUpperCase()} plan is now active with ${selectedSeats} seats.`,
+    data: {
+      plan: planId,
+      seats: selectedSeats,
+      expiryDate,
+      invoiceNumber
+    }
+  });
+});
+
 module.exports = {
   getPaymentHistory,
   getLastSubscription,
   processRefund,
-  requestRefund
+  requestRefund,
+  manualGrantSubscription,
+  activateFreeCouponSubscription
 };

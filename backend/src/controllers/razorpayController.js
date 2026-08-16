@@ -172,6 +172,33 @@ const createRazorpayOrder = asyncHandler(async (req, res) => {
     totalPrice = Math.max(1, Math.round(fullAddonPrice * remainingRatio));
   }
 
+  // Coupon / Promo Code Discount Calculation
+  let couponDiscount = 0;
+  let appliedCouponCode = null;
+  const rawCouponCode = req.body.couponCode;
+  if (rawCouponCode && typeof rawCouponCode === 'string' && rawCouponCode.trim()) {
+    const cleanCode = rawCouponCode.trim().toUpperCase();
+    const couponRes = await pool.query(
+      'SELECT * FROM shared.coupons WHERE UPPER(code) = $1 AND is_active = true',
+      [cleanCode]
+    );
+    if (couponRes.rows.length > 0) {
+      const c = couponRes.rows[0];
+      const now = new Date();
+      if ((!c.valid_from || new Date(c.valid_from) <= now) &&
+          (!c.valid_until || new Date(c.valid_until) >= now) &&
+          (c.max_uses === null || c.used_count < c.max_uses)) {
+        if (c.discount_type === 'percentage') {
+          couponDiscount = Math.round((totalPrice * parseFloat(c.discount_value)) / 100);
+        } else {
+          couponDiscount = Math.min(totalPrice, Math.round(parseFloat(c.discount_value)));
+        }
+        totalPrice = Math.max(1, totalPrice - couponDiscount);
+        appliedCouponCode = cleanCode;
+      }
+    }
+  }
+
   const amountInPaise = totalPrice * 100;
   const razorpay = getRazorpayInstance();
   const receipt = `rcpt_${tenantId.slice(-8)}_${Date.now().toString().slice(-6)}`;
@@ -189,6 +216,8 @@ const createRazorpayOrder = asyncHandler(async (req, res) => {
       is_addon: String(isAddon),
       is_upgrade: String(isUpgrade),
       prorated_credit: String(proratedCredit),
+      coupon_code: appliedCouponCode || '',
+      coupon_discount: String(couponDiscount),
       amount_in_paise: String(amountInPaise),
       organization: req.tenant.company_name || 'HRMS Pro Tenant',
     },
@@ -375,13 +404,32 @@ const verifyRazorpayPayment = asyncHandler(async (req, res) => {
 
   // 6. Record payment success in shared.payment_logs
   const invoiceNumber = `INV-${tenantId.slice(-4).toUpperCase()}-${Date.now().toString().slice(-6)}`;
+  const couponCodeUsed = req.body.couponCode ? req.body.couponCode.trim().toUpperCase() : null;
+  const couponDiscountAmount = parseFloat(req.body.couponDiscount) || 0;
+
   try {
-    await pool.query(
+    const logRes = await pool.query(
       `INSERT INTO shared.payment_logs
-         (tenant_id, plan_id, amount, currency, razorpay_order_id, razorpay_payment_id, gateway, status, seats_purchased, is_addon, billing_cycle, invoice_number, created_at)
-       VALUES ($1, $2, $3, 'INR', $4, $5, 'razorpay', 'completed', $6, $7, $8, $9, CURRENT_TIMESTAMP)`,
-      [tenantId, `${plan.id}_${selectedSeats}_seats_${calculation.billingCycle}`, finalChargedPrice, razorpay_order_id, razorpay_payment_id, selectedSeats, isAddon, calculation.billingCycle, invoiceNumber]
+         (tenant_id, plan_id, amount, currency, razorpay_order_id, razorpay_payment_id, gateway, status, seats_purchased, is_addon, billing_cycle, invoice_number, coupon_code, discount_amount, created_at)
+       VALUES ($1, $2, $3, 'INR', $4, $5, 'razorpay', 'completed', $6, $7, $8, $9, $10, $11, CURRENT_TIMESTAMP)
+       RETURNING id`,
+      [tenantId, `${plan.id}_${selectedSeats}_seats_${calculation.billingCycle}`, finalChargedPrice, razorpay_order_id, razorpay_payment_id, selectedSeats, isAddon, calculation.billingCycle, invoiceNumber, couponCodeUsed, couponDiscountAmount]
     );
+
+    if (couponCodeUsed && logRes.rows.length > 0) {
+      const couponCheck = await pool.query('SELECT id FROM shared.coupons WHERE UPPER(code) = $1', [couponCodeUsed]);
+      if (couponCheck.rows.length > 0) {
+        await pool.query(
+          `INSERT INTO shared.coupon_usages (coupon_id, tenant_id, payment_log_id, discount_amount, used_at)
+           VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)`,
+          [couponCheck.rows[0].id, tenantId, logRes.rows[0].id, couponDiscountAmount]
+        );
+        await pool.query(
+          'UPDATE shared.coupons SET used_count = used_count + 1, updated_at = CURRENT_TIMESTAMP WHERE id = $1',
+          [couponCheck.rows[0].id]
+        );
+      }
+    }
   } catch (logErr) {
     console.error('Failed to write payment log:', logErr.message);
   }

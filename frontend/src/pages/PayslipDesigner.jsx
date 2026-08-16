@@ -423,7 +423,7 @@ const PayslipDesigner = () => {
                       ))}
                     </div>
 
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-2 border-t border-gray-100">
+                    <div className="grid grid-cols-4 md:grid-cols-4 gap-4 pt-2 border-t border-gray-100">
                       <label className="flex items-center gap-2 text-sm">
                         <input type="checkbox" checked={layout.show_logo !== false}
                           onChange={e => updateLayout(l => ({ ...l, show_logo: e.target.checked }))} />

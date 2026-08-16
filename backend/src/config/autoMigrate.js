@@ -84,9 +84,42 @@ async function autoMigrate() {
       ALTER TABLE shared.payment_logs ADD COLUMN IF NOT EXISTS seats_purchased INTEGER DEFAULT 1;
       ALTER TABLE shared.payment_logs ADD COLUMN IF NOT EXISTS is_addon BOOLEAN DEFAULT false;
       ALTER TABLE shared.payment_logs ADD COLUMN IF NOT EXISTS billing_cycle VARCHAR(20) DEFAULT 'monthly';
+      ALTER TABLE shared.payment_logs ADD COLUMN IF NOT EXISTS coupon_code VARCHAR(50) DEFAULT NULL;
+      ALTER TABLE shared.payment_logs ADD COLUMN IF NOT EXISTS discount_amount NUMERIC(10,2) DEFAULT 0;
     `);
 
-    // 4. Ensure shared.plan_configs
+    // 4. Ensure shared.coupons and shared.coupon_usages
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS shared.coupons (
+        id SERIAL PRIMARY KEY,
+        code VARCHAR(50) UNIQUE NOT NULL,
+        discount_type VARCHAR(20) NOT NULL DEFAULT 'percentage',
+        discount_value NUMERIC(10,2) NOT NULL,
+        applicable_plans JSONB DEFAULT '["all"]'::jsonb,
+        applicable_cycles JSONB DEFAULT '["all"]'::jsonb,
+        min_seats INTEGER DEFAULT 1,
+        max_uses INTEGER DEFAULT NULL,
+        used_count INTEGER DEFAULT 0,
+        valid_from TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        valid_until TIMESTAMP DEFAULT NULL,
+        is_active BOOLEAN DEFAULT TRUE,
+        description TEXT,
+        created_by VARCHAR(255) DEFAULT 'superadmin',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS shared.coupon_usages (
+        id SERIAL PRIMARY KEY,
+        coupon_id INTEGER REFERENCES shared.coupons(id) ON DELETE CASCADE,
+        tenant_id VARCHAR(50) NOT NULL REFERENCES shared.tenants(tenant_id) ON DELETE CASCADE,
+        payment_log_id INTEGER,
+        discount_amount NUMERIC(10,2) DEFAULT 0,
+        used_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    // 5. Ensure shared.plan_configs
     await client.query(`
       CREATE TABLE IF NOT EXISTS shared.plan_configs (
         plan_id VARCHAR(50) PRIMARY KEY,

@@ -150,10 +150,10 @@ const RazorpayCheckout = ({ plan, onClose, onSuccess }) => {
   const calculatedTotal = (seats * ratePerSeat).toLocaleString('en-IN');
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="relative w-full max-w-md bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border border-gray-100 dark:border-gray-700 overflow-hidden flex flex-col">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
+      <div className="relative w-full max-w-md max-h-[90vh] bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border border-gray-100 dark:border-gray-700 overflow-hidden flex flex-col my-auto">
         {/* Header */}
-        <div className="relative p-6 bg-gradient-to-r from-emerald-600 to-teal-700 text-white flex items-center justify-between">
+        <div className="shrink-0 relative p-5 sm:p-6 bg-gradient-to-r from-emerald-600 to-teal-700 text-white flex items-center justify-between">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
               <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest bg-white/20 text-white">
@@ -175,7 +175,7 @@ const RazorpayCheckout = ({ plan, onClose, onSuccess }) => {
         </div>
 
         {/* Content Body */}
-        <div className="p-6 space-y-5">
+        <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-5">
           {/* Order Breakdown Box */}
           <div className="p-4 rounded-2xl bg-gray-50 dark:bg-gray-900/60 border border-gray-100 dark:border-gray-700/80 space-y-2.5">
             <div className="flex justify-between items-center text-xs text-gray-500 dark:text-gray-400 font-medium">

@@ -243,17 +243,11 @@ const PayPalCheckout = ({ plan, onClose, onSuccess }) => {
   const totalINR = (rateINR * seats).toLocaleString('en-IN');
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-        onClick={status !== 'processing' ? onClose : undefined}
-      />
-
+    <div className="fixed inset-0 z-[100] overflow-y-auto bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
       {/* Modal */}
-      <div className="relative bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95">
+      <div className="relative bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-hidden flex flex-col my-auto animate-in fade-in zoom-in-95">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-100 dark:border-gray-800">
+        <div className="shrink-0 flex items-center justify-between p-5 sm:p-6 border-b border-gray-100 dark:border-gray-800">
           <div>
             <div className="flex items-center gap-2">
               <h3 className="text-lg font-bold text-gray-900 dark:text-white">
@@ -286,7 +280,7 @@ const PayPalCheckout = ({ plan, onClose, onSuccess }) => {
         </div>
 
         {/* Content */}
-        <div className="p-6">
+        <div className="flex-1 overflow-y-auto p-6">
           {/* Loading state */}
           {status === 'loading' && (
             <div className="flex flex-col items-center justify-center py-12 gap-3">

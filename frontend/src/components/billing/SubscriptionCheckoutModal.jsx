@@ -343,13 +343,13 @@ const SubscriptionCheckoutModal = ({ plan, onClose, onSuccess }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="relative w-full max-w-xl bg-white dark:bg-gray-850 rounded-3xl shadow-2xl border border-gray-100 dark:border-gray-750 overflow-hidden transition-all">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 md:p-6">
+      <div className="relative w-full max-w-xl max-h-[90vh] flex flex-col bg-white dark:bg-gray-850 rounded-3xl shadow-2xl border border-gray-100 dark:border-gray-750 overflow-hidden transition-all my-auto">
         
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-100 dark:border-gray-750 bg-gradient-to-r from-gray-50 via-white to-gray-50 dark:from-gray-800 dark:via-gray-850 dark:to-gray-800">
+        {/* Header - Always visible at top */}
+        <div className="shrink-0 flex items-center justify-between p-4 sm:p-5 border-b border-gray-100 dark:border-gray-750 bg-gradient-to-r from-gray-50 via-white to-gray-50 dark:from-gray-800 dark:via-gray-850 dark:to-gray-800">
           <div className="flex items-center gap-3">
-            <div className={`w-11 h-11 rounded-2xl flex items-center justify-center font-bold shadow-sm ${
+            <div className={`w-10 h-10 sm:w-11 sm:h-11 rounded-2xl flex items-center justify-center font-bold shadow-sm shrink-0 ${
               planId === 'scale' 
                 ? 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300' 
                 : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
@@ -357,9 +357,9 @@ const SubscriptionCheckoutModal = ({ plan, onClose, onSuccess }) => {
               {planId === 'scale' ? <FaCrown className="w-5 h-5" /> : <FaShieldAlt className="w-5 h-5" />}
             </div>
             <div>
-              <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+              <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
                 Upgrade to {planName}
-                <span className={`text-[11px] font-black px-2 py-0.5 rounded-full ${
+                <span className={`text-[10px] sm:text-[11px] font-black px-2 py-0.5 rounded-full ${
                   planId === 'scale'
                     ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-300'
                     : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300'
@@ -367,7 +367,7 @@ const SubscriptionCheckoutModal = ({ plan, onClose, onSuccess }) => {
                   {planId === 'scale' ? '👑 SCALE VIP' : '🛡️ HATCH PRO'}
                 </span>
               </h3>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
+              <p className="text-[11px] sm:text-xs text-gray-500 dark:text-gray-400">
                 Choose duration, seat capacity, and payment gateway
               </p>
             </div>
@@ -381,8 +381,8 @@ const SubscriptionCheckoutModal = ({ plan, onClose, onSuccess }) => {
           </button>
         </div>
 
-        {/* Content Body */}
-        <div className="p-6 space-y-5">
+        {/* Scrollable Content Body */}
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 sm:space-y-5">
           {/* Success Notification */}
           {success && (
             <div className="p-6 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-center space-y-3 animate-in fade-in">

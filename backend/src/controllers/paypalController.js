@@ -114,18 +114,77 @@ const getPlans = asyncHandler(async (req, res) => {
   });
 });
 
+// Tier hierarchy for downgrade protection and upgrade proration
+const TIER_HIERARCHY = {
+  free: 0,
+  hatch: 1,
+  scale: 2,
+};
+
 // ---------------------------------------------------------------------------
 // POST /api/payments/paypal/create-order  (auth required)
 // ---------------------------------------------------------------------------
 const createOrder = asyncHandler(async (req, res) => {
   const { planId, currency = 'USD', seats = 10, billingCycle = 'monthly', autoPay = false } = req.body;
+  const isAddon = req.body.isAddon === true || req.body.mode === 'add_seats';
+
+  const tenantId = req.tenant.tenant_id;
+
+  // 1. Fetch current active tenant subscription status
+  const tenantRes = await pool.query(
+    `SELECT subscription_plan, subscription_expiry, employee_limit, billing_cycle
+     FROM shared.tenants
+     WHERE tenant_id = $1`,
+    [tenantId]
+  );
+  const currentTenant = tenantRes.rows[0] || {};
+  const currentPlan = currentTenant.subscription_plan || 'free';
+  const currentExpiry = currentTenant.subscription_expiry ? new Date(currentTenant.subscription_expiry) : null;
+  const isCurrentActive = Boolean(currentPlan !== 'free' && currentExpiry && currentExpiry > new Date());
+
+  const currentTierLevel = TIER_HIERARCHY[currentPlan] || 0;
+  const targetTierLevel = TIER_HIERARCHY[planId] || 0;
+
+  // Disallow downgrades during an active billing cycle
+  if (isCurrentActive && !isAddon && targetTierLevel < currentTierLevel) {
+    throw new ValidationError(
+      `You are currently subscribed to the ${currentPlan.toUpperCase()} tier. Downgrading is not permitted during an active subscription period. You can add extra seats to your current plan.`
+    );
+  }
 
   const calculation = calculatePlanCost(planId, seats, currency, billingCycle);
   if (!calculation) {
     throw new ValidationError(`Invalid plan: "${planId}". Valid plans are: ${Object.keys(PLANS).join(', ')}`);
   }
 
-  const { plan, seats: selectedSeats, currency: selectedCurrency, totalPrice, totalUSD, symbol, durationDays } = calculation;
+  const { plan, seats: selectedSeats, currency: selectedCurrency, symbol, durationDays } = calculation;
+  let totalPrice = calculation.totalPrice;
+  let totalUSD = calculation.totalUSD;
+  let proratedCredit = 0;
+  const isUpgrade = Boolean(isCurrentActive && !isAddon && targetTierLevel > currentTierLevel);
+
+  // If upgrading to higher tier (e.g. Hatch -> Scale), compute prorated remaining credit
+  if (isUpgrade && currentExpiry) {
+    const remainingDays = Math.max(0, Math.ceil((currentExpiry - new Date()) / (1000 * 60 * 60 * 24)));
+    const totalCycleDays = currentTenant.billing_cycle === 'yearly' ? 365 : 30;
+    const remainingRatio = Math.min(1, Math.max(0, remainingDays / totalCycleDays));
+
+    const currentBasePrice = selectedCurrency === 'INR' ? (currentPlan === 'scale' ? 799 : 299) : (currentPlan === 'scale' ? 10 : 4);
+    const currentSeats = currentTenant.employee_limit || 15;
+    const currentPaidValue = currentTenant.billing_cycle === 'yearly'
+      ? (currentBasePrice * currentSeats * 12 * 0.80)
+      : (currentBasePrice * currentSeats);
+
+    proratedCredit = parseFloat((currentPaidValue * remainingRatio).toFixed(2));
+    totalPrice = Math.max(1, parseFloat((totalPrice - proratedCredit).toFixed(2)));
+
+    // Adjust totalUSD for PayPal REST API
+    if (selectedCurrency === 'USD') {
+      totalUSD = totalPrice.toFixed(2);
+    } else {
+      totalUSD = (totalPrice / 80).toFixed(2);
+    }
+  }
 
   // PayPal REST API charges in USD while converting to the selected employee seats
   const payPalCurrency = 'USD';
@@ -149,7 +208,7 @@ const createOrder = asyncHandler(async (req, res) => {
             currency_code: payPalCurrency,
             value: payPalValue,
           },
-          custom_id: `${req.tenant.tenant_id}|${plan.id}|${selectedCurrency}|${selectedSeats}|${calculation.billingCycle}|${Boolean(autoPay)}`,
+          custom_id: `${tenantId}|${plan.id}|${selectedCurrency}|${selectedSeats}|${calculation.billingCycle}|${Boolean(autoPay)}|${isAddon}|${isUpgrade}|${proratedCredit}`,
         },
       ],
       application_context: {
@@ -176,6 +235,9 @@ const createOrder = asyncHandler(async (req, res) => {
       billingCycle: calculation.billingCycle,
       durationDays,
       totalPrice,
+      originalPrice: calculation.totalPrice,
+      proratedCredit,
+      isUpgrade,
       currency: selectedCurrency,
       symbol,
     },
@@ -249,17 +311,43 @@ const captureOrder = asyncHandler(async (req, res) => {
   const isAddon = req.body.isAddon === true || req.body.mode === 'add_seats';
   let finalSeatLimit = selectedSeats;
 
+  const currentTenantRes = await pool.query(
+    `SELECT subscription_plan, subscription_expiry, employee_limit, billing_cycle FROM shared.tenants WHERE tenant_id = $1`,
+    [tenantId]
+  ).catch(() => ({ rows: [] }));
+
+  const currentTenant = currentTenantRes.rows[0] || {};
+  const currentPlan = currentTenant.subscription_plan || 'free';
+  const currentExpiry = currentTenant.subscription_expiry ? new Date(currentTenant.subscription_expiry) : null;
+  const isCurrentActive = Boolean(currentPlan !== 'free' && currentExpiry && currentExpiry > new Date());
+
+  const currentTierLevel = TIER_HIERARCHY[currentPlan] || 0;
+  const targetTierLevel = TIER_HIERARCHY[planId] || 0;
+  const isUpgrade = Boolean(isCurrentActive && !isAddon && targetTierLevel > currentTierLevel);
+
+  let finalChargedPrice = totalPrice;
+  let proratedCredit = 0;
+
+  if (isUpgrade && currentExpiry) {
+    const remainingDays = Math.max(0, Math.ceil((currentExpiry - new Date()) / (1000 * 60 * 60 * 24)));
+    const totalCycleDays = currentTenant.billing_cycle === 'yearly' ? 365 : 30;
+    const remainingRatio = Math.min(1, Math.max(0, remainingDays / totalCycleDays));
+
+    const currentBasePrice = selectedCurrency === 'INR' ? (currentPlan === 'scale' ? 799 : 299) : (currentPlan === 'scale' ? 10 : 4);
+    const currentSeats = currentTenant.employee_limit || 15;
+    const currentPaidValue = currentTenant.billing_cycle === 'yearly'
+      ? (currentBasePrice * currentSeats * 12 * 0.80)
+      : (currentBasePrice * currentSeats);
+
+    proratedCredit = parseFloat((currentPaidValue * remainingRatio).toFixed(2));
+    finalChargedPrice = Math.max(1, parseFloat((totalPrice - proratedCredit).toFixed(2)));
+  }
+
   // If adding seats to existing active subscription
   if (isAddon) {
-    const currentTenantRes = await pool.query(
-      `SELECT employee_limit, subscription_expiry FROM shared.tenants WHERE tenant_id = $1`,
-      [tenantId]
-    ).catch(() => ({ rows: [] }));
-
-    const currentLimit = currentTenantRes.rows[0]?.employee_limit || 15;
+    const currentLimit = currentTenant.employee_limit || 15;
     finalSeatLimit = currentLimit + selectedSeats;
 
-    const currentExpiry = currentTenantRes.rows[0]?.subscription_expiry ? new Date(currentTenantRes.rows[0].subscription_expiry) : null;
     if (currentExpiry && currentExpiry > new Date()) {
       if (expiry < currentExpiry) {
         expiry = currentExpiry;
@@ -294,7 +382,7 @@ const captureOrder = asyncHandler(async (req, res) => {
       `INSERT INTO shared.payment_logs
          (tenant_id, plan_id, amount, currency, paypal_order_id, gateway, status, seats_purchased, is_addon, billing_cycle, invoice_number, created_at)
        VALUES ($1, $2, $3, $4, $5, 'paypal', 'completed', $6, $7, $8, $9, CURRENT_TIMESTAMP)`,
-      [tenantId, `${plan.id}_${selectedSeats}_seats_${calculation.billingCycle}`, totalPrice, selectedCurrency, orderId, selectedSeats, isAddon, calculation.billingCycle, invoiceNumber]
+      [tenantId, `${plan.id}_${selectedSeats}_seats_${calculation.billingCycle}`, finalChargedPrice, selectedCurrency, orderId, selectedSeats, isAddon, calculation.billingCycle, invoiceNumber]
     );
   } catch (logErr) {
     console.error('Failed to log PayPal payment:', logErr.message);

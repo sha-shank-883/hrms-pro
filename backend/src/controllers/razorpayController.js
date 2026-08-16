@@ -94,14 +94,46 @@ const getRazorpayKey = asyncHandler(async (req, res) => {
   });
 });
 
+// Tier hierarchy for downgrade protection and upgrade proration
+const TIER_HIERARCHY = {
+  free: 0,
+  hatch: 1,
+  scale: 2,
+};
+
 // ---------------------------------------------------------------------------
 // POST /api/razorpay/create-order
 // ---------------------------------------------------------------------------
 const createRazorpayOrder = asyncHandler(async (req, res) => {
   const { planId, seats, billingCycle = 'monthly', autoPay = false } = req.body;
+  const isAddon = req.body.isAddon === true || req.body.mode === 'add_seats';
 
   if (!planId) {
     throw new ValidationError('Field "planId" is required (e.g. "hatch", "scale").');
+  }
+
+  const tenantId = req.tenant.tenant_id;
+
+  // 1. Fetch current active tenant subscription status
+  const tenantRes = await pool.query(
+    `SELECT subscription_plan, subscription_expiry, employee_limit, billing_cycle
+     FROM shared.tenants
+     WHERE tenant_id = $1`,
+    [tenantId]
+  );
+  const currentTenant = tenantRes.rows[0] || {};
+  const currentPlan = currentTenant.subscription_plan || 'free';
+  const currentExpiry = currentTenant.subscription_expiry ? new Date(currentTenant.subscription_expiry) : null;
+  const isCurrentActive = Boolean(currentPlan !== 'free' && currentExpiry && currentExpiry > new Date());
+
+  const currentTierLevel = TIER_HIERARCHY[currentPlan] || 0;
+  const targetTierLevel = TIER_HIERARCHY[planId] || 0;
+
+  // Disallow downgrades during an active billing cycle
+  if (isCurrentActive && !isAddon && targetTierLevel < currentTierLevel) {
+    throw new ValidationError(
+      `You are currently subscribed to the ${currentPlan.toUpperCase()} tier. Downgrading is not permitted during an active subscription period. You can add extra seats to your current plan.`
+    );
   }
 
   const calculation = calculateINRPlanCost(planId, seats, billingCycle);
@@ -109,10 +141,29 @@ const createRazorpayOrder = asyncHandler(async (req, res) => {
     throw new ValidationError(`Invalid plan: "${planId}". Valid plans: hatch, scale.`);
   }
 
-  const { plan, seats: selectedSeats, totalPrice, amountInPaise, durationDays } = calculation;
-  const tenantId = req.tenant.tenant_id;
-  const razorpay = getRazorpayInstance();
+  const { plan, seats: selectedSeats, durationDays } = calculation;
+  let totalPrice = calculation.totalPrice;
+  let proratedCredit = 0;
+  const isUpgrade = Boolean(isCurrentActive && !isAddon && targetTierLevel > currentTierLevel);
 
+  // If upgrading to higher tier (e.g. Hatch -> Scale), compute prorated remaining credit
+  if (isUpgrade && currentExpiry) {
+    const remainingDays = Math.max(0, Math.ceil((currentExpiry - new Date()) / (1000 * 60 * 60 * 24)));
+    const totalCycleDays = currentTenant.billing_cycle === 'yearly' ? 365 : 30;
+    const remainingRatio = Math.min(1, Math.max(0, remainingDays / totalCycleDays));
+
+    const currentBasePrice = currentPlan === 'scale' ? 799 : 299;
+    const currentSeats = currentTenant.employee_limit || 15;
+    const currentPaidValue = currentTenant.billing_cycle === 'yearly'
+      ? Math.round(currentBasePrice * currentSeats * 12 * 0.80)
+      : Math.round(currentBasePrice * currentSeats);
+
+    proratedCredit = Math.round(currentPaidValue * remainingRatio);
+    totalPrice = Math.max(1, totalPrice - proratedCredit);
+  }
+
+  const amountInPaise = totalPrice * 100;
+  const razorpay = getRazorpayInstance();
   const receipt = `rcpt_${tenantId.slice(-8)}_${Date.now().toString().slice(-6)}`;
 
   const options = {
@@ -125,6 +176,9 @@ const createRazorpayOrder = asyncHandler(async (req, res) => {
       seats: String(selectedSeats),
       billing_cycle: calculation.billingCycle,
       auto_pay: String(Boolean(autoPay)),
+      is_addon: String(isAddon),
+      is_upgrade: String(isUpgrade),
+      prorated_credit: String(proratedCredit),
       amount_in_paise: String(amountInPaise),
       organization: req.tenant.company_name || 'HRMS Pro Tenant',
     },
@@ -160,6 +214,9 @@ const createRazorpayOrder = asyncHandler(async (req, res) => {
       durationDays,
       unitPrice: plan.pricePerSeatINR,
       totalPrice,
+      originalPrice: calculation.totalPrice,
+      proratedCredit,
+      isUpgrade,
       planId: plan.id,
       planName: plan.name,
       keyId: process.env.RAZORPAY_KEY_ID,
@@ -238,17 +295,43 @@ const verifyRazorpayPayment = asyncHandler(async (req, res) => {
   const isAddon = req.body.isAddon === true || req.body.mode === 'add_seats';
   let finalSeatLimit = selectedSeats;
 
+  const currentTenantRes = await pool.query(
+    `SELECT subscription_plan, subscription_expiry, employee_limit, billing_cycle FROM shared.tenants WHERE tenant_id = $1`,
+    [tenantId]
+  ).catch(() => ({ rows: [] }));
+
+  const currentTenant = currentTenantRes.rows[0] || {};
+  const currentPlan = currentTenant.subscription_plan || 'free';
+  const currentExpiry = currentTenant.subscription_expiry ? new Date(currentTenant.subscription_expiry) : null;
+  const isCurrentActive = Boolean(currentPlan !== 'free' && currentExpiry && currentExpiry > new Date());
+
+  const currentTierLevel = TIER_HIERARCHY[currentPlan] || 0;
+  const targetTierLevel = TIER_HIERARCHY[planId] || 0;
+  const isUpgrade = Boolean(isCurrentActive && !isAddon && targetTierLevel > currentTierLevel);
+
+  let finalChargedPrice = totalPrice;
+  let proratedCredit = 0;
+
+  if (isUpgrade && currentExpiry) {
+    const remainingDays = Math.max(0, Math.ceil((currentExpiry - new Date()) / (1000 * 60 * 60 * 24)));
+    const totalCycleDays = currentTenant.billing_cycle === 'yearly' ? 365 : 30;
+    const remainingRatio = Math.min(1, Math.max(0, remainingDays / totalCycleDays));
+
+    const currentBasePrice = currentPlan === 'scale' ? 799 : 299;
+    const currentSeats = currentTenant.employee_limit || 15;
+    const currentPaidValue = currentTenant.billing_cycle === 'yearly'
+      ? Math.round(currentBasePrice * currentSeats * 12 * 0.80)
+      : Math.round(currentBasePrice * currentSeats);
+
+    proratedCredit = Math.round(currentPaidValue * remainingRatio);
+    finalChargedPrice = Math.max(1, totalPrice - proratedCredit);
+  }
+
   // If adding seats to existing active subscription
   if (isAddon) {
-    const currentTenantRes = await pool.query(
-      `SELECT employee_limit, subscription_expiry FROM shared.tenants WHERE tenant_id = $1`,
-      [tenantId]
-    ).catch(() => ({ rows: [] }));
-
-    const currentLimit = currentTenantRes.rows[0]?.employee_limit || 15;
+    const currentLimit = currentTenant.employee_limit || 15;
     finalSeatLimit = currentLimit + selectedSeats;
 
-    const currentExpiry = currentTenantRes.rows[0]?.subscription_expiry ? new Date(currentTenantRes.rows[0].subscription_expiry) : null;
     if (currentExpiry && currentExpiry > new Date()) {
       if (expiry < currentExpiry) {
         expiry = currentExpiry;
@@ -283,7 +366,7 @@ const verifyRazorpayPayment = asyncHandler(async (req, res) => {
       `INSERT INTO shared.payment_logs
          (tenant_id, plan_id, amount, currency, razorpay_order_id, razorpay_payment_id, gateway, status, seats_purchased, is_addon, billing_cycle, invoice_number, created_at)
        VALUES ($1, $2, $3, 'INR', $4, $5, 'razorpay', 'completed', $6, $7, $8, $9, CURRENT_TIMESTAMP)`,
-      [tenantId, `${plan.id}_${selectedSeats}_seats_${calculation.billingCycle}`, totalPrice, razorpay_order_id, razorpay_payment_id, selectedSeats, isAddon, calculation.billingCycle, invoiceNumber]
+      [tenantId, `${plan.id}_${selectedSeats}_seats_${calculation.billingCycle}`, finalChargedPrice, razorpay_order_id, razorpay_payment_id, selectedSeats, isAddon, calculation.billingCycle, invoiceNumber]
     );
   } catch (logErr) {
     console.error('Failed to write payment log:', logErr.message);

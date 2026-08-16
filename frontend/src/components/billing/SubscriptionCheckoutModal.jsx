@@ -142,6 +142,39 @@ const SubscriptionCheckoutModal = ({ plan, onClose, onSuccess }) => {
   const usdMonthlyEquivalent = isYearly ? (parseFloat(usdTotal) / 12).toFixed(2) : usdTotal;
   const usdSavings = isYearly ? (usdBaseRate * seatCount * 12 * 0.20).toFixed(2) : '0.00';
 
+  // Tier Upgrade Proration Calculation
+  const currentPlan = user?.subscription_plan || 'free';
+  const isUpgradingTier = Boolean(
+    isExistingPaid &&
+    !isAddonMode &&
+    currentPlan === 'hatch' &&
+    planId === 'scale'
+  );
+
+  // Compute remaining credit from active Hatch subscription
+  let inrProratedCredit = 0;
+  let usdProratedCredit = 0;
+
+  if (isUpgradingTier && user?.subscription_expiry) {
+    const daysRemaining = Math.max(0, Math.ceil((new Date(user.subscription_expiry) - new Date()) / (1000 * 60 * 60 * 24)));
+    const totalDays = user?.billing_cycle === 'yearly' ? 365 : 30;
+    const remainingRatio = Math.min(1, Math.max(0, daysRemaining / totalDays));
+
+    const currentSeats = currentSeatLimit || 15;
+    const currentPaidValueINR = user?.billing_cycle === 'yearly'
+      ? Math.round(299 * currentSeats * 12 * 0.80)
+      : Math.round(299 * currentSeats);
+    const currentPaidValueUSD = user?.billing_cycle === 'yearly'
+      ? (4 * currentSeats * 12 * 0.80)
+      : (4 * currentSeats);
+
+    inrProratedCredit = Math.round(currentPaidValueINR * remainingRatio);
+    usdProratedCredit = parseFloat((currentPaidValueUSD * remainingRatio).toFixed(2));
+  }
+
+  const finalPayableINR = Math.max(1, inrTotal - inrProratedCredit);
+  const finalPayableUSD = Math.max(1, parseFloat((parseFloat(usdTotal) - usdProratedCredit).toFixed(2))).toFixed(2);
+
   useEffect(() => {
     isMountedRef.current = true;
     return () => {
@@ -585,7 +618,7 @@ const SubscriptionCheckoutModal = ({ plan, onClose, onSuccess }) => {
                       UPI, Cards, NetBanking
                     </p>
                     <div className="mt-2 font-extrabold text-sm text-primary-700 dark:text-primary-400">
-                      ₹{inrTotal.toLocaleString('en-IN')}{' '}
+                      ₹{finalPayableINR.toLocaleString('en-IN')}{' '}
                       <span className="text-[10px] font-normal text-gray-500">INR</span>
                     </div>
                   </button>
@@ -616,7 +649,7 @@ const SubscriptionCheckoutModal = ({ plan, onClose, onSuccess }) => {
                       Credit / Debit Cards & PayPal
                     </p>
                     <div className="mt-2 font-extrabold text-sm text-blue-700 dark:text-blue-400">
-                      ${usdTotal}{' '}
+                      ${finalPayableUSD}{' '}
                       <span className="text-[10px] font-normal text-gray-500">USD</span>
                     </div>
                   </button>
@@ -675,13 +708,24 @@ const SubscriptionCheckoutModal = ({ plan, onClose, onSuccess }) => {
                     </span>
                   </div>
                 )}
+                {isUpgradingTier && inrProratedCredit > 0 && (
+                  <div className="flex justify-between text-indigo-600 dark:text-indigo-400 font-bold bg-indigo-50 dark:bg-indigo-950/50 p-2 rounded-xl border border-indigo-200 dark:border-indigo-800">
+                    <span className="flex items-center gap-1">
+                      <SparklesIcon className="w-3.5 h-3.5" />
+                      Less Active Hatch Plan Prorated Credit:
+                    </span>
+                    <span>
+                      {selectedGateway === 'razorpay' ? `-₹${inrProratedCredit.toLocaleString('en-IN')}` : `-$${usdProratedCredit}`}
+                    </span>
+                  </div>
+                )}
                 <div className="pt-2 border-t border-gray-200 dark:border-gray-700 flex justify-between items-center text-sm font-black text-gray-900 dark:text-white">
                   <span>Total Payable:</span>
                   <div className="text-right">
                     <span className={selectedGateway === 'razorpay' ? 'text-primary-600 text-lg' : 'text-blue-600 text-lg'}>
                       {selectedGateway === 'razorpay'
-                        ? `₹${inrTotal.toLocaleString('en-IN')} INR`
-                        : `$${usdTotal} USD`}
+                        ? `₹${finalPayableINR.toLocaleString('en-IN')} INR`
+                        : `$${finalPayableUSD} USD`}
                     </span>
                     {isYearly && (
                       <span className="block text-[10px] font-normal text-gray-400">
@@ -709,7 +753,13 @@ const SubscriptionCheckoutModal = ({ plan, onClose, onSuccess }) => {
                     ) : (
                       <>
                         <BoltIcon className="w-5 h-5" />
-                        Pay ₹{inrTotal.toLocaleString('en-IN')} via Razorpay ({isAddonMode ? `Add +${seatCount} Seats` : `${seatCount} Seats`})
+                        Pay ₹{finalPayableINR.toLocaleString('en-IN')} via Razorpay ({
+                          isAddonMode
+                            ? `Add +${seatCount} Seats`
+                            : isUpgradingTier
+                            ? 'Upgrade to Scale VIP'
+                            : `${seatCount} Seats`
+                        })
                       </>
                     )}
                   </button>

@@ -870,22 +870,49 @@ const Settings = () => {
                       </ul>
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const seats = Math.max(1, seatQuantity || 10);
-                        setCheckoutPlan({
-                          id: 'hatch',
-                          name: 'Hatch Plan',
-                          seats,
-                          price: billingCurrency === 'INR' ? (seats * 299) : (seats * 4),
-                          currency: billingCurrency,
-                        });
-                      }}
-                      className="mt-6 w-full py-2.5 px-4 rounded-xl font-bold text-xs bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-900 dark:text-white transition-colors"
-                    >
-                      Choose Hatch ({seatQuantity} Seats)
-                    </button>
+                    {user?.subscription_plan === 'scale' ? (
+                      <button
+                        type="button"
+                        disabled
+                        className="mt-6 w-full py-2.5 px-4 rounded-xl font-bold text-xs bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 cursor-not-allowed border border-gray-200 dark:border-gray-700"
+                        title="You are currently on Scale VIP tier. Downgrades are not permitted."
+                      >
+                        Active on Scale VIP (Cannot Downgrade)
+                      </button>
+                    ) : user?.subscription_plan === 'hatch' ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCheckoutPlan({
+                            id: 'hatch',
+                            name: 'Hatch Plan',
+                            seats: 5,
+                            mode: 'add_seats',
+                            isAddon: true,
+                            currency: billingCurrency,
+                          });
+                        }}
+                        className="mt-6 w-full py-2.5 px-4 rounded-xl font-bold text-xs bg-emerald-600 hover:bg-emerald-700 text-white transition-colors"
+                      >
+                        + Add Extra Seats (Current Tier)
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const seats = Math.max(1, seatQuantity || 15);
+                          setCheckoutPlan({
+                            id: 'hatch',
+                            name: 'Hatch Plan',
+                            seats,
+                            currency: billingCurrency,
+                          });
+                        }}
+                        className="mt-6 w-full py-2.5 px-4 rounded-xl font-bold text-xs bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-900 dark:text-white transition-colors"
+                      >
+                        Choose Hatch ({seatQuantity} Seats)
+                      </button>
+                    )}
                   </div>
 
                   {/* Scale Plan */}
@@ -941,22 +968,56 @@ const Settings = () => {
                       </ul>
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const seats = Math.max(1, seatQuantity || 25);
-                        setCheckoutPlan({
-                          id: 'scale',
-                          name: 'Scale Plan',
-                          seats,
-                          price: billingCurrency === 'INR' ? (seats * 799) : (seats * 10),
-                          currency: billingCurrency,
-                        });
-                      }}
-                      className="mt-6 w-full py-2.5 px-4 rounded-xl font-bold text-xs bg-primary-600 hover:bg-primary-700 text-white shadow-md hover:shadow-lg transition-all"
-                    >
-                      Upgrade to Scale ({seatQuantity} Seats)
-                    </button>
+                    {user?.subscription_plan === 'scale' ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCheckoutPlan({
+                            id: 'scale',
+                            name: 'Scale Plan',
+                            seats: 5,
+                            mode: 'add_seats',
+                            isAddon: true,
+                            currency: billingCurrency,
+                          });
+                        }}
+                        className="mt-6 w-full py-2.5 px-4 rounded-xl font-bold text-xs bg-primary-600 hover:bg-primary-700 text-white shadow-md hover:shadow-lg transition-all"
+                      >
+                        + Add Extra Seats (Current Scale VIP)
+                      </button>
+                    ) : user?.subscription_plan === 'hatch' ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const seats = Math.max(1, seatQuantity || user?.employee_limit || 15);
+                          setCheckoutPlan({
+                            id: 'scale',
+                            name: 'Scale Plan',
+                            seats,
+                            currency: billingCurrency,
+                          });
+                        }}
+                        className="mt-6 w-full py-2.5 px-4 rounded-xl font-bold text-xs bg-gradient-to-r from-amber-500 to-primary-600 hover:from-amber-600 hover:to-primary-700 text-white shadow-md hover:shadow-lg transition-all"
+                      >
+                        👑 Upgrade to Scale VIP (Prorated)
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const seats = Math.max(1, seatQuantity || 25);
+                          setCheckoutPlan({
+                            id: 'scale',
+                            name: 'Scale Plan',
+                            seats,
+                            currency: billingCurrency,
+                          });
+                        }}
+                        className="mt-6 w-full py-2.5 px-4 rounded-xl font-bold text-xs bg-primary-600 hover:bg-primary-700 text-white shadow-md hover:shadow-lg transition-all"
+                      >
+                        Choose Scale ({seatQuantity} Seats)
+                      </button>
+                    )}
                   </div>
 
                   {/* Enterprise Plan */}

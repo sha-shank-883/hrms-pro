@@ -347,6 +347,18 @@ This document outlines a systematic plan to test every icon, button, navigation 
 | 1.4.132 | `POST /api/tenants/biometric-devices/register` | Device registered |
 | 1.4.133 | `DELETE /api/tenants/biometric-devices/:serial` | Device deleted |
 
+**Payments & Billing Security** (`/api/payments`)
+| # | Test Case | Expected Result |
+|---|---|---|
+| 1.4.134 | `GET /api/payments/plans` | Returns available Hatch & Scale plans with INR/USD pricing |
+| 1.4.135 | `POST /api/payments/razorpay/create-order` with custom amount in body | Server ignores client amount and enforces server-side plan calculation |
+| 1.4.136 | `POST /api/payments/razorpay/create-order` with negative / zero seats | Sanitizes/clamps seats to valid positive integer |
+| 1.4.137 | `POST /api/payments/razorpay/verify-payment` with forged signature | 400 Bad Request: HMAC signature verification failed |
+| 1.4.138 | `POST /api/payments/razorpay/verify-payment` with valid HMAC-SHA256 signature | 200 OK: Upgrades tenant plan, seat limit & logs payment |
+| 1.4.139 | `POST /api/payments/razorpay/verify-payment` replay attack (duplicate payment ID) | Returns idempotent confirmation without double-crediting or error |
+| 1.4.140 | `POST /api/payments/paypal/create-order` | Generates PayPal checkout order with server-computed USD value |
+| 1.4.141 | `POST /api/payments/paypal/capture-order` replay attack | Returns idempotent success without duplicate charging |
+
 ### 1.5 Socket.IO Real-time Features
 | # | Test Case | Expected Result | Status |
 |---|---|---|---|

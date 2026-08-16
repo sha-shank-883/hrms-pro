@@ -1,9 +1,8 @@
 const asyncHandler = require('../utils/asyncHandler');
 const { ValidationError, AppError } = require('../utils/errors');
-const { query } = require('../config/database');
+const { pool, query } = require('../config/database');
 const { sendEmailSync } = require('../services/emailService');
 
-// ---------------------------------------------------------------------------
 // ---------------------------------------------------------------------------
 // PayPal Plan Definitions  (per-seat monthly, supports USD & INR)
 // ---------------------------------------------------------------------------
@@ -41,7 +40,9 @@ function calculatePlanCost(planId, seatsCount, currency = 'USD') {
   const plan = PLANS[planId];
   if (!plan) return null;
 
-  const seats = Math.max(1, parseInt(seatsCount || plan.defaultSeats || 10, 10));
+  // Strict integer sanitization: min 1 seat, max 10,000 seats
+  const parsedSeats = parseInt(seatsCount || plan.defaultSeats || 10, 10);
+  const seats = Math.max(1, Math.min(10000, isNaN(parsedSeats) ? 10 : parsedSeats));
   const curr = (currency || 'USD').toUpperCase();
   const pricing = plan.pricing?.[curr] || plan.pricing.USD;
 
@@ -178,6 +179,26 @@ const captureOrder = asyncHandler(async (req, res) => {
     throw new ValidationError('orderId and planId are required.');
   }
 
+  const tenantId = req.tenant.tenant_id;
+
+  // 1. Replay Attack & Duplicate Protection
+  const existingLog = await pool.query(
+    `SELECT id, status, plan_id, created_at FROM shared.payment_logs WHERE paypal_order_id = $1 AND status = 'completed' LIMIT 1`,
+    [orderId]
+  ).catch(() => ({ rows: [] }));
+
+  if (existingLog.rows.length > 0) {
+    return res.json({
+      success: true,
+      message: 'Payment has already been confirmed and processed.',
+      data: {
+        orderId,
+        alreadyProcessed: true
+      }
+    });
+  }
+
+  // 2. Server-side Plan Cost Verification
   const calculation = calculatePlanCost(planId, seats, currency);
   if (!calculation) {
     throw new ValidationError(`Invalid plan: "${planId}".`);
@@ -208,14 +229,12 @@ const captureOrder = asyncHandler(async (req, res) => {
     throw new AppError(`Payment not completed. Status: ${status}`, 402);
   }
 
-  const tenantId = req.tenant.tenant_id;
-
-  // Calculate new expiry (today + plan.durationDays)
+  // 3. Calculate new expiry (today + plan.durationDays)
   const expiry = new Date();
   expiry.setDate(expiry.getDate() + plan.durationDays);
 
-  // Update tenant subscription plan, employee limit and expiry in shared.tenants
-  await query(
+  // 4. Update tenant subscription plan, employee limit and expiry in shared.tenants
+  await pool.query(
     `UPDATE shared.tenants
      SET subscription_plan    = $1,
          employee_limit       = $2,
@@ -225,17 +244,15 @@ const captureOrder = asyncHandler(async (req, res) => {
     [plan.id, selectedSeats, expiry.toISOString(), tenantId]
   );
 
-  // Record payment in payment_logs (graceful if table doesn't exist yet)
+  // 5. Record payment in shared.payment_logs
   try {
-    await query(
+    await pool.query(
       `INSERT INTO shared.payment_logs
          (tenant_id, plan_id, amount, currency, paypal_order_id, status, created_at)
        VALUES ($1, $2, $3, $4, $5, 'completed', CURRENT_TIMESTAMP)`,
       [tenantId, `${plan.id}_${selectedSeats}_seats`, totalPrice, selectedCurrency, orderId]
     );
-  } catch (_) {
-    // table may not exist — best-effort logging
-  }
+  } catch (_) {}
 
   // Send confirmation email (best-effort)
   try {

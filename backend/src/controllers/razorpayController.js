@@ -2,7 +2,7 @@ const crypto = require('crypto');
 const Razorpay = require('razorpay');
 const asyncHandler = require('../utils/asyncHandler');
 const { ValidationError, AppError } = require('../utils/errors');
-const { query } = require('../config/database');
+const { pool, query } = require('../config/database');
 const { sendEmailSync } = require('../services/emailService');
 
 // ---------------------------------------------------------------------------
@@ -30,13 +30,15 @@ const PLANS = {
 };
 
 // ---------------------------------------------------------------------------
-// Helper: Calculate Plan Cost
+// Helper: Calculate Plan Cost (Enforces Server-Side Pricing & Sanitized Seats)
 // ---------------------------------------------------------------------------
 function calculateINRPlanCost(planId, seatsCount) {
   const plan = PLANS[planId];
   if (!plan) return null;
 
-  const seats = Math.max(1, parseInt(seatsCount || plan.defaultSeats || 10, 10));
+  // Strict integer sanitization: min 1 seat, max 10,000 seats
+  const parsedSeats = parseInt(seatsCount || plan.defaultSeats || 10, 10);
+  const seats = Math.max(1, Math.min(10000, isNaN(parsedSeats) ? 10 : parsedSeats));
   const unitPrice = plan.pricePerSeatINR;
   const totalPrice = Math.round(unitPrice * seats);
   const amountInPaise = totalPrice * 100; // Razorpay requires amount in paise
@@ -111,6 +113,7 @@ const createRazorpayOrder = asyncHandler(async (req, res) => {
       tenant_id: tenantId,
       plan_id: plan.id,
       seats: String(selectedSeats),
+      amount_in_paise: String(amountInPaise),
       organization: req.tenant.company_name || 'HRMS Pro Tenant',
     },
   };
@@ -124,17 +127,15 @@ const createRazorpayOrder = asyncHandler(async (req, res) => {
     throw new AppError(`Razorpay Gateway Error: ${rzpDesc}`, 502);
   }
 
-  // Best-effort database logging
+  // Database logging to shared.payment_logs
   try {
-    await query(
+    await pool.query(
       `INSERT INTO shared.payment_logs
          (tenant_id, plan_id, amount, currency, razorpay_order_id, gateway, status, created_at)
        VALUES ($1, $2, $3, 'INR', $4, 'razorpay', 'created', CURRENT_TIMESTAMP)`,
       [tenantId, `${plan.id}_${selectedSeats}_seats`, totalPrice, order.id]
     );
-  } catch (_) {
-    // Ignore logging errors if table does not contain specific columns yet
-  }
+  } catch (_) {}
 
   res.status(201).json({
     success: true,
@@ -173,30 +174,53 @@ const verifyRazorpayPayment = asyncHandler(async (req, res) => {
     throw new AppError('Razorpay secret is not configured on this server.', 503);
   }
 
-  // Cryptographic HMAC SHA256 Signature Verification
+  // 1. Constant-Time Cryptographic HMAC SHA256 Signature Verification
   const expectedSignature = crypto
     .createHmac('sha256', keySecret)
     .update(`${razorpay_order_id}|${razorpay_payment_id}`)
     .digest('hex');
 
-  if (expectedSignature !== razorpay_signature) {
+  const expectedBuffer = Buffer.from(expectedSignature, 'utf8');
+  const actualBuffer = Buffer.from(razorpay_signature, 'utf8');
+
+  if (expectedBuffer.length !== actualBuffer.length || !crypto.timingSafeEqual(expectedBuffer, actualBuffer)) {
     throw new ValidationError('Razorpay payment signature verification failed. Untrusted transaction.');
   }
 
+  // 2. Replay & Duplicate Attack Protection
+  const existingLog = await pool.query(
+    `SELECT id, status, plan_id, created_at FROM shared.payment_logs WHERE razorpay_payment_id = $1 AND status = 'completed' LIMIT 1`,
+    [razorpay_payment_id]
+  ).catch(() => ({ rows: [] }));
+
+  const tenantId = req.tenant.tenant_id;
+
+  if (existingLog.rows.length > 0) {
+    return res.json({
+      success: true,
+      message: 'Payment has already been confirmed and processed.',
+      data: {
+        paymentId: razorpay_payment_id,
+        orderId: razorpay_order_id,
+        alreadyProcessed: true
+      }
+    });
+  }
+
+  // 3. Server-side Plan Cost Calculation
   const calculation = calculateINRPlanCost(planId, seats);
   if (!calculation) {
     throw new ValidationError(`Invalid plan: "${planId}".`);
   }
 
   const { plan, seats: selectedSeats, totalPrice } = calculation;
-  const tenantId = req.tenant.tenant_id;
 
-  // Calculate new subscription expiry (today + 30 days)
+  // 4. Calculate new subscription expiry (today + 30 days)
   const expiry = new Date();
   expiry.setDate(expiry.getDate() + plan.durationDays);
 
-  // Update tenant subscription and employee limit in shared.tenants
-  await query(
+  // 5. Update tenant subscription and employee limit in shared.tenants
+  await pool.query(
     `UPDATE shared.tenants
      SET subscription_plan    = $1,
          employee_limit       = $2,
@@ -206,17 +230,15 @@ const verifyRazorpayPayment = asyncHandler(async (req, res) => {
     [plan.id, selectedSeats, expiry.toISOString(), tenantId]
   );
 
-  // Record payment success in payment_logs
+  // 6. Record payment success in shared.payment_logs
   try {
-    await query(
+    await pool.query(
       `INSERT INTO shared.payment_logs
          (tenant_id, plan_id, amount, currency, razorpay_order_id, razorpay_payment_id, gateway, status, created_at)
        VALUES ($1, $2, $3, 'INR', $4, $5, 'razorpay', 'completed', CURRENT_TIMESTAMP)`,
       [tenantId, `${plan.id}_${selectedSeats}_seats`, totalPrice, razorpay_order_id, razorpay_payment_id]
     );
-  } catch (_) {
-    // best effort
-  }
+  } catch (_) {}
 
   // Send confirmation email
   try {

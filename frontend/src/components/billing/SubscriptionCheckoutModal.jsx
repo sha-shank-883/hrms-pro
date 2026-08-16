@@ -88,12 +88,15 @@ const SubscriptionCheckoutModal = ({ plan, onClose, onSuccess }) => {
   const currentSeatLimit = user?.employee_limit || 15;
   const isExistingPaid = Boolean(user?.subscription_plan && user?.subscription_plan !== 'free' && !user?.subscription_expired);
 
-  // Mode: 'add_seats' (Add-on seats on top of existing capacity) vs 'renew_plan' (Set total capacity)
-  const [checkoutMode, setCheckoutMode] = useState(
-    plan?.mode || (isExistingPaid ? 'add_seats' : 'renew_plan')
+  // Sizing mode:
+  // If user is adding seats to an active subscription -> 'add_seats'
+  // If user is purchasing a new plan or upgrading tier -> 'new_plan'
+  const isAddonMode = Boolean(
+    plan?.isAddon ||
+    plan?.mode === 'add_seats' ||
+    (isExistingPaid && (!plan?.id || plan?.id === user?.subscription_plan))
   );
-
-  const isAddonMode = checkoutMode === 'add_seats';
+  const checkoutMode = isAddonMode ? 'add_seats' : 'new_plan';
 
   // Dynamic Seats (editable in checkout)
   const [seatCount, setSeatCount] = useState(
@@ -454,41 +457,6 @@ const SubscriptionCheckoutModal = ({ plan, onClose, onSuccess }) => {
 
           {!success && (
             <>
-              {/* Mode Switcher: Add Extra Seats vs Set Full Plan */}
-              {isExistingPaid && (
-                <div className="grid grid-cols-2 gap-2 p-1 bg-gray-100 dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 text-xs">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setCheckoutMode('add_seats');
-                      setSeatCount(5);
-                    }}
-                    className={`py-2 px-3 rounded-xl font-bold transition-all flex items-center justify-center gap-1.5 ${
-                      isAddonMode
-                        ? 'bg-white dark:bg-gray-700 text-primary-600 dark:text-primary-400 shadow-sm'
-                        : 'text-gray-500 dark:text-gray-400 hover:text-gray-900'
-                    }`}
-                  >
-                    <span>➕ Add Extra Seats</span>
-                    <span className="text-[10px] text-gray-400">({currentSeatLimit} + {seatCount})</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setCheckoutMode('renew_plan');
-                      setSeatCount(Math.max(15, currentSeatLimit));
-                    }}
-                    className={`py-2 px-3 rounded-xl font-bold transition-all flex items-center justify-center gap-1.5 ${
-                      !isAddonMode
-                        ? 'bg-white dark:bg-gray-700 text-primary-600 dark:text-primary-400 shadow-sm'
-                        : 'text-gray-500 dark:text-gray-400 hover:text-gray-900'
-                    }`}
-                  >
-                    <span>🔄 Plan Capacity Total</span>
-                  </button>
-                </div>
-              )}
 
               {/* 1. Billing Cycle Toggle: Monthly vs Yearly (Save 20%) */}
               <div>

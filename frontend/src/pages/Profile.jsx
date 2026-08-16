@@ -5,7 +5,14 @@ import { useAuth } from '../context/AuthContext';
 import { useSettings } from '../hooks/useSettings.jsx';
 import { formatDate } from '../utils/settingsHelper';
 import { validatePassword } from '../utils/passwordHelper';
-import { FaUser, FaBriefcase, FaCalendarCheck, FaFileAlt, FaLock, FaCamera, FaEnvelope, FaPhone, FaMapMarkerAlt, FaBirthdayCake, FaDownload, FaEye, FaMoneyBillWave, FaLaptop, FaChartLine, FaCheckCircle, FaTimesCircle, FaClock, FaTasks, FaHistory, FaExternalLinkAlt, FaGraduationCap, FaLinkedin, FaTwitter, FaGithub, FaUserTie, FaIdCard, FaEdit, FaSave, FaTimes } from 'react-icons/fa';
+import { 
+  FaUser, FaBriefcase, FaCalendarCheck, FaFileAlt, FaLock, FaCamera, 
+  FaEnvelope, FaPhone, FaMapMarkerAlt, FaBirthdayCake, FaDownload, FaEye, 
+  FaMoneyBillWave, FaLaptop, FaChartLine, FaCheckCircle, FaTimesCircle, 
+  FaClock, FaTasks, FaHistory, FaExternalLinkAlt, FaGraduationCap, 
+  FaLinkedin, FaTwitter, FaGithub, FaUserTie, FaIdCard, FaEdit, FaSave, 
+  FaTimes, FaShieldAlt, FaQrcode, FaKey, FaCopy, FaCheck 
+} from 'react-icons/fa';
 import { PERMISSION_MODULES, getAllPermissions } from '../constants/permissions';
 
 const Profile = () => {
@@ -59,6 +66,93 @@ const Profile = () => {
   const [qrCode, setQrCode] = useState('');
   const [twoFASecret, setTwoFASecret] = useState('');
   const [otp, setOtp] = useState('');
+  const [copiedKey, setCopiedKey] = useState(false);
+  const [twoFALoading, setTwoFALoading] = useState(false);
+
+  const handleOpen2FAModal = async () => {
+    try {
+      setError('');
+      setTwoFALoading(true);
+      const res = await authService.setup2FA();
+      if (res.success) {
+        setQrCode(res.qrCode);
+        setTwoFASecret(res.secret);
+        setOtp('');
+        setShow2FAModal(true);
+      }
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to initialize 2FA setup');
+    } finally {
+      setTwoFALoading(false);
+    }
+  };
+
+  const handleVerify2FA = async (e) => {
+    e.preventDefault();
+    if (!otp || otp.trim().length !== 6) {
+      setError('Please enter a valid 6-digit verification code');
+      return;
+    }
+    try {
+      setError('');
+      setTwoFALoading(true);
+      await authService.verify2FASetup(otp.trim());
+      setSuccess('Two-Factor Authentication activated successfully!');
+      setShow2FAModal(false);
+      setProfile(prev => ({ ...prev, is_two_factor_enabled: true, is_2fa_enabled: true }));
+    } catch (err) {
+      setError(err.response?.data?.message || 'Invalid 2FA verification code. Please check your authenticator app.');
+    } finally {
+      setTwoFALoading(false);
+    }
+  };
+
+  const handleDisable2FA = async () => {
+    if (!window.confirm('Are you sure you want to disable Two-Factor Authentication? Your account will be less secure.')) {
+      return;
+    }
+    try {
+      setError('');
+      setTwoFALoading(true);
+      await authService.disable2FA();
+      setSuccess('Two-Factor Authentication disabled');
+      setShow2FAModal(false);
+      setProfile(prev => ({ ...prev, is_two_factor_enabled: false, is_2fa_enabled: false }));
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to disable 2FA');
+    } finally {
+      setTwoFALoading(false);
+    }
+  };
+
+  const handleCopyKey = () => {
+    if (twoFASecret) {
+      navigator.clipboard.writeText(twoFASecret);
+      setCopiedKey(true);
+      setTimeout(() => setCopiedKey(false), 2000);
+    }
+  };
+
+  const handleChangePassword = async (e) => {
+    e.preventDefault();
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      setError('New passwords do not match');
+      return;
+    }
+    if (passwordData.newPassword.length < 6) {
+      setError('New password must be at least 6 characters');
+      return;
+    }
+    try {
+      setError('');
+      await authService.changePassword(passwordData.currentPassword, passwordData.newPassword);
+      setSuccess('Password updated successfully');
+      setShowPasswordModal(false);
+      setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to change password');
+    }
+  };
 
   // Form Data
   const [idCardQrCode, setIdCardQrCode] = useState('');
@@ -362,38 +456,6 @@ const Profile = () => {
     }
   };
 
-  const handleEnable2FA = async () => {
-    try {
-      const data = await authService.setup2FA();
-      setQrCode(data.qrCode);
-      setTwoFASecret(data.secret);
-      setShow2FAModal(true);
-    } catch (error) {
-      setError('Failed to setup 2FA');
-    }
-  };
-
-  const handleVerify2FA = async (e) => {
-    e.preventDefault();
-    try {
-      await authService.verify2FASetup(otp);
-      setSuccess('2FA enabled');
-      setShow2FAModal(false);
-      loadProfile();
-    } catch (error) {
-      setError('Invalid OTP');
-    }
-  };
-
-  const handleDisable2FA = async () => {
-    if (!window.confirm('Disable 2FA?')) return;
-    try {
-      await authService.disable2FA();
-      setSuccess('2FA disabled');
-      loadProfile();
-    } catch (e) { setError('Failed to disable 2FA'); }
-  };
-
   const handlePhotoUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -548,18 +610,29 @@ const Profile = () => {
             </div>
           </div>
 
-          <div className="flex gap-2 pb-4">
-            <button className="btn btn-secondary" onClick={() => setShowIDCard(true)}>
-              <FaIdCard /> <span>ID Card</span>
+          <div className="flex flex-wrap items-center gap-2 pb-4">
+            <button className="btn btn-secondary text-xs" onClick={() => setShowIDCard(true)}>
+              <FaIdCard className="mr-1" /> <span>ID Card</span>
             </button>
             {canEdit && !isEditing && (
-              <button className="btn btn-primary" onClick={() => setIsEditing(true)}>
-                <FaEdit /> <span>Edit Profile</span>
+              <button className="btn btn-primary text-xs" onClick={() => setIsEditing(true)}>
+                <FaEdit className="mr-1" /> <span>Edit Profile</span>
+              </button>
+            )}
+            {isOwnProfile && (
+              <button 
+                className={`btn text-xs flex items-center gap-1.5 ${(profile.is_two_factor_enabled || profile.is_2fa_enabled) ? 'bg-emerald-50 text-emerald-700 border border-emerald-300 hover:bg-emerald-100' : 'btn-secondary text-neutral-700'}`}
+                onClick={handleOpen2FAModal}
+                title="Manage Two-Factor Authentication"
+                disabled={twoFALoading}
+              >
+                <FaShieldAlt className={(profile.is_two_factor_enabled || profile.is_2fa_enabled) ? 'text-emerald-600' : 'text-neutral-500'} />
+                <span>2FA: {(profile.is_two_factor_enabled || profile.is_2fa_enabled) ? 'Active' : 'Setup'}</span>
               </button>
             )}
             {(isOwnProfile || user.role === 'admin') && (
-              <button className="btn btn-secondary" onClick={() => setShowPasswordModal(true)} title="Security Settings">
-                <FaLock />
+              <button className="btn btn-secondary text-xs" onClick={() => setShowPasswordModal(true)} title="Change Password">
+                <FaLock className="mr-1" /> <span>Password</span>
               </button>
             )}
           </div>
@@ -1259,67 +1332,6 @@ const Profile = () => {
             </div>
           )}
 
-          {showPasswordModal && (
-            <div className="modal-overlay" onClick={() => setShowPasswordModal(false)}>
-              <div className="modal" onClick={e => e.stopPropagation()}>
-                <div className="modal-header">
-                  <h2 className="modal-title">Change Password</h2>
-                  <button onClick={() => setShowPasswordModal(false)} className="modal-close"><FaTimes /></button>
-                </div>
-                <form onSubmit={handlePasswordChange}>
-                  <div className="modal-body space-y-4">
-                    {(isOwnProfile || user.role !== 'admin') && (
-                      <div className="form-group">
-                        <label className="form-label">Current Password</label>
-                        <input type="password" name="currentPassword" className="form-input" value={passwordData.currentPassword} onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })} required />
-                      </div>
-                    )}
-                    <div className="form-group">
-                      <label className="form-label">New Password</label>
-                      <input type="password" name="newPassword" className="form-input" value={passwordData.newPassword} onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })} required />
-                    </div>
-                    <div className="form-group">
-                      <label className="form-label">Confirm New Password</label>
-                      <input type="password" name="confirmPassword" className="form-input" value={passwordData.confirmPassword} onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })} required />
-                    </div>
-                  </div>
-                  <div className="modal-footer">
-                    <button type="button" className="btn btn-secondary" onClick={() => setShowPasswordModal(false)}>Cancel</button>
-                    <button type="submit" className="btn btn-primary">Change Password</button>
-                  </div>
-                </form>
-              </div>
-            </div>
-          )}
-
-          {show2FAModal && (
-            <div className="modal-overlay" onClick={() => setShow2FAModal(false)}>
-              <div className="modal modal-sm text-center" onClick={e => e.stopPropagation()}>
-                <div className="modal-header">
-                  <h2 className="modal-title">Enable 2FA</h2>
-                  <button onClick={() => setShow2FAModal(false)} className="modal-close"><FaTimes /></button>
-                </div>
-                <div className="modal-body">
-                  <p className="text-sm text-neutral-500 mb-4">Scan this QR code with your Authenticator App</p>
-                  <div className="bg-white p-2 inline-block border border-neutral-100 rounded-lg mb-4">
-                    <img src={qrCode} alt="QR" className="w-48 h-48 object-contain" />
-                  </div>
-                  <p className="font-mono text-xs text-neutral-400 bg-neutral-50 p-2 rounded mb-6 select-all">{twoFASecret}</p>
-                  <form onSubmit={handleVerify2FA}>
-                    <input
-                      className="form-input text-center text-xl tracking-[0.5em] font-mono mb-4"
-                      placeholder="000000"
-                      maxLength={6}
-                      value={otp}
-                      onChange={e => setOtp(e.target.value)}
-                    />
-                    <button className="btn btn-primary w-full">Verify & Enable</button>
-                  </form>
-                </div>
-              </div>
-            </div>
-          )}
-
           {/* Digital ID Card Modal */}
           {showIDCard && (
             <div className="modal-overlay" onClick={() => setShowIDCard(false)}>
@@ -1422,6 +1434,193 @@ const Profile = () => {
                     <FaDownload className="mr-2" /> Download/Print ID
                   </button>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* 2FA SETUP & MANAGEMENT MODAL */}
+          {show2FAModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+              <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden animate-in fade-in zoom-in duration-200">
+                <div className="px-6 py-4 border-b border-neutral-100 flex justify-between items-center bg-neutral-50/70">
+                  <div className="flex items-center gap-2">
+                    <div className="p-2 bg-primary-50 rounded-xl text-primary-600">
+                      <FaShieldAlt size={18} />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-bold text-neutral-800">Two-Factor Authentication (2FA)</h3>
+                      <p className="text-[11px] text-neutral-500">Secure your account with Google Authenticator or Authy</p>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={() => setShow2FAModal(false)}
+                    className="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 transition-colors"
+                  >
+                    <FaTimes size={16} />
+                  </button>
+                </div>
+
+                <div className="p-6 space-y-5">
+                  {/* Status Banner */}
+                  {(profile.is_two_factor_enabled || profile.is_2fa_enabled) ? (
+                    <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex items-start gap-3">
+                      <FaCheckCircle className="text-emerald-600 text-lg shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-xs font-bold text-emerald-900">2FA is currently ENABLED</p>
+                        <p className="text-[11px] text-emerald-700 mt-0.5">Your account requires a 6-digit authenticator code on sensitive operations and logins.</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="text-xs text-neutral-600">
+                        <span className="font-bold text-neutral-800">Step 1:</span> Scan this QR Code using Google Authenticator, Microsoft Authenticator, or 1Password.
+                      </div>
+
+                      {/* QR Code display */}
+                      <div className="flex flex-col items-center justify-center p-4 bg-neutral-50 border border-neutral-200 rounded-2xl">
+                        {qrCode ? (
+                          <img src={qrCode} alt="2FA QR Code" className="w-44 h-44 object-contain rounded-xl bg-white p-2 border border-neutral-200 shadow-xs" />
+                        ) : (
+                          <div className="w-44 h-44 flex items-center justify-center text-xs text-neutral-400">Loading QR...</div>
+                        )}
+                        
+                        {/* Secret Key with one-click copy */}
+                        {twoFASecret && (
+                          <div className="mt-3 w-full">
+                            <p className="text-[10px] uppercase tracking-wider font-bold text-neutral-400 text-center mb-1">Manual Entry Secret Key</p>
+                            <div className="flex items-center justify-between bg-white border border-neutral-200 rounded-xl px-3 py-1.5 font-mono text-xs font-bold text-neutral-800">
+                              <span className="truncate mr-2">{twoFASecret}</span>
+                              <button 
+                                type="button" 
+                                onClick={handleCopyKey} 
+                                className="text-primary-600 hover:text-primary-800 text-xs flex items-center gap-1 shrink-0"
+                                title="Copy Secret"
+                              >
+                                {copiedKey ? <FaCheck className="text-emerald-600" /> : <FaCopy />}
+                                <span className="text-[10px]">{copiedKey ? 'Copied!' : 'Copy'}</span>
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Step 2: Verification */}
+                      <form onSubmit={handleVerify2FA} className="space-y-3">
+                        <div>
+                          <label className="block text-xs font-bold text-neutral-700 mb-1">
+                            <span className="text-neutral-800">Step 2:</span> Enter 6-Digit Code from Authenticator
+                          </label>
+                          <input 
+                            type="text" 
+                            maxLength={6}
+                            placeholder="e.g. 123456" 
+                            className="form-input w-full text-center text-lg font-mono tracking-widest font-bold py-2"
+                            value={otp}
+                            onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
+                            autoFocus
+                            required
+                          />
+                        </div>
+
+                        <button 
+                          type="submit" 
+                          disabled={twoFALoading || otp.length !== 6}
+                          className="btn btn-primary w-full text-xs font-bold py-2.5 shadow-sm"
+                        >
+                          {twoFALoading ? 'Activating...' : 'Verify & Enable 2FA'}
+                        </button>
+                      </form>
+                    </div>
+                  )}
+
+                  {/* Disable Button if already active */}
+                  {(profile.is_two_factor_enabled || profile.is_2fa_enabled) && (
+                    <div className="pt-2 border-t border-neutral-100 flex justify-end">
+                      <button 
+                        type="button" 
+                        onClick={handleDisable2FA}
+                        disabled={twoFALoading}
+                        className="btn btn-danger text-xs"
+                      >
+                        {twoFALoading ? 'Disabling...' : 'Disable 2FA'}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* CHANGE PASSWORD MODAL */}
+          {showPasswordModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+              <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden animate-in fade-in zoom-in duration-200">
+                <div className="px-6 py-4 border-b border-neutral-100 flex justify-between items-center bg-neutral-50/70">
+                  <div className="flex items-center gap-2">
+                    <div className="p-2 bg-neutral-100 rounded-xl text-neutral-700">
+                      <FaLock size={16} />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-bold text-neutral-800">Change Password</h3>
+                      <p className="text-[11px] text-neutral-500">Update your login credentials securely</p>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={() => setShowPasswordModal(false)}
+                    className="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 transition-colors"
+                  >
+                    <FaTimes size={16} />
+                  </button>
+                </div>
+
+                <form onSubmit={handleChangePassword} className="p-6 space-y-4">
+                  <div className="form-group">
+                    <label className="form-label block text-xs font-bold text-neutral-700 mb-1">Current Password</label>
+                    <input 
+                      type="password" 
+                      className="form-input w-full text-xs" 
+                      value={passwordData.currentPassword}
+                      onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
+                      placeholder="Enter current password"
+                      required
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label block text-xs font-bold text-neutral-700 mb-1">New Password</label>
+                    <input 
+                      type="password" 
+                      className="form-input w-full text-xs" 
+                      value={passwordData.newPassword}
+                      onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
+                      placeholder="Enter new password (min 6 characters)"
+                      minLength={6}
+                      required
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label block text-xs font-bold text-neutral-700 mb-1">Confirm New Password</label>
+                    <input 
+                      type="password" 
+                      className="form-input w-full text-xs" 
+                      value={passwordData.confirmPassword}
+                      onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
+                      placeholder="Confirm new password"
+                      minLength={6}
+                      required
+                    />
+                  </div>
+
+                  <div className="flex justify-end gap-2 pt-4 border-t border-neutral-100">
+                    <button type="button" onClick={() => setShowPasswordModal(false)} className="btn btn-secondary text-xs">
+                      Cancel
+                    </button>
+                    <button type="submit" className="btn btn-primary text-xs">
+                      Update Password
+                    </button>
+                  </div>
+                </form>
               </div>
             </div>
           )}

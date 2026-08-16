@@ -150,54 +150,57 @@ const deleteTenant = asyncHandler(async (req, res) => {
   const { tenantId } = req.params;
   const userId = req.user.userId;
 
-  let twoFactorToken = req.body.twoFactorToken;
-  if (!twoFactorToken && req.headers['x-2fa-token']) {
-    twoFactorToken = req.headers['x-2fa-token'];
+  let twoFactorToken = req.body.twoFactorToken || req.headers['x-2fa-token'];
+  let adminPassword = req.body.adminPassword || req.body.password;
+
+  if (!twoFactorToken && !adminPassword) {
+    throw new ValidationError('Security verification required: Please enter your 6-digit 2FA token or Super Admin password.');
   }
 
-  if (!twoFactorToken) {
-    throw new ValidationError('2FA token is required');
-  }
-
-  // Check 2FA secret from shared.super_admins first, fallback to users table
-  let twoFactorSecret = null;
   const superAdminRes = await pool.query(
-    `SELECT two_factor_secret, is_2fa_enabled FROM shared.super_admins WHERE id = $1 OR email = $2`,
+    `SELECT password_hash, two_factor_secret, is_2fa_enabled FROM shared.super_admins WHERE id = $1 OR email = $2`,
     [userId, req.user.email]
   );
-  if (superAdminRes.rows.length > 0 && superAdminRes.rows[0].two_factor_secret) {
-    twoFactorSecret = superAdminRes.rows[0].two_factor_secret;
-  } else {
-    try {
-      const userRes = await query(`SELECT two_factor_secret FROM users WHERE user_id = $1`, [userId]);
-      if (userRes.rows.length > 0) {
-        twoFactorSecret = userRes.rows[0].two_factor_secret;
-      }
-    } catch (e) {
-      // ignore
+
+  if (superAdminRes.rows.length === 0) {
+    throw new UnauthorizedError('Super Admin authorization failed');
+  }
+
+  const superAdmin = superAdminRes.rows[0];
+  let isAuthorized = false;
+
+  // 1. Verify 2FA token if provided
+  if (twoFactorToken && superAdmin.two_factor_secret) {
+    const verified = speakeasy.totp.verify({
+      secret: superAdmin.two_factor_secret,
+      encoding: 'base32',
+      token: twoFactorToken
+    });
+    if (verified) isAuthorized = true;
+  }
+
+  // 2. Verify Password fallback if password provided
+  if (!isAuthorized && adminPassword) {
+    const isPasswordValid = await bcrypt.compare(adminPassword, superAdmin.password_hash);
+    if (isPasswordValid) isAuthorized = true;
+  }
+
+  if (!isAuthorized) {
+    if (twoFactorToken && !superAdmin.is_2fa_enabled) {
+      throw new ValidationError('2FA is not enabled on your account. Please enter your Super Admin password, or setup 2FA first.');
     }
-  }
-
-  if (!twoFactorSecret) {
-    throw new ValidationError('2FA is not enabled for Super Admin. Please enable it first in profile/security settings.');
-  }
-
-  const verified = speakeasy.totp.verify({
-    secret: twoFactorSecret,
-    encoding: 'base32',
-    token: twoFactorToken
-  });
-
-  if (!verified) {
-    throw new UnauthorizedError('Invalid 2FA token');
+    throw new UnauthorizedError('Invalid 2FA token or password');
   }
 
   await transaction(async (client) => {
     await client.query(`DROP SCHEMA IF EXISTS "${tenantId}" CASCADE`);
     await client.query(`DELETE FROM shared.tenants WHERE tenant_id = $1`, [tenantId]);
+    try {
+      await client.query(`DELETE FROM shared.demo_requests WHERE tenant_id = $1`, [tenantId]);
+    } catch (_) {}
   });
 
-  res.json({ message: 'Tenant deleted successfully' });
+  res.json({ success: true, message: 'Tenant deleted successfully' });
 });
 
 const getBiometricDevices = asyncHandler(async (req, res) => {

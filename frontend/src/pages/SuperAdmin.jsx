@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { tenantService } from '../services';
+import { tenantService, authService } from '../services';
 import { useAuth } from '../context/AuthContext';
 import {
     BuildingOffice2Icon,
@@ -28,7 +28,12 @@ import {
     Squares2X2Icon,
     ArrowTrendingUpIcon,
     MegaphoneIcon,
-    CpuChipIcon
+    CpuChipIcon,
+    KeyIcon,
+    LockClosedIcon,
+    QrCodeIcon,
+    ClipboardDocumentIcon,
+    ClipboardDocumentCheckIcon
 } from '@heroicons/react/24/outline';
 
 const SuperAdmin = () => {
@@ -55,6 +60,19 @@ const SuperAdmin = () => {
     const [manageFormData, setManageFormData] = useState({ status: '', subscription_plan: 'free', subscription_expiry: '' });
     const [resetPasswordData, setResetPasswordData] = useState('');
     const [twoFactorToken, setTwoFactorToken] = useState('');
+    const [superAdminPassword, setSuperAdminPassword] = useState('');
+    const [authMethod, setAuthMethod] = useState('password'); // 'password' | '2fa'
+
+    // Super Admin 2FA State
+    const [show2FASetupModal, setShow2FASetupModal] = useState(false);
+    const [superAdmin2FA, setSuperAdmin2FA] = useState({
+        isEnabled: false,
+        qrCode: '',
+        secret: '',
+        otp: '',
+        loading: false,
+        copied: false
+    });
 
     // Tenant Module Customization State
     const [tenantModulesData, setTenantModulesData] = useState({
@@ -90,13 +108,20 @@ const SuperAdmin = () => {
     const loadData = async () => {
         setLoading(true);
         try {
-            const [tenantsData, plansData] = await Promise.all([
+            const [tenantsData, plansData, profileRes] = await Promise.all([
                 tenantService.getAll(),
-                tenantService.getPlanConfigs().catch(() => ({ plans: [], systemModules: [] }))
+                tenantService.getPlanConfigs().catch(() => ({ plans: [], systemModules: [] })),
+                authService.getProfile().catch(() => ({ data: null }))
             ]);
             setTenants(tenantsData || []);
             if (plansData?.plans) setPlans(plansData.plans);
             if (plansData?.systemModules) setSystemModules(plansData.systemModules);
+            
+            if (profileRes?.data) {
+                const is2FA = !!(profileRes.data.is_two_factor_enabled || profileRes.data.is_2fa_enabled);
+                setSuperAdmin2FA(prev => ({ ...prev, isEnabled: is2FA }));
+                if (is2FA) setAuthMethod('2fa');
+            }
         } catch (err) {
             console.error('Error loading Super Admin data:', err);
         } finally {
@@ -301,18 +326,93 @@ const SuperAdmin = () => {
         }
     };
 
+    const handleOpenSuperAdmin2FA = async () => {
+        try {
+            setError('');
+            setSuperAdmin2FA(prev => ({ ...prev, loading: true }));
+            const res = await authService.setup2FA();
+            if (res.success) {
+                setSuperAdmin2FA(prev => ({
+                    ...prev,
+                    qrCode: res.qrCode,
+                    secret: res.secret,
+                    otp: '',
+                    loading: false,
+                    copied: false
+                }));
+                setShow2FASetupModal(true);
+            }
+        } catch (err) {
+            setError(err.response?.data?.message || 'Failed to initialize Super Admin 2FA setup');
+            setSuperAdmin2FA(prev => ({ ...prev, loading: false }));
+        }
+    };
+
+    const handleVerifySuperAdmin2FA = async (e) => {
+        e.preventDefault();
+        if (!superAdmin2FA.otp || superAdmin2FA.otp.trim().length !== 6) {
+            setError('Please enter a valid 6-digit verification code');
+            return;
+        }
+        try {
+            setError('');
+            setSuperAdmin2FA(prev => ({ ...prev, loading: true }));
+            await authService.verify2FASetup(superAdmin2FA.otp.trim());
+            setSuccess('Super Admin Two-Factor Authentication (2FA) is now active!');
+            setShow2FASetupModal(false);
+            setSuperAdmin2FA(prev => ({ ...prev, isEnabled: true, loading: false }));
+            setAuthMethod('2fa');
+        } catch (err) {
+            setError(err.response?.data?.message || 'Invalid 2FA code. Please check your authenticator app.');
+            setSuperAdmin2FA(prev => ({ ...prev, loading: false }));
+        }
+    };
+
+    const handleDisableSuperAdmin2FA = async () => {
+        if (!window.confirm('Disable Super Admin 2FA? This will decrease security for tenant deletions.')) {
+            return;
+        }
+        try {
+            setError('');
+            setSuperAdmin2FA(prev => ({ ...prev, loading: true }));
+            await authService.disable2FA();
+            setSuccess('Super Admin 2FA disabled');
+            setShow2FASetupModal(false);
+            setSuperAdmin2FA(prev => ({ ...prev, isEnabled: false, loading: false }));
+            setAuthMethod('password');
+        } catch (err) {
+            setError(err.response?.data?.message || 'Failed to disable 2FA');
+            setSuperAdmin2FA(prev => ({ ...prev, loading: false }));
+        }
+    };
+
+    const handleCopySecretKey = () => {
+        if (superAdmin2FA.secret) {
+            navigator.clipboard.writeText(superAdmin2FA.secret);
+            setSuperAdmin2FA(prev => ({ ...prev, copied: true }));
+            setTimeout(() => setSuperAdmin2FA(prev => ({ ...prev, copied: false })), 2000);
+        }
+    };
+
     const handleDeleteTenant = async () => {
         if (!window.confirm(`Are you absolutely sure you want to delete tenant "${manageModal.tenant.name}"? This cannot be undone.`)) {
             return;
         }
 
         try {
-            await tenantService.delete(manageModal.tenant.tenant_id, twoFactorToken);
+            setError('');
+            const authPayload = authMethod === '2fa'
+                ? { twoFactorToken: twoFactorToken.trim() }
+                : { adminPassword: superAdminPassword.trim() };
+
+            await tenantService.delete(manageModal.tenant.tenant_id, authPayload);
             setSuccess('Tenant deleted successfully');
             setManageModal({ show: false, tenant: null, tab: 'overview' });
+            setSuperAdminPassword('');
+            setTwoFactorToken('');
             fetchTenants();
         } catch (err) {
-            setError(err.response?.data?.error || 'Failed to delete tenant');
+            setError(err.response?.data?.message || err.response?.data?.error || 'Failed to delete tenant');
         }
     };
 
@@ -545,6 +645,19 @@ const SuperAdmin = () => {
                             <span className="text-[10px] text-neutral-400 truncate w-full">{item.desc}</span>
                         </Link>
                     ))}
+                    <button
+                        type="button"
+                        onClick={handleOpenSuperAdmin2FA}
+                        className="group p-3 bg-white hover:bg-neutral-50 border border-neutral-200 hover:border-primary-400 rounded-2xl transition-all shadow-xs hover:shadow-md flex flex-col items-center text-center"
+                    >
+                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center mb-1.5 transition-colors ${superAdmin2FA.isEnabled ? 'bg-emerald-50 text-emerald-600 group-hover:bg-emerald-100' : 'bg-neutral-50 text-neutral-600 group-hover:bg-primary-50 group-hover:text-primary-600'}`}>
+                            <KeyIcon className="w-5 h-5" />
+                        </div>
+                        <span className="text-xs font-bold text-neutral-800 group-hover:text-primary-700 truncate w-full">2FA Security</span>
+                        <span className={`text-[10px] truncate w-full ${superAdmin2FA.isEnabled ? 'text-emerald-600 font-bold' : 'text-neutral-400'}`}>
+                            {superAdmin2FA.isEnabled ? 'Active (Configured)' : 'Setup 2FA'}
+                        </span>
+                    </button>
                 </div>
             </div>
 
@@ -1270,26 +1383,211 @@ const SuperAdmin = () => {
                                 <div className="space-y-4">
                                     <div className="bg-red-50 border border-red-200 rounded-xl p-3.5 text-xs text-red-800 flex items-start gap-2">
                                         <ExclamationTriangleIcon className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
-                                        <span>Deleting a tenant drops its PostgreSQL schema permanently. Global Super Admin accounts will remain completely safe and active.</span>
+                                        <div>
+                                            <p className="font-bold">Permanent Deletion Warning</p>
+                                            <p className="mt-0.5">Deleting tenant <span className="font-mono font-bold text-red-950">{manageModal.tenant?.name}</span> drops its PostgreSQL schema permanently. Global Super Admin accounts and platform databases remain 100% safe.</p>
+                                        </div>
                                     </div>
 
-                                    <div className="form-group">
-                                        <label className="form-label block text-xs font-bold text-neutral-700 mb-1">Super Admin 2FA Token</label>
-                                        <input
-                                            type="text"
-                                            className="form-input w-full text-xs font-mono"
-                                            value={twoFactorToken}
-                                            onChange={(e) => setTwoFactorToken(e.target.value)}
-                                            placeholder="Enter 6-digit 2FA code"
-                                            required
-                                        />
+                                    {/* Verification Method Selection */}
+                                    <div className="space-y-2">
+                                        <label className="block text-xs font-bold text-neutral-700">Security Verification Method</label>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <button
+                                                type="button"
+                                                onClick={() => setAuthMethod('password')}
+                                                className={`p-2.5 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 transition-all ${
+                                                    authMethod === 'password'
+                                                        ? 'bg-primary-50 border-primary-400 text-primary-800 shadow-xs'
+                                                        : 'bg-neutral-50 border-neutral-200 text-neutral-600 hover:bg-neutral-100'
+                                                }`}
+                                            >
+                                                <LockClosedIcon className="w-4 h-4" />
+                                                <span>Super Admin Password</span>
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setAuthMethod('2fa')}
+                                                className={`p-2.5 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 transition-all ${
+                                                    authMethod === '2fa'
+                                                        ? 'bg-primary-50 border-primary-400 text-primary-800 shadow-xs'
+                                                        : 'bg-neutral-50 border-neutral-200 text-neutral-600 hover:bg-neutral-100'
+                                                }`}
+                                            >
+                                                <KeyIcon className="w-4 h-4" />
+                                                <span>2FA Authenticator Code</span>
+                                            </button>
+                                        </div>
                                     </div>
+
+                                    {authMethod === 'password' ? (
+                                        <div className="form-group">
+                                            <label className="form-label block text-xs font-bold text-neutral-700 mb-1">Super Admin Account Password</label>
+                                            <input
+                                                type="password"
+                                                className="form-input w-full text-xs"
+                                                value={superAdminPassword}
+                                                onChange={(e) => setSuperAdminPassword(e.target.value)}
+                                                placeholder="Enter your Super Admin password to confirm"
+                                                required
+                                            />
+                                            <p className="text-[11px] text-neutral-400 mt-1">Enter your password to authorize this destructive deletion.</p>
+                                        </div>
+                                    ) : (
+                                        <div className="form-group">
+                                            <div className="flex items-center justify-between mb-1">
+                                                <label className="form-label block text-xs font-bold text-neutral-700">6-Digit 2FA Token</label>
+                                                <button 
+                                                    type="button" 
+                                                    onClick={handleOpenSuperAdmin2FA}
+                                                    className="text-[11px] text-primary-600 hover:text-primary-800 font-bold flex items-center gap-1"
+                                                >
+                                                    <QrCodeIcon className="w-3.5 h-3.5" />
+                                                    <span>{superAdmin2FA.isEnabled ? 'View / Re-setup 2FA' : 'Setup 2FA Now'}</span>
+                                                </button>
+                                            </div>
+                                            <input
+                                                type="text"
+                                                maxLength={6}
+                                                className="form-input w-full text-xs font-mono font-bold tracking-widest text-center"
+                                                value={twoFactorToken}
+                                                onChange={(e) => setTwoFactorToken(e.target.value.replace(/\D/g, ''))}
+                                                placeholder="e.g. 123456"
+                                                required
+                                            />
+                                            {!superAdmin2FA.isEnabled && (
+                                                <p className="text-[11px] text-amber-600 mt-1 flex items-center gap-1">
+                                                    <ExclamationTriangleIcon className="w-3.5 h-3.5 shrink-0" />
+                                                    <span>2FA not yet enabled on your account. Switch to Password above or click "Setup 2FA Now".</span>
+                                                </p>
+                                            )}
+                                        </div>
+                                    )}
 
                                     <div className="flex justify-end pt-4 border-t border-neutral-100">
-                                        <button type="button" onClick={handleDeleteTenant} className="btn btn-danger text-xs">
-                                            Delete Tenant Permanently
+                                        <button
+                                            type="button"
+                                            onClick={handleDeleteTenant}
+                                            disabled={authMethod === 'password' ? !superAdminPassword : twoFactorToken.length !== 6}
+                                            className="btn btn-danger text-xs font-bold flex items-center gap-1.5 shadow-sm"
+                                        >
+                                            <XCircleIcon className="w-4 h-4" />
+                                            <span>Confirm & Delete Tenant Permanently</span>
                                         </button>
                                     </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* SUPER ADMIN 2FA MODAL */}
+            {show2FASetupModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+                    <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden animate-in fade-in zoom-in duration-200">
+                        <div className="px-6 py-4 border-b border-neutral-100 flex justify-between items-center bg-neutral-50/70">
+                            <div className="flex items-center gap-2">
+                                <div className="p-2 bg-primary-50 rounded-xl text-primary-600">
+                                    <KeyIcon className="w-5 h-5" />
+                                </div>
+                                <div>
+                                    <h3 className="text-base font-bold text-neutral-800">Super Admin 2FA Security</h3>
+                                    <p className="text-[11px] text-neutral-500">Authenticator App (Google Authenticator / Authy)</p>
+                                </div>
+                            </div>
+                            <button 
+                                onClick={() => setShow2FASetupModal(false)}
+                                className="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 transition-colors"
+                            >
+                                <XCircleIcon className="w-6 h-6" />
+                            </button>
+                        </div>
+
+                        <div className="p-6 space-y-5">
+                            {superAdmin2FA.isEnabled ? (
+                                <div className="space-y-4">
+                                    <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex items-start gap-3">
+                                        <CheckCircleIcon className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+                                        <div>
+                                            <p className="text-xs font-bold text-emerald-900">2FA Protection is ACTIVE</p>
+                                            <p className="text-[11px] text-emerald-700 mt-0.5">Your Super Admin actions require a 6-digit TOTP code from your authenticator app.</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex justify-between items-center pt-2 border-t border-neutral-100">
+                                        <button
+                                            type="button"
+                                            onClick={handleOpenSuperAdmin2FA}
+                                            className="btn btn-secondary text-xs"
+                                        >
+                                            Re-scan QR Code
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={handleDisableSuperAdmin2FA}
+                                            className="btn btn-danger text-xs"
+                                        >
+                                            Disable 2FA
+                                        </button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="space-y-4">
+                                    <p className="text-xs text-neutral-600">
+                                        <span className="font-bold text-neutral-800">Step 1:</span> Scan this QR code with Google Authenticator, Microsoft Authenticator, or 1Password.
+                                    </p>
+
+                                    <div className="flex flex-col items-center justify-center p-4 bg-neutral-50 border border-neutral-200 rounded-2xl">
+                                        {superAdmin2FA.qrCode ? (
+                                            <img src={superAdmin2FA.qrCode} alt="2FA QR" className="w-44 h-44 object-contain rounded-xl bg-white p-2 border border-neutral-200 shadow-xs" />
+                                        ) : (
+                                            <div className="w-44 h-44 flex items-center justify-center text-xs text-neutral-400">Loading QR...</div>
+                                        )}
+
+                                        {superAdmin2FA.secret && (
+                                            <div className="mt-3 w-full">
+                                                <p className="text-[10px] uppercase tracking-wider font-bold text-neutral-400 text-center mb-1">Manual Secret Key</p>
+                                                <div className="flex items-center justify-between bg-white border border-neutral-200 rounded-xl px-3 py-1.5 font-mono text-xs font-bold text-neutral-800">
+                                                    <span className="truncate mr-2">{superAdmin2FA.secret}</span>
+                                                    <button
+                                                        type="button"
+                                                        onClick={handleCopySecretKey}
+                                                        className="text-primary-600 hover:text-primary-800 text-xs flex items-center gap-1 shrink-0"
+                                                    >
+                                                        {superAdmin2FA.copied ? <ClipboardDocumentCheckIcon className="w-4 h-4 text-emerald-600" /> : <ClipboardDocumentIcon className="w-4 h-4" />}
+                                                        <span className="text-[10px]">{superAdmin2FA.copied ? 'Copied!' : 'Copy'}</span>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <form onSubmit={handleVerifySuperAdmin2FA} className="space-y-3">
+                                        <div>
+                                            <label className="block text-xs font-bold text-neutral-700 mb-1">
+                                                <span className="text-neutral-800">Step 2:</span> Enter 6-digit Code from Authenticator
+                                            </label>
+                                            <input
+                                                type="text"
+                                                maxLength={6}
+                                                placeholder="e.g. 123456"
+                                                className="form-input w-full text-center text-lg font-mono tracking-widest font-bold py-2"
+                                                value={superAdmin2FA.otp}
+                                                onChange={(e) => setSuperAdmin2FA({ ...superAdmin2FA, otp: e.target.value.replace(/\D/g, '') })}
+                                                autoFocus
+                                                required
+                                            />
+                                        </div>
+
+                                        <button
+                                            type="submit"
+                                            disabled={superAdmin2FA.loading || superAdmin2FA.otp.length !== 6}
+                                            className="btn btn-primary w-full text-xs font-bold py-2.5 shadow-sm"
+                                        >
+                                            {superAdmin2FA.loading ? 'Activating...' : 'Verify & Enable 2FA'}
+                                        </button>
+                                    </form>
                                 </div>
                             )}
                         </div>

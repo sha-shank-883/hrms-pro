@@ -21,12 +21,16 @@ export const tenantService = {
     return response.data;
   },
 
-  delete: async (tenantId, twoFactorToken) => {
+  delete: async (tenantId, authPayload) => {
+    const payload = typeof authPayload === 'string' 
+      ? { twoFactorToken: authPayload } 
+      : (authPayload || {});
+
     const response = await api.delete(`/tenants/${tenantId}`, {
       headers: {
-        'x-2fa-token': twoFactorToken
+        'x-2fa-token': payload.twoFactorToken || ''
       },
-      data: { twoFactorToken }
+      data: payload
     });
     return response.data;
   },

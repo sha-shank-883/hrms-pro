@@ -4,10 +4,31 @@ const asyncHandler = require('../utils/asyncHandler');
 const { ValidationError, NotFoundError, UnauthorizedError, AppError } = require('../utils/errors');
 const { getPayPalAccessToken } = require('./paypalController');
 
+let columnsEnsured = false;
+async function ensurePaymentLogColumns() {
+  if (columnsEnsured) return;
+  try {
+    await pool.query(`
+      ALTER TABLE shared.payment_logs
+      ADD COLUMN IF NOT EXISTS refund_status VARCHAR(50) DEFAULT NULL,
+      ADD COLUMN IF NOT EXISTS refund_reason TEXT DEFAULT NULL,
+      ADD COLUMN IF NOT EXISTS refund_id VARCHAR(255) DEFAULT NULL,
+      ADD COLUMN IF NOT EXISTS refund_amount NUMERIC(10,2) DEFAULT NULL,
+      ADD COLUMN IF NOT EXISTS refunded_at TIMESTAMP DEFAULT NULL,
+      ADD COLUMN IF NOT EXISTS seats_purchased INTEGER DEFAULT 1,
+      ADD COLUMN IF NOT EXISTS is_addon BOOLEAN DEFAULT false,
+      ADD COLUMN IF NOT EXISTS billing_cycle VARCHAR(20) DEFAULT 'monthly',
+      ADD COLUMN IF NOT EXISTS invoice_number VARCHAR(100) DEFAULT NULL;
+    `);
+    columnsEnsured = true;
+  } catch (_) {}
+}
+
 /**
  * Get payment history for current tenant (or all/filtered for Super Admin)
  */
 const getPaymentHistory = asyncHandler(async (req, res) => {
+  await ensurePaymentLogColumns();
   const isSuperAdmin = Boolean(
     req.user?.isSuperAdmin ||
     req.user?.role === 'super_admin' ||
@@ -84,6 +105,7 @@ const getPaymentHistory = asyncHandler(async (req, res) => {
  * Get tenant's last active subscription summary & billing overview
  */
 const getLastSubscription = asyncHandler(async (req, res) => {
+  await ensurePaymentLogColumns();
   const tenantId = req.query.tenantId || (req.tenant ? req.tenant.tenant_id : null);
   if (!tenantId) {
     throw new ValidationError('Tenant context is required');
@@ -156,6 +178,7 @@ const getLastSubscription = asyncHandler(async (req, res) => {
  * Process a Payment Refund (Super Admin Only)
  */
 const processRefund = asyncHandler(async (req, res) => {
+  await ensurePaymentLogColumns();
   const isSuperAdmin = Boolean(
     req.user?.isSuperAdmin ||
     req.user?.role === 'super_admin' ||
@@ -319,6 +342,7 @@ const processRefund = asyncHandler(async (req, res) => {
  * Tenant Admin: Request a refund for a payment
  */
 const requestRefund = asyncHandler(async (req, res) => {
+  await ensurePaymentLogColumns();
   const tenantId = req.tenant.tenant_id;
   const { paymentLogId, reason } = req.body;
 

@@ -76,6 +76,14 @@ async function autoMigrate() {
       ALTER TABLE shared.payment_logs ADD COLUMN IF NOT EXISTS notes TEXT;
       ALTER TABLE shared.payment_logs ADD COLUMN IF NOT EXISTS billing_period_start TIMESTAMP;
       ALTER TABLE shared.payment_logs ADD COLUMN IF NOT EXISTS billing_period_end TIMESTAMP;
+      ALTER TABLE shared.payment_logs ADD COLUMN IF NOT EXISTS refund_status VARCHAR(50) DEFAULT NULL;
+      ALTER TABLE shared.payment_logs ADD COLUMN IF NOT EXISTS refund_reason TEXT DEFAULT NULL;
+      ALTER TABLE shared.payment_logs ADD COLUMN IF NOT EXISTS refund_id VARCHAR(255) DEFAULT NULL;
+      ALTER TABLE shared.payment_logs ADD COLUMN IF NOT EXISTS refund_amount NUMERIC(10,2) DEFAULT NULL;
+      ALTER TABLE shared.payment_logs ADD COLUMN IF NOT EXISTS refunded_at TIMESTAMP DEFAULT NULL;
+      ALTER TABLE shared.payment_logs ADD COLUMN IF NOT EXISTS seats_purchased INTEGER DEFAULT 1;
+      ALTER TABLE shared.payment_logs ADD COLUMN IF NOT EXISTS is_addon BOOLEAN DEFAULT false;
+      ALTER TABLE shared.payment_logs ADD COLUMN IF NOT EXISTS billing_cycle VARCHAR(20) DEFAULT 'monthly';
     `);
 
     // 4. Ensure shared.plan_configs

@@ -310,7 +310,7 @@ const SubscriptionCheckoutModal = ({ plan, onClose, onSuccess }) => {
   useEffect(() => {
     if (selectedGateway !== 'paypal' || success) return;
 
-    const clientId = import.meta.env.VITE_PAYPAL_CLIENT_ID;
+    const clientId = import.meta.env.VITE_PAYPAL_CLIENT_ID || 'AeL8e53xhlpZGF7sBBrSHNDh7cbZDWmHjsFir_9jPXYTXcp4L6FXysyobFYWYPya2BMPZGlhMpB4roL7';
     if (!clientId) {
       setPaypalStatus('error');
       setError('PayPal is not configured. Please use Razorpay or contact support.');
@@ -1016,9 +1016,28 @@ const SubscriptionCheckoutModal = ({ plan, onClose, onSuccess }) => {
                     </div>
                   )}
 
+                  {paypalStatus === 'error' && (
+                    <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-center space-y-2.5">
+                      <p className="text-xs text-amber-800 dark:text-amber-300 font-medium">
+                        PayPal checkout is currently unavailable. You can complete your purchase instantly with Razorpay.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedGateway('razorpay');
+                          setError(null);
+                        }}
+                        className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white text-xs font-bold rounded-xl shadow-xs transition-all inline-flex items-center gap-1.5"
+                      >
+                        <CurrencyRupeeIcon className="w-4 h-4" />
+                        Pay ₹{finalPayableINR.toLocaleString('en-IN')} via Razorpay
+                      </button>
+                    </div>
+                  )}
+
                   <div
                     ref={paypalContainerRef}
-                    className={paypalStatus === 'loading' ? 'hidden' : 'min-h-[90px]'}
+                    className={paypalStatus === 'loading' || paypalStatus === 'error' ? 'hidden' : 'min-h-[90px]'}
                   />
                 </div>
               )}

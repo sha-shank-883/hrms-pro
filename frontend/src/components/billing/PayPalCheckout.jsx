@@ -95,7 +95,7 @@ const PayPalCheckout = ({ plan, onClose, onSuccess }) => {
   useEffect(() => {
     if (!plan) return;
 
-    const clientId = import.meta.env.VITE_PAYPAL_CLIENT_ID;
+    const clientId = import.meta.env.VITE_PAYPAL_CLIENT_ID || 'AeL8e53xhlpZGF7sBBrSHNDh7cbZDWmHjsFir_9jPXYTXcp4L6FXysyobFYWYPya2BMPZGlhMpB4roL7';
     if (!clientId) {
       setStatus('error');
       setErrorMsg('PayPal is not configured. Please add VITE_PAYPAL_CLIENT_ID to your environment.');

@@ -254,23 +254,23 @@ const SuperAdminEntitlements = () => {
 
             {/* CUSTOM MODULE OVERRIDE MODAL */}
             {selectedTenant && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setSelectedTenant(null)}>
-                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-xl overflow-hidden animate-in fade-in zoom-in duration-200" onClick={e => e.stopPropagation()}>
-                        <div className="px-6 py-4 border-b border-neutral-100 flex justify-between items-center bg-neutral-50/50">
-                            <div>
-                                <h3 className="text-base font-bold text-neutral-800">Customize Modules: {selectedTenant.name}</h3>
-                                <p className="text-xs text-neutral-500">
-                                    <span className="font-mono text-[11px] bg-neutral-100 px-1.5 py-0.5 rounded mr-2">{selectedTenant.tenant_id}</span>
-                                    Plan: <span className="font-bold uppercase text-primary-700">{selectedTenant.subscription_plan || 'free'}</span>
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/50 backdrop-blur-sm" onClick={() => setSelectedTenant(null)}>
+                    <div className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-xl max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200" onClick={e => e.stopPropagation()}>
+                        <div className="px-5 py-3.5 border-b border-neutral-100 flex justify-between items-start gap-3 bg-neutral-50/70 shrink-0">
+                            <div className="min-w-0 flex-1">
+                                <h3 className="text-sm sm:text-base font-bold text-neutral-800 truncate">Customize Modules: {selectedTenant.name}</h3>
+                                <p className="text-[11px] text-neutral-500 mt-0.5 flex items-center gap-1.5 flex-wrap">
+                                    <span className="font-mono text-[10px] bg-neutral-100 px-1.5 py-0.5 rounded">{selectedTenant.tenant_id}</span>
+                                    <span>Plan: <strong className="uppercase text-primary-700">{selectedTenant.subscription_plan || 'free'}</strong></span>
                                 </p>
                             </div>
-                            <button onClick={() => setSelectedTenant(null)} className="text-neutral-400 hover:text-neutral-600">
-                                <XCircleIcon className="w-6 h-6" />
+                            <button onClick={() => setSelectedTenant(null)} className="text-neutral-400 hover:text-neutral-600 shrink-0 p-1 rounded-lg hover:bg-neutral-100 transition-colors">
+                                <XCircleIcon className="w-5 h-5" />
                             </button>
                         </div>
 
-                        <div className="p-6 space-y-4">
-                            <div className="p-3 rounded-2xl bg-neutral-50 border border-neutral-200 flex items-center justify-between">
+                        <div className="p-4 sm:p-5 overflow-y-auto space-y-3.5 flex-1 custom-scrollbar">
+                            <div className="p-3 rounded-xl sm:rounded-2xl bg-neutral-50 border border-neutral-200 flex items-center justify-between gap-2">
                                 <div className="text-xs">
                                     <span className="font-bold">Status: </span>
                                     {isCustom ? (
@@ -280,13 +280,13 @@ const SuperAdminEntitlements = () => {
                                     )}
                                 </div>
                                 {isCustom && (
-                                    <button onClick={handleResetModules} className="btn btn-secondary btn-xs text-xs">
+                                    <button onClick={handleResetModules} className="btn btn-secondary btn-xs text-xs shrink-0">
                                         Reset to Default
                                     </button>
                                 )}
                             </div>
 
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-72 overflow-y-auto p-3 bg-white rounded-2xl border border-neutral-200 custom-scrollbar">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-64 overflow-y-auto p-3 bg-white rounded-2xl border border-neutral-200 custom-scrollbar">
                                 {systemModules.map((sm) => {
                                     const isChecked = tenantModules.includes(sm.key);
                                     const isCore = sm.key === 'core_hr';
@@ -318,7 +318,7 @@ const SuperAdminEntitlements = () => {
                                 })}
                             </div>
 
-                            <div className="flex justify-end gap-3 pt-4 border-t border-neutral-100">
+                            <div className="flex justify-end gap-2.5 pt-3 border-t border-neutral-100 shrink-0 mt-auto">
                                 <button type="button" onClick={() => setSelectedTenant(null)} className="btn btn-ghost text-xs">Cancel</button>
                                 <button type="button" onClick={handleSaveModules} className="btn btn-primary text-xs">
                                     Save Custom Modules

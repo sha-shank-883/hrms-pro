@@ -775,30 +775,30 @@ const SuperAdminBilling = () => {
 
             {/* CREATE NEW COUPON MODAL */}
             {couponModal.show && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setCouponModal({ ...couponModal, show: false })}>
-                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in duration-200" onClick={e => e.stopPropagation()}>
-                        <div className="px-6 py-4 border-b border-neutral-100 flex justify-between items-center bg-amber-50/70">
-                            <div>
-                                <h3 className="text-base font-black text-amber-950 flex items-center gap-2">
-                                    <TicketIcon className="w-5 h-5 text-amber-600" />
-                                    Create Promo Code or Gift Voucher
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-sm" onClick={() => setCouponModal({ ...couponModal, show: false })}>
+                    <div className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200" onClick={e => e.stopPropagation()}>
+                        <div className="px-5 py-3.5 border-b border-neutral-100 flex justify-between items-start gap-3 bg-amber-50/70 shrink-0">
+                            <div className="min-w-0 flex-1">
+                                <h3 className="text-sm sm:text-base font-bold text-amber-950 flex items-center gap-2">
+                                    <TicketIcon className="w-4 h-4 sm:w-5 sm:h-5 text-amber-600 shrink-0" />
+                                    <span className="truncate">Create Promo Code or Gift Voucher</span>
                                 </h3>
-                                <p className="text-xs text-amber-700">Generate customizable coupon codes with limits, percentage discounts or 100% free gift vouchers</p>
+                                <p className="text-[11px] text-amber-700 mt-0.5 line-clamp-1">Generate customizable coupon codes with limits, percentage discounts or 100% free gift vouchers</p>
                             </div>
-                            <button onClick={() => setCouponModal({ ...couponModal, show: false })} className="text-neutral-400 hover:text-neutral-600">
-                                <XCircleIcon className="w-6 h-6" />
+                            <button onClick={() => setCouponModal({ ...couponModal, show: false })} className="text-neutral-400 hover:text-neutral-600 shrink-0 p-1 rounded-lg hover:bg-amber-100/50 transition-colors">
+                                <XCircleIcon className="w-5 h-5" />
                             </button>
                         </div>
 
                         {couponModal.error && (
-                            <div className="m-4 p-3 bg-red-50 border border-red-200 text-red-800 text-xs rounded-xl flex items-center gap-2">
+                            <div className="m-3 sm:m-4 p-3 bg-red-50 border border-red-200 text-red-800 text-xs rounded-xl flex items-center gap-2 shrink-0">
                                 <ExclamationTriangleIcon className="w-4 h-4 text-red-600 shrink-0" />
                                 <span>{couponModal.error}</span>
                             </div>
                         )}
 
-                        <form onSubmit={handleCreateCouponSubmit} className="p-6 space-y-4">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <form onSubmit={handleCreateCouponSubmit} className="p-4 sm:p-5 overflow-y-auto space-y-3.5 flex-1 custom-scrollbar">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                                 <div className="form-group">
                                     <label className="form-label block text-xs font-bold text-neutral-700 mb-1">Coupon Code *</label>
                                     <input
@@ -829,7 +829,7 @@ const SuperAdminBilling = () => {
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                                 <div className="form-group">
                                     <label className="form-label block text-xs font-bold text-neutral-700 mb-1">
                                         {couponModal.formData.discountType === 'percentage' ? 'Percentage Value (%) *' : 'Flat Discount Value *'}
@@ -869,7 +869,7 @@ const SuperAdminBilling = () => {
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                                 <div className="form-group">
                                     <label className="form-label block text-xs font-bold text-neutral-700 mb-1">Maximum Usage Limit (Optional)</label>
                                     <input
@@ -912,7 +912,7 @@ const SuperAdminBilling = () => {
                                 />
                             </div>
 
-                            <div className="flex justify-end gap-3 pt-4 border-t border-neutral-100">
+                            <div className="flex justify-end gap-2.5 pt-3 border-t border-neutral-100 shrink-0 mt-auto">
                                 <button type="button" onClick={() => setCouponModal({ ...couponModal, show: false })} className="btn btn-ghost text-xs">
                                     Cancel
                                 </button>
@@ -931,29 +931,29 @@ const SuperAdminBilling = () => {
 
             {/* SUPER ADMIN GRANT / GIFT SUBSCRIPTION MODAL */}
             {grantModal.show && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setGrantModal({ ...grantModal, show: false })}>
-                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in duration-200" onClick={e => e.stopPropagation()}>
-                        <div className="px-6 py-4 border-b border-neutral-100 flex justify-between items-center bg-gradient-to-r from-amber-50 to-amber-100/50">
-                            <div>
-                                <h3 className="text-base font-black text-amber-950 flex items-center gap-2">
-                                    <GiftIcon className="w-5 h-5 text-amber-600" />
-                                    Grant / Gift Subscription Plan
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-sm" onClick={() => setGrantModal({ ...grantModal, show: false })}>
+                    <div className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200" onClick={e => e.stopPropagation()}>
+                        <div className="px-5 py-3.5 border-b border-neutral-100 flex justify-between items-start gap-3 bg-gradient-to-r from-amber-50 via-white to-amber-50/50 shrink-0">
+                            <div className="min-w-0 flex-1">
+                                <h3 className="text-sm sm:text-base font-bold text-amber-950 flex items-center gap-2">
+                                    <GiftIcon className="w-4 h-4 sm:w-5 sm:h-5 text-amber-600 shrink-0" />
+                                    <span className="truncate">Grant / Gift Subscription Plan</span>
                                 </h3>
-                                <p className="text-xs text-amber-700">Directly allot a subscription tier, custom seats and duration to any client (Free Gift or Cash/Wire)</p>
+                                <p className="text-[11px] text-amber-700 mt-0.5 line-clamp-1">Directly allot a subscription tier, custom seats and duration to any client (Free Gift or Cash/Wire)</p>
                             </div>
-                            <button onClick={() => setGrantModal({ ...grantModal, show: false })} className="text-neutral-400 hover:text-neutral-600">
-                                <XCircleIcon className="w-6 h-6" />
+                            <button onClick={() => setGrantModal({ ...grantModal, show: false })} className="text-neutral-400 hover:text-neutral-600 shrink-0 p-1 rounded-lg hover:bg-neutral-100 transition-colors">
+                                <XCircleIcon className="w-5 h-5" />
                             </button>
                         </div>
 
                         {grantModal.error && (
-                            <div className="m-4 p-3 bg-red-50 border border-red-200 text-red-800 text-xs rounded-xl flex items-center gap-2">
+                            <div className="m-3 sm:m-4 p-3 bg-red-50 border border-red-200 text-red-800 text-xs rounded-xl flex items-center gap-2 shrink-0">
                                 <ExclamationTriangleIcon className="w-4 h-4 text-red-600 shrink-0" />
                                 <span>{grantModal.error}</span>
                             </div>
                         )}
 
-                        <form onSubmit={handleManualGrantSubmit} className="p-6 space-y-4">
+                        <form onSubmit={handleManualGrantSubmit} className="p-4 sm:p-5 overflow-y-auto space-y-3.5 flex-1 custom-scrollbar">
                             <div className="form-group">
                                 <label className="form-label block text-xs font-bold text-neutral-700 mb-1">Target Tenant / Client Company *</label>
                                 <select
@@ -974,7 +974,7 @@ const SuperAdminBilling = () => {
                                 </select>
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                                 <div className="form-group">
                                     <label className="form-label block text-xs font-bold text-neutral-700 mb-1">Subscription Tier</label>
                                     <select
@@ -1006,7 +1006,7 @@ const SuperAdminBilling = () => {
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                                 <div className="form-group">
                                     <label className="form-label block text-xs font-bold text-neutral-700 mb-1">Duration Period</label>
                                     <select
@@ -1043,7 +1043,7 @@ const SuperAdminBilling = () => {
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                                 <div className="form-group">
                                     <label className="form-label block text-xs font-bold text-neutral-700 mb-1">Amount Collected (0 for Free Gift)</label>
                                     <input
@@ -1088,7 +1088,7 @@ const SuperAdminBilling = () => {
                                 />
                             </div>
 
-                            <div className="flex justify-end gap-3 pt-4 border-t border-neutral-100">
+                            <div className="flex justify-end gap-2.5 pt-3 border-t border-neutral-100 shrink-0 mt-auto">
                                 <button type="button" onClick={() => setGrantModal({ ...grantModal, show: false })} className="btn btn-ghost text-xs">
                                     Cancel
                                 </button>
@@ -1107,22 +1107,22 @@ const SuperAdminBilling = () => {
 
             {/* RECORD OFFLINE PAYMENT MODAL */}
             {paymentModal.show && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setPaymentModal({ ...paymentModal, show: false })}>
-                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in duration-200" onClick={e => e.stopPropagation()}>
-                        <div className="px-6 py-4 border-b border-neutral-100 flex justify-between items-center bg-emerald-50/70">
-                            <div>
-                                <h3 className="text-base font-black text-emerald-950 flex items-center gap-2">
-                                    <BanknotesIcon className="w-5 h-5 text-emerald-600" />
-                                    Record Offline Client Payment
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-sm" onClick={() => setPaymentModal({ ...paymentModal, show: false })}>
+                    <div className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200" onClick={e => e.stopPropagation()}>
+                        <div className="px-5 py-3.5 border-b border-neutral-100 flex justify-between items-start gap-3 bg-emerald-50/70 shrink-0">
+                            <div className="min-w-0 flex-1">
+                                <h3 className="text-sm sm:text-base font-bold text-emerald-950 flex items-center gap-2">
+                                    <BanknotesIcon className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-600 shrink-0" />
+                                    <span className="truncate">Record Offline Client Payment</span>
                                 </h3>
-                                <p className="text-xs text-emerald-700">Record direct bank transfers (NEFT/RTGS), cash, or cheques to automatically issue an official invoice</p>
+                                <p className="text-[11px] text-emerald-700 mt-0.5 line-clamp-1">Record direct bank transfers (NEFT/RTGS), cash, or cheques to automatically issue an official invoice</p>
                             </div>
-                            <button onClick={() => setPaymentModal({ ...paymentModal, show: false })} className="text-neutral-400 hover:text-neutral-600">
-                                <XCircleIcon className="w-6 h-6" />
+                            <button onClick={() => setPaymentModal({ ...paymentModal, show: false })} className="text-neutral-400 hover:text-neutral-600 shrink-0 p-1 rounded-lg hover:bg-emerald-100/50 transition-colors">
+                                <XCircleIcon className="w-5 h-5" />
                             </button>
                         </div>
 
-                        <form onSubmit={handleRecordPayment} className="p-6 space-y-4">
+                        <form onSubmit={handleRecordPayment} className="p-4 sm:p-5 overflow-y-auto space-y-3.5 flex-1 custom-scrollbar">
                             <div className="form-group">
                                 <label className="form-label block text-xs font-bold text-neutral-700 mb-1">Target Tenant *</label>
                                 <select
@@ -1141,7 +1141,7 @@ const SuperAdminBilling = () => {
                                 </select>
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                                 <div className="form-group">
                                     <label className="form-label block text-xs font-bold text-neutral-700 mb-1">Subscription Plan</label>
                                     <select
@@ -1175,8 +1175,8 @@ const SuperAdminBilling = () => {
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <div className="form-group md:col-span-2">
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+                                <div className="form-group sm:col-span-2">
                                     <label className="form-label block text-xs font-bold text-neutral-700 mb-1">Amount Paid</label>
                                     <input
                                         type="number"
@@ -1207,7 +1207,7 @@ const SuperAdminBilling = () => {
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                                 <div className="form-group">
                                     <label className="form-label block text-xs font-bold text-neutral-700 mb-1">Payment Method</label>
                                     <select
@@ -1253,7 +1253,7 @@ const SuperAdminBilling = () => {
                                 />
                             </div>
 
-                            <div className="flex justify-end gap-3 pt-4 border-t border-neutral-100">
+                            <div className="flex justify-end gap-2.5 pt-3 border-t border-neutral-100 shrink-0 mt-auto">
                                 <button type="button" onClick={() => setPaymentModal({ ...paymentModal, show: false })} className="btn btn-ghost text-xs">Cancel</button>
                                 <button type="submit" className="btn btn-primary text-xs bg-emerald-600 hover:bg-emerald-700 border-emerald-600">
                                     Save Payment & Extend
@@ -1266,29 +1266,29 @@ const SuperAdminBilling = () => {
 
             {/* ISSUE GATEWAY REFUND MODAL */}
             {refundModal.show && refundModal.txn && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setRefundModal({ ...refundModal, show: false })}>
-                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200" onClick={e => e.stopPropagation()}>
-                        <div className="px-6 py-4 border-b border-neutral-100 flex justify-between items-center bg-red-50/70">
-                            <div>
-                                <h3 className="text-base font-black text-red-950 flex items-center gap-2">
-                                    <ArrowUturnLeftIcon className="w-5 h-5 text-red-600" />
-                                    Issue Gateway Refund
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-sm" onClick={() => setRefundModal({ ...refundModal, show: false })}>
+                    <div className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200" onClick={e => e.stopPropagation()}>
+                        <div className="px-5 py-3.5 border-b border-neutral-100 flex justify-between items-start gap-3 bg-red-50/70 shrink-0">
+                            <div className="min-w-0 flex-1">
+                                <h3 className="text-sm sm:text-base font-bold text-red-950 flex items-center gap-2">
+                                    <ArrowUturnLeftIcon className="w-4 h-4 sm:w-5 sm:h-5 text-red-600 shrink-0" />
+                                    <span className="truncate">Issue Gateway Refund</span>
                                 </h3>
-                                <p className="text-xs text-red-700">Process full or partial refund for transaction #{refundModal.txn.id}</p>
+                                <p className="text-[11px] text-red-700 mt-0.5 line-clamp-1">Process full or partial refund for transaction #{refundModal.txn.id}</p>
                             </div>
-                            <button onClick={() => setRefundModal({ ...refundModal, show: false })} className="text-neutral-400 hover:text-neutral-600">
-                                <XCircleIcon className="w-6 h-6" />
+                            <button onClick={() => setRefundModal({ ...refundModal, show: false })} className="text-neutral-400 hover:text-neutral-600 shrink-0 p-1 rounded-lg hover:bg-red-100/50 transition-colors">
+                                <XCircleIcon className="w-5 h-5" />
                             </button>
                         </div>
 
                         {refundModal.error && (
-                            <div className="m-4 p-3 bg-red-50 border border-red-200 text-red-800 text-xs rounded-xl flex items-center gap-2">
+                            <div className="m-3 sm:m-4 p-3 bg-red-50 border border-red-200 text-red-800 text-xs rounded-xl flex items-center gap-2 shrink-0">
                                 <ExclamationTriangleIcon className="w-4 h-4 text-red-600 shrink-0" />
                                 <span>{refundModal.error}</span>
                             </div>
                         )}
 
-                        <form onSubmit={handleProcessRefund} className="p-6 space-y-4">
+                        <form onSubmit={handleProcessRefund} className="p-4 sm:p-5 overflow-y-auto space-y-3.5 flex-1 custom-scrollbar">
                             <div className="p-3.5 bg-neutral-50 rounded-2xl border border-neutral-200 text-xs space-y-1.5">
                                 <div className="flex justify-between">
                                     <span className="text-neutral-500">Tenant:</span>
@@ -1353,7 +1353,7 @@ const SuperAdminBilling = () => {
                                 </label>
                             </div>
 
-                            <div className="flex justify-end gap-3 pt-4 border-t border-neutral-100">
+                            <div className="flex justify-end gap-2.5 pt-3 border-t border-neutral-100 shrink-0 mt-auto">
                                 <button
                                     type="button"
                                     disabled={refundModal.loading}

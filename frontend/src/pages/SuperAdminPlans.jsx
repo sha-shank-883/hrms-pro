@@ -198,23 +198,23 @@ const SuperAdminPlans = () => {
 
             {/* EDIT PLAN MODAL */}
             {editingPlan && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setEditingPlan(null)}>
-                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in duration-200" onClick={e => e.stopPropagation()}>
-                        <div className="px-6 py-4 border-b border-neutral-100 flex justify-between items-center bg-primary-50/50">
-                            <div>
-                                <h3 className="text-base font-black text-neutral-900 flex items-center gap-2">
-                                    <SparklesIcon className="w-5 h-5 text-primary-600" />
-                                    Configure Tier: {editingPlan.name}
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/50 backdrop-blur-sm" onClick={() => setEditingPlan(null)}>
+                    <div className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200" onClick={e => e.stopPropagation()}>
+                        <div className="px-5 py-3.5 border-b border-neutral-100 flex justify-between items-start gap-3 bg-primary-50/50 shrink-0">
+                            <div className="min-w-0 flex-1">
+                                <h3 className="text-sm sm:text-base font-black text-neutral-900 flex items-center gap-2">
+                                    <SparklesIcon className="w-4 h-4 sm:w-5 sm:h-5 text-primary-600 shrink-0" />
+                                    <span className="truncate">Configure Tier: {editingPlan.name}</span>
                                 </h3>
-                                <p className="text-xs text-neutral-500">Plan Identifier: <span className="font-mono font-bold">{editingPlan.plan_id}</span></p>
+                                <p className="text-[11px] text-neutral-500 mt-0.5">Plan Identifier: <span className="font-mono font-bold">{editingPlan.plan_id}</span></p>
                             </div>
-                            <button onClick={() => setEditingPlan(null)} className="text-neutral-400 hover:text-neutral-600">
-                                <XCircleIcon className="w-6 h-6" />
+                            <button onClick={() => setEditingPlan(null)} className="text-neutral-400 hover:text-neutral-600 shrink-0 p-1 rounded-lg hover:bg-neutral-100 transition-colors">
+                                <XCircleIcon className="w-5 h-5" />
                             </button>
                         </div>
 
-                        <form onSubmit={handleSavePlanConfig} className="p-6 space-y-4">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <form onSubmit={handleSavePlanConfig} className="p-4 sm:p-5 overflow-y-auto space-y-3.5 flex-1 custom-scrollbar">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                                 <div className="form-group">
                                     <label className="form-label block text-xs font-bold text-neutral-700 mb-1">Plan Display Name</label>
                                     <input
@@ -238,7 +238,7 @@ const SuperAdminPlans = () => {
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                                 <div className="form-group">
                                     <label className="form-label block text-xs font-bold text-neutral-700 mb-1">Price (INR / user / mo)</label>
                                     <input
@@ -280,7 +280,7 @@ const SuperAdminPlans = () => {
                                     <span className="text-[11px] text-neutral-400">Core HR is always mandatory</span>
                                 </div>
 
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-60 overflow-y-auto p-3 bg-neutral-50 rounded-2xl border border-neutral-200 custom-scrollbar">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-52 overflow-y-auto p-3 bg-neutral-50 rounded-2xl border border-neutral-200 custom-scrollbar">
                                     {systemModules.map((sm) => {
                                         const isChecked = planFormData.modules.includes(sm.key);
                                         const isCore = sm.key === 'core_hr';
@@ -313,7 +313,7 @@ const SuperAdminPlans = () => {
                                 </div>
                             </div>
 
-                            <div className="flex justify-end gap-3 pt-4 border-t border-neutral-100">
+                            <div className="flex justify-end gap-2.5 pt-3 border-t border-neutral-100 shrink-0 mt-auto">
                                 <button type="button" onClick={() => setEditingPlan(null)} className="btn btn-ghost text-xs">Cancel</button>
                                 <button type="submit" className="btn btn-primary text-xs">Save Plan Configuration</button>
                             </div>

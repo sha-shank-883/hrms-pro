@@ -1322,39 +1322,39 @@ const Settings = () => {
 
               {/* Tenant Request Refund Modal */}
               {refundRequestModal.show && refundRequestModal.invoice && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setRefundRequestModal({ ...refundRequestModal, show: false })}>
-                  <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200" onClick={e => e.stopPropagation()}>
-                    <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center bg-gray-50/80 dark:bg-gray-750">
-                      <div>
-                        <h3 className="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-sm" onClick={() => setRefundRequestModal({ ...refundRequestModal, show: false })}>
+                  <div className="bg-white dark:bg-gray-800 rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200" onClick={e => e.stopPropagation()}>
+                    <div className="px-5 py-3.5 border-b border-gray-100 dark:border-gray-700 flex justify-between items-start gap-3 bg-gray-50/80 dark:bg-gray-750 shrink-0">
+                      <div className="min-w-0 flex-1">
+                        <h3 className="text-sm sm:text-base font-bold text-gray-900 dark:text-white truncate">
                           Request Payment Refund
                         </h3>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                        <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5 truncate">
                           Submit refund request for Invoice #{refundRequestModal.invoice.invoice_number || refundRequestModal.invoice.id}
                         </p>
                       </div>
-                      <button onClick={() => setRefundRequestModal({ ...refundRequestModal, show: false })} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                      <button onClick={() => setRefundRequestModal({ ...refundRequestModal, show: false })} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 shrink-0 p-1 rounded-lg hover:bg-gray-200/50 dark:hover:bg-gray-700">
                         ✕
                       </button>
                     </div>
 
                     {refundRequestModal.success && (
-                      <div className="m-4 p-3 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 text-emerald-800 dark:text-emerald-300 text-xs rounded-xl flex items-center gap-2">
+                      <div className="m-3 sm:m-4 p-3 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 text-emerald-800 dark:text-emerald-300 text-xs rounded-xl flex items-center gap-2 shrink-0">
                         <FaCheckCircle className="text-emerald-600 shrink-0" />
                         <span>{refundRequestModal.success}</span>
                       </div>
                     )}
 
                     {refundRequestModal.error && (
-                      <div className="m-4 p-3 bg-red-50 dark:bg-red-950/50 border border-red-200 text-red-800 dark:text-red-300 text-xs rounded-xl flex items-center gap-2">
+                      <div className="m-3 sm:m-4 p-3 bg-red-50 dark:bg-red-950/50 border border-red-200 text-red-800 dark:text-red-300 text-xs rounded-xl flex items-center gap-2 shrink-0">
                         <FaExclamationCircle className="text-red-600 shrink-0" />
                         <span>{refundRequestModal.error}</span>
                       </div>
                     )}
 
                     {!refundRequestModal.success && (
-                      <form onSubmit={handleRequestRefund} className="p-6 space-y-4">
-                        <div className="p-3.5 bg-gray-50 dark:bg-gray-750 rounded-2xl border border-gray-200 dark:border-gray-700 text-xs space-y-2">
+                      <form onSubmit={handleRequestRefund} className="p-4 sm:p-5 overflow-y-auto space-y-3.5 flex-1 custom-scrollbar">
+                        <div className="p-3.5 bg-gray-50 dark:bg-gray-750 rounded-2xl border border-gray-200 dark:border-gray-700 text-xs space-y-1.5">
                           <div className="flex justify-between items-center">
                             <span className="text-gray-500">Transaction Type:</span>
                             <span className="font-bold text-gray-900 dark:text-white">
@@ -1374,7 +1374,7 @@ const Settings = () => {
                               {(parseFloat(refundRequestModal.invoice.amount) * 0.03).toFixed(2)}
                             </span>
                           </div>
-                          <div className="pt-2 border-t border-gray-200 dark:border-gray-600 flex justify-between items-center text-sm">
+                          <div className="pt-1.5 border-t border-gray-200 dark:border-gray-600 flex justify-between items-center text-xs sm:text-sm">
                             <span className="font-bold text-gray-900 dark:text-white">Net Estimated Refund:</span>
                             <span className="font-black text-emerald-600 dark:text-emerald-400">
                               {refundRequestModal.invoice.currency === 'INR' ? '₹' : '$'}
@@ -1395,7 +1395,7 @@ const Settings = () => {
                           </label>
                           <textarea
                             className="form-input w-full text-xs"
-                            rows="3"
+                            rows="2"
                             required
                             placeholder="Please explain the reason for your refund request..."
                             value={refundRequestModal.reason}
@@ -1403,7 +1403,7 @@ const Settings = () => {
                           />
                         </div>
 
-                        <div className="flex justify-end gap-3 pt-3 border-t border-gray-100 dark:border-gray-700">
+                        <div className="flex justify-end gap-2.5 pt-3 border-t border-gray-100 dark:border-gray-700 shrink-0 mt-auto">
                           <button
                             type="button"
                             onClick={() => setRefundRequestModal({ ...refundRequestModal, show: false })}

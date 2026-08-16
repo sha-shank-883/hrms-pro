@@ -837,20 +837,22 @@ const SuperAdmin = () => {
 
             {/* Restore Result Modal */}
             {restoreModal.show && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in duration-200">
-                        <div className="px-6 py-4 border-b border-neutral-100 flex justify-between items-center bg-neutral-50/50">
-                            <h3 className="text-base font-bold text-neutral-800 flex items-center gap-2">
-                                <CloudArrowUpIcon className="w-5 h-5 text-primary-600" />
-                                Database Restore: {restoreModal.targetTenant?.name}
-                            </h3>
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/50 backdrop-blur-sm">
+                    <div className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200">
+                        <div className="px-5 py-3.5 border-b border-neutral-100 flex justify-between items-start gap-3 bg-neutral-50/70 shrink-0">
+                            <div className="min-w-0 flex-1">
+                                <h3 className="text-sm sm:text-base font-bold text-neutral-800 flex items-center gap-2">
+                                    <CloudArrowUpIcon className="w-4 h-4 sm:w-5 sm:h-5 text-primary-600 shrink-0" />
+                                    <span className="truncate">Database Restore: {restoreModal.targetTenant?.name}</span>
+                                </h3>
+                            </div>
                             {!restoreModal.loading && (
-                                <button onClick={() => setRestoreModal({ show: false, result: null, loading: false, targetTenant: null })} className="text-neutral-400 hover:text-neutral-600">
-                                    <XCircleIcon className="w-6 h-6" />
+                                <button onClick={() => setRestoreModal({ show: false, result: null, loading: false, targetTenant: null })} className="text-neutral-400 hover:text-neutral-600 shrink-0 p-1 rounded-lg hover:bg-neutral-100 transition-colors">
+                                    <XCircleIcon className="w-5 h-5" />
                                 </button>
                             )}
                         </div>
-                        <div className="p-6">
+                        <div className="p-4 sm:p-5 overflow-y-auto flex-1 custom-scrollbar">
                             {restoreModal.loading ? (
                                 <div className="flex flex-col items-center justify-center py-8">
                                     <div className="w-12 h-12 border-4 border-primary-600 border-t-transparent rounded-full animate-spin mb-4" />
@@ -885,16 +887,19 @@ const SuperAdmin = () => {
 
             {/* CREATE NEW TENANT MODAL */}
             {showModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setShowModal(false)}>
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200" onClick={e => e.stopPropagation()}>
-                        <div className="px-6 py-4 border-b border-neutral-100 flex justify-between items-center bg-neutral-50/50">
-                            <h3 className="text-base font-bold text-neutral-800">Create New Company Tenant</h3>
-                            <button onClick={() => setShowModal(false)} className="text-neutral-400 hover:text-neutral-600 transition-colors">
-                                <XCircleIcon className="w-6 h-6" />
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/50 backdrop-blur-sm" onClick={() => setShowModal(false)}>
+                    <div className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200" onClick={e => e.stopPropagation()}>
+                        <div className="px-5 py-3.5 border-b border-neutral-100 flex justify-between items-start gap-3 bg-neutral-50/70 shrink-0">
+                            <div className="min-w-0 flex-1">
+                                <h3 className="text-sm sm:text-base font-bold text-neutral-800 truncate">Create New Company Tenant</h3>
+                                <p className="text-[11px] text-neutral-500 mt-0.5">Provision an isolated multi-tenant organization</p>
+                            </div>
+                            <button onClick={() => setShowModal(false)} className="text-neutral-400 hover:text-neutral-600 shrink-0 p-1 rounded-lg hover:bg-neutral-100 transition-colors">
+                                <XCircleIcon className="w-5 h-5" />
                             </button>
                         </div>
 
-                        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+                        <form onSubmit={handleSubmit} className="p-4 sm:p-5 overflow-y-auto space-y-3.5 flex-1 custom-scrollbar">
                             <div className="form-group">
                                 <label className="form-label block text-xs font-bold text-neutral-700 mb-1">Company Name</label>
                                 <input
@@ -963,7 +968,7 @@ const SuperAdmin = () => {
                                 />
                             </div>
 
-                            <div className="flex justify-end gap-3 pt-4 border-t border-neutral-100">
+                            <div className="flex justify-end gap-2.5 pt-3 border-t border-neutral-100 shrink-0 mt-auto">
                                 <button type="button" onClick={() => setShowModal(false)} className="btn btn-ghost text-xs">Cancel</button>
                                 <button type="submit" className="btn btn-primary text-xs">Create Company</button>
                             </div>
@@ -974,23 +979,23 @@ const SuperAdmin = () => {
 
             {/* MANAGE TENANT MODAL */}
             {manageModal.show && manageModal.tenant && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setManageModal({ ...manageModal, show: false })}>
-                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-3xl overflow-hidden animate-in fade-in zoom-in duration-200" onClick={e => e.stopPropagation()}>
-                        <div className="px-6 py-4 border-b border-neutral-100 flex justify-between items-center bg-neutral-50/50">
-                            <div>
-                                <h3 className="text-base font-bold text-neutral-800">Manage: {manageModal.tenant.name}</h3>
-                                <p className="text-xs text-neutral-500">
-                                    <span className="font-mono text-[11px] bg-neutral-100 px-1.5 py-0.5 rounded mr-2">{manageModal.tenant.tenant_id}</span>
-                                    Plan: <span className="font-bold uppercase text-primary-700">{manageModal.tenant.subscription_plan || 'free'}</span>
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/50 backdrop-blur-sm" onClick={() => setManageModal({ ...manageModal, show: false })}>
+                    <div className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200" onClick={e => e.stopPropagation()}>
+                        <div className="px-5 py-3.5 border-b border-neutral-100 flex justify-between items-start gap-3 bg-neutral-50/70 shrink-0">
+                            <div className="min-w-0 flex-1">
+                                <h3 className="text-sm sm:text-base font-bold text-neutral-800 truncate">Manage: {manageModal.tenant.name}</h3>
+                                <p className="text-[11px] text-neutral-500 mt-0.5 flex items-center gap-1.5 flex-wrap">
+                                    <span className="font-mono text-[10px] bg-neutral-100 px-1.5 py-0.5 rounded">{manageModal.tenant.tenant_id}</span>
+                                    <span>Plan: <strong className="uppercase text-primary-700">{manageModal.tenant.subscription_plan || 'free'}</strong></span>
                                 </p>
                             </div>
-                            <button onClick={() => setManageModal({ ...manageModal, show: false })} className="text-neutral-400 hover:text-neutral-600">
-                                <XCircleIcon className="w-6 h-6" />
+                            <button onClick={() => setManageModal({ ...manageModal, show: false })} className="text-neutral-400 hover:text-neutral-600 shrink-0 p-1 rounded-lg hover:bg-neutral-100 transition-colors">
+                                <XCircleIcon className="w-5 h-5" />
                             </button>
                         </div>
 
                         {/* Modal Navigation Tabs */}
-                        <div className="flex border-b border-neutral-200 px-6 overflow-x-auto">
+                        <div className="flex border-b border-neutral-200 px-4 sm:px-6 overflow-x-auto shrink-0 bg-white">
                             <button
                                 className={`px-4 py-3 text-xs font-bold border-b-2 transition-colors whitespace-nowrap ${manageModal.tab === 'overview' ? 'border-primary-600 text-primary-600' : 'border-transparent text-neutral-500 hover:text-neutral-700'
                                     }`}
@@ -1484,27 +1489,27 @@ const SuperAdmin = () => {
 
             {/* SUPER ADMIN 2FA MODAL */}
             {show2FASetupModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-                    <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden animate-in fade-in zoom-in duration-200">
-                        <div className="px-6 py-4 border-b border-neutral-100 flex justify-between items-center bg-neutral-50/70">
-                            <div className="flex items-center gap-2">
-                                <div className="p-2 bg-primary-50 rounded-xl text-primary-600">
-                                    <KeyIcon className="w-5 h-5" />
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs" onClick={() => setShow2FASetupModal(false)}>
+                    <div className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl max-w-md w-full max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200" onClick={e => e.stopPropagation()}>
+                        <div className="px-5 py-3.5 border-b border-neutral-100 flex justify-between items-start gap-3 bg-neutral-50/70 shrink-0">
+                            <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                                <div className="p-1.5 bg-primary-50 rounded-lg text-primary-600 shrink-0">
+                                    <KeyIcon className="w-4 h-4" />
                                 </div>
-                                <div>
-                                    <h3 className="text-base font-bold text-neutral-800">Super Admin 2FA Security</h3>
-                                    <p className="text-[11px] text-neutral-500">Authenticator App (Google Authenticator / Authy)</p>
+                                <div className="min-w-0 flex-1">
+                                    <h3 className="text-sm sm:text-base font-bold text-neutral-800 truncate">Super Admin 2FA Security</h3>
+                                    <p className="text-[10px] sm:text-[11px] text-neutral-500 truncate">Authenticator App (Google Authenticator / Authy)</p>
                                 </div>
                             </div>
                             <button 
                                 onClick={() => setShow2FASetupModal(false)}
-                                className="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 transition-colors"
+                                className="p-1 rounded-lg text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 transition-colors shrink-0"
                             >
-                                <XCircleIcon className="w-6 h-6" />
+                                <XCircleIcon className="w-5 h-5" />
                             </button>
                         </div>
 
-                        <div className="p-6 space-y-5">
+                        <div className="p-4 sm:p-5 overflow-y-auto space-y-4 flex-1 custom-scrollbar">
                             {superAdmin2FA.isEnabled ? (
                                 <div className="space-y-4">
                                     <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex items-start gap-3">

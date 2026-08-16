@@ -539,33 +539,35 @@ const SubscriptionCheckoutModal = ({ plan, onClose, onSuccess }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 md:p-6">
-      <div className="relative w-full max-w-xl max-h-[90vh] flex flex-col bg-white dark:bg-gray-850 rounded-3xl shadow-2xl border border-gray-200 dark:border-gray-750 overflow-hidden transition-all my-auto text-gray-900 dark:text-gray-100">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-sm flex items-center justify-center p-2.5 sm:p-4">
+      <div className="relative w-full max-w-lg max-h-[90vh] flex flex-col bg-white dark:bg-gray-850 rounded-2xl sm:rounded-3xl shadow-2xl border border-gray-200 dark:border-gray-750 overflow-hidden transition-all my-auto text-gray-900 dark:text-gray-100 animate-in fade-in zoom-in duration-200">
         
         {/* Header - Always visible at top */}
-        <div className="shrink-0 flex items-center justify-between p-4 sm:p-5 border-b border-gray-100 dark:border-gray-750 bg-gray-50/80 dark:bg-gray-800">
-          <div className="flex items-center gap-3">
-            <div className={`w-10 h-10 sm:w-11 sm:h-11 rounded-2xl flex items-center justify-center font-bold shadow-sm shrink-0 ${
+        <div className="shrink-0 flex items-center justify-between p-3.5 sm:p-4.5 border-b border-gray-100 dark:border-gray-750 bg-gray-50/80 dark:bg-gray-800 gap-2.5 sm:gap-3">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
+            <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl flex items-center justify-center font-bold shadow-xs shrink-0 ${
               planId === 'scale' 
                 ? 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300' 
                 : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
             }`}>
-              {planId === 'scale' ? <FaCrown className="w-5 h-5" /> : <FaShieldAlt className="w-5 h-5" />}
+              {planId === 'scale' ? <FaCrown className="w-4 h-4 sm:w-5 sm:h-5" /> : <FaShieldAlt className="w-4 h-4 sm:w-5 sm:h-5" />}
             </div>
-            <div>
-              <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                {isAddonMode ? `Add Seats to ${planName}` : `Upgrade to ${planName}`}
-                <span className={`text-[10px] sm:text-[11px] font-black px-2 py-0.5 rounded-full ${
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                <h3 className="text-sm sm:text-base font-bold text-gray-900 dark:text-white truncate">
+                  {isAddonMode ? `Add Seats to ${planName}` : `Upgrade to ${planName}`}
+                </h3>
+                <span className={`text-[9px] sm:text-[10px] font-black px-1.5 py-0.5 rounded-full shrink-0 ${
                   planId === 'scale'
                     ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-300'
                     : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300'
                 }`}>
                   {planId === 'scale' ? '👑 SCALE VIP' : '🛡️ HATCH PRO'}
                 </span>
-              </h3>
-              <p className="text-[11px] sm:text-xs text-gray-500 dark:text-gray-400">
+              </div>
+              <p className="text-[10px] sm:text-[11px] text-gray-500 dark:text-gray-400 truncate mt-0.5">
                 {isAddonMode
-                  ? `Current capacity: ${currentSeatLimit} Seats • Adding ${seatCount} Extra Seats`
+                  ? `Current: ${currentSeatLimit} Seats • Adding ${seatCount} Extra Seats`
                   : 'Choose billing cycle, seat capacity, and payment gateway'}
               </p>
             </div>
@@ -573,14 +575,14 @@ const SubscriptionCheckoutModal = ({ plan, onClose, onSuccess }) => {
           <button
             onClick={onClose}
             disabled={loading}
-            className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-750 transition-colors"
+            className="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-750 transition-colors shrink-0"
           >
             <XMarkIcon className="w-5 h-5" />
           </button>
         </div>
 
         {/* Scrollable Content Body */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 sm:space-y-5">
+        <div className="flex-1 overflow-y-auto p-3.5 sm:p-5 space-y-3.5 sm:space-y-4 custom-scrollbar">
           {/* Success Notification */}
           {success && (
             <div className="p-6 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-center space-y-3 animate-in fade-in">

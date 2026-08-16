@@ -13,7 +13,8 @@ import {
   FaBuilding, FaClock, FaUmbrellaBeach, FaMoneyBillWave, FaBullseye,
   FaChartBar, FaLock, FaBell, FaFile, FaPalette, FaPaintBrush, FaCog,
   FaSave, FaCheckCircle, FaExclamationCircle, FaMobileAlt,
-  FaMoon, FaSun, FaCreditCard, FaCrown, FaCheck, FaShieldAlt, FaUsers, FaArrowRight, FaQrcode
+  FaMoon, FaSun, FaCreditCard, FaCrown, FaCheck, FaShieldAlt, FaUsers, FaArrowRight, FaQrcode,
+  FaChevronLeft, FaChevronRight
 } from 'react-icons/fa';
 import { SparklesIcon, DocumentTextIcon, DocumentChartBarIcon, EyeIcon, PrinterIcon } from '@heroicons/react/24/outline';
 
@@ -120,6 +121,25 @@ const Settings = () => {
   const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'general');
   const [formData, setFormData] = useState({});
   const { dark, toggle: toggleTheme } = useTheme();
+
+  // Collapsible Settings Navigation Sidebar
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem('settings_sidebar_collapsed') === 'true';
+    } catch (_) {
+      return false;
+    }
+  });
+
+  const toggleSidebarCollapse = () => {
+    setIsSidebarCollapsed(prev => {
+      const next = !prev;
+      try {
+        localStorage.setItem('settings_sidebar_collapsed', String(next));
+      } catch (_) {}
+      return next;
+    });
+  };
 
   // Billing states
   const [billingCurrency, setBillingCurrency] = useState('INR'); // 'INR' | 'USD'
@@ -467,24 +487,64 @@ const Settings = () => {
 
       {/* Sidebar Layout */}
       <div className="flex flex-1 gap-6 overflow-hidden">
-        {/* Sidebar */}
-        <div className="w-64 flex-shrink-0 bg-white rounded-xl shadow-sm border border-neutral-200 overflow-y-auto custom-scrollbar h-full">
-          <div className="p-2 space-y-1">
-            {categories.map(cat => (
-              <button
-                key={cat.id}
-                className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-all ${activeTab === cat.id
-                  ? 'bg-primary-50 text-primary-600'
-                  : 'text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900'
+        {/* Collapsible Sidebar */}
+        <div
+          className={`${
+            isSidebarCollapsed ? 'w-20' : 'w-64'
+          } flex-shrink-0 bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-neutral-200 dark:border-gray-700 flex flex-col transition-all duration-300 ease-in-out h-full overflow-hidden`}
+        >
+          {/* Sidebar Top Toggle Header */}
+          <div className="p-3 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
+            {!isSidebarCollapsed && (
+              <span className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 px-2">
+                Settings
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={toggleSidebarCollapse}
+              className={`p-2 rounded-xl text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all ${
+                isSidebarCollapsed ? 'mx-auto' : ''
+              }`}
+              title={isSidebarCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
+            >
+              {isSidebarCollapsed ? (
+                <FaChevronRight className="w-3.5 h-3.5" />
+              ) : (
+                <FaChevronLeft className="w-3.5 h-3.5" />
+              )}
+            </button>
+          </div>
+
+          {/* Sidebar Navigation Items */}
+          <div className="p-2 space-y-1 flex-1 overflow-y-auto custom-scrollbar">
+            {categories.map(cat => {
+              const isActive = activeTab === cat.id;
+              return (
+                <button
+                  key={cat.id}
+                  title={isSidebarCollapsed ? cat.name : undefined}
+                  className={`w-full flex items-center ${
+                    isSidebarCollapsed ? 'justify-center px-2 py-3' : 'justify-start gap-3 px-3.5 py-2.5'
+                  } text-xs font-bold rounded-xl transition-all relative group ${
+                    isActive
+                      ? 'bg-primary-50 dark:bg-primary-950/50 text-primary-700 dark:text-primary-300 shadow-xs'
+                      : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-750 hover:text-gray-900 dark:hover:text-white'
                   }`}
-                onClick={() => setActiveTab(cat.id)}
-              >
-                <div className={`${activeTab === cat.id ? 'text-primary-600' : 'text-neutral-400'}`}>
-                  {cat.icon}
-                </div>
-                {cat.name}
-              </button>
-            ))}
+                  onClick={() => setActiveTab(cat.id)}
+                >
+                  <div className={`text-base shrink-0 ${isActive ? 'text-primary-600 dark:text-primary-400' : 'text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-200'}`}>
+                    {cat.icon}
+                  </div>
+                  {!isSidebarCollapsed && (
+                    <span className="truncate">{cat.name}</span>
+                  )}
+                  {isSidebarCollapsed && isActive && (
+                    <span className="absolute left-1 top-1/2 -translate-y-1/2 w-1 h-6 bg-primary-500 rounded-r-full" />
+                  )}
+                </button>
+              );
+            })}
           </div>
         </div>
 

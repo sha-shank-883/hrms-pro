@@ -368,7 +368,7 @@ const SuperAdminBilling = () => {
             )}
 
             {/* 4-Column Revenue Metrics Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-4 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-4 mb-6">
                 <div className="card p-4 bg-gradient-to-br from-emerald-600 to-teal-700 text-white rounded-2xl shadow-sm relative overflow-hidden">
                     <div className="relative z-10">
                         <p className="text-[11px] font-bold uppercase tracking-wider text-emerald-100">Total Revenue Collected</p>
@@ -450,22 +450,20 @@ const SuperAdminBilling = () => {
             <div className="flex items-center gap-2 mb-4 border-b border-neutral-200">
                 <button
                     onClick={() => setActiveTab('invoices')}
-                    className={`pb-3 px-4 text-xs font-bold transition-all border-b-2 flex items-center gap-2 ${
-                        activeTab === 'invoices'
-                            ? 'border-emerald-600 text-emerald-600'
-                            : 'border-transparent text-neutral-500 hover:text-neutral-700'
-                    }`}
+                    className={`pb-3 px-4 text-xs font-bold transition-all border-b-2 flex items-center gap-2 ${activeTab === 'invoices'
+                        ? 'border-emerald-600 text-emerald-600'
+                        : 'border-transparent text-neutral-500 hover:text-neutral-700'
+                        }`}
                 >
                     <DocumentTextIcon className="w-4 h-4" />
                     Invoices & Payment Logs ({transactions.length})
                 </button>
                 <button
                     onClick={() => setActiveTab('coupons')}
-                    className={`pb-3 px-4 text-xs font-bold transition-all border-b-2 flex items-center gap-2 ${
-                        activeTab === 'coupons'
-                            ? 'border-amber-500 text-amber-600'
-                            : 'border-transparent text-neutral-500 hover:text-neutral-700'
-                    }`}
+                    className={`pb-3 px-4 text-xs font-bold transition-all border-b-2 flex items-center gap-2 ${activeTab === 'coupons'
+                        ? 'border-amber-500 text-amber-600'
+                        : 'border-transparent text-neutral-500 hover:text-neutral-700'
+                        }`}
                 >
                     <TicketIcon className="w-4 h-4" />
                     🎟️ Promo & Gift Coupons ({coupons.length})
@@ -580,24 +578,22 @@ const SuperAdminBilling = () => {
                                                 )}
                                             </td>
                                             <td>
-                                                <span className={`badge text-[10px] uppercase font-bold ${
-                                                    txn.gateway === 'razorpay' ? 'bg-primary-50 text-primary-700 border-primary-200' :
+                                                <span className={`badge text-[10px] uppercase font-bold ${txn.gateway === 'razorpay' ? 'bg-primary-50 text-primary-700 border-primary-200' :
                                                     txn.gateway === 'paypal' ? 'bg-blue-50 text-blue-700 border-blue-200' :
-                                                    txn.gateway === 'coupon_gift' ? 'bg-amber-50 text-amber-700 border-amber-200' :
-                                                    'bg-purple-50 text-purple-700 border-purple-200'
-                                                }`}>
+                                                        txn.gateway === 'coupon_gift' ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                                                            'bg-purple-50 text-purple-700 border-purple-200'
+                                                    }`}>
                                                     {txn.gateway}
                                                 </span>
                                             </td>
                                             <td>
-                                                <span className={`badge text-[10px] capitalize font-bold ${
-                                                    txn.refund_status === 'refunded' ? 'bg-red-100 text-red-800' :
+                                                <span className={`badge text-[10px] capitalize font-bold ${txn.refund_status === 'refunded' ? 'bg-red-100 text-red-800' :
                                                     txn.refund_status === 'refund_requested' ? 'bg-amber-100 text-amber-800 animate-pulse' :
-                                                    txn.status === 'completed' ? 'bg-emerald-100 text-emerald-800' :
-                                                    txn.status === 'pending' ? 'bg-amber-100 text-amber-800' : 'bg-red-100 text-red-800'
-                                                }`}>
+                                                        txn.status === 'completed' ? 'bg-emerald-100 text-emerald-800' :
+                                                            txn.status === 'pending' ? 'bg-amber-100 text-amber-800' : 'bg-red-100 text-red-800'
+                                                    }`}>
                                                     {txn.refund_status === 'refund_requested' ? 'Refund Requested' :
-                                                     txn.refund_status === 'refunded' ? 'Refunded' : txn.status}
+                                                        txn.refund_status === 'refunded' ? 'Refunded' : txn.status}
                                                 </span>
                                             </td>
                                             <td className="text-[10px] font-mono text-neutral-500">
@@ -722,18 +718,17 @@ const SuperAdminBilling = () => {
                                                 )}
                                             </td>
                                             <td>
-                                                <span className={`text-xs font-black px-2 py-0.5 rounded-md ${
-                                                    c.discountType === 'percentage' && c.discountValue >= 100
-                                                        ? 'bg-amber-100 text-amber-800 font-black'
-                                                        : c.discountType === 'percentage'
+                                                <span className={`text-xs font-black px-2 py-0.5 rounded-md ${c.discountType === 'percentage' && c.discountValue >= 100
+                                                    ? 'bg-amber-100 text-amber-800 font-black'
+                                                    : c.discountType === 'percentage'
                                                         ? 'bg-emerald-100 text-emerald-800'
                                                         : 'bg-blue-100 text-blue-800'
-                                                }`}>
+                                                    }`}>
                                                     {c.discountType === 'percentage' && c.discountValue >= 100
                                                         ? '🎁 100% Free Gift'
                                                         : c.discountType === 'percentage'
-                                                        ? `${c.discountValue}% OFF`
-                                                        : `₹ / $ ${c.discountValue} Flat OFF`}
+                                                            ? `${c.discountValue}% OFF`
+                                                            : `₹ / $ ${c.discountValue} Flat OFF`}
                                                 </span>
                                             </td>
                                             <td className="text-xs capitalize text-neutral-600">
@@ -752,11 +747,10 @@ const SuperAdminBilling = () => {
                                             <td>
                                                 <button
                                                     onClick={() => handleToggleCouponActive(c)}
-                                                    className={`badge text-[10px] font-bold cursor-pointer transition-all ${
-                                                        c.isActive
-                                                            ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
-                                                            : 'bg-neutral-200 text-neutral-600 hover:bg-neutral-300'
-                                                    }`}
+                                                    className={`badge text-[10px] font-bold cursor-pointer transition-all ${c.isActive
+                                                        ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
+                                                        : 'bg-neutral-200 text-neutral-600 hover:bg-neutral-300'
+                                                        }`}
                                                 >
                                                     {c.isActive ? 'Active' : 'Inactive'}
                                                 </button>

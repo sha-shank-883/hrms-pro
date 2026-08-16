@@ -22,8 +22,8 @@ const getModuleBadgeCounts = asyncHandler(async (req, res) => {
       const saRes = await query(`
         SELECT last_notifications_read_at 
         FROM shared.super_admins 
-        WHERE id = $1 OR email = $2
-      `, [userId, req.user?.email]);
+        WHERE id::text = $1::text OR LOWER(email) = LOWER($2)
+      `, [String(userId || ''), String(req.user?.email || '')]);
       if (saRes.rows.length > 0 && saRes.rows[0].last_notifications_read_at) {
         lastReadAt = new Date(saRes.rows[0].last_notifications_read_at);
       }
@@ -196,8 +196,8 @@ const getUserNotifications = asyncHandler(async (req, res) => {
       const saRes = await query(`
         SELECT last_notifications_read_at, read_notification_ids 
         FROM shared.super_admins 
-        WHERE id = $1 OR email = $2
-      `, [userId, req.user?.email]);
+        WHERE id::text = $1::text OR LOWER(email) = LOWER($2)
+      `, [String(userId || ''), String(req.user?.email || '')]);
       if (saRes.rows.length > 0) {
         if (saRes.rows[0].last_notifications_read_at) {
           lastReadAt = new Date(saRes.rows[0].last_notifications_read_at);
@@ -367,8 +367,8 @@ const markAsRead = asyncHandler(async (req, res) => {
       await query(`
         UPDATE shared.super_admins 
         SET read_notification_ids = (CASE WHEN read_notification_ids IS NULL THEN '[]'::jsonb ELSE read_notification_ids END) || jsonb_build_array($1::text)
-        WHERE id = $2 OR email = $3
-      `, [id, userId, req.user?.email]);
+        WHERE id::text = $2::text OR LOWER(email) = LOWER($3)
+      `, [String(id), String(userId || ''), String(req.user?.email || '')]);
     } catch (_) {}
 
     return res.json({
@@ -412,8 +412,8 @@ const markAllAsRead = asyncHandler(async (req, res) => {
       await query(`
         UPDATE shared.super_admins 
         SET last_notifications_read_at = CURRENT_TIMESTAMP 
-        WHERE id = $1 OR email = $2
-      `, [userId, req.user?.email]);
+        WHERE id::text = $1::text OR LOWER(email) = LOWER($2)
+      `, [String(userId || ''), String(req.user?.email || '')]);
     } catch (_) {}
 
     return res.json({

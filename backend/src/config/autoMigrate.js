@@ -163,6 +163,8 @@ async function autoMigrate() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
+      ALTER TABLE shared.super_admins ADD COLUMN IF NOT EXISTS last_notifications_read_at TIMESTAMP;
+      ALTER TABLE shared.super_admins ADD COLUMN IF NOT EXISTS read_notification_ids JSONB DEFAULT '[]'::jsonb;
     `);
 
     // Ensure default super admin exists

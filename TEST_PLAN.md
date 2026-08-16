@@ -75,6 +75,8 @@ This document outlines a systematic plan to test every icon, button, navigation 
 | 1.3.26 | `POST /api/auth/signup` provisions new self-serve company workspace with 14-day trial | Generates isolated schema, Admin user, departments, employee record, and JWT [PASSED] |
 | 1.3.27 | `POST /api/auth/login` auto-resolves tenant schema from user email | Automatically discovers workspace without requiring manual x-tenant-id header [PASSED] |
 | 1.3.28 | `PUT /api/auth/profile` allows Tenant Admin/Owner to edit personal details frictionlessly | Updates user/employee profile without requiring salary or department assignment [PASSED] |
+| 1.3.29 | `PUT /api/notifications/mark-all-read` for Super Admin updates `shared.super_admins.last_notifications_read_at` | Marks all platform lead, payment, and tenant notifications as read without 500 error [PASSED] |
+| 1.3.30 | Employee deletion protects Tenant Admin user account and Auto-Restoration recovers deleted admins | `DELETE /api/employees` preserves Admin in `users` table; login auto-restores missing owner accounts [PASSED] |
 | 1.3.23 | `POST /api/tenants/billing/record-manual` records offline payment and auto-extends subscription | Transaction saved with invoice number, subscription expiry extended [PASSED] |
 | 1.3.24 | `GET /api/notifications/badge-counts` computes live pending counts for leaves, attendance, tasks, chat | Returns structured count object with role-based aggregation [PASSED] |
 | 1.3.25 | `GET /api/notifications` returns in-app notification feed with pagination and unread filters | Returns user notification list with unread counter [PASSED] |

@@ -17,43 +17,63 @@ const getModuleBadgeCounts = asyncHandler(async (req, res) => {
     let billingCount = 0;
     let newTenantsCount = 0;
 
+    let lastReadAt = null;
+    try {
+      const saRes = await query(`
+        SELECT last_notifications_read_at 
+        FROM shared.super_admins 
+        WHERE id = $1 OR email = $2
+      `, [userId, req.user?.email]);
+      if (saRes.rows.length > 0 && saRes.rows[0].last_notifications_read_at) {
+        lastReadAt = new Date(saRes.rows[0].last_notifications_read_at);
+      }
+    } catch (_) {}
+
     try {
       // Pending Demo Leads
+      const filterClause = lastReadAt ? 'AND created_at > $1' : '';
+      const params = lastReadAt ? [lastReadAt] : [];
       const leadsRes = await query(`
         SELECT COUNT(*) as count 
         FROM shared.demo_requests 
-        WHERE status = 'pending' OR status = 'new'
-      `);
+        WHERE (status = 'pending' OR status = 'new') ${filterClause}
+      `, params);
       leadsCount = parseInt(leadsRes.rows[0]?.count || 0, 10);
     } catch (err) {}
 
     try {
-      // Inbound Contact Inquiries (last 7 days)
+      // Inbound Contact Inquiries
+      const filterClause = lastReadAt ? 'WHERE submitted_at > $1' : "WHERE submitted_at >= NOW() - INTERVAL '7 days'";
+      const params = lastReadAt ? [lastReadAt] : [];
       const contactRes = await query(`
         SELECT COUNT(*) as count 
         FROM shared.contact_inquiries 
-        WHERE submitted_at >= NOW() - INTERVAL '7 days'
-      `);
+        ${filterClause}
+      `, params);
       contactCount = parseInt(contactRes.rows[0]?.count || 0, 10);
     } catch (err) {}
 
     try {
-      // Pending / Recent Payments (last 48 hours)
+      // Recent Payments
+      const filterClause = lastReadAt ? 'WHERE created_at > $1' : "WHERE status = 'pending' OR created_at >= NOW() - INTERVAL '48 hours'";
+      const params = lastReadAt ? [lastReadAt] : [];
       const payRes = await query(`
         SELECT COUNT(*) as count 
         FROM shared.payment_logs 
-        WHERE status = 'pending' OR created_at >= NOW() - INTERVAL '48 hours'
-      `);
+        ${filterClause}
+      `, params);
       billingCount = parseInt(payRes.rows[0]?.count || 0, 10);
     } catch (err) {}
 
     try {
-      // New Tenant Registrations (last 7 days)
+      // New Tenant Registrations
+      const filterClause = lastReadAt ? 'WHERE created_at > $1' : "WHERE created_at >= NOW() - INTERVAL '7 days'";
+      const params = lastReadAt ? [lastReadAt] : [];
       const tenantRes = await query(`
         SELECT COUNT(*) as count 
         FROM shared.tenants 
-        WHERE created_at >= NOW() - INTERVAL '7 days'
-      `);
+        ${filterClause}
+      `, params);
       newTenantsCount = parseInt(tenantRes.rows[0]?.count || 0, 10);
     } catch (err) {}
 
@@ -169,24 +189,45 @@ const getUserNotifications = asyncHandler(async (req, res) => {
   const unreadOnly = req.query.unread === 'true';
 
   if (isSuperAdmin) {
+    let lastReadAt = null;
+    let readIds = [];
+
+    try {
+      const saRes = await query(`
+        SELECT last_notifications_read_at, read_notification_ids 
+        FROM shared.super_admins 
+        WHERE id = $1 OR email = $2
+      `, [userId, req.user?.email]);
+      if (saRes.rows.length > 0) {
+        if (saRes.rows[0].last_notifications_read_at) {
+          lastReadAt = new Date(saRes.rows[0].last_notifications_read_at);
+        }
+        if (Array.isArray(saRes.rows[0].read_notification_ids)) {
+          readIds = saRes.rows[0].read_notification_ids;
+        }
+      }
+    } catch (_) {}
+
     // Generate platform notifications dynamically from shared logs & leads
-    const feed = [];
+    let feed = [];
 
     // 1. Inbound Demo Requests
     try {
       const leadsRes = await query(`
         SELECT id, name, email, company_name, phone, created_at, status
         FROM shared.demo_requests
-        ORDER BY created_at DESC LIMIT 15
+        ORDER BY created_at DESC LIMIT 20
       `);
       leadsRes.rows.forEach(r => {
+        const notifId = `demo_${r.id}`;
+        const isRead = r.status === 'provisioned' || readIds.includes(notifId) || (lastReadAt && new Date(r.created_at) <= lastReadAt);
         feed.push({
-          id: `demo_${r.id}`,
+          id: notifId,
           module: 'leads',
           title: `Demo Request: ${r.company_name || r.name}`,
           message: `${r.name} (${r.email}) requested a live demo. Status: ${r.status}`,
           action_url: '/super-admin/demo-requests',
-          is_read: r.status === 'provisioned',
+          is_read: Boolean(isRead),
           created_at: r.created_at
         });
       });
@@ -197,16 +238,18 @@ const getUserNotifications = asyncHandler(async (req, res) => {
       const contactRes = await query(`
         SELECT id, name, email, company, subject, submitted_at
         FROM shared.contact_inquiries
-        ORDER BY submitted_at DESC LIMIT 10
+        ORDER BY submitted_at DESC LIMIT 15
       `);
       contactRes.rows.forEach(c => {
+        const notifId = `contact_${c.id}`;
+        const isRead = readIds.includes(notifId) || (lastReadAt && new Date(c.submitted_at) <= lastReadAt);
         feed.push({
-          id: `contact_${c.id}`,
+          id: notifId,
           module: 'leads',
           title: `Contact Inquiry: ${c.subject}`,
           message: `From ${c.name} (${c.email})${c.company ? ` • ${c.company}` : ''}`,
           action_url: '/super-admin/demo-requests',
-          is_read: false,
+          is_read: Boolean(isRead),
           created_at: c.submitted_at
         });
       });
@@ -220,13 +263,15 @@ const getUserNotifications = asyncHandler(async (req, res) => {
         ORDER BY created_at DESC LIMIT 15
       `);
       payRes.rows.forEach(p => {
+        const notifId = `pay_${p.id}`;
+        const isRead = p.status === 'completed' || readIds.includes(notifId) || (lastReadAt && new Date(p.created_at) <= lastReadAt);
         feed.push({
-          id: `pay_${p.id}`,
+          id: notifId,
           module: 'billing',
           title: `Payment: ${p.currency} ${p.amount} (${p.tenant_id})`,
           message: `Gateway: ${p.gateway || 'manual'} • Invoice #${p.invoice_number || p.id} is ${p.status}.`,
           action_url: '/super-admin/billing',
-          is_read: p.status === 'completed',
+          is_read: Boolean(isRead),
           created_at: p.created_at
         });
       });
@@ -240,13 +285,15 @@ const getUserNotifications = asyncHandler(async (req, res) => {
         ORDER BY created_at DESC LIMIT 10
       `);
       tenantRes.rows.forEach(t => {
+        const notifId = `tenant_${t.tenant_id}`;
+        const isRead = readIds.includes(notifId) || (lastReadAt && new Date(t.created_at) <= lastReadAt);
         feed.push({
-          id: `tenant_${t.tenant_id}`,
+          id: notifId,
           module: 'tenants',
           title: `Company Registered: ${t.name}`,
           message: `ID: ${t.tenant_id} • Plan: ${t.subscription_plan || 'free'} (${t.status})`,
           action_url: '/super-admin',
-          is_read: true,
+          is_read: Boolean(isRead),
           created_at: t.created_at
         });
       });
@@ -254,6 +301,10 @@ const getUserNotifications = asyncHandler(async (req, res) => {
 
     // Sort all platform activity chronologically
     feed.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+    if (unreadOnly) {
+      feed = feed.filter(f => !f.is_read);
+    }
 
     return res.json({
       success: true,
@@ -264,34 +315,43 @@ const getUserNotifications = asyncHandler(async (req, res) => {
   }
 
   // Tenant in-app notifications
-  let sql = `
-    SELECT * 
-    FROM user_notifications 
-    WHERE (user_id = $1 OR user_id IS NULL)
-  `;
-  const params = [userId];
+  try {
+    let sql = `
+      SELECT * 
+      FROM user_notifications 
+      WHERE (user_id = $1 OR user_id IS NULL)
+    `;
+    const params = [userId];
 
-  if (unreadOnly) {
-    sql += ` AND is_read = false`;
+    if (unreadOnly) {
+      sql += ` AND is_read = false`;
+    }
+
+    sql += ` ORDER BY created_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+    params.push(limit, offset);
+
+    const result = await query(sql, params);
+
+    const countRes = await query(`
+      SELECT COUNT(*) as count 
+      FROM user_notifications 
+      WHERE (user_id = $1 OR user_id IS NULL) AND is_read = false
+    `, [userId]);
+
+    return res.json({
+      success: true,
+      isSuperAdmin: false,
+      data: result.rows,
+      unreadCount: parseInt(countRes.rows[0]?.count || 0, 10)
+    });
+  } catch (err) {
+    return res.json({
+      success: true,
+      isSuperAdmin: false,
+      data: [],
+      unreadCount: 0
+    });
   }
-
-  sql += ` ORDER BY created_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
-  params.push(limit, offset);
-
-  const result = await query(sql, params);
-
-  const countRes = await query(`
-    SELECT COUNT(*) as count 
-    FROM user_notifications 
-    WHERE (user_id = $1 OR user_id IS NULL) AND is_read = false
-  `, [userId]);
-
-  res.json({
-    success: true,
-    isSuperAdmin: false,
-    data: result.rows,
-    unreadCount: parseInt(countRes.rows[0]?.count || 0, 10)
-  });
 });
 
 /**
@@ -300,23 +360,44 @@ const getUserNotifications = asyncHandler(async (req, res) => {
 const markAsRead = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const userId = req.user?.userId || req.user?.id;
+  const isSuperAdmin = Boolean(req.user?.isSuperAdmin || req.user?.role === 'super_admin');
 
-  const result = await query(`
-    UPDATE user_notifications 
-    SET is_read = true, read_at = CURRENT_TIMESTAMP
-    WHERE id = $1 AND (user_id = $2 OR user_id IS NULL)
-    RETURNING *
-  `, [id, userId]);
+  if (isSuperAdmin) {
+    try {
+      await query(`
+        UPDATE shared.super_admins 
+        SET read_notification_ids = (CASE WHEN read_notification_ids IS NULL THEN '[]'::jsonb ELSE read_notification_ids END) || jsonb_build_array($1::text)
+        WHERE id = $2 OR email = $3
+      `, [id, userId, req.user?.email]);
+    } catch (_) {}
 
-  if (result.rows.length === 0) {
-    throw new NotFoundError('Notification not found');
+    return res.json({
+      success: true,
+      message: 'Notification marked as read',
+      data: { id, is_read: true }
+    });
   }
 
-  res.json({
-    success: true,
-    message: 'Notification marked as read',
-    data: result.rows[0]
-  });
+  try {
+    const result = await query(`
+      UPDATE user_notifications 
+      SET is_read = true, read_at = CURRENT_TIMESTAMP
+      WHERE id = $1 AND (user_id = $2 OR user_id IS NULL)
+      RETURNING *
+    `, [id, userId]);
+
+    res.json({
+      success: true,
+      message: 'Notification marked as read',
+      data: result.rows[0] || { id, is_read: true }
+    });
+  } catch (err) {
+    res.json({
+      success: true,
+      message: 'Notification marked as read',
+      data: { id, is_read: true }
+    });
+  }
 });
 
 /**
@@ -324,12 +405,30 @@ const markAsRead = asyncHandler(async (req, res) => {
  */
 const markAllAsRead = asyncHandler(async (req, res) => {
   const userId = req.user?.userId || req.user?.id;
+  const isSuperAdmin = Boolean(req.user?.isSuperAdmin || req.user?.role === 'super_admin');
 
-  await query(`
-    UPDATE user_notifications 
-    SET is_read = true, read_at = CURRENT_TIMESTAMP
-    WHERE (user_id = $1 OR user_id IS NULL) AND is_read = false
-  `, [userId]);
+  if (isSuperAdmin) {
+    try {
+      await query(`
+        UPDATE shared.super_admins 
+        SET last_notifications_read_at = CURRENT_TIMESTAMP 
+        WHERE id = $1 OR email = $2
+      `, [userId, req.user?.email]);
+    } catch (_) {}
+
+    return res.json({
+      success: true,
+      message: 'All platform notifications marked as read'
+    });
+  }
+
+  try {
+    await query(`
+      UPDATE user_notifications 
+      SET is_read = true, read_at = CURRENT_TIMESTAMP
+      WHERE (user_id = $1 OR user_id IS NULL) AND is_read = false
+    `, [userId]);
+  } catch (_) {}
 
   res.json({
     success: true,

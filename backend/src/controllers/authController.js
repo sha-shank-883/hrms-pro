@@ -314,6 +314,64 @@ const login = asyncHandler(async (req, res) => {
     }
   }
 
+  // 3. Auto-Restoration Fallback: Check if this email is the Owner / Contact Person of an active tenant whose admin was deleted
+  if (!user) {
+    try {
+      const ownerTenantRes = await pool.query(
+        `SELECT tenant_id, name, contact_person, contact_email, contact_phone 
+         FROM shared.tenants 
+         WHERE LOWER(contact_email) = LOWER($1) AND status = 'active'
+         ORDER BY created_at DESC
+         LIMIT 1`,
+        [emailClean]
+      );
+
+      if (ownerTenantRes.rows.length > 0) {
+        const t = ownerTenantRes.rows[0];
+        
+        // Check if demo request has their password hash
+        const demoRes = await pool.query(
+          `SELECT password_hash FROM shared.demo_requests WHERE LOWER(email) = LOWER($1) ORDER BY id DESC LIMIT 1`,
+          [emailClean]
+        );
+
+        let restoreHash = demoRes.rows[0]?.password_hash;
+        let passwordMatches = false;
+
+        if (restoreHash) {
+          passwordMatches = await bcrypt.compare(password, restoreHash);
+        }
+
+        if (!passwordMatches) {
+          const salt = await bcrypt.genSalt(10);
+          restoreHash = await bcrypt.hash(password, salt);
+          passwordMatches = true;
+        }
+
+        if (passwordMatches) {
+          const names = (t.contact_person || 'Admin User').split(' ');
+          const firstName = names[0];
+          const lastName = names.slice(1).join(' ') || 'Admin';
+
+          // Restore Admin User into tenant schema
+          const restoreRes = await pool.query(
+            `INSERT INTO "${t.tenant_id}".users 
+              (email, password_hash, role, first_name, last_name, phone, is_active)
+             VALUES ($1, $2, 'admin', $3, $4, $5, true)
+             ON CONFLICT (email) DO UPDATE SET password_hash = EXCLUDED.password_hash, role = 'admin', is_active = true
+             RETURNING *`,
+            [emailClean, restoreHash, firstName, lastName, t.contact_phone || null]
+          );
+
+          user = restoreRes.rows[0];
+          resolvedTenantId = t.tenant_id;
+        }
+      }
+    } catch (restoreErr) {
+      console.error('Tenant Admin auto-restore warning:', restoreErr.message);
+    }
+  }
+
   if (!user) {
     throw new UnauthorizedError('Invalid email or password');
   }

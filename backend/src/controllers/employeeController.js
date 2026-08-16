@@ -332,11 +332,24 @@ const deleteEmployee = asyncHandler(async (req, res) => {
   const userId = employeeResult.rows[0].user_id;
 
   await transaction(async (client) => {
+    // Check if the linked user is an Admin
+    let isAdminUser = false;
+    if (userId) {
+      const userRes = await client.query('SELECT role FROM users WHERE user_id = $1', [userId]);
+      if (userRes.rows.length > 0 && userRes.rows[0].role === 'admin') {
+        isAdminUser = true;
+      }
+    }
+
     await client.query('UPDATE leave_requests SET approved_by = NULL WHERE approved_by = $1', [userId]);
     await client.query('UPDATE job_postings SET posted_by = NULL WHERE posted_by = $1', [userId]);
     await client.query('UPDATE documents SET uploaded_by = NULL WHERE uploaded_by = $1', [userId]);
     await client.query('DELETE FROM employees WHERE employee_id = $1', [id]);
-    await client.query('DELETE FROM users WHERE user_id = $1', [userId]);
+
+    // NEVER delete the Workspace Admin user account
+    if (userId && !isAdminUser) {
+      await client.query('DELETE FROM users WHERE user_id = $1', [userId]);
+    }
 
     if (req.io && req.tenant) {
       req.io.to(req.tenant.tenant_id).emit('dashboard_update', { type: 'EMPLOYEE' });
@@ -358,15 +371,18 @@ const deleteEmployeeByEmail = asyncHandler(async (req, res) => {
 
   await transaction(async (client) => {
     const userResult = await client.query(
-      'SELECT user_id FROM users WHERE email = $1',
+      'SELECT user_id, role FROM users WHERE email = $1',
       [email]
     );
 
     if (userResult.rows.length === 0) {
-      throw new NotFoundError('User not found with this email');
+      // If user not found, delete any matching employee by email directly
+      await client.query('DELETE FROM employees WHERE email = $1', [email]);
+      return;
     }
 
-    const userId = userResult.rows[0].user_id;
+    const { user_id: userId, role } = userResult.rows[0];
+    const isAdminUser = (role === 'admin');
 
     await client.query('DELETE FROM task_assignments WHERE employee_id IN (SELECT employee_id FROM employees WHERE user_id = $1)', [userId]);
     await client.query('DELETE FROM task_updates WHERE employee_id IN (SELECT employee_id FROM employees WHERE user_id = $1)', [userId]);
@@ -375,12 +391,16 @@ const deleteEmployeeByEmail = asyncHandler(async (req, res) => {
     await client.query('DELETE FROM attendance WHERE employee_id IN (SELECT employee_id FROM employees WHERE user_id = $1)', [userId]);
     await client.query('DELETE FROM job_applications WHERE email = $1', [email]);
     await client.query('DELETE FROM documents WHERE employee_id IN (SELECT employee_id FROM employees WHERE user_id = $1)', [userId]);
-    await client.query('DELETE FROM chat_messages WHERE sender_id IN (SELECT user_id FROM employees WHERE user_id = $1) OR receiver_id IN (SELECT user_id FROM employees WHERE user_id = $1)', [userId]);
+    await client.query('DELETE FROM chat_messages WHERE sender_id = $1 OR receiver_id = $1', [userId]);
     await client.query('UPDATE leave_requests SET approved_by = NULL WHERE approved_by = $1', [userId]);
     await client.query('UPDATE job_postings SET posted_by = NULL WHERE posted_by = $1', [userId]);
     await client.query('UPDATE documents SET uploaded_by = NULL WHERE uploaded_by = $1', [userId]);
-    await client.query('DELETE FROM employees WHERE user_id = $1', [userId]);
-    await client.query('DELETE FROM users WHERE user_id = $1', [userId]);
+    await client.query('DELETE FROM employees WHERE user_id = $1 OR email = $2', [userId, email]);
+
+    // NEVER delete the Workspace Admin user account
+    if (!isAdminUser) {
+      await client.query('DELETE FROM users WHERE user_id = $1', [userId]);
+    }
   });
 
   res.json({

@@ -38,6 +38,16 @@ function loadRazorpayScript() {
   });
 }
 
+const VERIFIED_SANDBOX_PAYPAL_CLIENT_ID = 'AeL8e53xhlpZGF7sBBrSHNDh7cbZDWmHjsFir_9jPXYTXcp4L6FXysyobFYWYPya2BMPZGlhMpB4roL7';
+
+function getValidPayPalClientId() {
+  const envId = import.meta.env.VITE_PAYPAL_CLIENT_ID;
+  if (envId && typeof envId === 'string' && envId.trim().length >= 60 && !envId.startsWith('4555345353')) {
+    return envId.trim();
+  }
+  return VERIFIED_SANDBOX_PAYPAL_CLIENT_ID;
+}
+
 /**
  * Loads PayPal SDK script on demand
  */
@@ -46,20 +56,31 @@ function loadPayPalScript(clientId, currency = 'USD') {
   if (window.paypal) return Promise.resolve(window.paypal);
   if (payPalScriptPromise) return payPalScriptPromise;
 
+  const validId = clientId || getValidPayPalClientId();
+
   payPalScriptPromise = new Promise((resolve, reject) => {
     const existing = document.querySelector('script[src*="paypal.com/sdk/js"]');
     if (existing) {
-      existing.addEventListener('load', () => resolve(window.paypal));
-      existing.addEventListener('error', reject);
+      if (window.paypal) {
+        resolve(window.paypal);
+        return;
+      }
+      existing.addEventListener('load', () => resolve(window.paypal), { once: true });
+      existing.addEventListener('error', (err) => {
+        payPalScriptPromise = null;
+        try { existing.remove(); } catch (_) {}
+        reject(err);
+      }, { once: true });
       return;
     }
 
     const script = document.createElement('script');
-    script.src = `https://www.paypal.com/sdk/js?client-id=${clientId}&currency=${currency}&intent=capture&components=buttons`;
+    script.src = `https://www.paypal.com/sdk/js?client-id=${validId}&currency=${currency}&intent=capture&components=buttons`;
     script.async = true;
     script.onload = () => resolve(window.paypal);
     script.onerror = (err) => {
       payPalScriptPromise = null;
+      try { script.remove(); } catch (_) {}
       reject(err);
     };
     document.head.appendChild(script);
@@ -310,7 +331,7 @@ const SubscriptionCheckoutModal = ({ plan, onClose, onSuccess }) => {
   useEffect(() => {
     if (selectedGateway !== 'paypal' || success) return;
 
-    const clientId = import.meta.env.VITE_PAYPAL_CLIENT_ID || 'AeL8e53xhlpZGF7sBBrSHNDh7cbZDWmHjsFir_9jPXYTXcp4L6FXysyobFYWYPya2BMPZGlhMpB4roL7';
+    const clientId = getValidPayPalClientId();
     if (!clientId) {
       setPaypalStatus('error');
       setError('PayPal is not configured. Please use Razorpay or contact support.');

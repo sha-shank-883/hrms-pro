@@ -15,6 +15,16 @@ import {
  */
 let scriptPromise = null;
 
+const VERIFIED_SANDBOX_PAYPAL_CLIENT_ID = 'AeL8e53xhlpZGF7sBBrSHNDh7cbZDWmHjsFir_9jPXYTXcp4L6FXysyobFYWYPya2BMPZGlhMpB4roL7';
+
+function getValidPayPalClientId() {
+  const envId = import.meta.env.VITE_PAYPAL_CLIENT_ID;
+  if (envId && typeof envId === 'string' && envId.trim().length >= 60 && !envId.startsWith('4555345353')) {
+    return envId.trim();
+  }
+  return VERIFIED_SANDBOX_PAYPAL_CLIENT_ID;
+}
+
 const loadPayPalScript = (clientId, currency = 'USD') => {
   if (window.paypal) {
     return Promise.resolve(window.paypal);
@@ -23,6 +33,8 @@ const loadPayPalScript = (clientId, currency = 'USD') => {
   if (scriptPromise) {
     return scriptPromise;
   }
+
+  const validId = clientId || getValidPayPalClientId();
 
   scriptPromise = new Promise((resolve, reject) => {
     const scriptId = 'paypal-js-sdk';
@@ -34,19 +46,24 @@ const loadPayPalScript = (clientId, currency = 'USD') => {
         return;
       }
       script.addEventListener('load', () => resolve(window.paypal), { once: true });
-      script.addEventListener('error', (e) => reject(e), { once: true });
+      script.addEventListener('error', (e) => {
+        scriptPromise = null;
+        try { script.remove(); } catch (_) {}
+        reject(e);
+      }, { once: true });
       return;
     }
 
     script = document.createElement('script');
     script.id = scriptId;
-    script.src = `https://www.paypal.com/sdk/js?client-id=${clientId}&currency=${currency}&components=buttons`;
+    script.src = `https://www.paypal.com/sdk/js?client-id=${validId}&currency=${currency}&components=buttons`;
     script.async = true;
     script.onload = () => {
       resolve(window.paypal);
     };
     script.onerror = (err) => {
       scriptPromise = null;
+      try { script.remove(); } catch (_) {}
       reject(err);
     };
 
@@ -68,8 +85,8 @@ const loadPayPalScript = (clientId, currency = 'USD') => {
  *   onSuccess  – (data) => void   (called after successful payment)
  */
 const PayPalCheckout = ({ plan, onClose, onSuccess }) => {
-  const { refreshProfile } = useAuth();
-  const [status, setStatus] = useState('loading'); // loading | ready | processing | success | error
+  const { user, refreshProfile } = useAuth();
+  const [status, setStatus] = useState('idle'); // idle | loading | ready | processing | success | error
   const [errorMsg, setErrorMsg] = useState('');
   const [successData, setSuccessData] = useState(null);
   const [retryCount, setRetryCount] = useState(0);
@@ -95,7 +112,7 @@ const PayPalCheckout = ({ plan, onClose, onSuccess }) => {
   useEffect(() => {
     if (!plan) return;
 
-    const clientId = import.meta.env.VITE_PAYPAL_CLIENT_ID || 'AeL8e53xhlpZGF7sBBrSHNDh7cbZDWmHjsFir_9jPXYTXcp4L6FXysyobFYWYPya2BMPZGlhMpB4roL7';
+    const clientId = getValidPayPalClientId();
     if (!clientId) {
       setStatus('error');
       setErrorMsg('PayPal is not configured. Please add VITE_PAYPAL_CLIENT_ID to your environment.');

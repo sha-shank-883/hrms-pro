@@ -33,6 +33,17 @@ This document outlines a systematic plan to test every icon, button, navigation 
 | 1.2.12 | `POST /api/auth/2fa/verify-login` with valid token | Login with 2FA works |
 | 1.2.13 | `POST /api/auth/2fa/disable` | 2FA disabled |
 
+### 1.15 Marketing Leads & Demo Requests
+| # | Test Case | Expected Result |
+|---|---|---|
+| 1.15.1 | `POST /api/leads/demo` with valid credentials | Creates demo request in `shared.demo_requests`, returns 201 [PASSED] |
+| 1.15.2 | `POST /api/leads/demo` with missing required fields | Returns 400 validation error [PASSED] |
+| 1.15.3 | `POST /api/leads/demo` with existing duplicate email | Returns 409 conflict error [PASSED] |
+| 1.15.4 | Auto-migration initializes `shared.demo_requests` & columns | Idempotent startup migration ensures table existence [PASSED] |
+| 1.15.5 | `GET /api/leads` as Super Admin | Returns all inbound demo requests and tenant plan status [PASSED] |
+| 1.15.6 | `POST /api/leads/lead-magnet` | Saves lead download and emails checklist [PASSED] |
+| 1.15.7 | `POST /api/leads/contact` | Saves contact inquiry and notifies admin [PASSED] |
+
 ### 1.3 Multi-Tenancy
 | # | Test Case | Expected Result |
 |---|---|---|

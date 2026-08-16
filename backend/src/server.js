@@ -186,6 +186,42 @@ app.get('/api/setup-db', async (req, res) => {
       ALTER TABLE shared.payment_logs ADD COLUMN IF NOT EXISTS razorpay_order_id VARCHAR(255);
       ALTER TABLE shared.payment_logs ADD COLUMN IF NOT EXISTS razorpay_payment_id VARCHAR(255);
       ALTER TABLE shared.payment_logs ADD COLUMN IF NOT EXISTS gateway VARCHAR(50) DEFAULT 'paypal';
+
+      CREATE TABLE IF NOT EXISTS shared.demo_requests (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        email VARCHAR(255) NOT NULL,
+        company_name VARCHAR(255) NOT NULL,
+        phone VARCHAR(50),
+        status VARCHAR(50) DEFAULT 'pending',
+        tenant_id VARCHAR(100),
+        password_hash VARCHAR(255),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+      ALTER TABLE shared.demo_requests ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255);
+      ALTER TABLE shared.demo_requests ADD COLUMN IF NOT EXISTS tenant_id VARCHAR(100);
+      ALTER TABLE shared.demo_requests ADD COLUMN IF NOT EXISTS phone VARCHAR(50);
+      ALTER TABLE shared.demo_requests ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'pending';
+
+      CREATE TABLE IF NOT EXISTS shared.lead_magnet_downloads (
+        id SERIAL PRIMARY KEY,
+        email VARCHAR(255) NOT NULL,
+        name VARCHAR(255) NOT NULL,
+        company VARCHAR(255),
+        resource VARCHAR(255) NOT NULL DEFAULT 'HR Compliance Checklist 2026',
+        downloaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS shared.contact_inquiries (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        email VARCHAR(255) NOT NULL,
+        company VARCHAR(255),
+        phone VARCHAR(50),
+        subject VARCHAR(255) NOT NULL,
+        message TEXT NOT NULL,
+        submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
     `);
 
     // Ensure at least one row exists in website_settings

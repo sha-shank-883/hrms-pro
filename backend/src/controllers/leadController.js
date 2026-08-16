@@ -6,7 +6,29 @@ const speakeasy = require('speakeasy');
 const asyncHandler = require('../utils/asyncHandler');
 const { NotFoundError, UnauthorizedError, ForbiddenError, ValidationError, ConflictError, AppError } = require('../utils/errors');
 
+const ensureDemoRequestsTable = async () => {
+  await query(`
+    CREATE SCHEMA IF NOT EXISTS shared;
+    CREATE TABLE IF NOT EXISTS shared.demo_requests (
+      id SERIAL PRIMARY KEY,
+      name VARCHAR(255) NOT NULL,
+      email VARCHAR(255) NOT NULL,
+      company_name VARCHAR(255) NOT NULL,
+      phone VARCHAR(50),
+      status VARCHAR(50) DEFAULT 'pending',
+      tenant_id VARCHAR(100),
+      password_hash VARCHAR(255),
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+    ALTER TABLE shared.demo_requests ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255);
+    ALTER TABLE shared.demo_requests ADD COLUMN IF NOT EXISTS tenant_id VARCHAR(100);
+    ALTER TABLE shared.demo_requests ADD COLUMN IF NOT EXISTS phone VARCHAR(50);
+    ALTER TABLE shared.demo_requests ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'pending';
+  `);
+};
+
 exports.getAllLeads = asyncHandler(async (req, res) => {
+  await ensureDemoRequestsTable();
   const result = await query(`
     SELECT dr.*, t.subscription_plan 
     FROM shared.demo_requests dr
@@ -22,6 +44,8 @@ exports.applyForDemo = asyncHandler(async (req, res) => {
   if (!name || !email || !company_name || !password) {
     throw new ValidationError('Name, email, company, and password are required.');
   }
+
+  await ensureDemoRequestsTable();
 
   const existingReq = await query(`SELECT id FROM shared.demo_requests WHERE email = $1`, [email]);
   if (existingReq.rows.length > 0) {

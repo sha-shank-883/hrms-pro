@@ -71,6 +71,87 @@ CREATE TABLE IF NOT EXISTS shared.super_admins (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS shared.demo_requests (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    email VARCHAR(255) NOT NULL,
+    company_name VARCHAR(255) NOT NULL,
+    phone VARCHAR(50),
+    status VARCHAR(50) DEFAULT 'pending',
+    tenant_id VARCHAR(100),
+    password_hash VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS shared.lead_magnet_downloads (
+    id SERIAL PRIMARY KEY,
+    email VARCHAR(255) NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    company VARCHAR(255),
+    resource VARCHAR(255) NOT NULL DEFAULT 'HR Compliance Checklist 2026',
+    downloaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS shared.contact_inquiries (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    email VARCHAR(255) NOT NULL,
+    company VARCHAR(255),
+    phone VARCHAR(50),
+    subject VARCHAR(255) NOT NULL,
+    message TEXT NOT NULL,
+    submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS shared.website_settings (
+    id SERIAL PRIMARY KEY,
+    primary_color VARCHAR(50),
+    font_family VARCHAR(100),
+    logo_url TEXT,
+    header_links JSONB DEFAULT '[]',
+    footer_columns JSONB DEFAULT '[]',
+    sections JSONB DEFAULT '[]',
+    custom_css TEXT,
+    custom_js TEXT,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS shared.cms_pages (
+    id SERIAL PRIMARY KEY,
+    slug VARCHAR(255) UNIQUE NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    content_html TEXT,
+    sections JSONB DEFAULT '[]',
+    meta_title VARCHAR(255),
+    meta_description TEXT,
+    published_status VARCHAR(50) DEFAULT 'published',
+    layout_template VARCHAR(50) DEFAULT 'default',
+    custom_css TEXT,
+    custom_js TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS shared.biometric_devices (
+    id SERIAL PRIMARY KEY,
+    tenant_id VARCHAR(100) REFERENCES shared.tenants(tenant_id) ON DELETE CASCADE,
+    serial_number VARCHAR(255) UNIQUE NOT NULL,
+    brand VARCHAR(100),
+    status VARCHAR(50) DEFAULT 'active',
+    last_ping TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS shared.app_configs (
+    id SERIAL PRIMARY KEY,
+    config_key TEXT UNIQUE NOT NULL,
+    config_value JSONB NOT NULL,
+    category TEXT,
+    is_public BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Insert default tenant for migration/testing
 INSERT INTO shared.tenants (tenant_id, name, status) 
 VALUES ('tenant_default', 'Default Company', 'active')

@@ -9,7 +9,7 @@ import {
   StarIcon, ChevronRightIcon, CalendarDaysIcon
 } from '@heroicons/react/24/outline';
 import { PageWrapper, AnimatedSection, AnimatedItem, StaggerContainer } from '../../components/common/AnimatedSection';
-import SEO, { OrganizationSchema } from '../../components/common/SEO';
+import SEO, { OrganizationSchema, SoftwareApplicationSchema, WebSiteSchema } from '../../components/common/SEO';
 import LeadMagnetModal from '../../components/marketing/LeadMagnetModal';
 import blogPosts from './blogPosts';
 import { useWebsiteBuilder } from '../../contexts/WebsiteBuilderContext';
@@ -292,6 +292,8 @@ const Home = () => {
         description="HRMS Pro is an all-in-one AI-powered HR platform. Automate payroll, track attendance, manage performance, and streamline HR operations for growing businesses."
       />
       <OrganizationSchema />
+      <SoftwareApplicationSchema />
+      <WebSiteSchema />
       {/* ────── Hero Section ────── */}
       <section className="relative pt-28 pb-20 lg:pt-36 lg:pb-28 overflow-hidden bg-gradient-to-b from-gray-50 via-white to-white dark:from-gray-950 dark:via-gray-900 dark:to-gray-900">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-primary-50/60 via-transparent to-transparent dark:from-primary-500/5" />

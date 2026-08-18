@@ -1,10 +1,11 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { SocketProvider } from './context/SocketContext';
 import { NotificationProvider } from './context/NotificationContext';
 import { SettingsProvider } from './hooks/useSettings.jsx';
 import { ThemeProvider } from './context/ThemeContext';
+import { initGA, trackPageView } from './utils/analytics';
 import './styles/global.css';
 
 // Pages
@@ -108,6 +109,20 @@ const AuthenticatedChatWidget = () => {
   return <ChatWidget />;
 };
 
+const AnalyticsTracker = () => {
+  const location = useLocation();
+
+  useEffect(() => {
+    initGA();
+  }, []);
+
+  useEffect(() => {
+    trackPageView(location.pathname + location.search);
+  }, [location]);
+
+  return null;
+};
+
 function App() {
   return (
     <AuthProvider>
@@ -117,6 +132,7 @@ function App() {
           <ThemeProvider>
             <WebsiteBuilderProvider>
               <Router>
+                <AnalyticsTracker />
                 <AuthenticatedChatWidget />
                 <Routes>
                   {/* Public/View-Only Routes */}

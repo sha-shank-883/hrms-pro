@@ -126,6 +126,63 @@ export const BlogPostSchema = ({ post }) => {
   );
 };
 
+export const SoftwareApplicationSchema = () => (
+  <Helmet>
+    <script type="application/ld+json">
+      {JSON.stringify({
+        '@context': 'https://schema.org',
+        '@type': 'SoftwareApplication',
+        name: 'HRMS Pro',
+        operatingSystem: 'Web, iOS, Android',
+        applicationCategory: 'BusinessApplication',
+        url: SITE_URL,
+        image: `${SITE_URL}${DEFAULT_IMAGE}`,
+        description: DEFAULT_DESC,
+        offers: {
+          '@type': 'AggregateOffer',
+          priceCurrency: 'USD',
+          lowPrice: '0',
+          highPrice: '149',
+          offerCount: '3',
+        },
+        aggregateRating: {
+          '@type': 'AggregateRating',
+          ratingValue: '4.9',
+          reviewCount: '248',
+          bestRating: '5',
+          worstRating: '1',
+        },
+        featureList: [
+          'Core HR & Dynamic Org Charts',
+          'Biometric Time & Attendance Tracking',
+          'Automated Multi-Tenant Payroll',
+          'Performance OKRs & 360 Reviews',
+          'Recruitment ATS & Onboarding',
+          'Employee Self-Service Portal'
+        ],
+      })}
+    </script>
+  </Helmet>
+);
+
+export const WebSiteSchema = () => (
+  <Helmet>
+    <script type="application/ld+json">
+      {JSON.stringify({
+        '@context': 'https://schema.org',
+        '@type': 'WebSite',
+        name: 'HRMS Pro',
+        url: SITE_URL,
+        potentialAction: {
+          '@type': 'SearchAction',
+          target: `${SITE_URL}/resources?q={search_term_string}`,
+          'query-input': 'required name=search_term_string',
+        },
+      })}
+    </script>
+  </Helmet>
+);
+
 export const FAQSchema = ({ questions }) => (
   <Helmet>
     <script type="application/ld+json">

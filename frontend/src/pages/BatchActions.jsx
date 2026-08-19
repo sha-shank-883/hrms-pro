@@ -360,7 +360,7 @@ const BatchActions = () => {
                 <FaDownload className="text-primary-600" /> Export Payroll Data
               </h3>
               <p className="text-sm text-gray-500 mb-6">Download CSV exports of payslips, payroll runs, and earnings breakdowns.</p>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-3 md:grid-cols-3 gap-4">
                 <div className="bg-white rounded-xl border border-gray-100 p-5 hover:shadow-md transition-all">
                   <FaFileInvoiceDollar className="text-2xl text-primary-600 mb-3" />
                   <h4 className="font-semibold text-gray-800 text-sm mb-1">Payslips</h4>

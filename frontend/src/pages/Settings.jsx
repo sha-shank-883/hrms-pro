@@ -136,7 +136,7 @@ const Settings = () => {
       const next = !prev;
       try {
         localStorage.setItem('settings_sidebar_collapsed', String(next));
-      } catch (_) {}
+      } catch (_) { }
       return next;
     });
   };
@@ -264,7 +264,7 @@ const Settings = () => {
       gain.connect(ctx.destination);
       osc.start();
       osc.stop(ctx.currentTime + 0.25);
-    } catch (e) {}
+    } catch (e) { }
   };
 
   const handleSaveNotificationSettings = async (e) => {
@@ -420,7 +420,7 @@ const Settings = () => {
         else if (['working_hours', 'working_days', 'overtime_rate', 'late_arrival_threshold', 'grace_period', 'break_time', 'overtime_enabled', 'auto_clock_out', 'office_latitude', 'office_longitude', 'geofence_radius', 'strict_geofence'].includes(key)) category = 'attendance';
         else if (['annual_leave_days', 'sick_leave_days', 'casual_leave_days', 'max_carry_forward_days', 'advance_notice_days', 'carry_forward_enabled', 'leave_approval_required'].includes(key)) category = 'leave';
         else if (['currency', 'currency_symbol', 'pay_frequency', 'default_tax_rate', 'social_security_rate', 'tax_enabled', 'bonus_enabled'].includes(key)) category = 'payroll';
-        else if (['mobile_app_enabled','mobile_feature_dashboard','mobile_feature_attendance','mobile_feature_leaves','mobile_feature_tasks','mobile_feature_chat','mobile_feature_employees','mobile_feature_departments','mobile_feature_payroll','mobile_feature_documents','mobile_feature_recruitment','mobile_feature_performance','mobile_feature_reports','mobile_feature_assets','mobile_feature_holidays','mobile_feature_shifts','mobile_feature_audit_logs','mobile_feature_tenants','mobile_feature_cms','mobile_feature_leads','mobile_feature_biometric_login','mobile_feature_2fa_required','mobile_feature_secure_storage','mobile_feature_push_notifications'].includes(key)) category = 'mobile';
+        else if (['mobile_app_enabled', 'mobile_feature_dashboard', 'mobile_feature_attendance', 'mobile_feature_leaves', 'mobile_feature_tasks', 'mobile_feature_chat', 'mobile_feature_employees', 'mobile_feature_departments', 'mobile_feature_payroll', 'mobile_feature_documents', 'mobile_feature_recruitment', 'mobile_feature_performance', 'mobile_feature_reports', 'mobile_feature_assets', 'mobile_feature_holidays', 'mobile_feature_shifts', 'mobile_feature_audit_logs', 'mobile_feature_tenants', 'mobile_feature_cms', 'mobile_feature_leads', 'mobile_feature_biometric_login', 'mobile_feature_2fa_required', 'mobile_feature_secure_storage', 'mobile_feature_push_notifications'].includes(key)) category = 'mobile';
         else if (key.startsWith('password_') || key === 'max_login_attempts' || key === 'session_timeout' || key === 'two_factor_auth') category = 'security';
         else if (key.startsWith('design_')) category = 'design';
         else if (['backup_frequency', 'data_retention_days', 'api_rate_limit', 'backup_enabled', 'audit_logging', 'maintenance_mode'].includes(key)) category = 'system';
@@ -489,9 +489,8 @@ const Settings = () => {
       <div className="flex flex-1 gap-6 overflow-hidden">
         {/* Collapsible Sidebar */}
         <div
-          className={`${
-            isSidebarCollapsed ? 'w-20' : 'w-64'
-          } flex-shrink-0 bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-neutral-200 dark:border-gray-700 flex flex-col transition-all duration-300 ease-in-out h-full overflow-hidden`}
+          className={`${isSidebarCollapsed ? 'w-20' : 'w-64'
+            } flex-shrink-0 bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-neutral-200 dark:border-gray-700 flex flex-col transition-all duration-300 ease-in-out h-full overflow-hidden`}
         >
           {/* Sidebar Top Toggle Header */}
           <div className="p-3 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
@@ -503,9 +502,8 @@ const Settings = () => {
             <button
               type="button"
               onClick={toggleSidebarCollapse}
-              className={`p-2 rounded-xl text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all ${
-                isSidebarCollapsed ? 'mx-auto' : ''
-              }`}
+              className={`p-2 rounded-xl text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all ${isSidebarCollapsed ? 'mx-auto' : ''
+                }`}
               title={isSidebarCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
             >
               {isSidebarCollapsed ? (
@@ -524,13 +522,11 @@ const Settings = () => {
                 <button
                   key={cat.id}
                   title={isSidebarCollapsed ? cat.name : undefined}
-                  className={`w-full flex items-center ${
-                    isSidebarCollapsed ? 'justify-center px-2 py-3' : 'justify-start gap-3 px-3.5 py-2.5'
-                  } text-xs font-bold rounded-xl transition-all relative group ${
-                    isActive
+                  className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center px-2 py-3' : 'justify-start gap-3 px-3.5 py-2.5'
+                    } text-xs font-bold rounded-xl transition-all relative group ${isActive
                       ? 'bg-primary-50 dark:bg-primary-950/50 text-primary-700 dark:text-primary-300 shadow-xs'
                       : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-750 hover:text-gray-900 dark:hover:text-white'
-                  }`}
+                    }`}
                   onClick={() => setActiveTab(cat.id)}
                 >
                   <div className={`text-base shrink-0 ${isActive ? 'text-primary-600 dark:text-primary-400' : 'text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-200'}`}>
@@ -573,7 +569,7 @@ const Settings = () => {
                     className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${billingCurrency === 'INR'
                       ? 'bg-white dark:bg-gray-900 text-gray-900 dark:text-white shadow-sm'
                       : 'text-gray-500 hover:text-gray-900 dark:hover:text-white'
-                    }`}
+                      }`}
                   >
                     🇮🇳 INR (₹)
                   </button>
@@ -583,7 +579,7 @@ const Settings = () => {
                     className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${billingCurrency === 'USD'
                       ? 'bg-white dark:bg-gray-900 text-gray-900 dark:text-white shadow-sm'
                       : 'text-gray-500 hover:text-gray-900 dark:hover:text-white'
-                    }`}
+                      }`}
                   >
                     🇺🇸 USD ($)
                   </button>
@@ -593,29 +589,27 @@ const Settings = () => {
               {/* Subscription & Active Seat Capacity Meter */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {/* Active Plan & VIP Membership Card */}
-                <div className={`border rounded-3xl p-6 shadow-md relative overflow-hidden transition-all ${
-                  (subscriptionData?.plan === 'scale' || user?.subscription_plan === 'scale')
+                <div className={`border rounded-3xl p-6 shadow-md relative overflow-hidden transition-all ${(subscriptionData?.plan === 'scale' || user?.subscription_plan === 'scale')
                     ? 'bg-gradient-to-br from-amber-500/10 via-amber-500/5 to-transparent border-amber-400/50 dark:border-amber-500/30'
                     : (subscriptionData?.plan === 'hatch' || user?.subscription_plan === 'hatch')
-                    ? 'bg-gradient-to-br from-emerald-500/10 via-emerald-500/5 to-transparent border-emerald-400/50 dark:border-emerald-500/30'
-                    : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700'
-                }`}>
+                      ? 'bg-gradient-to-br from-emerald-500/10 via-emerald-500/5 to-transparent border-emerald-400/50 dark:border-emerald-500/30'
+                      : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700'
+                  }`}>
                   <div className="flex items-center justify-between mb-3">
                     <span className="text-xs font-black uppercase tracking-wider text-gray-500 dark:text-gray-400">
                       Membership Status
                     </span>
-                    <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-black tracking-wide ${
-                      (subscriptionData?.plan === 'scale' || user?.subscription_plan === 'scale')
+                    <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-black tracking-wide ${(subscriptionData?.plan === 'scale' || user?.subscription_plan === 'scale')
                         ? 'bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300 border border-amber-300'
                         : (subscriptionData?.plan === 'hatch' || user?.subscription_plan === 'hatch')
-                        ? 'bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300'
-                        : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
-                    }`}>
+                          ? 'bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300'
+                          : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
+                      }`}>
                       {(subscriptionData?.plan === 'scale' || user?.subscription_plan === 'scale')
                         ? '👑 SCALE VIP'
                         : (subscriptionData?.plan === 'hatch' || user?.subscription_plan === 'hatch')
-                        ? '🛡️ HATCH PRO'
-                        : 'FREE TRIAL'}
+                          ? '🛡️ HATCH PRO'
+                          : 'FREE TRIAL'}
                     </span>
                   </div>
                   <h4 className="text-2xl font-black text-gray-900 dark:text-white capitalize flex items-center gap-2">
@@ -654,13 +648,12 @@ const Settings = () => {
                     </div>
                     <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-2.5 mt-3 overflow-hidden">
                       <div
-                        className={`h-2.5 rounded-full transition-all ${
-                          ((user?.active_employees ?? employeeCount) / (subscriptionData?.employeeLimit || user?.employee_limit || 15)) > 0.9
+                        className={`h-2.5 rounded-full transition-all ${((user?.active_employees ?? employeeCount) / (subscriptionData?.employeeLimit || user?.employee_limit || 15)) > 0.9
                             ? 'bg-red-500'
                             : ((user?.active_employees ?? employeeCount) / (subscriptionData?.employeeLimit || user?.employee_limit || 15)) > 0.75
-                            ? 'bg-amber-500'
-                            : 'bg-emerald-500'
-                        }`}
+                              ? 'bg-amber-500'
+                              : 'bg-emerald-500'
+                          }`}
                         style={{
                           width: `${Math.min(
                             100,
@@ -802,11 +795,10 @@ const Settings = () => {
                       key={preset}
                       type="button"
                       onClick={() => setSeatQuantity(preset)}
-                      className={`px-3 py-1 text-xs font-bold rounded-lg border transition-all ${
-                        seatQuantity === preset
+                      className={`px-3 py-1 text-xs font-bold rounded-lg border transition-all ${seatQuantity === preset
                           ? 'bg-primary-600 border-primary-600 text-white shadow-sm'
                           : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:border-primary-400'
-                      }`}
+                        }`}
                     >
                       {preset} Employees
                     </button>
@@ -1103,7 +1095,7 @@ const Settings = () => {
                 )}
 
                 <form onSubmit={handleSaveBillingProfile} className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-3 md:grid-cols-3 gap-4">
                     <div>
                       <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Billing Contact Person</label>
                       <input
@@ -1136,7 +1128,7 @@ const Settings = () => {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-3 md:grid-cols-3 gap-4">
                     <div className="md:col-span-2">
                       <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Registered Billing Address</label>
                       <input
@@ -1263,17 +1255,16 @@ const Settings = () => {
                               {inv.gateway?.replace('_', ' ')}
                             </td>
                             <td className="p-3">
-                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                                inv.status === 'refunded' || inv.refund_status === 'processed'
+                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${inv.status === 'refunded' || inv.refund_status === 'processed'
                                   ? 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300'
                                   : inv.refund_status === 'refund_requested'
-                                  ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
-                                  : inv.status === 'completed'
-                                  ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
-                                  : inv.status === 'pending'
-                                  ? 'bg-amber-100 text-amber-800'
-                                  : 'bg-red-100 text-red-800'
-                              }`}>
+                                    ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
+                                    : inv.status === 'completed'
+                                      ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                                      : inv.status === 'pending'
+                                        ? 'bg-amber-100 text-amber-800'
+                                        : 'bg-red-100 text-red-800'
+                                }`}>
                                 {inv.refund_status === 'refund_requested' ? 'Refund Requested' : inv.status}
                               </span>
                             </td>
@@ -1811,7 +1802,7 @@ const Settings = () => {
                   {/* Channels Grid */}
                   <div>
                     <h4 className="text-xs font-bold uppercase text-gray-400 tracking-wider mb-3">Delivery Channels</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-3 md:grid-cols-3 gap-4">
                       {/* Browser Desktop Push */}
                       <div className="p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50 flex flex-col justify-between">
                         <div>
@@ -1831,11 +1822,10 @@ const Settings = () => {
                           </p>
                         </div>
                         <div className="mt-3 pt-2 border-t border-gray-200/60 dark:border-gray-700 flex items-center justify-between">
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                            browserPushPermission === 'granted'
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${browserPushPermission === 'granted'
                               ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
                               : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
-                          }`}>
+                            }`}>
                             Status: {browserPushPermission}
                           </span>
                           {browserPushPermission !== 'granted' && (

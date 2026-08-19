@@ -116,7 +116,7 @@ const SuperAdmin = () => {
             setTenants(tenantsData || []);
             if (plansData?.plans) setPlans(plansData.plans);
             if (plansData?.systemModules) setSystemModules(plansData.systemModules);
-            
+
             if (profileRes?.data) {
                 const is2FA = !!(profileRes.data.is_two_factor_enabled || profileRes.data.is_2fa_enabled);
                 setSuperAdmin2FA(prev => ({ ...prev, isEnabled: is2FA }));
@@ -806,9 +806,8 @@ const SuperAdmin = () => {
                                                         ⏳ Pending Review
                                                     </span>
                                                 ) : (
-                                                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                                                        tenant.status === 'active' ? 'bg-emerald-100 text-emerald-800' : 'bg-neutral-100 text-neutral-600'
-                                                    }`}>
+                                                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${tenant.status === 'active' ? 'bg-emerald-100 text-emerald-800' : 'bg-neutral-100 text-neutral-600'
+                                                        }`}>
                                                         {tenant.status}
                                                     </span>
                                                 )}
@@ -1127,7 +1126,7 @@ const SuperAdmin = () => {
                             {/* TAB 1: OVERVIEW */}
                             {manageModal.tab === 'overview' && (
                                 <form onSubmit={handleManageSubmit} className="space-y-4">
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div className="grid grid-cols-3 md:grid-cols-3 gap-4">
                                         <div className="form-group">
                                             <label className="form-label block text-xs font-bold text-neutral-700 mb-1">Company / Tenant Name</label>
                                             <input
@@ -1219,7 +1218,7 @@ const SuperAdmin = () => {
                             {manageModal.tab === 'billing' && (
                                 <div className="space-y-6">
                                     <form onSubmit={handleSaveTenantBillingProfile} className="space-y-4">
-                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        <div className="grid grid-cols-3 md:grid-cols-3 gap-4">
                                             <div className="form-group">
                                                 <label className="form-label block text-xs font-bold text-neutral-700 mb-1">Contact Person</label>
                                                 <input
@@ -1252,7 +1251,7 @@ const SuperAdmin = () => {
                                             </div>
                                         </div>
 
-                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        <div className="grid grid-cols-3 md:grid-cols-3 gap-4">
                                             <div className="form-group md:col-span-2">
                                                 <label className="form-label block text-xs font-bold text-neutral-700 mb-1">Billing Address</label>
                                                 <input
@@ -1486,11 +1485,10 @@ const SuperAdmin = () => {
                                             <button
                                                 type="button"
                                                 onClick={() => setAuthMethod('password')}
-                                                className={`p-2.5 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 transition-all ${
-                                                    authMethod === 'password'
+                                                className={`p-2.5 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 transition-all ${authMethod === 'password'
                                                         ? 'bg-primary-50 border-primary-400 text-primary-800 shadow-xs'
                                                         : 'bg-neutral-50 border-neutral-200 text-neutral-600 hover:bg-neutral-100'
-                                                }`}
+                                                    }`}
                                             >
                                                 <LockClosedIcon className="w-4 h-4" />
                                                 <span>Super Admin Password</span>
@@ -1498,11 +1496,10 @@ const SuperAdmin = () => {
                                             <button
                                                 type="button"
                                                 onClick={() => setAuthMethod('2fa')}
-                                                className={`p-2.5 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 transition-all ${
-                                                    authMethod === '2fa'
+                                                className={`p-2.5 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 transition-all ${authMethod === '2fa'
                                                         ? 'bg-primary-50 border-primary-400 text-primary-800 shadow-xs'
                                                         : 'bg-neutral-50 border-neutral-200 text-neutral-600 hover:bg-neutral-100'
-                                                }`}
+                                                    }`}
                                             >
                                                 <KeyIcon className="w-4 h-4" />
                                                 <span>2FA Authenticator Code</span>
@@ -1527,8 +1524,8 @@ const SuperAdmin = () => {
                                         <div className="form-group">
                                             <div className="flex items-center justify-between mb-1">
                                                 <label className="form-label block text-xs font-bold text-neutral-700">6-Digit 2FA Token</label>
-                                                <button 
-                                                    type="button" 
+                                                <button
+                                                    type="button"
                                                     onClick={handleOpenSuperAdmin2FA}
                                                     className="text-[11px] text-primary-600 hover:text-primary-800 font-bold flex items-center gap-1"
                                                 >
@@ -1586,7 +1583,7 @@ const SuperAdmin = () => {
                                     <p className="text-[10px] sm:text-[11px] text-neutral-500 truncate">Authenticator App (Google Authenticator / Authy)</p>
                                 </div>
                             </div>
-                            <button 
+                            <button
                                 onClick={() => setShow2FASetupModal(false)}
                                 className="p-1 rounded-lg text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 transition-colors shrink-0"
                             >

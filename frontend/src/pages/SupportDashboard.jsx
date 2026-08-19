@@ -134,7 +134,7 @@ const SupportDashboard = () => {
 
       {dashboard && (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-4 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <StatCard icon={FaTicketAlt} label="Open Tickets" value={dashboard.tickets?.open} color="bg-orange-500" sublabel={`${dashboard.tickets?.urgent || 0} urgent`} />
             <StatCard icon={FaComments} label="Active Chats" value={dashboard.chats?.active_chats} color="bg-primary-500" sublabel={`${dashboard.chats?.waiting_chats || 0} waiting`} />
             <StatCard icon={FaRobot} label="AI Conversations" value={dashboard.chats?.ai_chats} color="bg-secondary-500" sublabel={`${dashboard.ai?.total_queries || 0} queries this week`} />

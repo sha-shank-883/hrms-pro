@@ -421,6 +421,30 @@ async function autoMigrate() {
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
           );
+
+          -- Ensure core employee columns across all tenant schemas
+          ALTER TABLE "${tId}".employees ADD COLUMN IF NOT EXISTS employee_code VARCHAR(50);
+          ALTER TABLE "${tId}".employees ADD COLUMN IF NOT EXISTS pan VARCHAR(50);
+          ALTER TABLE "${tId}".employees ADD COLUMN IF NOT EXISTS bank_account VARCHAR(100);
+          ALTER TABLE "${tId}".employees ADD COLUMN IF NOT EXISTS bank_name VARCHAR(100);
+          ALTER TABLE "${tId}".employees ADD COLUMN IF NOT EXISTS ifsc_code VARCHAR(50);
+          ALTER TABLE "${tId}".employees ADD COLUMN IF NOT EXISTS uan VARCHAR(50);
+          ALTER TABLE "${tId}".employees ADD COLUMN IF NOT EXISTS esic VARCHAR(50);
+          ALTER TABLE "${tId}".employees ADD COLUMN IF NOT EXISTS joining_date DATE;
+          ALTER TABLE "${tId}".employees ADD COLUMN IF NOT EXISTS profile_image VARCHAR(500);
+          ALTER TABLE "${tId}".employees ADD COLUMN IF NOT EXISTS social_links JSONB DEFAULT '{}';
+          ALTER TABLE "${tId}".employees ADD COLUMN IF NOT EXISTS education JSONB DEFAULT '[]';
+          ALTER TABLE "${tId}".employees ADD COLUMN IF NOT EXISTS experience JSONB DEFAULT '[]';
+          ALTER TABLE "${tId}".employees ADD COLUMN IF NOT EXISTS about_me TEXT;
+          ALTER TABLE "${tId}".employees ADD COLUMN IF NOT EXISTS biometric_id VARCHAR(100);
+          ALTER TABLE "${tId}".employees ADD COLUMN IF NOT EXISTS salary DECIMAL(15, 2);
+          ALTER TABLE "${tId}".employees ADD COLUMN IF NOT EXISTS employment_type VARCHAR(50);
+          ALTER TABLE "${tId}".employees ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'active';
+          ALTER TABLE "${tId}".employees ADD COLUMN IF NOT EXISTS reporting_manager_id INTEGER;
+
+          UPDATE "${tId}".employees 
+          SET employee_code = 'EMP' || LPAD(employee_id::text, 4, '0')
+          WHERE employee_code IS NULL OR employee_code = '';
         `);
         } catch (tErr) {
           console.warn(`Support schema notice for ${tId}:`, tErr.message);

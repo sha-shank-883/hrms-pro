@@ -437,6 +437,7 @@ app.use('/api/payments', require('./routes/paymentRoutes'));
 app.use('/api/notifications', require('./routes/notificationRoutes'));
 app.use('/api/ai-intelligence', require('./routes/aiIntelligenceRoutes'));
 app.use('/api/ai/copilot', require('./routes/aiCopilotRoutes'));
+app.use('/api/ai-copilot', require('./routes/aiCopilotRoutes'));
 
 
 

@@ -5,11 +5,22 @@ export const aiCopilotService = {
    * Send a chat message to the autonomous AI Copilot
    */
   chat: async (message, conversationHistory = []) => {
-    const response = await api.post('/ai/copilot/chat', {
-      message,
-      conversationHistory
-    });
-    return response.data;
+    try {
+      const response = await api.post('/ai/copilot/chat', {
+        message,
+        conversationHistory
+      });
+      return response.data;
+    } catch (err) {
+      if (err.response?.status === 404) {
+        const fallbackRes = await api.post('/ai-copilot/chat', {
+          message,
+          conversationHistory
+        });
+        return fallbackRes.data;
+      }
+      throw err;
+    }
   },
 
   /**

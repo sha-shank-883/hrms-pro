@@ -842,7 +842,11 @@ const Recruitment = () => {
       {/* Job Posting Modal */}
       {showJobModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs" onClick={handleCloseJobModal}>
-          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200 border border-neutral-200 dark:border-slate-800" onClick={(e) => e.stopPropagation()}>
+          <div 
+            className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200 border border-neutral-200 dark:border-slate-800" 
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxHeight: '85vh' }}
+          >
             {/* Modal Header */}
             <div className="px-6 py-4 border-b border-neutral-100 dark:border-slate-800 flex justify-between items-center bg-neutral-50/50 dark:bg-slate-850 shrink-0">
               <div>
@@ -854,9 +858,12 @@ const Recruitment = () => {
               </button>
             </div>
 
-            <form onSubmit={handleJobSubmit} className="flex flex-col flex-1 overflow-hidden">
+            <form onSubmit={handleJobSubmit} className="flex flex-col flex-1 min-h-0 overflow-hidden">
               {/* Modal Body - Scrollable */}
-              <div className="p-6 overflow-y-auto custom-scrollbar flex-1 space-y-4">
+              <div 
+                className="p-6 overflow-y-auto flex-1 min-h-0 space-y-4"
+                style={{ maxHeight: 'calc(85vh - 130px)', overscrollBehavior: 'contain' }}
+              >
                 {jobModalError && (
                   <div className="p-3 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 rounded-xl text-red-700 dark:text-red-300 text-xs flex items-center gap-2">
                     <FaExclamationCircle className="shrink-0 text-red-500" size={14} />
@@ -1017,7 +1024,11 @@ const Recruitment = () => {
       {/* Application Modal */}
       {showAppModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs" onClick={handleCloseAppModal}>
-          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200 border border-neutral-200 dark:border-slate-800" onClick={(e) => e.stopPropagation()}>
+          <div 
+            className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200 border border-neutral-200 dark:border-slate-800" 
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxHeight: '85vh' }}
+          >
             {/* Header */}
             <div className="px-6 py-4 border-b border-neutral-100 dark:border-slate-800 flex justify-between items-center bg-neutral-50/50 dark:bg-slate-850 shrink-0">
               <div>
@@ -1029,9 +1040,12 @@ const Recruitment = () => {
               </button>
             </div>
 
-            <form onSubmit={handleAppSubmit} className="flex flex-col flex-1 overflow-hidden">
+            <form onSubmit={handleAppSubmit} className="flex flex-col flex-1 min-h-0 overflow-hidden">
               {/* Scrollable Body */}
-              <div className="p-6 overflow-y-auto custom-scrollbar flex-1 space-y-5">
+              <div 
+                className="p-6 overflow-y-auto flex-1 min-h-0 space-y-5"
+                style={{ maxHeight: 'calc(85vh - 130px)', overscrollBehavior: 'contain' }}
+              >
                 {appModalError && (
                   <div className="p-3 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 rounded-xl text-red-700 dark:text-red-300 text-xs flex items-center gap-2">
                     <FaExclamationCircle className="shrink-0 text-red-500" size={14} />

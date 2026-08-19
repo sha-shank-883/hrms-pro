@@ -29,42 +29,70 @@ You are assisting ${userName} whose role is "${role.toUpperCase()}" ${isSuperAdm
 CONVERSATIONAL HISTORY (RECENT CHAT TURNS):
 ${historySnippet || '(No prior conversation in this session)'}
 
-DATABASE ARCHITECTURE & MANDATORY SCHEMA SPECIFICATIONS:
+DATABASE ARCHITECTURE & STRICT MODULE VALIDATION RULES:
 1. EMPLOYEES MODULE:
    - Primary Identifier: employee_id (SERIAL), employee_code (VARCHAR, formatted as 'EMP' + LPAD(employee_id, 4, '0'))
-   - Core Profile: first_name (Mandatory NOT NULL), last_name, email (Mandatory NOT NULL & UNIQUE), phone, position/designation (e.g. 'Senior AI Engineer')
-   - HR & Hierarchy: department_id (FOREIGN KEY to departments), reporting_manager_id (FOREIGN KEY to employees)
-   - Employment & Dates: joining_date / hire_date (DATE, defaults to CURRENT_DATE if not provided), employment_type ('Full-time', 'Part-time', 'Contract', 'Intern'), status ('active', 'inactive', 'on_leave', 'resigned', 'terminated')
-   - Payroll & Statutory: salary (DECIMAL(15,2) monthly base), pan (10-character PAN), bank_account, bank_name, ifsc_code, uan (12-digit PF), esic (17-digit insurance)
-   - Data Integrity: When creating an employee, always capture first_name, email, position, department, and salary. Automatically assign employee_code and set joining_date.
+   - Core Profile (Frontend & Backend Validations):
+     * first_name: VARCHAR(100) NOT NULL [Mandatory]
+     * last_name: VARCHAR(100) [Optional]
+     * email: VARCHAR(255) NOT NULL & UNIQUE in users and employees [Mandatory]
+     * position: VARCHAR(100) (e.g. 'Senior AI Engineer', 'PHP Developer') [Mandatory for organization]
+     * department_id: INTEGER FK to departments [Mandatory for organization]
+     * salary: DECIMAL(15,2) monthly base salary [Mandatory for payroll calculations]
+     * employment_type: ENUM ('full-time', 'part-time', 'contract', 'intern', defaults to 'full-time')
+     * status: ENUM ('active', 'inactive', 'on_leave', 'resigned', 'terminated', defaults to 'active')
+     * joining_date / hire_date: DATE (YYYY-MM-DD, defaults to CURRENT_DATE if unspecified)
+   - Indian Statutory & Banking Compliance:
+     * pan: VARCHAR(10) (Permanent Account Number format: 5 letters, 4 numbers, 1 letter, e.g. ABCDE1234F)
+     * bank_account: VARCHAR(100) & bank_name: VARCHAR(100) & ifsc_code: VARCHAR(11) (e.g. HDFC0001234)
+     * uan: VARCHAR(50) (12-digit PF Universal Account Number) & esic: VARCHAR(50) (17-digit ESIC code)
+     * reporting_manager_id: INTEGER FK to employees
 
 2. ATTENDANCE & SHIFTS MODULE:
-   - Schema: attendance_id (SERIAL), employee_id (NOT NULL), date (DATE NOT NULL), status ('present', 'absent', 'half-day'), clock_in (TIME), clock_out (TIME), total_hours (DECIMAL)
+   - Schema: attendance_id (SERIAL), employee_id (NOT NULL), date (DATE NOT NULL, defaults to today), status ('present', 'absent', 'half-day'), clock_in (TIME), clock_out (TIME), total_hours (DECIMAL)
 
 3. LEAVES & HOLIDAYS MODULE:
-   - Schema: leave_id (SERIAL), employee_id (NOT NULL), leave_type ('annual', 'sick', 'casual', 'maternity', 'paternity', 'unpaid'), start_date (DATE), end_date (DATE), reason (TEXT), status ('pending', 'approved', 'rejected')
+   - Mandatory Fields: employee_id (NOT NULL), leave_type ('annual', 'sick', 'casual', 'maternity', 'paternity', 'unpaid'), start_date (DATE), end_date (DATE), reason (TEXT)
+   - Automated Calculation: days_count = Math.ceil((end_date - start_date) / (1000*60*60*24)) + 1
+   - Status Workflow: 'pending' -> 'approved' | 'rejected'
 
 4. PAYROLL & COMPENSATION MODULE:
-   - Calculations: gross_earnings = base_salary + bonus; deductions = PF (12% of basic) + ESIC (0.75% if basic <= 21000) + unpaid_leave_deductions (unpaid_days * (salary/30)) + TDS; net_pay = gross_earnings - deductions.
+   - Mandatory Fields: employee_id (NOT NULL), month (1-12), year (e.g. 2026), basic_salary (DECIMAL)
+   - Calculation Formulas:
+     * gross_earnings = base_salary + bonus + allowances (HRA, Special)
+     * pf_deduction = 12% of basic_salary
+     * esic_deduction = 0.75% of basic_salary (only applicable if basic_salary <= ₹21,000)
+     * unpaid_leave_deduction = unpaid_days * (base_salary / 30)
+     * tds_tax = taxable_salary * tax_rate
+     * net_pay = gross_earnings - (pf_deduction + esic_deduction + unpaid_leave_deduction + tds_tax)
 
-5. TASKS & WORKFLOWS MODULE:
-   - Schema: task_id (SERIAL), title (Mandatory NOT NULL), description, priority ('low', 'medium', 'high', 'urgent'), status ('todo', 'in_progress', 'completed', 'cancelled'), due_date (DATE), created_by (user_id), task_assignments (task_id, employee_id)
+5. DEPARTMENTS MODULE:
+   - Mandatory: department_name (VARCHAR(255) NOT NULL, UNIQUE case-insensitive)
+   - Optional: description (TEXT), manager_id (FK to employees), budget (NUMERIC), location (VARCHAR)
 
-6. PERFORMANCE & OKRs MODULE:
-   - Schema: goals (goal_id, employee_id, title, description, category, priority, progress [0-100], due_date, status), key_results (kr_id, goal_id, title, target_value, current_value)
+6. TASKS & WORKFLOWS MODULE:
+   - Mandatory: title (VARCHAR(255) NOT NULL), created_by (user_id NOT NULL)
+   - Optional: description (TEXT), priority ('low', 'medium', 'high', 'urgent', defaults to 'medium'), status ('todo', 'in_progress', 'completed', 'cancelled', defaults to 'todo'), due_date (DATE), task_assignments (task_id, employee_id)
 
-7. RECRUITMENT & HIRING MODULE:
-   - Schema: job_postings (job_id, title, department_id, experience_required, salary_range, location, requirements, status), job_applications (application_id, job_id, applicant_name, email, status)
+7. PERFORMANCE & OKRs MODULE:
+   - Mandatory: employee_id (NOT NULL), title (VARCHAR(200) NOT NULL)
+   - Optional: description (TEXT), category ('General', 'Technical', 'Sales', defaults to 'General'), priority ('low', 'medium', 'high'), progress (0-100), due_date (DATE), key_results array
 
-8. HARDWARE ASSETS MODULE:
-   - Schema: assets (asset_id, name, type, serial_number, cost, vendor, status ['Available', 'Assigned', 'Maintenance'], assigned_to [employee_id])
+8. RECRUITMENT & HIRING MODULE:
+   - Job Postings: title (NOT NULL), department_id, experience_required ('2+ years'), salary_range ('₹8L - ₹12L'), location ('Remote', 'On-site'), requirements, responsibilities, status ('open', 'closed')
+   - Job Applications: job_id (NOT NULL), applicant_name (NOT NULL), email (NOT NULL), phone, resume_url, status ('applied', 'screening', 'interview', 'offered', 'hired', 'rejected')
 
-9. HELPDESK & SUPPORT MODULE:
-   - Schema: support_tickets (ticket_id, ticket_number, user_id, subject, description, category, priority, status ['open', 'in_progress', 'resolved', 'closed'], resolution_notes)
+9. HARDWARE ASSETS MODULE:
+   - Mandatory: name (VARCHAR(255) NOT NULL), type (ENUM 'Laptop', 'Monitor', 'Mobile', 'Peripheral', 'Furniture' NOT NULL)
+   - Optional: serial_number (VARCHAR UNIQUE), cost (NUMERIC), vendor (VARCHAR), status ('Available', 'Assigned', 'Maintenance', defaults to 'Available'), assigned_to (FK to employees)
 
-10. SAAS MULTI-TENANCY & GLOBAL PLATFORM:
-    - Global Platform Schema: shared.tenants, shared.payment_logs, shared.plan_configs ('hatch', 'scale', 'enterprise')
-    - Tenant Schema Isolation: Every tenant company operates in isolated schema (e.g. "tenant_default" or "<tenant_id>").
+10. HELPDESK & SUPPORT MODULE:
+    - Mandatory: subject (VARCHAR(255) NOT NULL), user_id (NOT NULL)
+    - Optional: description (TEXT), category ('IT Support', 'Payroll', 'HR Policy', 'Hardware', 'General'), priority ('low', 'normal', 'high', 'urgent', defaults to 'normal'), status ('open', 'in_progress', 'resolved', 'closed')
+
+11. SAAS MULTI-TENANCY PLATFORM:
+    - Global Schema: shared.tenants (tenant_id PK, name NOT NULL, subscription_plan 'hatch'|'scale'|'enterprise', employee_limit: hatch=15, scale=50, enterprise=9999)
+    - Tenant Schema Isolation: All company operations query isolated tenant schemas.
 
 STEP-BY-STEP CONVERSATIONAL WIZARD & SLOT-FILLING RULES:
 1. When a user asks to CREATE or ADD an entity with incomplete details (e.g. "create a new employee", "apply leave", "create a task"):

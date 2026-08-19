@@ -461,6 +461,57 @@ async function autoMigrate() {
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
           );
+
+          -- Ensure Performance module tables exist
+          CREATE TABLE IF NOT EXISTS "${tId}".performance_cycles (
+            cycle_id SERIAL PRIMARY KEY,
+            title VARCHAR(100) NOT NULL,
+            start_date DATE NOT NULL,
+            end_date DATE NOT NULL,
+            status VARCHAR(20) DEFAULT 'draft',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          );
+
+          CREATE TABLE IF NOT EXISTS "${tId}".goals (
+            goal_id SERIAL PRIMARY KEY,
+            employee_id INTEGER REFERENCES "${tId}".employees(employee_id),
+            title VARCHAR(200) NOT NULL,
+            description TEXT,
+            status VARCHAR(20) DEFAULT 'pending',
+            progress INTEGER DEFAULT 0,
+            due_date DATE,
+            category VARCHAR(50),
+            priority VARCHAR(20) DEFAULT 'medium',
+            weightage INTEGER DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          );
+
+          CREATE TABLE IF NOT EXISTS "${tId}".key_results (
+            kr_id SERIAL PRIMARY KEY,
+            goal_id INTEGER REFERENCES "${tId}".goals(goal_id) ON DELETE CASCADE,
+            title VARCHAR(200) NOT NULL,
+            metric_type VARCHAR(50) DEFAULT 'percentage',
+            target_value NUMERIC DEFAULT 100,
+            current_value NUMERIC DEFAULT 0,
+            status VARCHAR(20) DEFAULT 'pending',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          );
+
+          CREATE TABLE IF NOT EXISTS "${tId}".performance_reviews (
+            review_id SERIAL PRIMARY KEY,
+            employee_id INTEGER REFERENCES "${tId}".employees(employee_id),
+            reviewer_id INTEGER REFERENCES "${tId}".employees(employee_id),
+            cycle_id INTEGER REFERENCES "${tId}".performance_cycles(cycle_id),
+            status VARCHAR(50) DEFAULT 'scheduled',
+            self_rating DECIMAL(3,1),
+            manager_rating DECIMAL(3,1),
+            final_rating DECIMAL(3,1),
+            self_comments TEXT,
+            manager_comments TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          );
         `);
         } catch (tErr) {
           console.warn(`Support schema notice for ${tId}:`, tErr.message);

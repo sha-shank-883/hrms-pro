@@ -36,13 +36,21 @@ const getGoals = asyncHandler(async (req, res) => {
            ) as key_results
     FROM goals g
     LEFT JOIN key_results kr ON g.goal_id = kr.goal_id
-    WHERE g.employee_id = $1
+    WHERE 1=1
   `;
-  const params = [targetEmployeeId];
+  const params = [];
+  let pIdx = 1;
+
+  if (targetEmployeeId) {
+    queryText += ` AND g.employee_id = $${pIdx}`;
+    params.push(targetEmployeeId);
+    pIdx++;
+  }
 
   if (status) {
-    queryText += ' AND g.status = $2';
+    queryText += ` AND g.status = $${pIdx}`;
     params.push(status);
+    pIdx++;
   }
 
   queryText += ' GROUP BY g.goal_id ORDER BY g.created_at DESC';

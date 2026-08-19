@@ -122,6 +122,7 @@ function parseStructuredJSON(rawResponse, defaultFallback = {}) {
 
 module.exports = {
   sanitizeInput,
+  sanitizePrompt: sanitizeInput,
   wrapInBoundary,
   parseStructuredJSON
 };

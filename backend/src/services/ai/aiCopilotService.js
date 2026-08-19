@@ -1,5 +1,5 @@
 const { getAIProvider } = require('./providerFactory');
-const { sanitizePrompt } = require('./aiSanitizer');
+const { sanitizeInput } = require('./aiSanitizer');
 const { COPILOT_TOOL_DEFINITIONS, executeCopilotTool } = require('./aiCopilotTools');
 
 /**
@@ -16,7 +16,7 @@ class AICopilotService {
     const userName = `${user?.first_name || ''} ${user?.last_name || ''}`.trim() || user?.email || 'User';
 
     // 1. Sanitize user input
-    const sanitizedQuery = sanitizePrompt(message);
+    const sanitizedQuery = sanitizeInput(message);
 
     // 2. Build system instructions tailored to user role and permission constraints
     const systemPrompt = `You are HRMS Pro Copilot, an intelligent enterprise HR & operations assistant.

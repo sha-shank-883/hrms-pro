@@ -15,12 +15,19 @@ class AICopilotService {
     const role = user?.role || 'employee';
     const userName = `${user?.first_name || ''} ${user?.last_name || ''}`.trim() || user?.email || 'User';
 
-    // 1. Sanitize user input
+    // 1. Sanitize user input & format conversation history
     const sanitizedQuery = sanitizeInput(message);
+    const historySnippet = (conversationHistory || [])
+      .slice(-8)
+      .map(m => `${m.sender === 'user' ? 'User' : 'Copilot'}: ${m.text}`)
+      .join('\n');
 
     // 2. Build system instructions with deep database architecture and validation requirements
     const systemPrompt = `You are HRMS Pro AI Copilot, an enterprise HRMS database engineer and operational assistant.
 You are assisting ${userName} whose role is "${role.toUpperCase()}" ${isSuperAdmin ? '(GLOBAL SUPER ADMIN)' : ''}.
+
+CONVERSATIONAL HISTORY (RECENT CHAT TURNS):
+${historySnippet || '(No prior conversation in this session)'}
 
 DATABASE ARCHITECTURE & MANDATORY SCHEMA SPECIFICATIONS:
 1. EMPLOYEES MODULE:
@@ -59,22 +66,41 @@ DATABASE ARCHITECTURE & MANDATORY SCHEMA SPECIFICATIONS:
     - Global Platform Schema: shared.tenants, shared.payment_logs, shared.plan_configs ('hatch', 'scale', 'enterprise')
     - Tenant Schema Isolation: Every tenant company operates in isolated schema (e.g. "tenant_default" or "<tenant_id>").
 
+STEP-BY-STEP CONVERSATIONAL WIZARD & SLOT-FILLING RULES:
+1. When a user asks to CREATE or ADD an entity with incomplete details (e.g. "create a new employee", "apply leave", "create a task"):
+   - DO NOT make up fake data and DO NOT call the tool prematurely with missing mandatory values.
+   - Act as an intelligent step-by-step assistant and ask for the missing fields sequentially:
+     * EMPLOYEE CREATION WIZARD:
+       - If Name/Email missing: Ask for **Full Name** and **Work Email**.
+       - If Position/Department missing: Ask for **Designation** and **Department** (Engineering, Sales, HR, etc.).
+       - If Salary missing: Ask for **Monthly Base Salary (₹)** and **Employment Type**.
+       - Once required fields are gathered across the conversation history: Call the \`create_employee\` tool immediately!
+     * LEAVE APPLICATION WIZARD:
+       - Ask for Leave Type, Dates (From - To), and Reason before executing.
+     * TASK CREATION WIZARD:
+       - Ask for Task Title, Assignee, Priority, and Due Date before executing.
+     * ASSET REGISTRATION WIZARD:
+       - Ask for Asset Name, Type (Laptop/Monitor), Serial Number, and Cost.
+2. When all required information has been provided (either in a single detailed prompt or over multiple turns in the chat history):
+   - Set "should_call_tool" to true, select the tool name, and extract all parameters from current and past messages in this conversation.
+   - Execute the database write and return an interactive Action Card with a direct view link!
+
 ROLE PERMISSION BOUNDARIES:
 - Super Admin: Cross-tenant SaaS metrics, subscriptions, platform logs.
 - Admin / HR: Full CRUD across employees, payroll, attendance, jobs, assets, and departments.
 - Manager: Team attendance, department tasks, and leave approval.
-- Employee: Self-service (Clock-in/out, Apply leaves, View self-payslip, View own goals). Block requests for other employees' financial/statutory data.
+- Employee: Self-service (Clock-in/out, Apply leaves, View self-payslip, View own goals). Block requests for other employees' financial/statutory data.`;
 
-AI EXECUTION GUIDELINES:
-- When the user provides partial information for a creation action (e.g., just name and salary), synthesize sensible enterprise defaults (e.g. joining_date = today, employment_type = 'Full-time') and clearly mention the configured fields in the response.
-- Always provide structured, elegant markdown responses with key metric highlights, emojis, and clear next steps.`;
-
-    // 3. Check if tools should be triggered
-    // We provide tool descriptions in prompt format for resilient multi-provider tool resolution
+    // 3. Check if tools should be triggered or if conversational wizard should ask next step
     const toolPrompt = `
 User Query: "${sanitizedQuery}"
 
-Analyze if this query requires executing one of the following tools:
+Analyze the User Query along with Conversation History:
+1. If the user provided all required details to execute an operation, call the tool.
+2. If the user wants to start a creation workflow (e.g. "create an employee", "apply leave", "create task") but mandatory fields are missing, set should_call_tool: false and in direct_reply ask for the first missing required fields in a friendly, guided wizard format.
+3. If the user is answering a previous question from the wizard, extract all collected fields from history + current message and either ask the next question OR execute the tool if all required fields are now ready.
+
+Available Tools:
 ${JSON.stringify(COPILOT_TOOL_DEFINITIONS.map(t => ({ name: t.name, description: t.description })), null, 2)}
 
 Respond with a JSON object:
@@ -82,7 +108,7 @@ Respond with a JSON object:
   "should_call_tool": boolean,
   "tool_name": string (or null),
   "tool_arguments": object (or {}),
-  "direct_reply": string (use if no tool is required or for general advice)
+  "direct_reply": string (use if asking next wizard step or for direct response)
 }
 Return ONLY valid JSON.`;
 
@@ -94,15 +120,13 @@ Return ONLY valid JSON.`;
       const rawAiDecision = aiResponse?.response || aiResponse?.text || '';
 
       const parsed = this._parseJSON(rawAiDecision);
-      if (parsed && parsed.tool_name) {
+      if (parsed && (parsed.tool_name || parsed.direct_reply)) {
         toolDecision = parsed;
       } else {
-        // Use heuristic tool picker if LLM response didn't produce structured JSON
         toolDecision = this._heuristicToolPicker(sanitizedQuery);
       }
     } catch (e) {
       console.warn('[AI Copilot] Provider tool selection notice:', e.message);
-      // Fallback: heuristic pattern matching
       toolDecision = this._heuristicToolPicker(sanitizedQuery);
     }
 
@@ -222,9 +246,16 @@ Highlight key figures (salary, hours, counts, status) in bold. Mention available
 
     // 1. Employees CRUD
     if ((q.includes('create employee') || q.includes('add employee') || q.includes('hire employee') || q.includes('new employee'))) {
-      const words = query.split(/\s+/);
-      const name = words[words.findIndex(w => ['employee', 'add', 'create'].includes(w.toLowerCase())) + 1] || 'New';
-      return { should_call_tool: true, tool_name: 'create_employee', tool_arguments: { first_name: name, email: `${name.toLowerCase()}@example.com` } };
+      const words = query.split(/\s+/).filter(w => !['create', 'a', 'new', 'add', 'hire', 'employee', 'an', 'please', 'i', 'want', 'to'].includes(w.toLowerCase()));
+      if (words.length >= 2 && query.includes('@')) {
+        const name = words[0];
+        const email = words.find(w => w.includes('@')) || `${name.toLowerCase()}@example.com`;
+        return { should_call_tool: true, tool_name: 'create_employee', tool_arguments: { first_name: name, email } };
+      }
+      return {
+        should_call_tool: false,
+        direct_reply: "Let's set up the new employee profile! 👤\n\nTo maintain full database & payroll compliance, please tell me:\n1️⃣ **Full Name** (e.g., Sarah Connor)\n2️⃣ **Work Email** (e.g., sarah@company.com)\n\n*(Or reply with name, email, designation, department, and salary all at once)*"
+      };
     }
 
     if (q.includes('update employee') || (q.includes('update') && (q.includes('salary') || q.includes('position')))) {
@@ -255,8 +286,15 @@ Highlight key figures (salary, hours, counts, status) in bold. Mention available
       return { should_call_tool: true, tool_name: 'approve_or_reject_leave', tool_arguments: { decision: q.includes('approve') ? 'approved' : 'rejected' } };
     }
 
+    if (q.includes('apply leave') || q.includes('take leave') || q.includes('request leave')) {
+      return {
+        should_call_tool: false,
+        direct_reply: "I can help submit your leave request! 🏖️\n\nPlease let me know:\n1️⃣ **Leave Type** (Casual, Sick, Annual, Unpaid)\n2️⃣ **Start Date & End Date** (e.g., next Monday to Tuesday)\n3️⃣ **Reason for absence**"
+      };
+    }
+
     if (q.includes('leave') || q.includes('vacation') || q.includes('holiday')) {
-      return { should_call_tool: true, tool_name: 'manage_leave', tool_arguments: { action: q.includes('apply') ? 'apply_leave' : 'check_balance' } };
+      return { should_call_tool: true, tool_name: 'manage_leave', tool_arguments: { action: 'check_balance' } };
     }
 
     // 4. Payroll
@@ -279,7 +317,10 @@ Highlight key figures (salary, hours, counts, status) in bold. Mention available
 
     // 6. Tasks
     if (q.includes('create task') || q.includes('assign task') || q.includes('new task')) {
-      return { should_call_tool: true, tool_name: 'create_task', tool_arguments: { title: 'New Task Assignment', priority: 'medium' } };
+      return {
+        should_call_tool: false,
+        direct_reply: "Let's assign a new task! 📋\n\nPlease provide:\n1️⃣ **Task Title / Summary**\n2️⃣ **Assignee Name** (Employee to work on it)\n3️⃣ **Priority** (Low, Medium, High, Urgent)\n4️⃣ **Due Date**"
+      };
     }
 
     if (q.includes('delete task') || q.includes('remove task')) {
@@ -292,7 +333,10 @@ Highlight key figures (salary, hours, counts, status) in bold. Mention available
 
     // 7. Goals
     if (q.includes('create goal') || q.includes('new goal') || q.includes('add goal')) {
-      return { should_call_tool: true, tool_name: 'create_goal', tool_arguments: { title: 'Quarterly Objective', priority: 'high' } };
+      return {
+        should_call_tool: false,
+        direct_reply: "Let's define a new OKR / Goal! 🎯\n\nPlease provide:\n1️⃣ **Goal Title**\n2️⃣ **Target Completion Date**\n3️⃣ **Priority** (High / Medium)"
+      };
     }
 
     if (q.includes('update goal') || q.includes('goal progress')) {
@@ -306,7 +350,10 @@ Highlight key figures (salary, hours, counts, status) in bold. Mention available
 
     // 9. Assets
     if (q.includes('create asset') || q.includes('add asset') || q.includes('add laptop')) {
-      return { should_call_tool: true, tool_name: 'create_asset', tool_arguments: { name: 'Dell XPS 15', serial_number: `DL-${Date.now().toString().slice(-4)}` } };
+      return {
+        should_call_tool: false,
+        direct_reply: "Let's register a new hardware asset! 💻\n\nPlease provide:\n1️⃣ **Device Name & Model** (e.g., MacBook Pro M3 Max)\n2️⃣ **Category** (Laptop, Monitor, Mobile, Peripheral)\n3️⃣ **Serial Number**\n4️⃣ **Purchase Cost**"
+      };
     }
 
     if (q.includes('assign asset') || q.includes('return asset')) {

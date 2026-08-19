@@ -5,9 +5,9 @@ const aiCopilotService = require('../services/ai/aiCopilotService');
  * Handle AI Copilot Chat Request
  */
 const chatWithCopilot = asyncHandler(async (req, res) => {
-  const { message, conversationHistory } = req.body;
+  const { message, conversationHistory, isConfirmed, confirmedAction } = req.body;
 
-  if (!message || typeof message !== 'string' || message.trim() === '') {
+  if ((!message || typeof message !== 'string' || message.trim() === '') && !isConfirmed) {
     return res.status(400).json({
       success: false,
       message: 'Message prompt is required.'
@@ -26,10 +26,12 @@ const chatWithCopilot = asyncHandler(async (req, res) => {
   };
 
   const result = await aiCopilotService.processUserMessage({
-    message: message.trim(),
+    message: (message || '').trim(),
     conversationHistory: conversationHistory || [],
     userContext,
-    tenantContext
+    tenantContext,
+    isConfirmed: !!isConfirmed,
+    confirmedAction: confirmedAction || null
   });
 
   res.json({

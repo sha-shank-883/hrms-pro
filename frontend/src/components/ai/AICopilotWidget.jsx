@@ -111,6 +111,9 @@ export const AICopilotWidget = () => {
         text: aiData.reply || 'Request completed.',
         tool_executed: aiData.tool_executed,
         action_cards: aiData.action_cards || [],
+        requires_confirmation: aiData.requires_confirmation || false,
+        pending_action: aiData.pending_action || null,
+        disambiguation_options: aiData.disambiguation_options || [],
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       };
 
@@ -127,6 +130,65 @@ export const AICopilotWidget = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleConfirmAction = async (pendingAction) => {
+    if (!pendingAction || loading) return;
+    setLoading(true);
+
+    const userMsg = {
+      id: Date.now().toString(),
+      sender: 'user',
+      text: `✅ Confirmed: Proceed with ${pendingAction.toolName}`,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    };
+    setMessages((prev) => [...prev, userMsg]);
+
+    try {
+      const res = await aiCopilotService.chat('', messages.slice(-4), true, pendingAction);
+      const aiData = res.data;
+
+      const aiMsg = {
+        id: (Date.now() + 1).toString(),
+        sender: 'ai',
+        text: aiData.reply || 'Operation confirmed and executed.',
+        tool_executed: aiData.tool_executed,
+        action_cards: aiData.action_cards || [],
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+      setMessages((prev) => [...prev, aiMsg]);
+    } catch (err) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: (Date.now() + 1).toString(),
+          sender: 'ai',
+          text: `❌ Execution failed: ${err.response?.data?.message || err.message}`,
+          action_cards: [],
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        }
+      ]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCancelAction = () => {
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: Date.now().toString(),
+        sender: 'user',
+        text: '❌ Cancelled the operation.',
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      },
+      {
+        id: (Date.now() + 1).toString(),
+        sender: 'ai',
+        text: 'Understood. The pending operation was aborted without making any changes to the database.',
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      }
+    ]);
   };
 
   const handleCardNavigation = (link) => {
@@ -254,6 +316,54 @@ export const AICopilotWidget = () => {
                           </div>
                         </div>
                       ))}
+                    </div>
+                  )}
+
+                  {/* Render Disambiguation Chips */}
+                  {msg.disambiguation_options && msg.disambiguation_options.length > 0 && (
+                    <div className="space-y-1.5 pt-1">
+                      <p className="text-[10px] font-bold text-neutral-500 dark:text-slate-400 uppercase tracking-wider">Select Employee:</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {msg.disambiguation_options.map((opt, oIdx) => (
+                          <button
+                            key={oIdx}
+                            onClick={() => handleSendMessage(`Show profile for ${opt.name} (${opt.employee_code})`)}
+                            disabled={loading}
+                            className="px-2.5 py-1 text-[11px] font-semibold bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 dark:hover:bg-indigo-900 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 rounded-lg transition-all text-left shadow-2xs"
+                          >
+                            👤 {opt.name} <span className="opacity-75 font-normal">({opt.employee_code} • {opt.department})</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Render Two-Phase Confirmation Gate */}
+                  {msg.requires_confirmation && msg.pending_action && (
+                    <div className="p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 rounded-xl space-y-2 text-xs shadow-xs">
+                      <div className="flex items-center gap-1.5 text-amber-800 dark:text-amber-300 font-bold text-[11px]">
+                        <FaShieldAlt className="text-amber-600 dark:text-amber-400" />
+                        <span>High-Impact Action Confirmation Required</span>
+                      </div>
+                      <p className="text-[11px] text-amber-700 dark:text-amber-400/90 leading-tight">
+                        Action: <strong className="font-semibold">{msg.pending_action.toolName}</strong>
+                      </p>
+                      <div className="flex items-center gap-2 pt-1">
+                        <button
+                          onClick={() => handleConfirmAction(msg.pending_action)}
+                          disabled={loading}
+                          className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-[11px] transition-colors shadow-xs flex items-center gap-1"
+                        >
+                          <span>✅ Proceed & Confirm</span>
+                        </button>
+                        <button
+                          onClick={handleCancelAction}
+                          disabled={loading}
+                          className="px-3 py-1.5 bg-neutral-200 hover:bg-neutral-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-neutral-800 dark:text-slate-200 font-semibold rounded-lg text-[11px] transition-colors"
+                        >
+                          <span>❌ Cancel</span>
+                        </button>
+                      </div>
                     </div>
                   )}
 

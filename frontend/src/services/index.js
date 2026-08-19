@@ -24,3 +24,4 @@ export { default as auditService } from './auditService';
 export { paymentService } from './payment';
 export { notificationService } from './notificationService';
 export { aiIntelligenceService } from './aiIntelligence';
+export { aiCopilotService } from './aiCopilot';

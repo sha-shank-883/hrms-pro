@@ -7,6 +7,7 @@ import { useSettings } from '../hooks/useSettings.jsx';
 import { useTheme } from '../context/ThemeContext';
 import { leaveService, taskService, searchService, tenantService } from '../services';
 import SubscriptionBanner from '../components/billing/SubscriptionBanner';
+import AICopilotWidget from './ai/AICopilotWidget';
 import {
   FaHome, FaUsers, FaCalendarCheck, FaMoneyBillWave, FaCog,
   FaSignOutAlt, FaBars, FaTimes, FaFileAlt, FaTasks,
@@ -1101,6 +1102,7 @@ const Layout = () => {
             <Outlet />
           </div>
         </main>
+        <AICopilotWidget />
       </div>
     </div>
   );

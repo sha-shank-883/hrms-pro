@@ -434,9 +434,9 @@ app.use('/api/support', supportRoutes);
 app.use('/api/email-queue', require('./routes/emailQueueRoutes'));
 app.use('/api/export', require('./routes/exportRoutes'));
 app.use('/api/payments', require('./routes/paymentRoutes'));
-app.use('/api/payment', require('./routes/paymentRoutes'));
 app.use('/api/notifications', require('./routes/notificationRoutes'));
 app.use('/api/ai-intelligence', require('./routes/aiIntelligenceRoutes'));
+app.use('/api/ai/copilot', require('./routes/aiCopilotRoutes'));
 
 
 

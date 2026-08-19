@@ -107,7 +107,7 @@ const SendEmail = () => {
       body: template.body_html || template.body_text || '',
       variables: {}
     });
-    
+
     // Initialize variables
     try {
       const vars = template.variables || {};
@@ -136,24 +136,24 @@ const SendEmail = () => {
 
   const handleSendEmail = async (e) => {
     e.preventDefault();
-    
+
     if (!selectedTemplate) {
       setError('Please select a template');
       return;
     }
-    
+
     setSending(true);
     setError(null);
-    
+
     try {
       const requestData = {
         template_name: selectedTemplate.name,
         to: formData.to,
         variables: formData.variables
       };
-      
+
       await api.post('/email-templates/send', requestData);
-      
+
       alert('Email sent successfully!');
       // Reset form
       setSelectedTemplate(null);
@@ -215,7 +215,7 @@ const SendEmail = () => {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-3 lg:grid-cols-3 gap-6">
         {/* Template Selection */}
         <div className="lg:col-span-1">
           <div className="bg-white shadow rounded-lg">
@@ -229,11 +229,10 @@ const SendEmail = () => {
                   <div
                     key={template.id}
                     onClick={() => handleTemplateSelect(template)}
-                    className={`p-3 rounded-md cursor-pointer border ${
-                      selectedTemplate?.id === template.id
+                    className={`p-3 rounded-md cursor-pointer border ${selectedTemplate?.id === template.id
                         ? 'border-green-500 bg-green-50'
                         : 'border-gray-200 hover:bg-gray-50'
-                    }`}
+                      }`}
                   >
                     <h4 className="font-medium text-gray-900">{template.name}</h4>
                     <p className="text-sm text-gray-500 truncate">{template.subject}</p>
@@ -301,7 +300,7 @@ const SendEmail = () => {
                       <input
                         type="text"
                         value={formData.to}
-                        onChange={(e) => setFormData({...formData, to: e.target.value})}
+                        onChange={(e) => setFormData({ ...formData, to: e.target.value })}
                         required
                         className="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-green-500 focus:border-green-500"
                         placeholder="recipient@example.com"
@@ -326,7 +325,7 @@ const SendEmail = () => {
                       <input
                         type="text"
                         value={formData.cc}
-                        onChange={(e) => setFormData({...formData, cc: e.target.value})}
+                        onChange={(e) => setFormData({ ...formData, cc: e.target.value })}
                         className="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-green-500 focus:border-green-500"
                         placeholder="cc@example.com"
                       />
@@ -338,7 +337,7 @@ const SendEmail = () => {
                       <input
                         type="text"
                         value={formData.bcc}
-                        onChange={(e) => setFormData({...formData, bcc: e.target.value})}
+                        onChange={(e) => setFormData({ ...formData, bcc: e.target.value })}
                         className="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-green-500 focus:border-green-500"
                         placeholder="bcc@example.com"
                       />
@@ -353,7 +352,7 @@ const SendEmail = () => {
                     <input
                       type="text"
                       value={formData.subject}
-                      onChange={(e) => setFormData({...formData, subject: e.target.value})}
+                      onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
                       required
                       className="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-green-500 focus:border-green-500"
                     />
@@ -444,7 +443,7 @@ const SendEmail = () => {
                   <FaTimes className="h-6 w-6" />
                 </button>
               </div>
-              
+
               <div className="mt-2 max-h-96 overflow-y-auto">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {employees.map((employee) => (
@@ -472,7 +471,7 @@ const SendEmail = () => {
                     </div>
                   ))}
                 </div>
-                
+
                 {employees.length === 0 && (
                   <div className="text-center py-8">
                     <p className="text-gray-500">No employees found</p>

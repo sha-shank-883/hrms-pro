@@ -141,7 +141,7 @@ const SupportDashboard = () => {
             <StatCard icon={FaHeadset} label="Available Agents" value={dashboard.tickets?.available_agents} color="bg-green-500" sublabel={`${dashboard.tickets?.busy_agents || 0} busy`} />
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-3 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 space-y-6">
               <div className="bg-white rounded-xl border border-gray-200">
                 <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
@@ -166,11 +166,10 @@ const SupportDashboard = () => {
                           </div>
                         </div>
                         <div className="flex items-center gap-3">
-                          <span className={`text-xs px-2 py-0.5 rounded-full ${
-                            chat.priority === 'urgent' ? 'bg-red-100 text-red-700' :
+                          <span className={`text-xs px-2 py-0.5 rounded-full ${chat.priority === 'urgent' ? 'bg-red-100 text-red-700' :
                             chat.priority === 'high' ? 'bg-orange-100 text-orange-700' :
-                            'bg-gray-100 text-gray-600'
-                          }`}>{chat.priority}</span>
+                              'bg-gray-100 text-gray-600'
+                            }`}>{chat.priority}</span>
                           {parseInt(chat.unread) > 0 && (
                             <span className="bg-red-500 text-white text-[10px] w-5 h-5 rounded-full flex items-center justify-center font-bold">
                               {chat.unread}

@@ -5,13 +5,13 @@ import { useAuth } from '../context/AuthContext';
 import { useSettings } from '../hooks/useSettings.jsx';
 import { formatDate } from '../utils/settingsHelper';
 import { validatePassword } from '../utils/passwordHelper';
-import { 
-  FaUser, FaBriefcase, FaCalendarCheck, FaFileAlt, FaLock, FaCamera, 
-  FaEnvelope, FaPhone, FaMapMarkerAlt, FaBirthdayCake, FaDownload, FaEye, 
-  FaMoneyBillWave, FaLaptop, FaChartLine, FaCheckCircle, FaTimesCircle, 
-  FaClock, FaTasks, FaHistory, FaExternalLinkAlt, FaGraduationCap, 
-  FaLinkedin, FaTwitter, FaGithub, FaUserTie, FaIdCard, FaEdit, FaSave, 
-  FaTimes, FaShieldAlt, FaQrcode, FaKey, FaCopy, FaCheck, FaCrown, FaUsers 
+import {
+  FaUser, FaBriefcase, FaCalendarCheck, FaFileAlt, FaLock, FaCamera,
+  FaEnvelope, FaPhone, FaMapMarkerAlt, FaBirthdayCake, FaDownload, FaEye,
+  FaMoneyBillWave, FaLaptop, FaChartLine, FaCheckCircle, FaTimesCircle,
+  FaClock, FaTasks, FaHistory, FaExternalLinkAlt, FaGraduationCap,
+  FaLinkedin, FaTwitter, FaGithub, FaUserTie, FaIdCard, FaEdit, FaSave,
+  FaTimes, FaShieldAlt, FaQrcode, FaKey, FaCopy, FaCheck, FaCrown, FaUsers
 } from 'react-icons/fa';
 import { PERMISSION_MODULES, getAllPermissions } from '../constants/permissions';
 
@@ -414,12 +414,12 @@ const Profile = () => {
     setError('');
     setSuccess('');
     setValidationErrors({});
-    
+
     // Validate required fields
     const errors = {};
     if (!formData.first_name?.trim()) errors.first_name = "First Name is required";
     if (!formData.last_name?.trim()) errors.last_name = "Last Name is required";
-    
+
     // Only require department/position/salary when an admin is configuring another employee's profile
     if (!isOwnProfile && user.role === 'admin') {
       if (!formData.department_id) errors.department_id = "Department is required";
@@ -458,9 +458,9 @@ const Profile = () => {
     }
     try {
       if (!isOwnProfile && user.role === 'admin') {
-         await authService.adminChangeUserPassword(profile.user_id, passwordData.newPassword);
+        await authService.adminChangeUserPassword(profile.user_id, passwordData.newPassword);
       } else {
-         await authService.changePassword(passwordData.currentPassword, passwordData.newPassword);
+        await authService.changePassword(passwordData.currentPassword, passwordData.newPassword);
       }
       setSuccess('Password changed successfully');
       setShowPasswordModal(false);
@@ -561,13 +561,12 @@ const Profile = () => {
 
       {/* 1. Header Section */}
       <div className="card mb-6 overflow-hidden">
-        <div className={`h-44 relative transition-all ${
-          (profile.subscription_plan === 'scale' || user?.subscription_plan === 'scale')
-            ? 'bg-gradient-to-r from-amber-600 via-yellow-600 to-amber-700'
-            : (profile.subscription_plan === 'hatch' || user?.subscription_plan === 'hatch')
+        <div className={`h-44 relative transition-all ${(profile.subscription_plan === 'scale' || user?.subscription_plan === 'scale')
+          ? 'bg-gradient-to-r from-amber-600 via-yellow-600 to-amber-700'
+          : (profile.subscription_plan === 'hatch' || user?.subscription_plan === 'hatch')
             ? 'bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700'
             : 'bg-primary-600'
-        }`}>
+          }`}>
           <div className="absolute inset-0 opacity-15 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
           {(profile.subscription_plan === 'scale' || user?.subscription_plan === 'scale') && (
             <div className="absolute top-4 right-6 flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-black/40 backdrop-blur-md border border-amber-300/50 text-amber-200 text-xs font-black shadow-lg">
@@ -585,13 +584,12 @@ const Profile = () => {
 
         <div className="px-8 pb-8 flex flex-col md:flex-row items-end -mt-16 gap-6 relative z-10">
           <div className="relative w-32 h-32 md:w-40 md:h-40">
-            <div className={`w-32 h-32 md:w-40 md:h-40 rounded-full border-4 shadow-xl bg-white p-1 overflow-hidden ${
-              (profile.subscription_plan === 'scale' || user?.subscription_plan === 'scale')
-                ? 'border-amber-300 ring-4 ring-amber-400/40'
-                : (profile.subscription_plan === 'hatch' || user?.subscription_plan === 'hatch')
+            <div className={`w-32 h-32 md:w-40 md:h-40 rounded-full border-4 shadow-xl bg-white p-1 overflow-hidden ${(profile.subscription_plan === 'scale' || user?.subscription_plan === 'scale')
+              ? 'border-amber-300 ring-4 ring-amber-400/40'
+              : (profile.subscription_plan === 'hatch' || user?.subscription_plan === 'hatch')
                 ? 'border-emerald-300 ring-4 ring-emerald-400/40'
                 : 'border-white'
-            }`}>
+              }`}>
               <div className="w-full h-full rounded-full bg-neutral-100 flex items-center justify-center overflow-hidden relative">
                 {uploadingPhoto && (
                   <div className="absolute inset-0 bg-black/40 flex items-center justify-center z-10">
@@ -674,7 +672,7 @@ const Profile = () => {
               </button>
             )}
             {isOwnProfile && (
-              <button 
+              <button
                 className={`btn text-xs flex items-center gap-1.5 ${(profile.is_two_factor_enabled || profile.is_2fa_enabled) ? 'bg-emerald-50 text-emerald-700 border border-emerald-300 hover:bg-emerald-100' : 'btn-secondary text-neutral-700'}`}
                 onClick={handleOpen2FAModal}
                 title="Manage Two-Factor Authentication"
@@ -727,7 +725,7 @@ const Profile = () => {
           {/* 4. Content */}
           <div className="">
             {activeTab === 'personal' && (
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-3 lg:grid-cols-3 gap-6">
                 <div className="card md:col-span-2">
                   <div className="card-header">
                     <h3 className="card-title">Basic Information</h3>
@@ -1284,7 +1282,7 @@ const Profile = () => {
                 ) : (
                   <div className="space-y-6">
                     <div className="flex justify-end gap-3 mb-4">
-                      <button 
+                      <button
                         className="btn btn-secondary btn-sm"
                         onClick={async () => {
                           try {
@@ -1301,7 +1299,7 @@ const Profile = () => {
                           }
                         }}
                       >Select All</button>
-                      <button 
+                      <button
                         className="btn btn-secondary btn-sm"
                         onClick={async () => {
                           try {
@@ -1339,7 +1337,7 @@ const Profile = () => {
                                 const isSupported = module.operations.includes(op);
                                 const permString = `${module.id}:${op}`;
                                 const isEnabled = profile.permissions?.includes(permString);
-                                
+
                                 return (
                                   <td key={op} className="p-4 text-center">
                                     {isSupported ? (
@@ -1506,7 +1504,7 @@ const Profile = () => {
                       <p className="text-[11px] text-neutral-500">Secure your account with Google Authenticator or Authy</p>
                     </div>
                   </div>
-                  <button 
+                  <button
                     onClick={() => setShow2FAModal(false)}
                     className="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 transition-colors"
                   >
@@ -1537,16 +1535,16 @@ const Profile = () => {
                         ) : (
                           <div className="w-44 h-44 flex items-center justify-center text-xs text-neutral-400">Loading QR...</div>
                         )}
-                        
+
                         {/* Secret Key with one-click copy */}
                         {twoFASecret && (
                           <div className="mt-3 w-full">
                             <p className="text-[10px] uppercase tracking-wider font-bold text-neutral-400 text-center mb-1">Manual Entry Secret Key</p>
                             <div className="flex items-center justify-between bg-white border border-neutral-200 rounded-xl px-3 py-1.5 font-mono text-xs font-bold text-neutral-800">
                               <span className="truncate mr-2">{twoFASecret}</span>
-                              <button 
-                                type="button" 
-                                onClick={handleCopyKey} 
+                              <button
+                                type="button"
+                                onClick={handleCopyKey}
                                 className="text-primary-600 hover:text-primary-800 text-xs flex items-center gap-1 shrink-0"
                                 title="Copy Secret"
                               >
@@ -1564,10 +1562,10 @@ const Profile = () => {
                           <label className="block text-xs font-bold text-neutral-700 mb-1">
                             <span className="text-neutral-800">Step 2:</span> Enter 6-Digit Code from Authenticator
                           </label>
-                          <input 
-                            type="text" 
+                          <input
+                            type="text"
                             maxLength={6}
-                            placeholder="e.g. 123456" 
+                            placeholder="e.g. 123456"
                             className="form-input w-full text-center text-lg font-mono tracking-widest font-bold py-2"
                             value={otp}
                             onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
@@ -1576,8 +1574,8 @@ const Profile = () => {
                           />
                         </div>
 
-                        <button 
-                          type="submit" 
+                        <button
+                          type="submit"
                           disabled={twoFALoading || otp.length !== 6}
                           className="btn btn-primary w-full text-xs font-bold py-2.5 shadow-sm"
                         >
@@ -1590,8 +1588,8 @@ const Profile = () => {
                   {/* Disable Button if already active */}
                   {(profile.is_two_factor_enabled || profile.is_2fa_enabled) && (
                     <div className="pt-2 border-t border-neutral-100 flex justify-end">
-                      <button 
-                        type="button" 
+                      <button
+                        type="button"
                         onClick={handleDisable2FA}
                         disabled={twoFALoading}
                         className="btn btn-danger text-xs"
@@ -1619,7 +1617,7 @@ const Profile = () => {
                       <p className="text-[11px] text-neutral-500">Update your login credentials securely</p>
                     </div>
                   </div>
-                  <button 
+                  <button
                     onClick={() => setShowPasswordModal(false)}
                     className="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 transition-colors"
                   >
@@ -1630,9 +1628,9 @@ const Profile = () => {
                 <form onSubmit={handleChangePassword} className="p-6 space-y-4">
                   <div className="form-group">
                     <label className="form-label block text-xs font-bold text-neutral-700 mb-1">Current Password</label>
-                    <input 
-                      type="password" 
-                      className="form-input w-full text-xs" 
+                    <input
+                      type="password"
+                      className="form-input w-full text-xs"
                       value={passwordData.currentPassword}
                       onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
                       placeholder="Enter current password"
@@ -1642,9 +1640,9 @@ const Profile = () => {
 
                   <div className="form-group">
                     <label className="form-label block text-xs font-bold text-neutral-700 mb-1">New Password</label>
-                    <input 
-                      type="password" 
-                      className="form-input w-full text-xs" 
+                    <input
+                      type="password"
+                      className="form-input w-full text-xs"
                       value={passwordData.newPassword}
                       onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
                       placeholder="Enter new password (min 6 characters)"
@@ -1655,9 +1653,9 @@ const Profile = () => {
 
                   <div className="form-group">
                     <label className="form-label block text-xs font-bold text-neutral-700 mb-1">Confirm New Password</label>
-                    <input 
-                      type="password" 
-                      className="form-input w-full text-xs" 
+                    <input
+                      type="password"
+                      className="form-input w-full text-xs"
                       value={passwordData.confirmPassword}
                       onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
                       placeholder="Confirm new password"

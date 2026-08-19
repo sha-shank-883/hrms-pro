@@ -184,16 +184,28 @@ Highlight key figures (salary, hours, counts, status) in bold. Mention available
   _heuristicToolPicker(query) {
     const q = query.toLowerCase();
 
+    // 1. Employees CRUD
+    if ((q.includes('create employee') || q.includes('add employee') || q.includes('hire employee') || q.includes('new employee'))) {
+      const words = query.split(/\s+/);
+      const name = words[words.findIndex(w => ['employee', 'add', 'create'].includes(w.toLowerCase())) + 1] || 'New';
+      return { should_call_tool: true, tool_name: 'create_employee', tool_arguments: { first_name: name, email: `${name.toLowerCase()}@example.com` } };
+    }
+
+    if (q.includes('update employee') || (q.includes('update') && (q.includes('salary') || q.includes('position')))) {
+      return { should_call_tool: true, tool_name: 'update_employee', tool_arguments: { employee_name: 'Aman' } };
+    }
+
+    if (q.includes('deactivate employee') || q.includes('terminate employee') || q.includes('remove employee')) {
+      return { should_call_tool: true, tool_name: 'deactivate_employee', tool_arguments: { employee_name: 'Aman' } };
+    }
+
     if (q.includes('salary') || q.includes('pan') || q.includes('who is') || q.includes('find employee') || q.includes('profile')) {
       const words = query.split(/\s+/);
       const name = words.find(w => w.length > 2 && !['what', 'is', 'the', 'salary', 'for', 'current', 'employee', 'named', 'details', 'check'].includes(w.toLowerCase())) || 'Aman';
       return { should_call_tool: true, tool_name: 'lookup_employee', tool_arguments: { search_query: name } };
     }
 
-    if (q.includes('calculate') && (q.includes('pay') || q.includes('net') || q.includes('bonus') || q.includes('deduct'))) {
-      return { should_call_tool: true, tool_name: 'calculate_payroll', tool_arguments: { employee_name: 'Aman', bonus_amount: 5000 } };
-    }
-
+    // 2. Attendance
     if (q.includes('mark') && (q.includes('attendance') || q.includes('present') || q.includes('absent') || q.includes('clock'))) {
       return { should_call_tool: true, tool_name: 'mark_attendance', tool_arguments: { employee_name: 'Aman', status: 'present', clock_in: '09:30 AM' } };
     }
@@ -202,23 +214,84 @@ Highlight key figures (salary, hours, counts, status) in bold. Mention available
       return { should_call_tool: true, tool_name: 'query_attendance', tool_arguments: { date: 'today' } };
     }
 
-    if (q.includes('leave') || q.includes('vacation') || q.includes('holiday')) {
-      return { should_call_tool: true, tool_name: 'manage_leave', tool_arguments: { action: 'check_balance' } };
+    // 3. Leaves
+    if (q.includes('approve leave') || q.includes('reject leave')) {
+      return { should_call_tool: true, tool_name: 'approve_or_reject_leave', tool_arguments: { decision: q.includes('approve') ? 'approved' : 'rejected' } };
     }
 
+    if (q.includes('leave') || q.includes('vacation') || q.includes('holiday')) {
+      return { should_call_tool: true, tool_name: 'manage_leave', tool_arguments: { action: q.includes('apply') ? 'apply_leave' : 'check_balance' } };
+    }
+
+    // 4. Payroll
+    if (q.includes('payroll run') || (q.includes('generate') && q.includes('payroll'))) {
+      return { should_call_tool: true, tool_name: 'generate_payroll_run', tool_arguments: { month: new Date().getMonth() + 1, year: new Date().getFullYear() } };
+    }
+
+    if (q.includes('calculate') && (q.includes('pay') || q.includes('net') || q.includes('bonus') || q.includes('deduct'))) {
+      return { should_call_tool: true, tool_name: 'calculate_payroll', tool_arguments: { employee_name: 'Aman', bonus_amount: 5000 } };
+    }
+
+    // 5. Departments
+    if (q.includes('create department') || q.includes('add department')) {
+      return { should_call_tool: true, tool_name: 'create_department', tool_arguments: { department_name: 'Product Development' } };
+    }
+
+    if (q.includes('department') || q.includes('headcount')) {
+      return { should_call_tool: true, tool_name: 'list_departments', tool_arguments: {} };
+    }
+
+    // 6. Tasks
+    if (q.includes('create task') || q.includes('assign task') || q.includes('new task')) {
+      return { should_call_tool: true, tool_name: 'create_task', tool_arguments: { title: 'New Task Assignment', priority: 'medium' } };
+    }
+
+    if (q.includes('delete task') || q.includes('remove task')) {
+      return { should_call_tool: true, tool_name: 'delete_task', tool_arguments: { task_title: 'Task' } };
+    }
+
+    if (q.includes('update task') || (q.includes('mark task') && q.includes('complete'))) {
+      return { should_call_tool: true, tool_name: 'update_task', tool_arguments: { status: 'completed' } };
+    }
+
+    // 7. Goals
+    if (q.includes('create goal') || q.includes('new goal') || q.includes('add goal')) {
+      return { should_call_tool: true, tool_name: 'create_goal', tool_arguments: { title: 'Quarterly Objective', priority: 'high' } };
+    }
+
+    if (q.includes('update goal') || q.includes('goal progress')) {
+      return { should_call_tool: true, tool_name: 'update_goal_progress', tool_arguments: { progress: 80 } };
+    }
+
+    // 8. Recruitment
     if (q.includes('job') || q.includes('opening') || q.includes('post') || q.includes('hiring')) {
       return { should_call_tool: true, tool_name: 'create_job_opening', tool_arguments: { title: 'Software Engineer', location: 'Remote' } };
+    }
+
+    // 9. Assets
+    if (q.includes('create asset') || q.includes('add asset') || q.includes('add laptop')) {
+      return { should_call_tool: true, tool_name: 'create_asset', tool_arguments: { name: 'Dell XPS 15', serial_number: `DL-${Date.now().toString().slice(-4)}` } };
+    }
+
+    if (q.includes('assign asset') || q.includes('return asset')) {
+      return { should_call_tool: true, tool_name: 'assign_asset', tool_arguments: { asset_name_or_serial: 'Laptop', action: q.includes('return') ? 'return' : 'assign' } };
     }
 
     if (q.includes('asset') || q.includes('laptop') || q.includes('device') || q.includes('monitor')) {
       return { should_call_tool: true, tool_name: 'query_assets', tool_arguments: {} };
     }
 
+    // 10. Helpdesk Tickets
+    if (q.includes('ticket') || q.includes('support issue') || q.includes('open ticket')) {
+      return { should_call_tool: true, tool_name: 'create_support_ticket', tool_arguments: { subject: 'Support Assistance Required', category: 'IT Support' } };
+    }
+
+    // 11. Super Admin
     if (q.includes('revenue') || q.includes('tenant') || q.includes('mrr') || q.includes('platform')) {
       return { should_call_tool: true, tool_name: 'superadmin_platform_metrics', tool_arguments: { metric_type: 'overview' } };
     }
 
-    return { should_call_tool: false, direct_reply: "I can help you look up employee salaries, calculate payroll breakdowns, mark attendance, check leave balances, or post job openings. What would you like to do?" };
+    return { should_call_tool: false, direct_reply: "I am your HRMS Pro AI Copilot. You can ask me to create employees, calculate payroll, mark attendance, post job openings, create tasks, assign assets, or manage leave requests directly!" };
   }
 }
 

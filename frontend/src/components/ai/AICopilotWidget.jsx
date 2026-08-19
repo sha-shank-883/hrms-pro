@@ -16,7 +16,12 @@ import {
   FaLaptopCode,
   FaChartLine,
   FaChevronDown,
-  FaTrashAlt
+  FaTrashAlt,
+  FaTasks,
+  FaBullseye,
+  FaBuilding,
+  FaPlaneArrival,
+  FaHeadset
 } from 'react-icons/fa';
 
 export const AICopilotWidget = () => {
@@ -359,10 +364,21 @@ const getCardIcon = (type) => {
     case 'attendance_card':
     case 'success_card':
       return <FaCalendarCheck className="text-amber-500" size={13} />;
+    case 'leave_card':
+    case 'leave_action_card':
+      return <FaPlaneArrival className="text-emerald-500" size={13} />;
     case 'job_card':
       return <FaBriefcase className="text-purple-500" size={13} />;
     case 'asset_card':
       return <FaLaptopCode className="text-cyan-500" size={13} />;
+    case 'task_card':
+      return <FaTasks className="text-blue-500" size={13} />;
+    case 'goal_card':
+      return <FaBullseye className="text-pink-500" size={13} />;
+    case 'department_card':
+      return <FaBuilding className="text-violet-500" size={13} />;
+    case 'ticket_card':
+      return <FaHeadset className="text-orange-500" size={13} />;
     case 'superadmin_card':
       return <FaChartLine className="text-rose-500" size={13} />;
     default:

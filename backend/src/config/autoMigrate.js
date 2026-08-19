@@ -279,7 +279,7 @@ async function autoMigrate() {
       const existingSchemas = new Set(schemaRes.rows.map(r => r.schema_name));
 
       const tenantsRes = await client.query('SELECT tenant_id FROM shared.tenants');
-      const tenantList = ['tenant_default', ...tenantsRes.rows.map(r => r.tenant_id)];
+      const tenantList = ['public', 'tenant_default', ...tenantsRes.rows.map(r => r.tenant_id)];
       const uniqueTenants = Array.from(new Set(tenantList));
 
       for (const tId of uniqueTenants) {

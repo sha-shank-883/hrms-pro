@@ -1,4 +1,4 @@
-const { getAIProvider } = require('./providerFactory');
+const { generateWithFallback, getActiveProvider } = require('./providerFactory');
 const { sanitizeInput } = require('./aiSanitizer');
 const { COPILOT_TOOL_DEFINITIONS, executeCopilotTool } = require('./aiCopilotTools');
 
@@ -33,10 +33,7 @@ AVAILABLE CAPABILITIES:
 - Always provide helpful, structured markdown answers with emojis, bullet points, and key calculation steps.
 - When you execute a tool, incorporate the result naturally in your response.`;
 
-    // 3. Obtain AI provider
-    const provider = getAIProvider();
-
-    // 4. Check if tools should be triggered
+    // 3. Check if tools should be triggered
     // We provide tool descriptions in prompt format for resilient multi-provider tool resolution
     const toolPrompt = `
 User Query: "${sanitizedQuery}"
@@ -56,14 +53,16 @@ Return ONLY valid JSON.`;
     let toolDecision = { should_call_tool: false, direct_reply: "I am your HRMS Pro AI Copilot. How can I assist you with employees, payroll, attendance, or leaves today?" };
 
     try {
-      const rawAiDecision = await provider.generateCompletion([
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: toolPrompt }
-      ], { temperature: 0.1, maxTokens: 800 });
+      const fullDecisionPrompt = `${systemPrompt}\n\n${toolPrompt}`;
+      const aiResponse = await generateWithFallback(fullDecisionPrompt);
+      const rawAiDecision = aiResponse?.response || aiResponse?.text || '';
 
       const parsed = this._parseJSON(rawAiDecision);
       if (parsed && parsed.tool_name) {
         toolDecision = parsed;
+      } else {
+        // Use heuristic tool picker if LLM response didn't produce structured JSON
+        toolDecision = this._heuristicToolPicker(sanitizedQuery);
       }
     } catch (e) {
       console.warn('[AI Copilot] Provider tool selection notice:', e.message);
@@ -97,6 +96,8 @@ Return ONLY valid JSON.`;
     let finalAnswer = '';
     if (toolResult) {
       const synthesisPrompt = `
+${systemPrompt}
+
 User asked: "${sanitizedQuery}"
 Tool executed: "${toolDecision.tool_name}"
 Tool output data: ${JSON.stringify(toolResult, null, 2)}
@@ -105,10 +106,8 @@ Generate a friendly, concise, professional response summarizing the answer direc
 Highlight key figures (salary, hours, counts, status) in bold. Mention available actions.`;
 
       try {
-        finalAnswer = await provider.generateCompletion([
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: synthesisPrompt }
-        ], { temperature: 0.3, maxTokens: 1000 });
+        const synthRes = await generateWithFallback(synthesisPrompt);
+        finalAnswer = synthRes?.response || synthRes?.text || toolResult.message || `Here is the requested information for **${sanitizedQuery}**.`;
       } catch (_) {
         finalAnswer = toolResult.message || `Here is the requested information for **${sanitizedQuery}**.`;
       }

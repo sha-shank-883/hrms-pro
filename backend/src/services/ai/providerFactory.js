@@ -114,6 +114,7 @@ const generateWithFallback = async (message, chatId = null, userId = null) => {
 
 module.exports = {
   getActiveProvider,
+  getAIProvider: getActiveProvider,
   getAvailableProviders,
   generateWithFallback,
   registerProvider

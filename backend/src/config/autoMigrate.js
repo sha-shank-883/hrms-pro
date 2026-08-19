@@ -445,6 +445,22 @@ async function autoMigrate() {
           UPDATE "${tId}".employees 
           SET employee_code = 'EMP' || LPAD(employee_id::text, 4, '0')
           WHERE employee_code IS NULL OR employee_code = '';
+
+          -- Ensure email_queue table exists
+          CREATE TABLE IF NOT EXISTS "${tId}".email_queue (
+            queue_id SERIAL PRIMARY KEY,
+            payslip_id INTEGER,
+            recipient_email VARCHAR(255) NOT NULL,
+            recipient_name VARCHAR(255),
+            subject VARCHAR(500),
+            status VARCHAR(50) DEFAULT 'pending',
+            attempts INTEGER DEFAULT 0,
+            max_attempts INTEGER DEFAULT 3,
+            last_error TEXT,
+            sent_at TIMESTAMP,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          );
         `);
         } catch (tErr) {
           console.warn(`Support schema notice for ${tId}:`, tErr.message);

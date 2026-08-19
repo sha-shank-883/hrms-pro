@@ -12,7 +12,7 @@ router.use(checkModuleAccess('recruitment'));
 // Validation rules
 const jobPostingValidation = [
   body('title').notEmpty().withMessage('Job title is required'),
-  body('description').notEmpty().withMessage('Description is required'),
+  body('description').optional({ checkFalsy: true }),
 ];
 
 const applicationValidation = [

@@ -262,7 +262,7 @@ const BatchActions = () => {
       {activeTab === 'email-queue' && (
         <div className="space-y-6">
           {queueStats && (
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            <div className="grid grid-cols-5 md:grid-cols-5 gap-4">
               {[
                 { label: 'Total', value: queueStats.total, color: 'text-gray-900', bg: 'bg-white' },
                 { label: 'Pending', value: queueStats.pending, color: 'text-amber-600', bg: 'bg-amber-50' },

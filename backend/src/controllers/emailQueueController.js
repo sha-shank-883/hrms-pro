@@ -11,12 +11,14 @@ const listQueue = asyncHandler(async (req, res) => {
   const params = [];
   let paramIdx = 1;
 
-  let sql = `SELECT eq.*, e.first_name || ' ' || e.last_name as employee_name, ps.employee_id
+  let sql = `SELECT eq.*, 
+    COALESCE(e.first_name || ' ' || e.last_name, eq.recipient_email, 'Recipient') as employee_name, 
+    ps.employee_id
     FROM email_queue eq
-    JOIN payslips ps ON eq.payslip_id = ps.payslip_id
-    JOIN employees e ON ps.employee_id = e.employee_id
+    LEFT JOIN payslips ps ON eq.payslip_id = ps.payslip_id
+    LEFT JOIN employees e ON ps.employee_id = e.employee_id
     WHERE 1=1`;
-  let countSql = `SELECT COUNT(*) as total FROM email_queue WHERE 1=1`;
+  let countSql = `SELECT COUNT(*) as total FROM email_queue eq WHERE 1=1`;
 
   if (status) {
     sql += ` AND eq.status = $${paramIdx}`;
@@ -30,7 +32,7 @@ const listQueue = asyncHandler(async (req, res) => {
   params.push(limitNum, offset);
 
   const countResult = await query(countSql, params.slice(0, -2));
-  const total = parseInt(countResult.rows[0].total);
+  const total = parseInt(countResult.rows[0]?.total || 0);
 
   const result = await query(sql, params);
 

@@ -162,36 +162,44 @@ const Recruitment = () => {
 
   const handleJobSubmit = async (e) => {
     e.preventDefault();
-    setError('');
+    setJobModalError('');
+    setJobSubmitting(true);
 
     try {
       if (editingJob) {
         await recruitmentService.updateJob(editingJob.job_id, jobFormData);
-        setSuccess('Job posting updated!');
+        setSuccess('Job opening updated successfully!');
       } else {
         await recruitmentService.createJob(jobFormData);
-        setSuccess('Job posting created!');
+        setSuccess('Job opening created successfully!');
       }
       loadJobs();
       handleCloseJobModal();
       setTimeout(() => setSuccess(''), 3000);
     } catch (error) {
-      setError('Operation failed: ' + (error.response?.data?.message || error.message));
+      const msg = error.response?.data?.message || error.message || 'Failed to save job opening';
+      setJobModalError(msg);
+    } finally {
+      setJobSubmitting(false);
     }
   };
 
   const handleAppSubmit = async (e) => {
     e.preventDefault();
-    setError('');
+    setAppModalError('');
+    setAppSubmitting(true);
 
     try {
       await recruitmentService.createApplication(appFormData);
-      setSuccess('Application submitted!');
+      setSuccess('Application submitted successfully!');
       loadApplications();
       handleCloseAppModal();
       setTimeout(() => setSuccess(''), 3000);
     } catch (error) {
-      setError('Application failed: ' + (error.response?.data?.message || error.message));
+      const msg = error.response?.data?.message || error.message || 'Failed to submit application';
+      setAppModalError(msg);
+    } finally {
+      setAppSubmitting(false);
     }
   };
 
@@ -382,6 +390,7 @@ const Recruitment = () => {
   const handleCloseJobModal = () => {
     setShowJobModal(false);
     setEditingJob(null);
+    setJobModalError('');
     setError('');
     setJobFormData({
       title: '',
@@ -400,6 +409,7 @@ const Recruitment = () => {
   const handleCloseAppModal = () => {
     setShowAppModal(false);
     setSelectedJob(null);
+    setAppModalError('');
     setError('');
     setAppFormData({
       job_id: '',
@@ -831,17 +841,29 @@ const Recruitment = () => {
 
       {/* Job Posting Modal */}
       {showJobModal && (
-        <div className="modal-overlay" onClick={handleCloseJobModal}>
-          <div className="modal modal-lg" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2 className="modal-title">{editingJob ? 'Edit Job Posting' : 'New Job Posting'}</h2>
-              <button onClick={handleCloseJobModal} className="modal-close">
-                <FaTimes />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs" onClick={handleCloseJobModal}>
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200 border border-neutral-200 dark:border-slate-800" onClick={(e) => e.stopPropagation()}>
+            {/* Modal Header */}
+            <div className="px-6 py-4 border-b border-neutral-100 dark:border-slate-800 flex justify-between items-center bg-neutral-50/50 dark:bg-slate-850 shrink-0">
+              <div>
+                <h2 className="text-base font-bold text-neutral-800 dark:text-white">{editingJob ? 'Edit Job Opening' : 'Create New Job Opening'}</h2>
+                <p className="text-xs text-neutral-500 dark:text-slate-400">Post recruitment details, requirements, and responsibilities</p>
+              </div>
+              <button onClick={handleCloseJobModal} className="text-neutral-400 hover:text-neutral-600 dark:hover:text-slate-200 transition-colors p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-slate-800">
+                <FaTimes size={16} />
               </button>
             </div>
 
-            <form onSubmit={handleJobSubmit}>
-              <div className="modal-body space-y-4">
+            <form onSubmit={handleJobSubmit} className="flex flex-col flex-1 overflow-hidden">
+              {/* Modal Body - Scrollable */}
+              <div className="p-6 overflow-y-auto custom-scrollbar flex-1 space-y-4">
+                {jobModalError && (
+                  <div className="p-3 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 rounded-xl text-red-700 dark:text-red-300 text-xs flex items-center gap-2">
+                    <FaExclamationCircle className="shrink-0 text-red-500" size={14} />
+                    <span>{jobModalError}</span>
+                  </div>
+                )}
+
                 <div className="form-group">
                   <label className="form-label">Job Title <span className="text-red-500">*</span></label>
                   <input
@@ -855,9 +877,9 @@ const Recruitment = () => {
                 </div>
 
                 {hasModule('ai_assistant') && (
-                  <div className="bg-gradient-to-r from-indigo-50/90 to-purple-50/90 dark:from-indigo-950/40 dark:to-purple-950/40 p-3.5 rounded-xl border border-indigo-100 dark:border-indigo-900/50 flex items-center justify-between">
+                  <div className="bg-gradient-to-r from-indigo-50/90 to-purple-50/90 dark:from-indigo-950/40 dark:to-purple-950/40 p-3.5 rounded-xl border border-indigo-100 dark:border-indigo-900/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div className="flex items-center gap-2.5">
-                      <div className="p-2 rounded-lg bg-indigo-600 text-white shadow-sm">
+                      <div className="p-2 rounded-lg bg-indigo-600 text-white shadow-sm shrink-0">
                         <FaRobot size={15} />
                       </div>
                       <div>
@@ -869,7 +891,7 @@ const Recruitment = () => {
                       type="button"
                       onClick={handleGenerateJobWithAI}
                       disabled={!jobFormData.title || aiJobLoading}
-                      className="px-3 py-1.5 text-xs font-bold text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 rounded-lg shadow-sm disabled:opacity-40 flex items-center gap-1.5 transition-all"
+                      className="px-3 py-1.5 text-xs font-bold text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 rounded-lg shadow-sm disabled:opacity-40 flex items-center justify-center gap-1.5 transition-all shrink-0"
                     >
                       <FaMagic size={11} /> Auto-Draft with AI
                     </button>
@@ -883,6 +905,7 @@ const Recruitment = () => {
                     value={jobFormData.description}
                     onChange={(e) => setJobFormData({ ...jobFormData, description: e.target.value })}
                     rows="3"
+                    placeholder="Brief overview of the role..."
                   />
                 </div>
 
@@ -941,6 +964,7 @@ const Recruitment = () => {
                       className="form-input"
                       value={jobFormData.location}
                       onChange={(e) => setJobFormData({ ...jobFormData, location: e.target.value })}
+                      placeholder="e.g. Remote / New York, NY"
                     />
                   </div>
                   <div className="form-group">
@@ -961,6 +985,7 @@ const Recruitment = () => {
                     value={jobFormData.requirements}
                     onChange={(e) => setJobFormData({ ...jobFormData, requirements: e.target.value })}
                     rows="3"
+                    placeholder="Bullet points of key qualifications..."
                   />
                 </div>
 
@@ -971,13 +996,18 @@ const Recruitment = () => {
                     value={jobFormData.responsibilities}
                     onChange={(e) => setJobFormData({ ...jobFormData, responsibilities: e.target.value })}
                     rows="3"
+                    placeholder="Bullet points of day-to-day duties..."
                   />
                 </div>
               </div>
 
-              <div className="modal-footer">
-                <button type="button" className="btn btn-secondary" onClick={handleCloseJobModal}>Cancel</button>
-                <button type="submit" className="btn btn-primary">{editingJob ? 'Update Posting' : 'Create Posting'}</button>
+              {/* Modal Footer - Sticky */}
+              <div className="px-6 py-3.5 bg-neutral-50 dark:bg-slate-850 border-t border-neutral-100 dark:border-slate-800 flex justify-end items-center gap-3 shrink-0">
+                <button type="button" className="btn btn-secondary text-xs" onClick={handleCloseJobModal} disabled={jobSubmitting}>Cancel</button>
+                <button type="submit" className="btn btn-primary text-xs flex items-center gap-2" disabled={jobSubmitting}>
+                  {jobSubmitting && <FaExclamationCircle className="animate-spin" />}
+                  <span>{jobSubmitting ? 'Saving Opening...' : editingJob ? 'Update Posting' : 'Create Posting'}</span>
+                </button>
               </div>
             </form>
           </div>
@@ -986,37 +1016,49 @@ const Recruitment = () => {
 
       {/* Application Modal */}
       {showAppModal && (
-        <div className="modal-overlay" onClick={handleCloseAppModal}>
-          <div className="modal modal-lg" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2 className="modal-title">Submit Application</h2>
-              <button onClick={handleCloseAppModal} className="modal-close">
-                <FaTimes />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs" onClick={handleCloseAppModal}>
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200 border border-neutral-200 dark:border-slate-800" onClick={(e) => e.stopPropagation()}>
+            {/* Header */}
+            <div className="px-6 py-4 border-b border-neutral-100 dark:border-slate-800 flex justify-between items-center bg-neutral-50/50 dark:bg-slate-850 shrink-0">
+              <div>
+                <h2 className="text-base font-bold text-neutral-800 dark:text-white">Submit Candidate Application</h2>
+                <p className="text-xs text-neutral-500 dark:text-slate-400">Add applicant details or auto-extract from PDF resume</p>
+              </div>
+              <button onClick={handleCloseAppModal} className="text-neutral-400 hover:text-neutral-600 dark:hover:text-slate-200 transition-colors p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-slate-800">
+                <FaTimes size={16} />
               </button>
             </div>
 
-            <div className="modal-body space-y-6">
-              <div className="bg-primary-50 border border-primary-100 rounded-xl p-4 flex items-center justify-between">
-                <div>
-                  <h4 className="text-sm font-bold text-primary-700 mb-1">Auto-fill from Resume</h4>
-                  <p className="text-xs text-primary-600">Upload a PDF resume to automatically fill available details.</p>
-                </div>
-                <div className="relative">
-                  <input
-                    type="file"
-                    accept=".pdf"
-                    onChange={handleResumeParse}
-                    className="absolute inset-0 opacity-0 cursor-pointer w-full z-10"
-                    disabled={parsingLoading}
-                  />
-                  <button className="btn btn-primary btn-sm flex items-center gap-2" disabled={parsingLoading}>
-                    {parsingLoading ? <FaExclamationCircle className="animate-spin" /> : <FaCloudUploadAlt />}
-                    {parsingLoading ? 'Parsing...' : 'Upload PDF'}
-                  </button>
-                </div>
-              </div>
+            <form onSubmit={handleAppSubmit} className="flex flex-col flex-1 overflow-hidden">
+              {/* Scrollable Body */}
+              <div className="p-6 overflow-y-auto custom-scrollbar flex-1 space-y-5">
+                {appModalError && (
+                  <div className="p-3 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 rounded-xl text-red-700 dark:text-red-300 text-xs flex items-center gap-2">
+                    <FaExclamationCircle className="shrink-0 text-red-500" size={14} />
+                    <span>{appModalError}</span>
+                  </div>
+                )}
 
-              <form onSubmit={handleAppSubmit}>
+                <div className="bg-primary-50 dark:bg-primary-950/30 border border-primary-100 dark:border-primary-900/50 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                  <div>
+                    <h4 className="text-xs font-bold text-primary-800 dark:text-primary-300 mb-0.5">Auto-fill from Resume</h4>
+                    <p className="text-[11px] text-primary-600 dark:text-primary-400">Upload a PDF resume to automatically parse and fill candidate details.</p>
+                  </div>
+                  <div className="relative shrink-0">
+                    <input
+                      type="file"
+                      accept=".pdf"
+                      onChange={handleResumeParse}
+                      className="absolute inset-0 opacity-0 cursor-pointer w-full z-10"
+                      disabled={parsingLoading}
+                    />
+                    <button type="button" className="btn btn-primary btn-sm flex items-center gap-1.5 text-xs" disabled={parsingLoading}>
+                      {parsingLoading ? <FaExclamationCircle className="animate-spin" /> : <FaCloudUploadAlt />}
+                      {parsingLoading ? 'Parsing...' : 'Upload PDF'}
+                    </button>
+                  </div>
+                </div>
+
                 <div className="space-y-4">
                   <div className="form-group">
                     <label className="form-label">Job *</label>
@@ -1104,7 +1146,7 @@ const Recruitment = () => {
                       className="form-input"
                       value={appFormData.cover_letter}
                       onChange={(e) => setAppFormData({ ...appFormData, cover_letter: e.target.value })}
-                      rows="4"
+                      rows="3"
                     />
                   </div>
 
@@ -1119,13 +1161,17 @@ const Recruitment = () => {
                     />
                   </div>
                 </div>
+              </div>
 
-                <div className="modal-footer px-0 pb-0 pt-6">
-                  <button type="button" className="btn btn-secondary" onClick={handleCloseAppModal}>Cancel</button>
-                  <button type="submit" className="btn btn-primary">Submit Application</button>
-                </div>
-              </form>
-            </div>
+              {/* Sticky Footer */}
+              <div className="px-6 py-3.5 bg-neutral-50 dark:bg-slate-850 border-t border-neutral-100 dark:border-slate-800 flex justify-end items-center gap-3 shrink-0">
+                <button type="button" className="btn btn-secondary text-xs" onClick={handleCloseAppModal} disabled={appSubmitting}>Cancel</button>
+                <button type="submit" className="btn btn-primary text-xs flex items-center gap-2" disabled={appSubmitting}>
+                  {appSubmitting && <FaExclamationCircle className="animate-spin" />}
+                  <span>{appSubmitting ? 'Submitting Application...' : 'Submit Application'}</span>
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

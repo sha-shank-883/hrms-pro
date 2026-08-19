@@ -178,6 +178,22 @@ async function migrateAllTenantSchemaColumns() {
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
           );
+
+          -- 6. Email Queue Module
+          CREATE TABLE IF NOT EXISTS "${s}".email_queue (
+            queue_id SERIAL PRIMARY KEY,
+            payslip_id INTEGER,
+            recipient_email VARCHAR(255) NOT NULL,
+            recipient_name VARCHAR(255),
+            subject VARCHAR(500),
+            status VARCHAR(50) DEFAULT 'pending',
+            attempts INTEGER DEFAULT 0,
+            max_attempts INTEGER DEFAULT 3,
+            last_error TEXT,
+            sent_at TIMESTAMP,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          );
         `);
 
         console.log(`  ✅ Schema "${s}" is 100% aligned with all required columns and tables.`);

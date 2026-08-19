@@ -136,7 +136,7 @@ const MyPayslips = () => {
       const m = p.month || p.period_month;
       const y = p.year || p.period_year;
       return (!filterMonth || String(m) === String(filterMonth)) &&
-             (!filterYear || String(y) === String(filterYear));
+        (!filterYear || String(y) === String(filterYear));
     });
   };
 
@@ -184,7 +184,7 @@ const MyPayslips = () => {
         </div>
       )}
 
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+      <div className="grid grid-cols-5 md:grid-cols-5 gap-4 mb-6">
         {[
           { label: 'Total', value: stats.total, color: 'text-gray-900', bg: 'bg-white' },
           { label: 'Paid', value: stats.paid, color: 'text-green-600', bg: 'bg-green-50' },

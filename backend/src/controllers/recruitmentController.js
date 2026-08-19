@@ -109,7 +109,29 @@ const createJobPosting = asyncHandler(async (req, res) => {
     requirements, responsibilities, deadline
   } = req.body;
 
-  const posted_by = req.user.userId;
+  const rawPostedBy = req.user?.userId || req.user?.id || req.user?.user_id || null;
+  let posted_by = null;
+  if (rawPostedBy) {
+    try {
+      const uCheck = await query('SELECT user_id FROM users WHERE user_id = $1', [rawPostedBy]);
+      if (uCheck.rows.length > 0) {
+        posted_by = rawPostedBy;
+      }
+    } catch (_) {}
+  }
+
+  let validDeptId = null;
+  if (department_id && !isNaN(parseInt(department_id))) {
+    try {
+      const dCheck = await query('SELECT department_id FROM departments WHERE department_id = $1', [parseInt(department_id)]);
+      if (dCheck.rows.length > 0) {
+        validDeptId = parseInt(department_id);
+      }
+    } catch (_) {}
+  }
+
+  const validDeadline = (deadline && String(deadline).trim() !== '') ? deadline : null;
+  const finalDesc = description || title || '';
 
   const result = await query(
     `INSERT INTO job_postings (
@@ -118,8 +140,8 @@ const createJobPosting = asyncHandler(async (req, res) => {
     ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
     RETURNING *`,
     [
-      title, description, department_id || null, position_type || null, experience_required || null,
-      salary_range || null, location || null, requirements || null, responsibilities || null, posted_by, deadline || null
+      title, finalDesc, validDeptId, position_type || null, experience_required || null,
+      salary_range || null, location || null, requirements || null, responsibilities || null, posted_by, validDeadline
     ]
   );
 
@@ -139,6 +161,19 @@ const updateJobPosting = asyncHandler(async (req, res) => {
     requirements, responsibilities, status, deadline
   } = req.body;
 
+  let validDeptId = null;
+  if (department_id && !isNaN(parseInt(department_id))) {
+    try {
+      const dCheck = await query('SELECT department_id FROM departments WHERE department_id = $1', [parseInt(department_id)]);
+      if (dCheck.rows.length > 0) {
+        validDeptId = parseInt(department_id);
+      }
+    } catch (_) {}
+  }
+
+  const validDeadline = (deadline && String(deadline).trim() !== '') ? deadline : null;
+  const finalDesc = description || title || '';
+
   const result = await query(
     `UPDATE job_postings 
      SET title = $1, description = $2, department_id = $3, position_type = $4,
@@ -148,9 +183,9 @@ const updateJobPosting = asyncHandler(async (req, res) => {
      WHERE job_id = $12
      RETURNING *`,
     [
-      title, description, department_id || null, position_type || null,
+      title, finalDesc, validDeptId, position_type || null,
       experience_required || null, salary_range || null, location || null,
-      requirements || null, responsibilities || null, status || 'open', deadline || null, id
+      requirements || null, responsibilities || null, status || 'open', validDeadline, id
     ]
   );
 

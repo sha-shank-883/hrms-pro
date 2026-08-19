@@ -122,12 +122,15 @@ Return ONLY valid JSON.`;
       const parsed = this._parseJSON(rawAiDecision);
       if (parsed && (parsed.tool_name || parsed.direct_reply)) {
         toolDecision = parsed;
+      } else if (rawAiDecision && rawAiDecision.trim().length > 10 && !rawAiDecision.includes('{') && !rawAiDecision.includes('```')) {
+        // Direct natural response from the LLM
+        toolDecision = { should_call_tool: false, direct_reply: rawAiDecision.trim() };
       } else {
-        toolDecision = this._heuristicToolPicker(sanitizedQuery);
+        toolDecision = this._heuristicToolPicker(sanitizedQuery, conversationHistory);
       }
     } catch (e) {
       console.warn('[AI Copilot] Provider tool selection notice:', e.message);
-      toolDecision = this._heuristicToolPicker(sanitizedQuery);
+      toolDecision = this._heuristicToolPicker(sanitizedQuery, conversationHistory);
     }
 
     let toolResult = null;
@@ -241,21 +244,79 @@ Highlight key figures (salary, hours, counts, status) in bold. Mention available
     }
   }
 
-  _heuristicToolPicker(query) {
+  _heuristicToolPicker(query, conversationHistory = []) {
     const q = query.toLowerCase();
+    const allText = [...(conversationHistory || []).map(m => m.text), query].join(' ');
 
-    // 1. Employees CRUD
-    if ((q.includes('create employee') || q.includes('add employee') || q.includes('hire employee') || q.includes('new employee'))) {
-      const words = query.split(/\s+/).filter(w => !['create', 'a', 'new', 'add', 'hire', 'employee', 'an', 'please', 'i', 'want', 'to'].includes(w.toLowerCase()));
-      if (words.length >= 2 && query.includes('@')) {
-        const name = words[0];
-        const email = words.find(w => w.includes('@')) || `${name.toLowerCase()}@example.com`;
-        return { should_call_tool: true, tool_name: 'create_employee', tool_arguments: { first_name: name, email } };
+    // 1. EMPLOYEES CRUD (Typo resilient: employe, employee, salry, salary, engeering, etc.)
+    const isEmployeeCreation = /(?:create|add|hire|new)\s+(?:an?\s+)?(?:employe|employee|worker|staff|member|profile)/i.test(q) ||
+      (/\bname\b/i.test(q) && (/\bsal[a-z]*\b/i.test(q) || /\bemail\b/i.test(q) || /\bpos[a-z]*\b/i.test(q) || /\bdep[a-z]*\b/i.test(q)));
+
+    if (isEmployeeCreation) {
+      // Extract parameters from current query and history
+      const emailMatch = allText.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/i);
+      const email = emailMatch ? emailMatch[0] : null;
+
+      const salMatch = allText.match(/(?:sal[a-z]*|pay|ctc|wage)\s*(?:is|:|=)?\s*(?:₹|rs\.?)?\s*(\d+(?:,\d+)*(?:\.\d+)?)/i);
+      const salary = salMatch ? parseFloat(salMatch[1].replace(/,/g, '')) : null;
+
+      const posMatch = allText.match(/(?:pos[a-z]*|desig[a-z]*|role|title)\s*(?:is|:|=)?\s*([A-Za-z0-9\s]+?)(?:,|$|\bsal|\bemail|\bdep|\bname)/i);
+      const position = posMatch ? posMatch[1].trim() : 'Software Engineer';
+
+      const deptMatch = allText.match(/(?:dep[a-z]*|team)\s*(?:is|:|=)?\s*([A-Za-z0-9\s]+?)(?:,|$|\bsal|\bemail|\bpos|\bdesig|\bname)/i);
+      const department_name = deptMatch ? deptMatch[1].trim() : null;
+
+      const nameMatch = allText.match(/(?:name\s*(?:is|:|=)?\s*|employe[a-z]*\s+)([A-Za-z]+(?:\s+[A-Za-z]+)?)/i);
+      let firstName = nameMatch ? nameMatch[1].trim() : null;
+      if (firstName && ['is', 'a', 'new', 'an'].includes(firstName.toLowerCase())) firstName = null;
+
+      // If we have at least a Name and an Email or Salary, proceed to create!
+      if (firstName && (email || salary || department_name)) {
+        const cleanEmail = email || `${firstName.toLowerCase().replace(/\s+/g, '')}@company.com`;
+        const cleanSalary = salary || 50000;
+        return {
+          should_call_tool: true,
+          tool_name: 'create_employee',
+          tool_arguments: {
+            first_name: firstName,
+            email: cleanEmail,
+            salary: cleanSalary,
+            position,
+            department_name
+          }
+        };
       }
+
+      // If details are still missing, initiate or continue the interactive wizard
       return {
         should_call_tool: false,
-        direct_reply: "Let's set up the new employee profile! 👤\n\nTo maintain full database & payroll compliance, please tell me:\n1️⃣ **Full Name** (e.g., Sarah Connor)\n2️⃣ **Work Email** (e.g., sarah@company.com)\n\n*(Or reply with name, email, designation, department, and salary all at once)*"
+        direct_reply: `Let's set up the new employee profile! 👤\n\nTo ensure complete database & payroll integrity, please provide:\n1️⃣ **Full Name** (e.g., Sarah Connor)\n2️⃣ **Work Email** (e.g., sarah@company.com)\n3️⃣ **Designation / Job Title**\n4️⃣ **Department** (e.g., Engineering, Sales)\n5️⃣ **Monthly Base Salary (₹)**\n\n*(You can reply with all details in one sentence)*`
       };
+    }
+
+    // Check if user is replying to an active employee creation wizard in conversation history
+    const lastBotMsg = [...(conversationHistory || [])].reverse().find(m => m.sender !== 'user')?.text || '';
+    if (lastBotMsg.includes('set up the new employee profile') || lastBotMsg.includes('Full Name') || lastBotMsg.includes('Work Email')) {
+      const emailMatch = q.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/i);
+      const salMatch = q.match(/(?:sal[a-z]*|pay|ctc|wage)?\s*(?:is|:|=)?\s*(?:₹|rs\.?)?\s*(\d+(?:,\d+)*(?:\.\d+)?)/i);
+      const words = query.trim().split(/\s+/);
+
+      if (words.length > 0 && !q.includes('help') && !q.includes('what')) {
+        const name = words.slice(0, 2).join(' ');
+        const email = emailMatch ? emailMatch[0] : `${name.toLowerCase().replace(/\s+/g, '')}@company.com`;
+        const salary = salMatch && salMatch[1] ? parseFloat(salMatch[1].replace(/,/g, '')) : 50000;
+
+        return {
+          should_call_tool: true,
+          tool_name: 'create_employee',
+          tool_arguments: {
+            first_name: name,
+            email,
+            salary,
+            position: 'Software Developer'
+          }
+        };
+      }
     }
 
     if (q.includes('update employee') || (q.includes('update') && (q.includes('salary') || q.includes('position')))) {
@@ -311,7 +372,7 @@ Highlight key figures (salary, hours, counts, status) in bold. Mention available
       return { should_call_tool: true, tool_name: 'create_department', tool_arguments: { department_name: 'Product Development' } };
     }
 
-    if (q.includes('department') || q.includes('headcount')) {
+    if ((q.includes('department') || q.includes('headcount')) && !q.includes('employee') && !q.includes('employe')) {
       return { should_call_tool: true, tool_name: 'list_departments', tool_arguments: {} };
     }
 

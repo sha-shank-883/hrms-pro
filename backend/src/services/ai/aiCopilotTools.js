@@ -483,22 +483,22 @@ async function executeCopilotTool(toolName, args, userContext, tenantContext) {
         if (mRes.rows.length > 0) managerId = mRes.rows[0].employee_id;
       }
 
-      // Synthesize intelligent default enterprise fields if not provided
-      const targetPhone = phone || `+91 98${Math.floor(10000000 + Math.random() * 90000000)}`;
-      const targetGender = gender || (['priya', 'sarah', 'pooja', 'neha', 'anjali', 'shreya', 'sunita', 'kavita'].some(n => first_name.toLowerCase().includes(n)) ? 'female' : 'male');
-      const targetDOB = date_of_birth || '1998-05-15';
-      const targetAddress = address || 'Prestige Tech Cloud, Phase 2, Bangalore, India';
-      const targetJoiningDate = joining_date || new Date().toISOString().split('T')[0];
-      const targetPan = pan || `ABCDE${Math.floor(1000 + Math.random() * 9000)}F`;
-      const targetBankName = bank_name || 'HDFC Bank';
-      const targetBankAccount = bank_account || `50100${Math.floor(10000000 + Math.random() * 90000000)}`;
-      const targetIfsc = ifsc_code || 'HDFC0001234';
-      const targetUan = uan || `101${Math.floor(100000000 + Math.random() * 900000000)}`;
-      const targetEsic = esic || `3100${Math.floor(1000000000000 + Math.random() * 9000000000000)}`;
-      const targetAboutMe = about_me || `Accomplished ${position} dedicated to building high-performance systems and contributing to team excellence.`;
-      const targetEducation = typeof education === 'string' ? education : JSON.stringify(education || [{ degree: 'Bachelor of Technology (B.Tech)', school: 'National Institute of Technology', year: '2020' }]);
-      const targetExperience = typeof experience === 'string' ? experience : JSON.stringify(experience || [{ title: position, company: 'Innovate Tech Labs', duration: '2022 - Present' }]);
-      const targetSocial = typeof social_links === 'string' ? social_links : JSON.stringify(social_links || { linkedin: `https://linkedin.com/in/${first_name.toLowerCase()}`, twitter: '', github: `https://github.com/${first_name.toLowerCase()}` });
+      // Only use genuine HR-provided data, no fake data injection
+      const targetPhone = phone ? String(phone).trim() : null;
+      const targetGender = gender ? String(gender).toLowerCase().trim() : 'male';
+      const targetDOB = date_of_birth ? String(date_of_birth).trim() : null;
+      const targetAddress = address ? String(address).trim() : null;
+      const targetJoiningDate = joining_date ? String(joining_date).trim() : new Date().toISOString().split('T')[0];
+      const targetPan = pan ? String(pan).trim().toUpperCase() : null;
+      const targetBankName = bank_name ? String(bank_name).trim() : null;
+      const targetBankAccount = bank_account ? String(bank_account).trim() : null;
+      const targetIfsc = ifsc_code ? String(ifsc_code).trim().toUpperCase() : null;
+      const targetUan = uan ? String(uan).trim() : null;
+      const targetEsic = esic ? String(esic).trim() : null;
+      const targetAboutMe = about_me ? String(about_me).trim() : null;
+      const targetEducation = education ? (typeof education === 'string' ? education : JSON.stringify(education)) : JSON.stringify([]);
+      const targetExperience = experience ? (typeof experience === 'string' ? experience : JSON.stringify(experience)) : JSON.stringify([]);
+      const targetSocial = social_links ? (typeof social_links === 'string' ? social_links : JSON.stringify(social_links)) : JSON.stringify({ linkedin: '', twitter: '', github: '' });
 
       // Create linked user login record if not exists
       let newUserId = null;
@@ -540,14 +540,17 @@ async function executeCopilotTool(toolName, args, userContext, tenantContext) {
       const code = `EMP${String(emp.employee_id).padStart(4, '0')}`;
       await query('UPDATE employees SET employee_code = $1 WHERE employee_id = $2', [code, emp.employee_id]);
 
+      let detailsSummary = `• **Employee Code**: **${code}**\n• **Email**: ${email}\n• **Designation**: **${emp.position}**\n• **Department**: ${department_name || 'Primary'}\n• **Monthly Base Salary**: **₹${Number(emp.salary).toLocaleString('en-IN')}**\n• **Joining Date**: ${targetJoiningDate}`;
+      if (targetPhone) detailsSummary += `\n• **Phone**: ${targetPhone}`;
+      if (targetGender) detailsSummary += `\n• **Gender**: ${targetGender.toUpperCase()}`;
+      if (targetDOB) detailsSummary += `\n• **Date of Birth**: ${targetDOB}`;
+      if (targetAddress) detailsSummary += `\n• **Address**: ${targetAddress}`;
+      if (targetPan) detailsSummary += `\n• **PAN**: ${targetPan}`;
+      if (targetBankName) detailsSummary += `\n• **Bank**: ${targetBankName} (${targetBankAccount || 'N/A'})`;
+
       return {
         success: true,
-        message: `Successfully created complete employee profile for **${emp.first_name} ${emp.last_name || ''}** (${code}) as **${emp.position}** with salary **₹${Number(emp.salary).toLocaleString('en-IN')}**.\n\n` +
-          `• **Gender**: ${targetGender.toUpperCase()} | **DOB**: ${targetDOB}\n` +
-          `• **Phone**: ${targetPhone} | **PAN**: ${targetPan}\n` +
-          `• **Bank**: ${targetBankName} (${targetBankAccount}) • IFSC: ${targetIfsc}\n` +
-          `• **UAN**: ${targetUan} | **ESIC**: ${targetEsic}\n` +
-          `• **Login User**: Created active portal access (${email} / initial password: \`employee123\`)`,
+        message: `Employee profile for **${emp.first_name} ${emp.last_name || ''}** has been successfully registered!\n\n${detailsSummary}\n\n• **Portal Login**: Created active employee access (Email: \`${email}\` / Default Password: \`employee123\`).`,
         data: { ...emp, employee_code: code },
         action_card: {
           type: 'employee_card',

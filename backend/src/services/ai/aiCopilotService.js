@@ -272,79 +272,166 @@ Highlight key figures (salary, hours, counts, status) in bold. Mention available
     }
   }
 
-  _heuristicToolPicker(query, conversationHistory = []) {
-    const q = query.toLowerCase();
-    const allText = [...(conversationHistory || []).map(m => m.text), query].join(' ');
+  _extractMultiTurnEmployeeSlots(conversationHistory = [], currentQuery = '') {
+    const userMessages = [
+      ...(conversationHistory || []).filter(m => m.sender === 'user').map(m => m.text),
+      currentQuery
+    ];
+    const fullText = userMessages.join(' | ');
 
-    // 1. EMPLOYEES CRUD (Typo resilient: employe, employee, salry, salary, engeering, etc.)
-    const isEmployeeCreation = /(?:create|add|hire|new)\s+(?:an?\s+)?(?:employe|employee|worker|staff|member|profile)/i.test(q) ||
-      (/\bname\b/i.test(q) && (/\bsal[a-z]*\b/i.test(q) || /\bemail\b/i.test(q) || /\bpos[a-z]*\b/i.test(q) || /\bdep[a-z]*\b/i.test(q)));
+    const slots = {
+      first_name: null,
+      last_name: null,
+      email: null,
+      salary: null,
+      position: null,
+      department_name: null,
+      phone: null,
+      gender: null,
+      date_of_birth: null,
+      joining_date: null,
+      pan: null,
+      address: null
+    };
 
-    if (isEmployeeCreation) {
-      // Extract parameters from current query and history
-      const emailMatch = allText.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/i);
-      const email = emailMatch ? emailMatch[0] : null;
+    // 1. Email extraction
+    const emailMatch = fullText.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i);
+    if (emailMatch) slots.email = emailMatch[1].trim();
 
-      const salMatch = allText.match(/(?:sal[a-z]*|pay|ctc|wage)\s*(?:is|:|=)?\s*(?:₹|rs\.?)?\s*(\d+(?:,\d+)*(?:\.\d+)?)/i);
-      const salary = salMatch ? parseFloat(salMatch[1].replace(/,/g, '')) : null;
-
-      const posMatch = allText.match(/(?:pos[a-z]*|desig[a-z]*|role|title)\s*(?:is|:|=)?\s*([A-Za-z0-9\s]+?)(?:,|$|\bsal|\bemail|\bdep|\bname)/i);
-      const position = posMatch ? posMatch[1].trim() : 'Software Engineer';
-
-      const deptMatch = allText.match(/(?:dep[a-z]*|team)\s*(?:is|:|=)?\s*([A-Za-z0-9\s]+?)(?:,|$|\bsal|\bemail|\bpos|\bdesig|\bname)/i);
-      const department_name = deptMatch ? deptMatch[1].trim() : null;
-
-      const nameMatch = allText.match(/(?:name\s*(?:is|:|=)?\s*|employe[a-z]*\s+)([A-Za-z]+(?:\s+[A-Za-z]+)?)/i);
-      let firstName = nameMatch ? nameMatch[1].trim() : null;
-      if (firstName && ['is', 'a', 'new', 'an'].includes(firstName.toLowerCase())) firstName = null;
-
-      // If we have at least a Name and an Email or Salary, proceed to create!
-      if (firstName && (email || salary || department_name)) {
-        const cleanEmail = email || `${firstName.toLowerCase().replace(/\s+/g, '')}@company.com`;
-        const cleanSalary = salary || 50000;
-        return {
-          should_call_tool: true,
-          tool_name: 'create_employee',
-          tool_arguments: {
-            first_name: firstName,
-            email: cleanEmail,
-            salary: cleanSalary,
-            position,
-            department_name
-          }
-        };
+    // 2. Salary extraction
+    const salMatch = fullText.match(/(?:sal[a-z]*|pay|ctc|wage)\s*(?:is|:|=)?\s*(?:₹|rs\.?)?\s*(\d+(?:,\d+)*(?:\.\d+)?k?)/i);
+    if (salMatch) {
+      let rawVal = salMatch[1].toLowerCase().replace(/,/g, '');
+      if (rawVal.endsWith('k')) {
+        slots.salary = parseFloat(rawVal.replace('k', '')) * 1000;
+      } else {
+        slots.salary = parseFloat(rawVal);
       }
-
-      // If details are still missing, initiate or continue the interactive wizard
-      return {
-        should_call_tool: false,
-        direct_reply: `Let's set up the new employee profile! 👤\n\nTo ensure complete database & payroll integrity, please provide:\n1️⃣ **Full Name** (e.g., Sarah Connor)\n2️⃣ **Work Email** (e.g., sarah@company.com)\n3️⃣ **Designation / Job Title**\n4️⃣ **Department** (e.g., Engineering, Sales)\n5️⃣ **Monthly Base Salary (₹)**\n\n*(You can reply with all details in one sentence)*`
-      };
     }
 
-    // Check if user is replying to an active employee creation wizard in conversation history
-    const lastBotMsg = [...(conversationHistory || [])].reverse().find(m => m.sender !== 'user')?.text || '';
-    if (lastBotMsg.includes('set up the new employee profile') || lastBotMsg.includes('Full Name') || lastBotMsg.includes('Work Email')) {
-      const emailMatch = q.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/i);
-      const salMatch = q.match(/(?:sal[a-z]*|pay|ctc|wage)?\s*(?:is|:|=)?\s*(?:₹|rs\.?)?\s*(\d+(?:,\d+)*(?:\.\d+)?)/i);
-      const words = query.trim().split(/\s+/);
+    // 3. Position extraction
+    const posMatch = fullText.match(/(?:pos[a-z]*|desig[a-z]*|role|title|job)\s*(?:is|:|=)?\s*([A-Za-z0-9\s]+?)(?:\||,|$|\bsal|\bemail|\bdep|\bname|\bphone|\bgender)/i);
+    if (posMatch) {
+      const cleanPos = posMatch[1].trim();
+      if (cleanPos.length > 1 && !['is', 'a', 'the', 'new'].includes(cleanPos.toLowerCase())) {
+        slots.position = cleanPos;
+      }
+    }
 
-      if (words.length > 0 && !q.includes('help') && !q.includes('what')) {
-        const name = words.slice(0, 2).join(' ');
-        const email = emailMatch ? emailMatch[0] : `${name.toLowerCase().replace(/\s+/g, '')}@company.com`;
-        const salary = salMatch && salMatch[1] ? parseFloat(salMatch[1].replace(/,/g, '')) : 50000;
+    // 4. Department extraction
+    const deptMatch = fullText.match(/(?:dep[a-z]*|team)\s*(?:is|:|=)?\s*([A-Za-z0-9\s]+?)(?:\||,|$|\bsal|\bemail|\bpos|\bdesig|\bname|\bphone|\bgender)/i);
+    if (deptMatch) {
+      const cleanDept = deptMatch[1].trim();
+      if (cleanDept.length > 1 && !['is', 'a', 'the', 'new'].includes(cleanDept.toLowerCase())) {
+        slots.department_name = cleanDept;
+      }
+    }
+
+    // 5. Phone extraction
+    const phoneMatch = fullText.match(/(?:phone|mob[a-z]*|contact|cell)\s*(?:is|:|=)?\s*(\+?\d[\d\s-]{8,14}\d)/i);
+    if (phoneMatch) slots.phone = phoneMatch[1].trim();
+
+    // 6. Gender extraction
+    const genderMatch = fullText.match(/(?:gender|sex)\s*(?:is|:|=)?\s*(male|female|other)/i);
+    if (genderMatch) slots.gender = genderMatch[1].toLowerCase().trim();
+
+    // 7. Joining Date extraction
+    const joinMatch = fullText.match(/(?:joining|hire|join|start)\s*(?:date)?\s*(?:is|:|=)?\s*(\d{4}-\d{2}-\d{2})/i);
+    if (joinMatch) slots.joining_date = joinMatch[1].trim();
+
+    // 8. PAN extraction
+    const panMatch = fullText.match(/\b([A-Z]{5}[0-9]{4}[A-Z]{1})\b/i);
+    if (panMatch) slots.pan = panMatch[1].toUpperCase().trim();
+
+    // 9. Name extraction
+    // Match explicit "name is ...", "name: ...", or "create employee <Name>"
+    const nameMatch = fullText.match(/(?:name\s*(?:is|:|=)?\s*|employe[a-z]*\s+)([A-Za-z]+(?:\s+[A-Za-z]+)?)/i);
+    if (nameMatch) {
+      const full = nameMatch[1].trim();
+      const parts = full.split(/\s+/);
+      if (!['is', 'a', 'new', 'an', 'please', 'the', 'named'].includes(parts[0].toLowerCase())) {
+        slots.first_name = parts[0];
+        if (parts.length > 1) slots.last_name = parts.slice(1).join(' ');
+      }
+    }
+
+    // If name still not found, check if a single standalone message was sent with just 2 capitalized words
+    if (!slots.first_name) {
+      for (const msg of userMessages) {
+        const trimmed = msg.trim();
+        if (/^[A-Z][a-z]+(\s+[A-Z][a-z]+)?$/.test(trimmed) && !trimmed.toLowerCase().includes('create') && !trimmed.toLowerCase().includes('help')) {
+          const parts = trimmed.split(/\s+/);
+          slots.first_name = parts[0];
+          if (parts.length > 1) slots.last_name = parts.slice(1).join(' ');
+          break;
+        }
+      }
+    }
+
+    return slots;
+  }
+
+  _heuristicToolPicker(query, conversationHistory = []) {
+    const q = query.toLowerCase();
+    const isEmployeeCreationIntent = /(?:create|add|hire|new)\s+(?:an?\s+)?(?:employe|employee|worker|staff|member|profile)/i.test(q) ||
+      (/\bname\b/i.test(q) && (/\bsal[a-z]*\b/i.test(q) || /\bemail\b/i.test(q) || /\bpos[a-z]*\b/i.test(q) || /\bdep[a-z]*\b/i.test(q)));
+
+    const lastBotMsg = [...(conversationHistory || [])].reverse().find(m => m.sender !== 'user')?.text || '';
+    const isOngoingWizard = lastBotMsg.includes('employee profile') || lastBotMsg.includes('Information Collected So Far') || lastBotMsg.includes('Please provide the following');
+
+    // 1. EMPLOYEES CRUD WITH STRICT WIZARD MEMORY
+    if (isEmployeeCreationIntent || isOngoingWizard) {
+      const slots = this._extractMultiTurnEmployeeSlots(conversationHistory, query);
+
+      // Check mandatory fields
+      const missing = [];
+      if (!slots.first_name) missing.push('1️⃣ **Full Name** (e.g. Sarah Connor)');
+      if (!slots.email) missing.push('2️⃣ **Work Email** (e.g. sarah@company.com)');
+      if (!slots.position) missing.push('3️⃣ **Job Designation / Role** (e.g. Senior Software Engineer)');
+      if (!slots.department_name) missing.push('4️⃣ **Department** (e.g. Engineering, Sales, HR)');
+      if (!slots.salary) missing.push('5️⃣ **Monthly Base Salary (₹)**');
+
+      // If any mandatory field is missing, keep the session open and ask HR for the remaining details
+      if (missing.length > 0) {
+        const collectedList = [];
+        if (slots.first_name) collectedList.push(`• **Full Name**: ${slots.first_name} ${slots.last_name || ''}`);
+        if (slots.email) collectedList.push(`• **Work Email**: ${slots.email}`);
+        if (slots.position) collectedList.push(`• **Designation**: ${slots.position}`);
+        if (slots.department_name) collectedList.push(`• **Department**: ${slots.department_name}`);
+        if (slots.salary) collectedList.push(`• **Monthly Salary**: ₹${Number(slots.salary).toLocaleString('en-IN')}`);
+        if (slots.phone) collectedList.push(`• **Phone**: ${slots.phone}`);
+        if (slots.gender) collectedList.push(`• **Gender**: ${slots.gender.toUpperCase()}`);
+
+        let reply = `Let's set up the new employee profile! 👤\n\n`;
+        if (collectedList.length > 0) {
+          reply += `📋 **Information Collected So Far:**\n${collectedList.join('\n')}\n\n`;
+        }
+        reply += `👉 **Please provide the remaining required details from HR:**\n${missing.join('\n')}\n\n*(You can reply with all missing fields in a single message)*`;
 
         return {
-          should_call_tool: true,
-          tool_name: 'create_employee',
-          tool_arguments: {
-            first_name: name,
-            email,
-            salary,
-            position: 'Software Developer'
-          }
+          should_call_tool: false,
+          direct_reply: reply
         };
       }
+
+      // All 5 mandatory fields are collected from HR! Call the tool with genuine data ONLY.
+      return {
+        should_call_tool: true,
+        tool_name: 'create_employee',
+        tool_arguments: {
+          first_name: slots.first_name,
+          last_name: slots.last_name || '',
+          email: slots.email,
+          salary: slots.salary,
+          position: slots.position,
+          department_name: slots.department_name,
+          phone: slots.phone || null,
+          gender: slots.gender || 'male',
+          date_of_birth: slots.date_of_birth || null,
+          joining_date: slots.joining_date || null,
+          pan: slots.pan || null
+        }
+      };
     }
 
     if (q.includes('update employee') || (q.includes('update') && (q.includes('salary') || q.includes('position')))) {

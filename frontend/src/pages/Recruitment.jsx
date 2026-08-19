@@ -38,6 +38,12 @@ const Recruitment = () => {
   const [aiBatchLoading, setAiBatchLoading] = useState(false);
   const [aiBatchError, setAiBatchError] = useState('');
   const [aiBatchResult, setAiBatchResult] = useState(null);
+
+  // Modal Submission & Error States
+  const [jobSubmitting, setJobSubmitting] = useState(false);
+  const [jobModalError, setJobModalError] = useState('');
+  const [appSubmitting, setAppSubmitting] = useState(false);
+  const [appModalError, setAppModalError] = useState('');
   const [jobFormData, setJobFormData] = useState({
     title: '',
     description: '',

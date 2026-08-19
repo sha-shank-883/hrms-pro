@@ -235,12 +235,22 @@ const Employees = () => {
     }
   };
 
+  const parseJSONField = (field, fallback) => {
+    if (!field) return fallback;
+    if (typeof field === 'object') return field;
+    try {
+      return JSON.parse(field);
+    } catch {
+      return fallback;
+    }
+  };
+
   const handleEdit = (employee) => {
     setEditingEmployee(employee);
     setFormData({
-      first_name: employee.first_name,
-      last_name: employee.last_name,
-      email: employee.email,
+      first_name: employee.first_name || '',
+      last_name: employee.last_name || '',
+      email: employee.email || '',
       phone: employee.phone || '',
       date_of_birth: employee.date_of_birth ? new Date(employee.date_of_birth).toISOString().split('T')[0] : '',
       gender: employee.gender || 'male',
@@ -254,8 +264,9 @@ const Employees = () => {
       status: employee.status || 'active',
       reporting_manager_id: employee.reporting_manager_id || '',
       password: '',
-      social_links: employee.social_links || { linkedin: '', twitter: '', github: '' },
-      experience: Array.isArray(employee.experience) ? employee.experience : [],
+      social_links: parseJSONField(employee.social_links, { linkedin: '', twitter: '', github: '' }),
+      education: parseJSONField(employee.education, []),
+      experience: parseJSONField(employee.experience, []),
       profile_image: employee.profile_image || '',
       biometric_id: employee.biometric_id || ''
     });
@@ -296,18 +307,21 @@ const Employees = () => {
 
   // Helper to manage JSON arrays (education/experience)
   const handleArrayChange = (field, index, subfield, value) => {
-    const newArray = [...formData[field]];
-    newArray[index] = { ...newArray[index], [subfield]: value };
-    setFormData({ ...formData, [field]: newArray });
+    const current = Array.isArray(formData[field]) ? [...formData[field]] : [];
+    if (current[index]) {
+      current[index] = { ...current[index], [subfield]: value };
+    }
+    setFormData({ ...formData, [field]: current });
   };
 
   const addArrayItem = (field, emptyItem) => {
-    setFormData({ ...formData, [field]: [...formData[field], emptyItem] });
+    const current = Array.isArray(formData[field]) ? [...formData[field]] : [];
+    setFormData({ ...formData, [field]: [...current, emptyItem] });
   };
 
   const removeArrayItem = (field, index) => {
-    const newArray = formData[field].filter((_, i) => i !== index);
-    setFormData({ ...formData, [field]: newArray });
+    const current = Array.isArray(formData[field]) ? [...formData[field]] : [];
+    setFormData({ ...formData, [field]: current.filter((_, i) => i !== index) });
   };
 
   // Clear filters
@@ -731,11 +745,11 @@ const Employees = () => {
                       </button>
                     </div>
 
-                    {formData.education.length === 0 ? (
+                    {(formData.education || []).length === 0 ? (
                       <div className="p-6 bg-neutral-50 rounded-lg text-center text-sm text-neutral-400 border border-dashed border-neutral-200">No education history added</div>
                     ) : (
                       <div className="space-y-3">
-                        {formData.education.map((edu, index) => (
+                        {(formData.education || []).map((edu, index) => (
                           <div key={index} className="p-4 bg-neutral-50 rounded-lg border border-neutral-100 relative group">
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                               <input type="text" placeholder="Degree" className="form-input" value={edu.degree} onChange={(e) => handleArrayChange('education', index, 'degree', e.target.value)} />
@@ -762,11 +776,11 @@ const Employees = () => {
                       </button>
                     </div>
 
-                    {formData.experience.length === 0 ? (
+                    {(formData.experience || []).length === 0 ? (
                       <div className="p-6 bg-neutral-50 rounded-lg text-center text-sm text-neutral-400 border border-dashed border-neutral-200">No previous experience added</div>
                     ) : (
                       <div className="space-y-3">
-                        {formData.experience.map((exp, index) => (
+                        {(formData.experience || []).map((exp, index) => (
                           <div key={index} className="p-4 bg-neutral-50 rounded-lg border border-neutral-100 relative group">
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                               <input type="text" placeholder="Job Title" className="form-input" value={exp.title} onChange={(e) => handleArrayChange('experience', index, 'title', e.target.value)} />
@@ -791,7 +805,7 @@ const Employees = () => {
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                         <FaLinkedin className="text-[#0077b5]" size={18} />
                       </div>
-                      <input type="text" className="form-input pl-10" value={formData.social_links.linkedin || ''} onChange={(e) => setFormData({ ...formData, social_links: { ...formData.social_links, linkedin: e.target.value } })} placeholder="https://linkedin.com/in/..." />
+                      <input type="text" className="form-input pl-10" value={formData.social_links?.linkedin || ''} onChange={(e) => setFormData({ ...formData, social_links: { ...(formData.social_links || {}), linkedin: e.target.value } })} placeholder="https://linkedin.com/in/..." />
                     </div>
                   </div>
                   <div className="form-group">
@@ -800,16 +814,16 @@ const Employees = () => {
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                         <FaTwitter className="text-[#1da1f2]" size={18} />
                       </div>
-                      <input type="text" className="form-input pl-10" value={formData.social_links.twitter || ''} onChange={(e) => setFormData({ ...formData, social_links: { ...formData.social_links, twitter: e.target.value } })} placeholder="https://twitter.com/..." />
+                      <input type="text" className="form-input pl-10" value={formData.social_links?.twitter || ''} onChange={(e) => setFormData({ ...formData, social_links: { ...(formData.social_links || {}), twitter: e.target.value } })} placeholder="https://twitter.com/..." />
                     </div>
                   </div>
                   <div className="form-group">
                     <label className="form-label">GitHub URL</label>
                     <div className="relative">
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <FaGithub className="text-neutral-800" size={18} />
+                        <FaGithub className="text-neutral-900" size={18} />
                       </div>
-                      <input type="text" className="form-input pl-10" value={formData.social_links.github || ''} onChange={(e) => setFormData({ ...formData, social_links: { ...formData.social_links, github: e.target.value } })} placeholder="https://github.com/..." />
+                      <input type="text" className="form-input pl-10" value={formData.social_links?.github || ''} onChange={(e) => setFormData({ ...formData, social_links: { ...(formData.social_links || {}), github: e.target.value } })} placeholder="https://github.com/..." />
                     </div>
                   </div>
                 </div>

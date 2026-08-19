@@ -8,22 +8,30 @@ const { pool, query } = require('../../config/database');
 // Tool Definitions for LLM Tool Calling across all 11 Modules
 const COPILOT_TOOL_DEFINITIONS = [
   // ==========================================
-  // MODULE 1: EMPLOYEES (Full CRUD)
+  // MODULE 1: EMPLOYEES (Full CRUD & Statutory Schema)
   // ==========================================
   {
     name: 'create_employee',
-    description: 'Create a new employee record. Restricted to Admin and HR.',
+    description: 'Create a new employee record with full demographic, statutory, and payroll fields. Restricted to Admin and HR.',
     parameters: {
       type: 'object',
       properties: {
-        first_name: { type: 'string', description: 'First name of the employee' },
+        first_name: { type: 'string', description: 'First name of the employee (Mandatory)' },
         last_name: { type: 'string', description: 'Last name of the employee' },
-        email: { type: 'string', description: 'Work email address' },
+        email: { type: 'string', description: 'Work or official email address (Mandatory & Unique)' },
         phone: { type: 'string', description: 'Contact phone number' },
-        position: { type: 'string', description: 'Job title or role (e.g. Lead Designer, Software Engineer)' },
-        department_name: { type: 'string', description: 'Department name (e.g. Engineering, Sales)' },
-        salary: { type: 'number', description: 'Monthly base salary' },
-        employment_type: { type: 'string', enum: ['Full-time', 'Part-time', 'Contract', 'Intern'], description: 'Employment type' }
+        position: { type: 'string', description: 'Job title / Designation (e.g. Senior Software Engineer)' },
+        department_name: { type: 'string', description: 'Department name (e.g. Engineering, HR, Sales)' },
+        salary: { type: 'number', description: 'Monthly base salary (Mandatory for payroll calculation)' },
+        employment_type: { type: 'string', enum: ['Full-time', 'Part-time', 'Contract', 'Intern'], description: 'Employment classification' },
+        joining_date: { type: 'string', description: 'Date of joining (YYYY-MM-DD)' },
+        pan: { type: 'string', description: '10-character PAN number for tax deduction (e.g. ABCDE1234F)' },
+        bank_account: { type: 'string', description: 'Bank account number for salary credit' },
+        bank_name: { type: 'string', description: 'Bank name (e.g. HDFC Bank, ICICI Bank, SBI)' },
+        ifsc_code: { type: 'string', description: '11-character Bank IFSC code' },
+        uan: { type: 'string', description: '12-digit Universal Account Number for Provident Fund (PF)' },
+        esic: { type: 'string', description: '17-digit ESIC insurance number' },
+        reporting_manager_name: { type: 'string', description: 'Name of the reporting manager' }
       },
       required: ['first_name', 'email']
     }
@@ -41,7 +49,7 @@ const COPILOT_TOOL_DEFINITIONS = [
   },
   {
     name: 'update_employee',
-    description: 'Update an existing employee details (salary, position, phone, status, department). Restricted to Admin and HR.',
+    description: 'Update an existing employee details (salary, position, phone, status, department, PAN, Bank, UAN). Restricted to Admin and HR.',
     parameters: {
       type: 'object',
       properties: {
@@ -50,7 +58,14 @@ const COPILOT_TOOL_DEFINITIONS = [
         position: { type: 'string', description: 'New job title' },
         department_name: { type: 'string', description: 'New department name' },
         phone: { type: 'string', description: 'New phone number' },
-        status: { type: 'string', enum: ['active', 'inactive', 'on_leave', 'resigned', 'terminated'], description: 'Employee status' }
+        status: { type: 'string', enum: ['active', 'inactive', 'on_leave', 'resigned', 'terminated'], description: 'Employee status' },
+        pan: { type: 'string', description: 'PAN number' },
+        bank_account: { type: 'string', description: 'Bank account number' },
+        bank_name: { type: 'string', description: 'Bank name' },
+        ifsc_code: { type: 'string', description: 'IFSC code' },
+        uan: { type: 'string', description: 'UAN number' },
+        esic: { type: 'string', description: 'ESIC number' },
+        joining_date: { type: 'string', description: 'Joining date (YYYY-MM-DD)' }
       },
       required: ['employee_name']
     }
@@ -426,7 +441,24 @@ async function executeCopilotTool(toolName, args, userContext, tenantContext) {
         return { success: false, message: 'Permission Denied: Only Admins and HR can create new employee records.' };
       }
 
-      const { first_name, last_name = '', email, phone, position = 'Employee', department_name, salary = 50000, employment_type = 'Full-time' } = args;
+      const {
+        first_name,
+        last_name = '',
+        email,
+        phone = '',
+        position = 'Employee',
+        department_name,
+        salary = 50000,
+        employment_type = 'Full-time',
+        joining_date,
+        pan = '',
+        bank_account = '',
+        bank_name = '',
+        ifsc_code = '',
+        uan = '',
+        esic = '',
+        reporting_manager_name = ''
+      } = args;
 
       let deptId = null;
       if (department_name) {
@@ -434,11 +466,27 @@ async function executeCopilotTool(toolName, args, userContext, tenantContext) {
         if (dRes.rows.length > 0) deptId = dRes.rows[0].department_id;
       }
 
+      let managerId = null;
+      if (reporting_manager_name) {
+        const mRes = await query('SELECT employee_id FROM employees WHERE first_name ILIKE $1 OR last_name ILIKE $1 OR (first_name || \' \' || last_name) ILIKE $1 LIMIT 1', [`%${reporting_manager_name}%`]);
+        if (mRes.rows.length > 0) managerId = mRes.rows[0].employee_id;
+      }
+
+      const targetJoiningDate = joining_date || new Date().toISOString().split('T')[0];
+
       const insertRes = await query(
-        `INSERT INTO employees (first_name, last_name, email, phone, position, department_id, salary, employment_type, status, hire_date)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'active', CURRENT_DATE)
-         RETURNING employee_id, first_name, last_name, email, position, salary`,
-        [first_name, last_name, email, phone, position, deptId, salary, employment_type]
+        `INSERT INTO employees (
+          first_name, last_name, email, phone, position, department_id,
+          salary, employment_type, status, hire_date, joining_date,
+          pan, bank_account, bank_name, ifsc_code, uan, esic, reporting_manager_id
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'active', $9, $9, $10, $11, $12, $13, $14, $15, $16)
+        RETURNING employee_id, first_name, last_name, email, position, salary, hire_date, joining_date`,
+        [
+          first_name, last_name, email, phone, position, deptId,
+          salary, employment_type, targetJoiningDate,
+          pan, bank_account, bank_name, ifsc_code, uan, esic, managerId
+        ]
       );
 
       const emp = insertRes.rows[0];
@@ -447,7 +495,7 @@ async function executeCopilotTool(toolName, args, userContext, tenantContext) {
 
       return {
         success: true,
-        message: `Successfully created employee record for ${emp.first_name} ${emp.last_name} (${code}) as ${emp.position} with salary ₹${Number(emp.salary).toLocaleString('en-IN')}.`,
+        message: `Successfully created employee record for ${emp.first_name} ${emp.last_name} (${code}) as ${emp.position} with salary ₹${Number(emp.salary).toLocaleString('en-IN')} (Joining Date: ${targetJoiningDate}).`,
         data: { ...emp, employee_code: code },
         action_card: {
           type: 'employee_card',
@@ -464,7 +512,7 @@ async function executeCopilotTool(toolName, args, userContext, tenantContext) {
 
       const empRes = await query(
         `SELECT e.employee_id, e.employee_code, e.first_name, e.last_name, e.email, e.phone,
-                e.position, e.hire_date, e.salary, e.employment_type, e.status,
+                e.position, e.hire_date, e.joining_date, e.salary, e.employment_type, e.status,
                 e.pan, e.bank_account, e.bank_name, e.ifsc_code, e.uan, e.esic,
                 d.department_name, e.user_id
          FROM employees e
@@ -497,12 +545,14 @@ async function executeCopilotTool(toolName, args, userContext, tenantContext) {
           position: emp.position || 'Employee',
           department: emp.department_name || 'General',
           status: emp.status || 'active',
-          hire_date: emp.hire_date,
+          hire_date: emp.joining_date || emp.hire_date,
           salary: canViewFinancials ? (emp.salary ? `₹${Number(emp.salary).toLocaleString('en-IN')}` : 'Not set') : '[RESTRICTED: Admin/Self Only]',
           pan: canViewFinancials ? (emp.pan || 'Not provided') : '[RESTRICTED]',
           bank_account: canViewFinancials ? (emp.bank_account ? `••••${emp.bank_account.slice(-4)}` : 'Not provided') : '[RESTRICTED]',
           bank_name: canViewFinancials ? emp.bank_name : '[RESTRICTED]',
+          ifsc_code: canViewFinancials ? emp.ifsc_code : '[RESTRICTED]',
           uan: canViewFinancials ? emp.uan : '[RESTRICTED]',
+          esic: canViewFinancials ? emp.esic : '[RESTRICTED]',
           link: `/profile?id=${emp.employee_id}`
         };
       });
@@ -526,7 +576,21 @@ async function executeCopilotTool(toolName, args, userContext, tenantContext) {
         return { success: false, message: 'Permission Denied: Only Admins and HR can modify employee profiles.' };
       }
 
-      const { employee_name, salary, position, department_name, phone, status } = args;
+      const {
+        employee_name,
+        salary,
+        position,
+        department_name,
+        phone,
+        status,
+        pan,
+        bank_account,
+        bank_name,
+        ifsc_code,
+        uan,
+        esic,
+        joining_date
+      } = args;
 
       const empRes = await query(
         `SELECT employee_id, first_name, last_name, employee_code, salary, position FROM employees 
@@ -552,14 +616,36 @@ async function executeCopilotTool(toolName, args, userContext, tenantContext) {
              department_id = COALESCE($3, department_id),
              phone = COALESCE($4, phone),
              status = COALESCE($5, status),
+             pan = COALESCE($6, pan),
+             bank_account = COALESCE($7, bank_account),
+             bank_name = COALESCE($8, bank_name),
+             ifsc_code = COALESCE($9, ifsc_code),
+             uan = COALESCE($10, uan),
+             esic = COALESCE($11, esic),
+             joining_date = COALESCE($12, joining_date),
+             hire_date = COALESCE($12, hire_date),
              updated_at = CURRENT_TIMESTAMP
-         WHERE employee_id = $6`,
-        [salary || null, position || null, deptId || null, phone || null, status || null, emp.employee_id]
+         WHERE employee_id = $13`,
+        [
+          salary || null,
+          position || null,
+          deptId || null,
+          phone || null,
+          status || null,
+          pan || null,
+          bank_account || null,
+          bank_name || null,
+          ifsc_code || null,
+          uan || null,
+          esic || null,
+          joining_date || null,
+          emp.employee_id
+        ]
       );
 
       return {
         success: true,
-        message: `Updated profile for ${emp.first_name} ${emp.last_name}: ${salary ? `Salary: ₹${Number(salary).toLocaleString('en-IN')}` : ''} ${position ? `Position: ${position}` : ''} ${status ? `Status: ${status}` : ''}.`,
+        message: `Updated profile for ${emp.first_name} ${emp.last_name}: ${salary ? `Salary: ₹${Number(salary).toLocaleString('en-IN')}` : ''} ${position ? `Position: ${position}` : ''} ${status ? `Status: ${status}` : ''} ${pan ? `PAN: ${pan}` : ''}.`,
         action_card: {
           type: 'employee_card',
           title: `Updated: ${emp.first_name} ${emp.last_name}`,

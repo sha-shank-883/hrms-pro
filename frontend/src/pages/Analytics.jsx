@@ -1,15 +1,40 @@
 import React, { useEffect, useState } from 'react';
-import { reportService } from '../services';
+import { reportService, aiIntelligenceService } from '../services';
 import { useSettings } from '../hooks/useSettings.jsx';
 import { useAuth } from '../context/AuthContext';
+import AIModal from '../components/ai/AIModal';
+import { FaRobot, FaMagic, FaCheckCircle, FaLightbulb, FaChartLine } from 'react-icons/fa';
+import { FiTrendingUp, FiTarget, FiActivity } from 'react-icons/fi';
 
 const Analytics = () => {
   const { getSetting } = useSettings();
-  const { user } = useAuth();
+  const { user, hasModule } = useAuth();
   const [activeTab, setActiveTab] = useState('turnover');
   const [data, setData] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  // AI Executive Insights State
+  const [showAiInsightsModal, setShowAiInsightsModal] = useState(false);
+  const [aiInsightsLoading, setAiInsightsLoading] = useState(false);
+  const [aiInsightsError, setAiInsightsError] = useState('');
+  const [aiInsightsResult, setAiInsightsResult] = useState(null);
+
+  const handleGenerateExecutiveInsights = async () => {
+    setShowAiInsightsModal(true);
+    setAiInsightsLoading(true);
+    setAiInsightsError('');
+    setAiInsightsResult(null);
+
+    try {
+      const res = await aiIntelligenceService.generateExecutiveInsights();
+      setAiInsightsResult(res.data);
+    } catch (err) {
+      setAiInsightsError(err.response?.data?.message || err.message || 'Failed to generate AI executive insights');
+    } finally {
+      setAiInsightsLoading(false);
+    }
+  };
 
   useEffect(() => {
     
@@ -357,9 +382,19 @@ const Analytics = () => {
 
   return (
     <div className="w-full pb-8">
-      <div className="page-header">
-        <h1 className="page-title"><i className="fas fa-chart-line mr-2"></i> Advanced Analytics</h1>
-        <div>
+      <div className="page-header flex items-center justify-between">
+        <h1 className="page-title flex items-center"><FaChartLine className="mr-2 text-primary-600" /> Advanced Analytics</h1>
+        <div className="flex items-center gap-2">
+          {hasModule('ai_assistant') && (
+            <button
+              type="button"
+              className="btn btn-sm bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold flex items-center gap-1.5 shadow-sm px-3.5 py-2 rounded-xl text-xs border-none transition-all"
+              onClick={handleGenerateExecutiveInsights}
+              title="Generate C-suite strategic analysis of workforce productivity & costs"
+            >
+              <FaRobot size={13} /> AI Executive Strategic Briefing
+            </button>
+          )}
           {data && Object.keys(data).length > 0 && (
             <button className="btn btn-primary" onClick={() => exportData('json')}>
               Export Data
@@ -417,6 +452,72 @@ const Analytics = () => {
           {activeTab === 'payroll' && renderPayrollAnalytics()}
         </>
       )}
+
+      {/* AI Executive Workforce & Productivity Insights Modal */}
+      <AIModal
+        isOpen={showAiInsightsModal}
+        onClose={() => setShowAiInsightsModal(false)}
+        title="AI Executive Workforce & Strategic Briefing"
+        subtitle="Cross-departmental productivity, payroll efficiency, and organizational health"
+        loading={aiInsightsLoading}
+        loadingText="Analyzing headcount trends, task velocity, and payroll ratios..."
+        error={aiInsightsError}
+        onRetry={handleGenerateExecutiveInsights}
+      >
+        {aiInsightsResult && (
+          <div className="space-y-4 text-xs">
+            {/* Health Score Header */}
+            <div className="p-4 rounded-xl bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-950/30 dark:to-purple-950/30 border border-indigo-100 dark:border-indigo-900/40 flex items-center justify-between">
+              <div>
+                <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">Workforce Health Index</span>
+                <div className="flex items-baseline gap-2 mt-1">
+                  <span className="text-3xl font-extrabold text-indigo-600 dark:text-indigo-400">
+                    {aiInsightsResult.workforce_health_score} <span className="text-sm font-normal text-slate-400">/ 100</span>
+                  </span>
+                  <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300">
+                    Strong Momentum
+                  </span>
+                </div>
+              </div>
+              <div className="text-right">
+                <span className="text-[11px] text-slate-400 block">Report Level</span>
+                <span className="text-xs font-bold text-slate-700 dark:text-slate-300">C-Suite Executive</span>
+              </div>
+            </div>
+
+            {/* Executive Headline */}
+            <div className="p-3.5 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+              <span className="font-bold text-slate-800 dark:text-slate-200 block mb-1">Executive Summary:</span>
+              <p className="text-sm font-semibold text-indigo-950 dark:text-indigo-200 mb-1">{aiInsightsResult.executive_headline}</p>
+              <p className="text-slate-600 dark:text-slate-300 leading-relaxed">{aiInsightsResult.productivity_analysis}</p>
+            </div>
+
+            {/* Cost vs Output Commentary */}
+            {aiInsightsResult.cost_vs_output_commentary && (
+              <div className="p-3.5 rounded-xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/30">
+                <span className="font-bold text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5 mb-1">
+                  <FiTrendingUp className="text-emerald-600" /> Payroll & Cost-to-Output Dynamics
+                </span>
+                <p className="text-emerald-900 dark:text-emerald-200 leading-relaxed">{aiInsightsResult.cost_vs_output_commentary}</p>
+              </div>
+            )}
+
+            {/* Strategic Recommendations */}
+            {aiInsightsResult.strategic_recommendations?.length > 0 && (
+              <div className="p-3.5 bg-indigo-50/40 dark:bg-indigo-950/20 rounded-xl border border-indigo-100 dark:border-indigo-900/40">
+                <span className="font-bold text-indigo-900 dark:text-indigo-300 flex items-center gap-1.5 mb-2">
+                  <FiTarget className="text-indigo-600" /> C-Suite Strategic Action Points
+                </span>
+                <ol className="space-y-1.5 pl-4 list-decimal text-slate-700 dark:text-slate-300">
+                  {aiInsightsResult.strategic_recommendations.map((rec, i) => (
+                    <li key={i} className="pl-1 leading-relaxed font-medium">{rec}</li>
+                  ))}
+                </ol>
+              </div>
+            )}
+          </div>
+        )}
+      </AIModal>
     </div>
   );
 };

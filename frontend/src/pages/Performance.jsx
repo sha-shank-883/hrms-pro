@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { performanceService } from '../services';
+import { performanceService, aiIntelligenceService } from '../services';
 import { useAuth } from '../context/AuthContext';
+import AIModal from '../components/ai/AIModal';
 import {
     FaTrophy,
     FaChartLine,
@@ -18,12 +19,16 @@ import {
     FaArrowRight,
     FaWeightHanging,
     FaFlag,
-    FaTimes
+    FaTimes,
+    FaRobot,
+    FaMagic,
+    FaCheckSquare
 } from 'react-icons/fa';
+import { FiAward, FiTrendingUp, FiTarget } from 'react-icons/fi';
 
 const Performance = () => {
     const navigate = useNavigate();
-    const { user } = useAuth();
+    const { user, hasModule } = useAuth();
     const [activeTab, setActiveTab] = useState('goals');
     const [goals, setGoals] = useState([]);
     const [reviews, setReviews] = useState([]);
@@ -31,6 +36,35 @@ const Performance = () => {
     const [loading, setLoading] = useState(true);
     const [showGoalModal, setShowGoalModal] = useState(false);
     const [editingGoal, setEditingGoal] = useState(null);
+
+    // AI Performance Review States
+    const [showAiPerfModal, setShowAiPerfModal] = useState(false);
+    const [aiPerfLoading, setAiPerfLoading] = useState(false);
+    const [aiPerfError, setAiPerfError] = useState('');
+    const [aiPerfResult, setAiPerfResult] = useState(null);
+    const [activePerfReview, setActivePerfReview] = useState(null);
+
+    const handleGenerateAiPerformanceReview = async (review) => {
+        setActivePerfReview(review);
+        setShowAiPerfModal(true);
+        setAiPerfLoading(true);
+        setAiPerfError('');
+        setAiPerfResult(null);
+
+        try {
+            const res = await aiIntelligenceService.generatePerformanceSummary({
+                employeeId: review.employee_id,
+                employeeName: review.employee_name,
+                period: review.cycle_title,
+                managerNotes: review.notes || review.feedback
+            });
+            setAiPerfResult(res.data);
+        } catch (err) {
+            setAiPerfError(err.response?.data?.message || err.message || 'Failed to generate AI performance summary');
+        } finally {
+            setAiPerfLoading(false);
+        }
+    };
     const [newGoal, setNewGoal] = useState({
         title: '',
         description: '',
@@ -392,12 +426,23 @@ const Performance = () => {
                                                 {review.final_rating || '-'}
                                             </td>
                                             <td className="text-right">
-                                                <button
-                                                    onClick={() => navigate(`/performance/review/${review.review_id}`)}
-                                                    className="btn btn-secondary text-xs py-1.5"
-                                                >
-                                                    View Details
-                                                </button>
+                                                <div className="flex items-center justify-end gap-1.5">
+                                                    {hasModule('ai_assistant') && (
+                                                        <button
+                                                            onClick={() => handleGenerateAiPerformanceReview(review)}
+                                                            className="px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-300 rounded-lg text-xs font-bold flex items-center gap-1 border border-indigo-200/60 shadow-xs transition-colors"
+                                                            title="Generate AI Review Summary"
+                                                        >
+                                                            <FaMagic size={11} className="text-indigo-500" /> AI Review
+                                                        </button>
+                                                    )}
+                                                    <button
+                                                        onClick={() => navigate(`/performance/review/${review.review_id}`)}
+                                                        className="btn btn-secondary text-xs py-1.5"
+                                                    >
+                                                        View Details
+                                                    </button>
+                                                </div>
                                             </td>
                                         </tr>
                                     ))
@@ -561,6 +606,81 @@ const Performance = () => {
                     </div>
                 )
             }
+            {/* AI Performance Appraisal Summary Modal */}
+            <AIModal
+                isOpen={showAiPerfModal}
+                onClose={() => setShowAiPerfModal(false)}
+                title="AI Employee Performance Appraisal Summary"
+                subtitle={`Performance analysis for ${activePerfReview?.employee_name || 'Employee'}`}
+                loading={aiPerfLoading}
+                loadingText="Synthesizing attendance, task velocity, and review history..."
+                error={aiPerfError}
+                onRetry={() => activePerfReview && handleGenerateAiPerformanceReview(activePerfReview)}
+            >
+                {aiPerfResult && (
+                    <div className="space-y-4 text-xs">
+                        {/* Rating Header */}
+                        <div className="p-4 rounded-xl bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-950/30 dark:to-purple-950/30 border border-indigo-100 dark:border-indigo-900/40 flex items-center justify-between">
+                            <div>
+                                <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">AI Evaluated Rating</span>
+                                <div className="flex items-baseline gap-2 mt-1">
+                                    <span className="text-3xl font-extrabold text-indigo-600 dark:text-indigo-400">
+                                        {aiPerfResult.rating} <span className="text-sm font-normal text-slate-400">/ 5.0</span>
+                                    </span>
+                                    <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-100 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-300">
+                                        {aiPerfResult.rating_label || 'Evaluated'}
+                                    </span>
+                                </div>
+                            </div>
+                            <div className="text-right">
+                                <span className="text-[11px] text-slate-400 block">Designation</span>
+                                <span className="text-xs font-bold text-slate-700 dark:text-slate-300">{aiPerfResult.position || 'Staff'}</span>
+                            </div>
+                        </div>
+
+                        {/* Executive Summary */}
+                        <div className="p-3.5 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+                            <span className="font-bold text-slate-800 dark:text-slate-200 block mb-1">Executive Summary:</span>
+                            <p className="text-slate-600 dark:text-slate-300 leading-relaxed">{aiPerfResult.executive_summary}</p>
+                        </div>
+
+                        {/* Achievements & Areas for Improvement */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div className="p-3 rounded-xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/30">
+                                <span className="font-bold text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5 mb-2">
+                                    <FaCheckSquare className="text-emerald-600" /> Key Accomplishments
+                                </span>
+                                <ul className="space-y-1 pl-4 list-disc text-emerald-900 dark:text-emerald-200">
+                                    {Array.isArray(aiPerfResult.key_achievements) && aiPerfResult.key_achievements.map((a, i) => (
+                                        <li key={i}>{a}</li>
+                                    ))}
+                                </ul>
+                            </div>
+
+                            <div className="p-3 rounded-xl bg-amber-50/50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/30">
+                                <span className="font-bold text-amber-800 dark:text-amber-300 flex items-center gap-1.5 mb-2">
+                                    <FiTrendingUp className="text-amber-600" /> Developmental Areas
+                                </span>
+                                <ul className="space-y-1 pl-4 list-disc text-amber-900 dark:text-amber-200">
+                                    {Array.isArray(aiPerfResult.development_areas) && aiPerfResult.development_areas.map((d, i) => (
+                                        <li key={i}>{d}</li>
+                                    ))}
+                                </ul>
+                            </div>
+                        </div>
+
+                        {/* Action Plan */}
+                        {aiPerfResult.action_plan && (
+                            <div className="p-3.5 bg-indigo-50/40 dark:bg-indigo-950/20 rounded-xl border border-indigo-100 dark:border-indigo-900/40">
+                                <span className="font-bold text-indigo-900 dark:text-indigo-300 flex items-center gap-1.5 mb-1.5">
+                                    <FiTarget className="text-indigo-600" /> Recommended Action Plan & Growth Steps
+                                </span>
+                                <p className="text-slate-700 dark:text-slate-300 leading-relaxed">{aiPerfResult.action_plan}</p>
+                            </div>
+                        )}
+                    </div>
+                )}
+            </AIModal>
         </div >
     );
 };

@@ -518,6 +518,7 @@ const SYSTEM_MODULES = [
   { key: 'live_activity', name: 'Live Activity Stream', description: 'Real-time employee pulse, status radar, and presence', category: 'Analytics' },
   { key: 'reports_analytics', name: 'Advanced Reports', description: 'Custom report builder, churn risk, and export tools', category: 'Analytics' },
   { key: 'audit_logs', name: 'Security Audit Logs', description: 'System-wide compliance audit trail and activity log', category: 'Security' },
+  { key: 'ai_assistant', name: 'AI HR Intelligence Suite', description: 'AI Resume screening, job description writer, smart email drafter, and performance insights', category: 'AI & Automation' },
 ];
 
 /**

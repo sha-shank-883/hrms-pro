@@ -63,6 +63,12 @@ const MODULE_METADATA = {
     tier: 'Enterprise',
     description: 'Comprehensive immutable audit trail of all administrative actions, data edits, logins, and system changes.',
     features: ['SOC2 & ISO compliant audit trail', 'IP address & user-agent tracking', 'Sensitive data change history', 'Security incident forensic logs']
+  },
+  ai_assistant: {
+    name: 'AI HR Intelligence Suite',
+    tier: 'Scale (Pro) / Enterprise',
+    description: 'Empower your HR team with AI-driven candidate resume scoring, automated job description drafting, smart email writer, and employee performance summaries.',
+    features: ['AI Resume screening & candidate ranking', 'Automated job posting description generator', 'Context-aware smart HR email drafter', 'Executive workforce & productivity insights']
   }
 };
 

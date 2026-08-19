@@ -6,8 +6,8 @@ Available features: employee management, attendance tracking, leave management, 
 
 Answer concisely and helpfully. If you cannot resolve the issue, recommend creating a support ticket. Keep responses under 200 words. Be professional and friendly.`;
 
-const SUPPORTED_MODELS = ['gemini-2.0-flash-lite', 'gemini-2.0-flash', 'gemini-2.5-flash', 'gemini-2.5-flash-lite'];
-const DEFAULT_MODEL = 'gemini-2.0-flash-lite';
+const SUPPORTED_MODELS = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-1.5-flash', 'gemini-2.0-flash'];
+const DEFAULT_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
 
 const contextMemory = new Map();
 const CONTEXT_TTL = 30 * 60 * 1000;
@@ -110,7 +110,7 @@ const generateResponse = async (message, chatId = null, userId = null) => {
       })),
       generationConfig: {
         temperature: 0.7,
-        maxOutputTokens: 500,
+        maxOutputTokens: 2048,
         topP: 0.8,
         topK: 40
       },

@@ -14,7 +14,7 @@ registerProvider(geminiProvider);
 registerProvider(groqProvider);
 
 const getActiveProvider = () => {
-  const preferredOrder = ['groq', 'gemini'];
+  const preferredOrder = ['gemini', 'groq'];
 
   for (const name of preferredOrder) {
     const provider = providerRegistry.get(name);

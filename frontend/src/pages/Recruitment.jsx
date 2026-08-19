@@ -1,13 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { recruitmentService, departmentService } from '../services';
+import { recruitmentService, departmentService, aiIntelligenceService } from '../services';
 import { useAuth } from '../context/AuthContext';
 import { useSettings } from '../hooks/useSettings.jsx';
 import { formatDate } from '../utils/settingsHelper';
-import { FaBriefcase, FaUsers, FaPlus, FaSearch, FaTimes, FaFilter, FaCheckCircle, FaExclamationCircle, FaCloudUploadAlt } from 'react-icons/fa';
-import { FiEdit2, FiTrash2, FiExternalLink } from 'react-icons/fi';
+import { FaBriefcase, FaUsers, FaPlus, FaSearch, FaTimes, FaFilter, FaCheckCircle, FaExclamationCircle, FaCloudUploadAlt, FaMagic, FaStar, FaAward, FaRobot } from 'react-icons/fa';
+import { FiEdit2, FiTrash2, FiExternalLink, FiAward, FiCheckSquare, FiHelpCircle } from 'react-icons/fi';
+import AIModal from '../components/ai/AIModal';
 
 const Recruitment = () => {
-  const { user } = useAuth();
+  const { user, hasModule } = useAuth();
   const { getSetting } = useSettings();
   const [jobs, setJobs] = useState([]);
   const [applications, setApplications] = useState([]);
@@ -20,6 +21,23 @@ const Recruitment = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [activeTab, setActiveTab] = useState('jobs');
+
+  // AI Intelligence States
+  const [showAiJobModal, setShowAiJobModal] = useState(false);
+  const [aiJobLoading, setAiJobLoading] = useState(false);
+  const [aiJobError, setAiJobError] = useState('');
+  const [aiJobResult, setAiJobResult] = useState(null);
+
+  const [showAiScreeningModal, setShowAiScreeningModal] = useState(false);
+  const [aiScreeningLoading, setAiScreeningLoading] = useState(false);
+  const [aiScreeningError, setAiScreeningError] = useState('');
+  const [aiScreeningResult, setAiScreeningResult] = useState(null);
+  const [activeScreeningApp, setActiveScreeningApp] = useState(null);
+
+  const [showAiBatchModal, setShowAiBatchModal] = useState(false);
+  const [aiBatchLoading, setAiBatchLoading] = useState(false);
+  const [aiBatchError, setAiBatchError] = useState('');
+  const [aiBatchResult, setAiBatchResult] = useState(null);
   const [jobFormData, setJobFormData] = useState({
     title: '',
     description: '',
@@ -244,6 +262,103 @@ const Recruitment = () => {
       setTimeout(() => setSuccess(''), 3000);
     } catch (error) {
       setError('Status update failed: ' + (error.response?.data?.message || error.message));
+    }
+  };
+
+  // AI Handlers
+  const handleGenerateJobWithAI = async () => {
+    if (!jobFormData.title) {
+      alert('Please enter a Job Title first so AI can draft tailored specifications.');
+      return;
+    }
+    setShowAiJobModal(true);
+    setAiJobLoading(true);
+    setAiJobError('');
+    setAiJobResult(null);
+
+    try {
+      const selectedDept = departments.find(d => String(d.department_id) === String(jobFormData.department_id))?.department_name;
+      const res = await aiIntelligenceService.generateJobDescription({
+        title: jobFormData.title,
+        department: selectedDept,
+        positionType: jobFormData.position_type,
+        experienceRequired: jobFormData.experience_required,
+        location: jobFormData.location,
+        salaryRange: jobFormData.salary_range,
+        notes: jobFormData.description || jobFormData.requirements
+      });
+      setAiJobResult(res.data);
+    } catch (err) {
+      setAiJobError(err.response?.data?.message || err.message || 'Failed to generate job description with AI');
+    } finally {
+      setAiJobLoading(false);
+    }
+  };
+
+  const applyAiJobToForm = () => {
+    if (!aiJobResult) return;
+    setJobFormData(prev => ({
+      ...prev,
+      title: aiJobResult.title || prev.title,
+      description: aiJobResult.summary || prev.description,
+      requirements: Array.isArray(aiJobResult.requirements) ? aiJobResult.requirements.map(r => `• ${r}`).join('\n') : (aiJobResult.requirements || prev.requirements),
+      responsibilities: Array.isArray(aiJobResult.responsibilities) ? aiJobResult.responsibilities.map(r => `• ${r}`).join('\n') : (aiJobResult.responsibilities || prev.responsibilities)
+    }));
+    setShowAiJobModal(false);
+    setSuccess('AI Job Description applied to form!');
+    setTimeout(() => setSuccess(''), 3000);
+  };
+
+  const handleScreenCandidateWithAI = async (app) => {
+    setActiveScreeningApp(app);
+    setShowAiScreeningModal(true);
+    setAiScreeningLoading(true);
+    setAiScreeningError('');
+    setAiScreeningResult(null);
+
+    try {
+      const res = await aiIntelligenceService.screenResume({
+        jobId: app.job_id,
+        applicationId: app.application_id,
+        applicantName: app.applicant_name,
+        experienceYears: app.experience_years,
+        skills: app.skills,
+        resumeText: app.cover_letter || `Resume URL: ${app.resume_url || 'On file'}`
+      });
+      setAiScreeningResult(res.data);
+    } catch (err) {
+      setAiScreeningError(err.response?.data?.message || err.message || 'Failed to screen candidate with AI');
+    } finally {
+      setAiScreeningLoading(false);
+    }
+  };
+
+  const handleBatchScreenCandidates = async () => {
+    if (!appFilters.job_id) {
+      alert('Please select a specific Job Role in the filter above to rank its candidates.');
+      return;
+    }
+    const filteredApps = applications.filter(a => String(a.job_id) === String(appFilters.job_id));
+    if (filteredApps.length === 0) {
+      alert('No applications found for the selected job in current view.');
+      return;
+    }
+
+    setShowAiBatchModal(true);
+    setAiBatchLoading(true);
+    setAiBatchError('');
+    setAiBatchResult(null);
+
+    try {
+      const res = await aiIntelligenceService.batchScreenCandidates({
+        jobId: parseInt(appFilters.job_id),
+        applicationIds: filteredApps.map(a => a.application_id)
+      });
+      setAiBatchResult(res);
+    } catch (err) {
+      setAiBatchError(err.response?.data?.message || err.message || 'Failed to run batch candidate ranking');
+    } finally {
+      setAiBatchLoading(false);
     }
   };
 
@@ -568,13 +683,24 @@ const Recruitment = () => {
                   </div>
                 </div>
 
-                <div className="flex gap-2 sm:col-span-2 md:col-span-1 w-full mt-2 md:mt-0">
+                <div className="flex gap-2 sm:col-span-2 md:col-span-1 w-full mt-2 md:mt-0 items-center justify-end">
                   <button
                     className="btn btn-secondary h-[42px] px-4"
                     onClick={() => setAppFilters({ status: '', job_id: '' })}
+                    title="Reset filters"
                   >
                     <FaSearch size={14} />
                   </button>
+                  {hasModule('ai_assistant') && (
+                    <button
+                      type="button"
+                      className="btn h-[42px] px-3.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold flex items-center gap-1.5 shadow-sm text-xs rounded-xl border-none"
+                      onClick={handleBatchScreenCandidates}
+                      title="AI will analyze and rank all candidates for the selected job"
+                    >
+                      <FaRobot size={13} /> AI Rank
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -648,13 +774,25 @@ const Recruitment = () => {
                           ) : <span className="text-neutral-400 text-sm">-</span>}
                         </td>
                         <td>
-                          <button
-                            className="p-1.5 text-neutral-400 hover:text-danger hover:bg-danger-50 rounded transition-colors"
-                            onClick={() => handleDeleteApp(app.application_id)}
-                            title="Delete"
-                          >
-                            <FiTrash2 size={16} />
-                          </button>
+                          <div className="flex items-center gap-1.5">
+                            {hasModule('ai_assistant') && (
+                              <button
+                                type="button"
+                                className="px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-lg text-xs font-bold flex items-center gap-1 border border-indigo-200/60 shadow-xs transition-colors"
+                                onClick={() => handleScreenCandidateWithAI(app)}
+                                title="AI Match & Interview Questions"
+                              >
+                                <FaMagic size={11} className="text-indigo-500" /> AI Fit
+                              </button>
+                            )}
+                            <button
+                              className="p-1.5 text-neutral-400 hover:text-danger hover:bg-danger-50 rounded transition-colors"
+                              onClick={() => handleDeleteApp(app.application_id)}
+                              title="Delete"
+                            >
+                              <FiTrash2 size={16} />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))
@@ -711,9 +849,32 @@ const Recruitment = () => {
                     className="form-input"
                     value={jobFormData.title}
                     onChange={(e) => setJobFormData({ ...jobFormData, title: e.target.value })}
+                    placeholder="e.g. Senior Full Stack Developer"
                     required
                   />
                 </div>
+
+                {hasModule('ai_assistant') && (
+                  <div className="bg-gradient-to-r from-indigo-50/90 to-purple-50/90 dark:from-indigo-950/40 dark:to-purple-950/40 p-3.5 rounded-xl border border-indigo-100 dark:border-indigo-900/50 flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <div className="p-2 rounded-lg bg-indigo-600 text-white shadow-sm">
+                        <FaRobot size={15} />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-bold text-indigo-950 dark:text-indigo-200">AI Job Description Drafter</h4>
+                        <p className="text-[11px] text-indigo-700/80 dark:text-indigo-300/80">Draft comprehensive responsibilities, requirements & skills in seconds.</p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleGenerateJobWithAI}
+                      disabled={!jobFormData.title || aiJobLoading}
+                      className="px-3 py-1.5 text-xs font-bold text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 rounded-lg shadow-sm disabled:opacity-40 flex items-center gap-1.5 transition-all"
+                    >
+                      <FaMagic size={11} /> Auto-Draft with AI
+                    </button>
+                  </div>
+                )}
 
                 <div className="form-group">
                   <label className="form-label">Description</label>
@@ -968,6 +1129,203 @@ const Recruitment = () => {
           </div>
         </div>
       )}
+      {/* 1. AI Job Posting Preview Modal */}
+      <AIModal
+        isOpen={showAiJobModal}
+        onClose={() => setShowAiJobModal(false)}
+        title="AI Job Description Preview"
+        subtitle={`Generated for ${aiJobResult?.title || jobFormData.title}`}
+        loading={aiJobLoading}
+        loadingText="Analyzing job market trends and writing requirements..."
+        error={aiJobError}
+        onRetry={handleGenerateJobWithAI}
+        onApply={applyAiJobToForm}
+        applyText="Apply to Form"
+      >
+        {aiJobResult && (
+          <div className="space-y-4 text-xs">
+            <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+              <span className="font-bold text-slate-800 dark:text-slate-200 block mb-1">Role Summary:</span>
+              <p className="text-slate-600 dark:text-slate-300 leading-relaxed">{aiJobResult.summary}</p>
+            </div>
+
+            <div>
+              <span className="font-bold text-slate-800 dark:text-slate-200 block mb-1.5">Key Responsibilities:</span>
+              <ul className="space-y-1 pl-4 list-disc text-slate-600 dark:text-slate-300">
+                {Array.isArray(aiJobResult.responsibilities) && aiJobResult.responsibilities.map((r, i) => (
+                  <li key={i}>{r}</li>
+                ))}
+              </ul>
+            </div>
+
+            <div>
+              <span className="font-bold text-slate-800 dark:text-slate-200 block mb-1.5">Core Requirements:</span>
+              <ul className="space-y-1 pl-4 list-disc text-slate-600 dark:text-slate-300">
+                {Array.isArray(aiJobResult.requirements) && aiJobResult.requirements.map((r, i) => (
+                  <li key={i}>{r}</li>
+                ))}
+              </ul>
+            </div>
+
+            {aiJobResult.preferred_qualifications?.length > 0 && (
+              <div>
+                <span className="font-bold text-slate-800 dark:text-slate-200 block mb-1.5">Preferred Qualifications:</span>
+                <ul className="space-y-1 pl-4 list-disc text-slate-600 dark:text-slate-300">
+                  {aiJobResult.preferred_qualifications.map((q, i) => (
+                    <li key={i}>{q}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {aiJobResult.seo_tags?.length > 0 && (
+              <div className="pt-2 flex flex-wrap gap-1.5">
+                {aiJobResult.seo_tags.map((tag, i) => (
+                  <span key={i} className="px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 text-[10px] font-semibold">
+                    #{tag}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </AIModal>
+
+      {/* 2. AI Single Candidate Fit Analysis Modal */}
+      <AIModal
+        isOpen={showAiScreeningModal}
+        onClose={() => setShowAiScreeningModal(false)}
+        title="AI Candidate Match Fit Analysis"
+        subtitle={`Evaluation for ${activeScreeningApp?.applicant_name || 'Candidate'}`}
+        loading={aiScreeningLoading}
+        loadingText="Evaluating candidate experience and extracting interview questions..."
+        error={aiScreeningError}
+        onRetry={() => activeScreeningApp && handleScreenCandidateWithAI(activeScreeningApp)}
+      >
+        {aiScreeningResult && (
+          <div className="space-y-4 text-xs">
+            {/* Fit Score Radial Header */}
+            <div className="p-4 rounded-xl bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-950/30 dark:to-purple-950/30 border border-indigo-100 dark:border-indigo-900/40 flex items-center justify-between">
+              <div>
+                <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">Candidate Match Score</span>
+                <div className="flex items-baseline gap-2 mt-1">
+                  <span className={`text-3xl font-extrabold ${
+                    aiScreeningResult.match_score >= 80 ? 'text-emerald-600 dark:text-emerald-400' :
+                    aiScreeningResult.match_score >= 60 ? 'text-amber-600 dark:text-amber-400' : 'text-rose-600 dark:text-rose-400'
+                  }`}>
+                    {aiScreeningResult.match_score}%
+                  </span>
+                  <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
+                    aiScreeningResult.fit_verdict === 'Strong Fit' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300' :
+                    aiScreeningResult.fit_verdict === 'Good Fit' ? 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-300' :
+                    'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300'
+                  }`}>
+                    {aiScreeningResult.fit_verdict || 'Evaluated'}
+                  </span>
+                </div>
+              </div>
+              <div className="text-right">
+                <span className="text-[11px] text-slate-400 block">AI Screening Engine</span>
+                <span className="text-xs font-bold text-slate-700 dark:text-slate-300">Gemini 2.0 Flash</span>
+              </div>
+            </div>
+
+            {/* Executive Notes */}
+            <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+              <span className="font-bold text-slate-800 dark:text-slate-200 block mb-1">Executive Summary:</span>
+              <p className="text-slate-600 dark:text-slate-300 leading-relaxed">{aiScreeningResult.summary_notes}</p>
+            </div>
+
+            {/* Strengths & Gaps Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="p-3 rounded-xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/30">
+                <span className="font-bold text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5 mb-2">
+                  <FiCheckSquare className="text-emerald-600" /> Key Strengths
+                </span>
+                <ul className="space-y-1 pl-4 list-disc text-emerald-900 dark:text-emerald-200">
+                  {Array.isArray(aiScreeningResult.strengths) && aiScreeningResult.strengths.map((s, i) => (
+                    <li key={i}>{s}</li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className="p-3 rounded-xl bg-amber-50/50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/30">
+                <span className="font-bold text-amber-800 dark:text-amber-300 flex items-center gap-1.5 mb-2">
+                  <FiAward className="text-amber-600" /> Gaps & Growth Areas
+                </span>
+                <ul className="space-y-1 pl-4 list-disc text-amber-900 dark:text-amber-200">
+                  {Array.isArray(aiScreeningResult.gaps) && aiScreeningResult.gaps.map((g, i) => (
+                    <li key={i}>{g}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+
+            {/* Tailored Interview Questions */}
+            {aiScreeningResult.interview_questions?.length > 0 && (
+              <div className="p-3.5 bg-indigo-50/40 dark:bg-indigo-950/20 rounded-xl border border-indigo-100 dark:border-indigo-900/40">
+                <span className="font-bold text-indigo-900 dark:text-indigo-300 flex items-center gap-1.5 mb-2">
+                  <FiHelpCircle className="text-indigo-600" /> Recommended Interview Questions
+                </span>
+                <ol className="space-y-1.5 pl-4 list-decimal text-slate-700 dark:text-slate-300">
+                  {aiScreeningResult.interview_questions.map((q, i) => (
+                    <li key={i} className="pl-1 leading-relaxed">{q}</li>
+                  ))}
+                </ol>
+              </div>
+            )}
+          </div>
+        )}
+      </AIModal>
+
+      {/* 3. AI Batch Candidate Ranking Modal */}
+      <AIModal
+        isOpen={showAiBatchModal}
+        onClose={() => setShowAiBatchModal(false)}
+        title="AI Candidate Pipeline Ranking"
+        subtitle={`Ranked candidates for ${aiBatchResult?.job_title || 'Selected Job'}`}
+        loading={aiBatchLoading}
+        loadingText="Screening and ranking all candidates in parallel..."
+        error={aiBatchError}
+        onRetry={handleBatchScreenCandidates}
+      >
+        {aiBatchResult && (
+          <div className="space-y-4 text-xs">
+            <p className="text-slate-600 dark:text-slate-400">
+              Evaluated <strong>{aiBatchResult.total_evaluated}</strong> applicants and ranked them by verified skill alignment:
+            </p>
+
+            <div className="space-y-2.5">
+              {aiBatchResult.ranked_candidates?.map((cand, idx) => (
+                <div
+                  key={cand.application_id}
+                  className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 flex items-center justify-between"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-6 h-6 rounded-full bg-indigo-600 text-white font-bold flex items-center justify-center text-xs shrink-0">
+                      {idx + 1}
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-slate-900 dark:text-white">{cand.applicant_name}</h4>
+                      <p className="text-[11px] text-slate-500 line-clamp-1">{cand.summary_notes}</p>
+                    </div>
+                  </div>
+
+                  <div className="text-right shrink-0">
+                    <span className={`text-base font-extrabold block ${
+                      cand.match_score >= 80 ? 'text-emerald-600' :
+                      cand.match_score >= 60 ? 'text-amber-600' : 'text-rose-600'
+                    }`}>
+                      {cand.match_score}%
+                    </span>
+                    <span className="text-[10px] font-semibold text-slate-400">{cand.fit_verdict}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </AIModal>
     </div>
   );
 };

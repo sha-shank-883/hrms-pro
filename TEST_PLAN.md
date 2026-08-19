@@ -1735,4 +1735,53 @@ See `test-cases/README.md` for full details.
 | 8.10.9 | Secure Server-Side Price Calculation | Recomputes true price on server, rejecting any client-side tampering |
 | 8.10.10 | Cryptographic HMAC Signature Verification | Uses `crypto.timingSafeEqual` constant-time verification |
 
-### Updated Total Test Coverage: **5,010 test cases** (up from 5,000)
+---
+
+## Phase 9: AI HR Intelligence Suite & Security Guardrails
+
+### 9.1 AI Guardrails & PII Sanitization
+| # | Test Case | Expected Result |
+|---|---|---|
+| 9.1.1 | PII Phone Redaction | Replaces international & local phone numbers with `[REDACTED_PHONE]` |
+| 9.1.2 | PII SSN / Tax ID Redaction | Replaces 9-digit SSNs and PAN numbers with `[REDACTED_SSN]` |
+| 9.1.3 | PII Aadhaar ID Redaction | Replaces 12-digit Indian national identity numbers with `[REDACTED_AADHAAR]` |
+| 9.1.4 | Prompt Injection Defanging | Strips malicious override directives (`ignore previous instructions`, `system prompt`, `you are now DAN`) |
+| 9.1.5 | XML Isolation Boundary Tagging | Encloses user data within strict typed XML bounds (`<candidate_resume>...</candidate_resume>`) |
+| 9.1.6 | Markdown JSON Extraction | Accurately parses JSON from markdown code blocks (` ```json...``` `) |
+
+### 9.2 Subscription Plan Gatekeeping & Quotas
+| # | Test Case | Expected Result |
+|---|---|---|
+| 9.2.1 | Free Plan AI Access Request | Returns 403 Forbidden with upgrade prompt (`ai_assistant` module missing) |
+| 9.2.2 | Scale Plan AI Access Request | Returns 200 OK (`ai_assistant` module active) |
+| 9.2.3 | Enterprise Plan AI Access Request | Returns 200 OK with highest token allocation |
+| 9.2.4 | AI Quota Status Check | `GET /api/ai-intelligence/quota-status` returns tier name and daily quota metrics |
+| 9.2.5 | Tenant AI Audit Logging | Records all AI actions into tenant's `ai_action_logs` table |
+
+### 9.3 AI Recruitment & Candidate Screening
+| # | Test Case | Expected Result |
+|---|---|---|
+| 9.3.1 | `POST /api/ai-intelligence/generate-job-description` | Returns comprehensive job title, overview, responsibilities, requirements, and benefits |
+| 9.3.2 | `POST /api/ai-intelligence/screen-resume` | Evaluates single candidate with fit score (0-100), key matches, skill gaps, and interview questions |
+| 9.3.3 | `POST /api/ai-intelligence/batch-screen-candidates` | Evaluates and ranks all candidates for an opening by fit score in single batch |
+| 9.3.4 | Resume Evaluation Caching | Persists evaluation in `ai_screening_evaluations` for instant retrieval without extra LLM tokens |
+| 9.3.5 | Apply AI Job Description to Modal | Auto-populates Job Description and Requirements textareas in Recruitment.jsx |
+
+### 9.4 AI HR Smart Email Drafter
+| # | Test Case | Expected Result |
+|---|---|---|
+| 9.4.1 | Draft Interview Scheduling Email | Generates warm, professional invitation with details, date, and interviewers |
+| 9.4.2 | Draft Formal Job Offer Letter | Generates enthusiastic welcome email with compensation and joining details |
+| 9.4.3 | Draft Polite Rejection & Talent Retention Email | Generates encouraging response retaining candidate in talent community |
+| 9.4.4 | Apply AI Draft to Email Composer | Populates subject and body in `SendEmail.jsx` with one click |
+
+### 9.5 AI Performance Appraisal & Executive Insights
+| # | Test Case | Expected Result |
+|---|---|---|
+| 9.5.1 | `POST /api/ai-intelligence/performance-summary` | Computes employee rating (1.0-5.0), executive narrative, achievements, and growth action plan |
+| 9.5.2 | Performance Review AI Modal | Renders clean score breakdown and development recommendations in `Performance.jsx` |
+| 9.5.3 | `POST /api/ai-intelligence/executive-insights` | Synthesizes cross-departmental headcount, task velocity, and payroll for C-suite |
+| 9.5.4 | Executive Strategic Briefing Modal | Renders workforce health index (0-100), cost commentary, and strategic roadmap in `Analytics.jsx` |
+
+### Updated Total Test Coverage: **5,030 test cases** (up from 5,010)
+

@@ -1,8 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { FaPaperPlane, FaEnvelope, FaUsers, FaTimes } from 'react-icons/fa';
+import { FaPaperPlane, FaEnvelope, FaUsers, FaTimes, FaRobot, FaMagic, FaCheck } from 'react-icons/fa';
 import api from '../services/api';
+import { useAuth } from '../context/AuthContext';
+import { aiIntelligenceService } from '../services';
+import AIModal from '../components/ai/AIModal';
 
 const SendEmail = () => {
+  const { hasModule } = useAuth();
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -18,6 +22,52 @@ const SendEmail = () => {
   const [sending, setSending] = useState(false);
   const [employees, setEmployees] = useState([]);
   const [showEmployeeSelector, setShowEmployeeSelector] = useState(false);
+
+  // AI Drafter States
+  const [showAiDrafterModal, setShowAiDrafterModal] = useState(false);
+  const [aiDrafterLoading, setAiDrafterLoading] = useState(false);
+  const [aiDrafterError, setAiDrafterError] = useState('');
+  const [aiDrafterResult, setAiDrafterResult] = useState(null);
+  const [aiDraftPrompt, setAiDraftPrompt] = useState({
+    purpose: 'interview_invite',
+    recipientName: '',
+    recipientRole: '',
+    tone: 'Professional & Warm',
+    keyDetails: '',
+    customInstructions: ''
+  });
+
+  const handleGenerateEmailWithAI = async () => {
+    setAiDrafterLoading(true);
+    setAiDrafterError('');
+    setAiDrafterResult(null);
+
+    try {
+      const res = await aiIntelligenceService.draftEmail({
+        purpose: aiDraftPrompt.purpose,
+        recipientName: aiDraftPrompt.recipientName,
+        recipientRole: aiDraftPrompt.recipientRole,
+        tone: aiDraftPrompt.tone,
+        keyDetails: aiDraftPrompt.keyDetails,
+        customInstructions: aiDraftPrompt.customInstructions
+      });
+      setAiDrafterResult(res.data);
+    } catch (err) {
+      setAiDrafterError(err.response?.data?.message || err.message || 'Failed to draft email with AI');
+    } finally {
+      setAiDrafterLoading(false);
+    }
+  };
+
+  const applyAiDraftToEditor = () => {
+    if (!aiDrafterResult) return;
+    setFormData(prev => ({
+      ...prev,
+      subject: aiDrafterResult.subject || prev.subject,
+      body: aiDrafterResult.bodyText || aiDrafterResult.bodyHtml || prev.body
+    }));
+    setShowAiDrafterModal(false);
+  };
 
   useEffect(() => {
     loadTemplates();
@@ -219,6 +269,27 @@ const SendEmail = () => {
               <p className="mt-1 text-sm text-gray-500">Customize and send your email</p>
             </div>
             <div className="p-4">
+              {hasModule('ai_assistant') && (
+                <div className="mb-5 bg-gradient-to-r from-indigo-50/90 to-purple-50/90 dark:from-indigo-950/40 dark:to-purple-950/40 p-4 rounded-xl border border-indigo-100 dark:border-indigo-900/50 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 rounded-xl bg-gradient-to-br from-indigo-600 to-purple-600 text-white shadow-sm">
+                      <FaRobot size={18} />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold text-indigo-950 dark:text-indigo-200">AI Smart HR Email Drafter</h4>
+                      <p className="text-xs text-indigo-700/80 dark:text-indigo-300/80">Draft interview invites, offer letters, appraisals, and notices with custom tone.</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowAiDrafterModal(true)}
+                    className="px-3.5 py-2 text-xs font-bold text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 rounded-xl shadow-sm flex items-center gap-1.5 shrink-0 transition-all"
+                  >
+                    <FaMagic size={12} /> Open AI Drafter
+                  </button>
+                </div>
+              )}
+
               {selectedTemplate ? (
                 <form onSubmit={handleSendEmail} className="space-y-4">
                   {/* Recipients */}
@@ -412,6 +483,116 @@ const SendEmail = () => {
           </div>
         </div>
       )}
+      {/* AI Smart HR Email Drafter Modal */}
+      <AIModal
+        isOpen={showAiDrafterModal}
+        onClose={() => setShowAiDrafterModal(false)}
+        title="AI Smart HR Email Drafter"
+        subtitle="Generate customized, high-converting communications"
+        loading={aiDrafterLoading}
+        loadingText="Crafting professional email with context and tone..."
+        error={aiDrafterError}
+        onRetry={handleGenerateEmailWithAI}
+        onApply={aiDrafterResult ? applyAiDraftToEditor : handleGenerateEmailWithAI}
+        applyText={aiDrafterResult ? "Insert into Email Editor" : "Generate Email"}
+      >
+        {!aiDrafterResult ? (
+          <div className="space-y-4 text-xs">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">Email Purpose / Context</label>
+                <select
+                  className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-medium"
+                  value={aiDraftPrompt.purpose}
+                  onChange={(e) => setAiDraftPrompt({ ...aiDraftPrompt, purpose: e.target.value })}
+                >
+                  <option value="interview_invite">Interview Invitation & Scheduling</option>
+                  <option value="job_offer">Formal Job Offer & Welcome</option>
+                  <option value="rejection_talent_pool">Polite Rejection & Talent Pool Retention</option>
+                  <option value="employee_announcement">Company Policy / Event Announcement</option>
+                  <option value="performance_feedback">Appraisal Feedback & Performance Review</option>
+                  <option value="warning_notice">Formal HR Warning / Escalation</option>
+                  <option value="custom">Custom HR Communication</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">Communication Tone</label>
+                <select
+                  className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-medium"
+                  value={aiDraftPrompt.tone}
+                  onChange={(e) => setAiDraftPrompt({ ...aiDraftPrompt, tone: e.target.value })}
+                >
+                  <option value="Professional & Warm">Professional & Warm (Recommended)</option>
+                  <option value="Formal & Executive">Formal & Executive</option>
+                  <option value="Enthusiastic & Welcoming">Enthusiastic & Welcoming</option>
+                  <option value="Empathetic & Supportive">Empathetic & Supportive</option>
+                  <option value="Direct & Urgent">Direct & Urgent</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">Recipient Name</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Sarah Connor"
+                  className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200"
+                  value={aiDraftPrompt.recipientName}
+                  onChange={(e) => setAiDraftPrompt({ ...aiDraftPrompt, recipientName: e.target.value })}
+                />
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">Recipient Role / Position</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Software Engineer Candidate"
+                  className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200"
+                  value={aiDraftPrompt.recipientRole}
+                  onChange={(e) => setAiDraftPrompt({ ...aiDraftPrompt, recipientRole: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">Key Points to Include (Dates, Location, Specific Perks, Feedback)</label>
+              <textarea
+                rows="3"
+                placeholder="e.g. Technical round scheduled for Monday 10:00 AM via Google Meet. Interviewers will be Jane Doe and John Smith."
+                className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200"
+                value={aiDraftPrompt.keyDetails}
+                onChange={(e) => setAiDraftPrompt({ ...aiDraftPrompt, keyDetails: e.target.value })}
+              />
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-4 text-xs">
+            <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+              <span className="font-bold text-slate-700 dark:text-slate-300 block mb-1">Generated Subject:</span>
+              <p className="text-sm font-semibold text-indigo-900 dark:text-indigo-200">{aiDrafterResult.subject}</p>
+            </div>
+
+            <div>
+              <span className="font-bold text-slate-700 dark:text-slate-300 block mb-1">Email Body Preview:</span>
+              <div
+                className="p-4 bg-white dark:bg-slate-850 rounded-xl border border-slate-200 dark:border-slate-700 leading-relaxed text-slate-700 dark:text-slate-300 max-h-60 overflow-y-auto whitespace-pre-wrap"
+              >
+                {aiDrafterResult.bodyText || aiDrafterResult.bodyHtml}
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setAiDrafterResult(null)}
+              className="text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 font-semibold underline text-xs"
+            >
+              ← Edit Prompt & Regenerate
+            </button>
+          </div>
+        )}
+      </AIModal>
     </div>
   );
 };

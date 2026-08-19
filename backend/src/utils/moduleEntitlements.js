@@ -4,8 +4,8 @@ const { pool } = require('../config/database');
 const DEFAULT_FALLBACK_MODULES = {
   free: ['core_hr', 'attendance', 'leaves', 'tasks', 'documents'],
   hatch: ['core_hr', 'attendance', 'leaves', 'tasks', 'documents', 'performance', 'reports_analytics'],
-  scale: ['core_hr', 'attendance', 'leaves', 'tasks', 'documents', 'performance', 'payroll', 'assets', 'chat', 'reports_analytics'],
-  enterprise: ['core_hr', 'attendance', 'leaves', 'tasks', 'documents', 'performance', 'payroll', 'recruitment', 'assets', 'chat', 'biometrics', 'live_activity', 'reports_analytics', 'audit_logs']
+  scale: ['core_hr', 'attendance', 'leaves', 'tasks', 'documents', 'performance', 'payroll', 'assets', 'chat', 'reports_analytics', 'ai_assistant'],
+  enterprise: ['core_hr', 'attendance', 'leaves', 'tasks', 'documents', 'performance', 'payroll', 'recruitment', 'assets', 'chat', 'biometrics', 'live_activity', 'reports_analytics', 'audit_logs', 'ai_assistant']
 };
 
 /**

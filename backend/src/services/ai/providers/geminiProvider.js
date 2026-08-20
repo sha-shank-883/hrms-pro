@@ -1,13 +1,11 @@
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const { getOrganizationKnowledgeContext } = require('../organizationKnowledge');
 
-const SYSTEM_PROMPT = `You are an HRMS support assistant helping users with attendance, payroll, leave management, employee onboarding, permissions, and HR workflows.
+const SYSTEM_PROMPT = `You are the Operations Intelligence Agent embedded inside Corexa HR / HRMS Pro — not a support chatbot, but an expert HR operations partner who has complete, real-time knowledge of this organization: its employees, policies, workflows, and current state. You know this company's data the way a long-tenured HR operations manager would, not the way a generic help desk does. You do not say things like "I'm here to help", "As an AI...", or "Sure, I can help with that" — you respond the way a capable colleague would, directly, proactively, and specifically.
 
 ${getOrganizationKnowledgeContext()}
 
-Available features: employee management, attendance tracking, leave management, payroll, tasks, performance reviews, recruitment, document management, chat, reports, analytics, settings, assets management, shifts, onboarding.
-
-Answer concisely and helpfully. If you cannot resolve the issue, recommend creating a support ticket. Keep responses under 200 words. Be professional and friendly.`;
+Never reuse the exact same sentence structure or boilerplate wording. Vary phrasing naturally and speak directly with high clarity and actionable precision.`;
 
 const SUPPORTED_MODELS = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-1.5-flash', 'gemini-2.0-flash'];
 const DEFAULT_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
@@ -191,16 +189,44 @@ const generateResponse = async (message, chatId = null, userId = null, options =
       };
     }
 
-    if (isAuthError) {
-      return {
-        success: false,
-        response: null,
-        error: 'AI service configuration error. Please contact administrator.',
-        needsTicket: true,
-        confidence: 0,
-        provider: 'gemini',
-        retryable: false
-      };
+    const is503 = error.message?.includes('503') || error.message?.includes('high demand') || error.message?.includes('Unavailable');
+
+    if (is503 && modelName !== 'gemini-2.5-flash') {
+      try {
+        console.log('[GeminiProvider] Primary model 503 high demand; retrying with gemini-2.5-flash...');
+        const fbConfig = { ...modelConfig, model: 'gemini-2.5-flash' };
+        const fbModel = client.getGenerativeModel(fbConfig);
+        const fbChat = fbModel.startChat({
+          history: (options.history || []).map(h => ({ role: h.role, parts: h.parts || [{ text: h.text }] })),
+          generationConfig: { temperature: 0.7, maxOutputTokens: 2048 }
+        });
+        const fbResult = await fbChat.sendMessage(message);
+        const fbResponse = fbResult.response;
+        const functionCalls = typeof fbResponse?.functionCalls === 'function' ? fbResponse.functionCalls() : null;
+        if (functionCalls && functionCalls.length > 0) {
+          return {
+            success: true,
+            hasFunctionCall: true,
+            functionCall: { name: functionCalls[0].name, args: functionCalls[0].args || {} },
+            chatSession: fbChat,
+            provider: 'gemini',
+            model: 'gemini-2.5-flash',
+            responseTimeMs: Date.now() - startTime
+          };
+        }
+        const text = fbResponse?.text ? fbResponse.text() : '';
+        return {
+          success: true,
+          hasFunctionCall: false,
+          response: text,
+          confidence: estimateConfidence(text, message),
+          provider: 'gemini',
+          model: 'gemini-2.5-flash',
+          responseTimeMs: Date.now() - startTime
+        };
+      } catch (fbErr) {
+        console.warn('[GeminiProvider] Fallback model also error:', fbErr.message);
+      }
     }
 
     throw error;
@@ -239,14 +265,32 @@ const sendFunctionResult = async (chatSession, functionName, toolResult) => {
         functionResponse: {
           name: functionName,
           response: {
-            output: toolResult
+            name: functionName,
+            content: toolResult
           }
         }
       }
     ]);
     return result.response?.text ? result.response.text() : '';
   } catch (err) {
-    console.warn('[GeminiProvider] Error in sendFunctionResult:', err.message);
+    try {
+      const client = initClient();
+      if (client) {
+        const model = client.getGenerativeModel({
+          model: process.env.GEMINI_MODEL || DEFAULT_MODEL,
+          systemInstruction: SYSTEM_PROMPT
+        });
+        const synthRes = await model.generateContent({
+          contents: [
+            {
+              role: 'user',
+              parts: [{ text: `System Tool Output for [${functionName}]:\n${JSON.stringify(toolResult)}\n\nCommunicate this result to the user as a sharp, highly capable HR Operations partner directly and specifically without boilerplate.` }]
+            }
+          ]
+        });
+        return synthRes.response?.text ? synthRes.response.text() : null;
+      }
+    } catch (_) {}
     return null;
   }
 };

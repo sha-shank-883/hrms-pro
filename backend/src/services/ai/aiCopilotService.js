@@ -8,7 +8,7 @@ const {
 } = require('./toolRegistry');
 const conversationState = require('./conversationState');
 const { resolveRelativeDate, resolveRelativePeriod, formatDate } = require('./dateResolver');
-const { getOrganizationKnowledgeContext, getDynamicOrgKnowledgeContext } = require('./organizationKnowledge');
+const { getOrganizationKnowledgeContext, getDynamicOrgKnowledgeContext, getLiveOrgSnapshot } = require('./organizationKnowledge');
 
 const DAYS_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -22,7 +22,7 @@ class HRAIOperationsOrchestrator {
   /**
    * Process incoming user request with full agent workflow
    */
-  async processUserMessage({ message, conversationHistory = [], userContext, tenantContext, isConfirmed = false, confirmedAction = null }) {
+  async processUserMessage({ message, conversationHistory = [], userContext, tenantContext, isConfirmed = false, confirmedAction = null, onProgress = null }) {
     const { user, isSuperAdmin } = userContext;
     const role = user?.role || 'employee';
     const userId = user?.userId || user?.id || 'anon';
@@ -69,11 +69,13 @@ class HRAIOperationsOrchestrator {
     const geminiTools = getGeminiFunctionDeclarations(role, isSuperAdmin);
     const groqTools = getOpenAIFunctionDeclarations(role, isSuperAdmin);
 
-    // 3. Construct HR AI Operations Agent System Prompt with Real-Time Calendar Grounding & Organization Knowledge Context
+    // 3. Construct HR AI Operations Agent System Prompt with Real-Time Calendar Grounding, Live Org Context & Organization Knowledge
     const orgKnowledgeContext = await getDynamicOrgKnowledgeContext(tenantContext?.tenantId);
+    const liveOrgSnapshot = await getLiveOrgSnapshot(userContext, tenantContext);
 
-    const systemPrompt = `You are the lead HR AI Operations Agent for an enterprise HRMS platform.
-You are assisting ${userName} whose authenticated system role is "${role.toUpperCase()}" ${isSuperAdmin ? '(GLOBAL SUPER ADMIN)' : ''}.
+    const systemPrompt = `You are the Operations Intelligence Agent embedded inside Corexa HR / HRMS Pro — not a support chatbot, but an expert HR operations partner who has complete, real-time knowledge of this organization: its employees, policies, workflows, and current state. You know this company's data the way a long-tenured HR operations manager would, not the way a generic help desk does. You do not say things like "I'm here to help", "As an AI language model...", or "Sure, I can help with that" — you respond the way a capable colleague would, directly, proactively, and specifically.
+
+Assisting: ${userName} | Authenticated System Role: "${role.toUpperCase()}" ${isSuperAdmin ? '(GLOBAL SUPER ADMIN)' : ''}
 
 TEMPORAL & CALENDAR GROUNDING:
 - Current Server Timestamp: ${currentTimestampStr}
@@ -81,25 +83,25 @@ TEMPORAL & CALENDAR GROUNDING:
 - Current Year: ${now.getFullYear()}
 - Current Month: ${now.getMonth() + 1}
 
+${liveOrgSnapshot}
+
 ${orgKnowledgeContext}
 
-OPERATIONAL AGENT GUIDELINES:
-1. Understand the user's intent: Determine if the request is informational, analytical, operational/action, multi-step, or ambiguous.
-2. Tool-First Operation: Always inspect available HRMS data and call appropriate domain tools with structured parameters.
-3. Disambiguation: If a search returns multiple matching employees, present the list and ask the user which employee they mean.
-4. Proactive Slot-Filling & Template Offering: If mandatory information for an action (e.g. creating/onboarding an employee) is missing, list the required fields and explicitly offer the user a copy-paste template as an alternative to answering one-by-one:
-   "You can answer these one at a time, or paste this filled in:
+PROACTIVE GUIDANCE BEHAVIOR:
+- After completing an action, proactively suggest 1-3 logical next steps if a clear workflow follows (e.g. after creating an employee: "Would you like me to configure their initial leave quotas and assign onboarding hardware assets?").
+- If a user's request suggests they are unfamiliar with the complete procedural sequence (e.g. "I need to fire someone" or "I want to promote someone"), guide them step-by-step through the required compliance, approval, and settlement stages rather than blindly executing a single raw mutation.
+- If you detect a common pattern (e.g. month-end payroll approaching or high unregularized attendance punches), proactively highlight it.
+- When explaining findings, concisely state WHY, not just WHAT (e.g. "Leave balance is 3 days — note this employee is on probation until {{date}}, which restricts unearned leave encashment").
 
-Full Name: 
-Email: 
-Department: 
-Designation: 
-Monthly Salary: 
-Joining Date: "
-   Detect which mode the user chose based on their next message (single value = one-by-one continuing; multi-line labeled response = bulk, parse directly).
-5. Zero Hallucination: Never invent employees, salaries, leave balances, attendance records, policies, or operation outcomes.
-6. Response Style: Communicate like an experienced, highly capable HR Operations Manager — professional, concise, proactive, and clear.
-7. Security & Boundaries: Never expose chain-of-thought. Never bypass role or tenant boundaries.
+NATURAL CONVERSATION & ANTI-REPETITION RULES:
+1. Never reuse the exact same sentence structure, opening greeting, or boilerplate phrasing you've used earlier in this conversation. Vary your phrasing naturally, the way a real person would when explaining something for a second time or in a new context.
+2. Avoid generic bot templates. Speak directly with concrete details.
+3. Understand the user's intent: Determine if the request is informational, analytical, operational/action, multi-step, or ambiguous.
+4. Tool-First Operation: Always inspect available HRMS data and call appropriate domain tools with structured parameters.
+5. Disambiguation: If a search returns multiple matching employees, present the list concisely and ask the user which employee they mean.
+6. Proactive Slot-Filling: If mandatory information for an action is missing, explain what details are needed and offer a natural, copy-paste template tailored to the missing fields.
+7. Zero Hallucination: Never invent employees, salaries, leave balances, attendance records, policies, or operation outcomes.
+8. Security & Boundaries: Never expose chain-of-thought. Never bypass role or tenant boundaries.
 
 CONVERSATION RECENT HISTORY:
 ${historySnippet || '(No prior conversation in this session)'}`;
@@ -127,6 +129,12 @@ ${historySnippet || '(No prior conversation in this session)'}`;
     if (aiResponse && aiResponse.success && aiResponse.hasFunctionCall && aiResponse.functionCall) {
       const { name: toolName, args: toolArgs } = aiResponse.functionCall;
       toolExecuted = toolName;
+      console.log(`[AI Engine: LLM_NATIVE] Handled via ${aiResponse.provider} with function call: ${toolName}`);
+
+      if (typeof onProgress === 'function') {
+        const friendlyName = toolName.replace(/([A-Z])/g, ' $1').toLowerCase();
+        onProgress(`Executing ${friendlyName} in HRMS database...`);
+      }
 
       try {
         toolResult = await executeAuthorizedTool(
@@ -208,11 +216,15 @@ ${historySnippet || '(No prior conversation in this session)'}`;
         finalReply = toolResult.message;
       }
 
+      // Compute proactive suggested next actions
+      const suggestedActions = this._computeSuggestedNextActions(toolExecuted, toolResult);
+
       return {
         reply: finalReply,
         tool_executed: toolExecuted,
         tool_result: toolResult,
         action_cards: actionCards,
+        suggested_next_actions: suggestedActions,
         timestamp: new Date().toISOString()
       };
     }
@@ -229,10 +241,15 @@ ${historySnippet || '(No prior conversation in this session)'}`;
     }
 
     // 6. Keyword-Presence Scoring Heuristic Router (Offline / Fallback Path)
+    console.warn(`[AI Engine: HEURISTIC_FALLBACK] LLM provider was unconfigured or returned no actionable plan; invoking offline heuristic router.`);
     const heuristicDecision = this._heuristicAgentRouter(sanitizedQuery, conversationHistory, role, isSuperAdmin, sessionId);
 
     if (heuristicDecision.should_call_tool && heuristicDecision.tool_name) {
       toolExecuted = heuristicDecision.tool_name;
+      if (typeof onProgress === 'function') {
+        const friendlyName = heuristicDecision.tool_name.replace(/([A-Z])/g, ' $1').toLowerCase();
+        onProgress(`Accessing ${friendlyName} in HRMS database...`);
+      }
       try {
         toolResult = await executeAuthorizedTool(
           heuristicDecision.tool_name,
@@ -510,12 +527,19 @@ ${historySnippet || '(No prior conversation in this session)'}`;
         if (slots.phone) collectedList.push(`• **Phone**: ${slots.phone}`);
         if (slots.gender) collectedList.push(`• **Gender**: ${slots.gender.toUpperCase()}`);
 
-        let reply = `Let's set up the new employee profile! 👤\n\n`;
+        const openers = [
+          "To register this employee profile, I need a few mandatory details:",
+          "Please share the following required parameters to complete the onboarding record:",
+          "I will set up this employee record. Kindly provide the missing details below:"
+        ];
+        const randomOpener = openers[Math.floor(Math.random() * openers.length)];
+
+        let reply = `${randomOpener}\n\n`;
         if (collectedList.length > 0) {
-          reply += `📋 **Information Collected So Far:**\n${collectedList.join('\n')}\n\n`;
+          reply += `📋 **Details Received:**\n${collectedList.join('\n')}\n\n`;
         }
-        reply += `👉 **Required details from HR:**\n${missing.join('\n')}\n\n`;
-        reply += `You can answer these one at a time, or paste this filled in:\n\n` +
+        reply += `👉 **Pending Fields:**\n${missing.join('\n')}\n\n`;
+        reply += `You can provide these individually, or copy and paste this filled in:\n\n` +
           `Full Name: ${slots.first_name ? `${slots.first_name} ${slots.last_name || ''}`.trim() : ''}\n` +
           `Email: ${slots.email || ''}\n` +
           `Department: ${slots.department_name || ''}\n` +
@@ -662,6 +686,55 @@ ${historySnippet || '(No prior conversation in this session)'}`;
       should_call_tool: false,
       direct_reply: 'I am your HR AI Operations Agent. You can ask me to search employees, check attendance & missing punches, view leave balances, analyze payroll costs, manage OKRs, or retrieve company policies!'
     };
+  }
+
+  /**
+   * Generates proactive suggested next steps based on executed tool outcome
+   */
+  _computeSuggestedNextActions(toolName, toolResult) {
+    if (!toolResult || !toolResult.success) return [];
+
+    const suggestionsMap = {
+      createEmployee: [
+        { label: '🎯 Set Leave Balance Quota', prompt: `Set up standard annual leave balance for new employee` },
+        { label: '💻 Assign Hardware Assets', prompt: `Assign laptop and workstation assets to this new employee` },
+        { label: '📋 View Onboarding Checklist', prompt: `Show onboarding document requirements for this employee` }
+      ],
+      deactivateEmployee: [
+        { label: '💼 Process F&F Settlement', prompt: `Initiate Full & Final settlement and leave encashment calculations` },
+        { label: '📦 Asset Return Checklist', prompt: `View assets assigned to this employee for recovery` },
+        { label: '🔒 Revoke System Access', prompt: `Confirm IT login revocation and generate relieving letter` }
+      ],
+      updateEmployee: [
+        { label: '🔍 View Updated Profile', prompt: `Show full profile details for this employee` },
+        { label: '💰 Check Payroll Impact', prompt: `Recalculate monthly salary deductions with new compensation` }
+      ],
+      mark_attendance: [
+        { label: '📊 Monthly Attendance Rate', prompt: `Show attendance summary for this month` },
+        { label: '⚠️ Check Missing Punches', prompt: `List all missing punches requiring regularization` }
+      ],
+      regularizeAttendance: [
+        { label: '📅 View Updated Shift Logs', prompt: `Show attendance records for this week` },
+        { label: '✅ Review Pending Requests', prompt: `Check if there are any remaining pending regularization requests` }
+      ],
+      createLeaveRequest: [
+        { label: '🏖️ Check Remaining Leave Balance', prompt: `Show my remaining leave balance` },
+        { label: '👥 Team Absence Calendar', prompt: `Who is on leave from my department this week?` }
+      ],
+      approveLeave: [
+        { label: '📋 Next Pending Approvals', prompt: `Show next pending leave requests awaiting my approval` },
+        { label: '📈 Department Staffing Impact', prompt: `Check department coverage for upcoming week` }
+      ],
+      calculatePayroll: [
+        { label: '📝 Finalize Payroll Run', prompt: `Finalize payroll and lock registers for this month` },
+        { label: '📑 Download Salary Sheet', prompt: `Export bank transfer and salary register summary` }
+      ]
+    };
+
+    return suggestionsMap[toolName] || [
+      { label: '🏢 View Organization Stats', prompt: `Show current active headcount and department breakdown` },
+      { label: '📜 Check Company Policies', prompt: `What are the company policies regarding leave and working hours?` }
+    ];
   }
 }
 

@@ -125,10 +125,50 @@ async function getDynamicOrgKnowledgeContext(tenantId) {
   return getOrganizationKnowledgeContext(dbPolicies);
 }
 
+/**
+ * Asynchronously fetches live organization and user role snapshot
+ */
+async function getLiveOrgSnapshot(userContext, tenantContext) {
+  try {
+    const empCountRes = await query(`SELECT COUNT(*) as count FROM employees WHERE status = 'active'`);
+    const totalActiveEmployees = empCountRes?.rows?.[0]?.count || 0;
+
+    const deptRes = await query(`SELECT department_name FROM departments ORDER BY department_id ASC LIMIT 10`);
+    const departments = (deptRes?.rows || []).map(d => d.department_name).join(', ') || 'General';
+
+    const role = userContext?.user?.role || 'employee';
+    const userId = userContext?.user?.userId || userContext?.user?.id;
+    let roleSnapshot = '';
+
+    if (role === 'admin' || role === 'hr' || userContext?.isSuperAdmin) {
+      const pendingLeaves = await query(`SELECT COUNT(*) as count FROM leave_requests WHERE status = 'pending'`);
+      const pendingCount = pendingLeaves?.rows?.[0]?.count || 0;
+      roleSnapshot = `\n- Admin/HR Dashboard Context: You have ${pendingCount} pending leave approval request(s) awaiting review across the organization.`;
+    } else if (role === 'manager') {
+      const empRes = await query(`SELECT employee_id FROM employees WHERE user_id = $1`, [userId]);
+      const empId = empRes?.rows?.[0]?.employee_id;
+      if (empId) {
+        const teamRes = await query(`SELECT COUNT(*) as count FROM employees WHERE reporting_manager_id = $1 AND status = 'active'`, [empId]);
+        const teamSize = teamRes?.rows?.[0]?.count || 0;
+        const pendingLeaves = await query(`SELECT COUNT(*) as count FROM leave_requests lr JOIN employees e ON lr.employee_id = e.employee_id WHERE e.reporting_manager_id = $1 AND lr.status = 'pending'`, [empId]);
+        const pendingCount = pendingLeaves?.rows?.[0]?.count || 0;
+        roleSnapshot = `\n- Manager Team Context: You manage a direct team of ${teamSize} active employee(s). You have ${pendingCount} pending leave request(s) awaiting your approval.`;
+      }
+    }
+
+    return `LIVE ORGANIZATIONAL SNAPSHOT:
+- Organization Active Headcount: ${totalActiveEmployees} active employees
+- Departments: ${departments}${roleSnapshot}`;
+  } catch (err) {
+    return `LIVE ORGANIZATIONAL SNAPSHOT:\n- Organization Active Headcount: Dynamic\n- System Status: Operational`;
+  }
+}
+
 module.exports = {
   DEFAULT_HR_POLICIES,
   DOMAIN_TERMINOLOGY_MAPPINGS,
   COMMON_JUDGMENT_RULES,
   getOrganizationKnowledgeContext,
-  getDynamicOrgKnowledgeContext
+  getDynamicOrgKnowledgeContext,
+  getLiveOrgSnapshot
 };

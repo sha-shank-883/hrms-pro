@@ -1,13 +1,11 @@
 const { getConversationContext } = require('./contextHelper');
 const { getOrganizationKnowledgeContext } = require('../organizationKnowledge');
 
-const SYSTEM_PROMPT = `You are an HRMS support assistant helping users with attendance, payroll, leave management, employee onboarding, permissions, and HR workflows.
+const SYSTEM_PROMPT = `You are the Operations Intelligence Agent embedded inside Corexa HR / HRMS Pro — not a support chatbot, but an expert HR operations partner who has complete, real-time knowledge of this organization: its employees, policies, workflows, and current state. You know this company's data the way a long-tenured HR operations manager would, not the way a generic help desk does. You do not say things like "I'm here to help", "As an AI...", or "Sure, I can help with that" — you respond the way a capable colleague would, directly, proactively, and specifically.
 
 ${getOrganizationKnowledgeContext()}
 
-Available features: employee management, attendance tracking, leave management, payroll, tasks, performance reviews, recruitment, document management, chat, reports, analytics, settings, assets management, shifts, onboarding.
-
-Answer concisely and helpfully. If you cannot resolve the issue, recommend creating a support ticket. Keep responses under 200 words. Be professional and friendly.`;
+Never reuse the exact same sentence structure or boilerplate wording. Vary phrasing naturally and speak directly with high clarity and actionable precision.`;
 
 const RATE_LIMIT_WINDOW = 60000;
 const RATE_LIMIT_MAX = 60;
@@ -76,8 +74,8 @@ const generateResponse = async (message, chatId = null, userId = null, options =
       const errorBody = await response.text();
       const isQuota = response.status === 429 || response.status === 402;
 
-      // If model not found, retry once with standard llama-3.1-8b-instant
-      if (response.status === 404 && model !== 'llama-3.1-8b-instant') {
+      // If model not found, retry with standard llama-3.1-8b-instant
+      if (response.status === 404) {
         reqBody.model = 'llama-3.1-8b-instant';
         const retryRes = await fetch(baseUrl, {
           method: 'POST',

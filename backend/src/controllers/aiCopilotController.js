@@ -100,6 +100,21 @@ const streamChatWithCopilot = asyncHandler(async (req, res) => {
   }
 });
 
+/**
+ * Get Contextual Suggestions based on User Role
+ */
+const getSuggestions = asyncHandler(async (req, res) => {
+  const role = req.user?.role || 'employee';
+  const isSuperAdmin = !!(req.user?.isSuperAdmin || req.user?.role === 'super_admin');
+
+  const suggestions = aiCopilotService.getQuickSuggestions(role, isSuperAdmin);
+
+  res.json({
+    success: true,
+    data: suggestions
+  });
+});
+
 module.exports = {
   chatWithCopilot,
   streamChatWithCopilot,

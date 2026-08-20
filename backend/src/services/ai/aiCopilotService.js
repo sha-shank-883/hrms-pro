@@ -8,7 +8,7 @@ const {
 } = require('./toolRegistry');
 const conversationState = require('./conversationState');
 const { resolveRelativeDate, resolveRelativePeriod, formatDate } = require('./dateResolver');
-const { getOrganizationKnowledgeContext } = require('./organizationKnowledge');
+const { getOrganizationKnowledgeContext, getDynamicOrgKnowledgeContext } = require('./organizationKnowledge');
 
 const DAYS_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -70,7 +70,7 @@ class HRAIOperationsOrchestrator {
     const groqTools = getOpenAIFunctionDeclarations(role, isSuperAdmin);
 
     // 3. Construct HR AI Operations Agent System Prompt with Real-Time Calendar Grounding & Organization Knowledge Context
-    const orgKnowledgeContext = getOrganizationKnowledgeContext();
+    const orgKnowledgeContext = await getDynamicOrgKnowledgeContext(tenantContext?.tenantId);
 
     const systemPrompt = `You are the lead HR AI Operations Agent for an enterprise HRMS platform.
 You are assisting ${userName} whose authenticated system role is "${role.toUpperCase()}" ${isSuperAdmin ? '(GLOBAL SUPER ADMIN)' : ''}.

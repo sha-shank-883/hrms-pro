@@ -67,7 +67,7 @@ const updateContextMemory = (chatId, userMessage, aiResponse) => {
   contextMemory.set(chatId, record);
 };
 
-const generateResponse = async (message, chatId = null, userId = null) => {
+const generateResponse = async (message, chatId = null, userId = null, options = {}) => {
   const rateCheck = checkRateLimit(userId);
   if (!rateCheck.allowed) {
     return {
@@ -93,24 +93,30 @@ const generateResponse = async (message, chatId = null, userId = null) => {
   }
 
   const modelName = process.env.GEMINI_MODEL || DEFAULT_MODEL;
-  const model = client.getGenerativeModel({
+  const modelConfig = {
     model: modelName,
-    systemInstruction: SYSTEM_PROMPT
-  });
+    systemInstruction: options.systemInstruction || SYSTEM_PROMPT
+  };
+
+  if (options.tools && options.tools.length > 0) {
+    modelConfig.tools = options.tools;
+  }
+
+  const model = client.getGenerativeModel(modelConfig);
 
   const startTime = Date.now();
 
   try {
-    const history = chatId ? getContextHistory(chatId) : [];
+    const history = options.history || (chatId ? getContextHistory(chatId) : []);
 
     const chat = model.startChat({
       history: history.map(h => ({
         role: h.role,
-        parts: [{ text: h.text }]
+        parts: h.parts || [{ text: h.text }]
       })),
       generationConfig: {
-        temperature: 0.7,
-        maxOutputTokens: 2048,
+        temperature: options.temperature !== undefined ? options.temperature : 0.7,
+        maxOutputTokens: options.maxOutputTokens || 2048,
         topP: 0.8,
         topK: 40
       },
@@ -123,9 +129,29 @@ const generateResponse = async (message, chatId = null, userId = null) => {
     });
 
     const result = await chat.sendMessage(message);
-    const text = result.response?.text() || '';
-
+    const response = result.response;
     const responseTime = Date.now() - startTime;
+
+    // Check for native function calls
+    const functionCalls = typeof response?.functionCalls === 'function' ? response.functionCalls() : null;
+    if (functionCalls && functionCalls.length > 0) {
+      const fc = functionCalls[0];
+      return {
+        success: true,
+        hasFunctionCall: true,
+        functionCall: {
+          name: fc.name,
+          args: fc.args || {}
+        },
+        chatSession: chat,
+        response: null,
+        provider: 'gemini',
+        model: modelName,
+        responseTimeMs: responseTime
+      };
+    }
+
+    const text = response?.text ? response.text() : '';
 
     if (chatId) {
       updateContextMemory(chatId, message, text);
@@ -135,6 +161,7 @@ const generateResponse = async (message, chatId = null, userId = null) => {
 
     return {
       success: true,
+      hasFunctionCall: false,
       response: text,
       confidence,
       provider: 'gemini',
@@ -202,9 +229,29 @@ const estimateConfidence = (response, query) => {
   return Math.min(1, Math.max(0, score));
 };
 
+const sendFunctionResult = async (chatSession, functionName, toolResult) => {
+  try {
+    const result = await chatSession.sendMessage([
+      {
+        functionResponse: {
+          name: functionName,
+          response: {
+            output: toolResult
+          }
+        }
+      }
+    ]);
+    return result.response?.text ? result.response.text() : '';
+  } catch (err) {
+    console.warn('[GeminiProvider] Error in sendFunctionResult:', err.message);
+    return null;
+  }
+};
+
 module.exports = {
   name: 'gemini',
   generateResponse,
+  sendFunctionResult,
   estimateConfidence,
   checkRateLimit,
   DEFAULT_MODEL

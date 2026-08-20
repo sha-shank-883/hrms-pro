@@ -103,6 +103,17 @@ class ConversationStateManager {
   }
 
   /**
+   * Get active workflow slots directly
+   */
+  getWorkflowSlots(sessionId, workflowType) {
+    const session = this._getSession(sessionId);
+    if (session.activeWorkflow && (!workflowType || session.activeWorkflow.type === workflowType)) {
+      return session.activeWorkflow.slots;
+    }
+    return null;
+  }
+
+  /**
    * Reset workflow after successful execution or cancel
    */
   clearWorkflow(sessionId) {

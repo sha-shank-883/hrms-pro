@@ -1,6 +1,12 @@
 const { pool, query } = require('../config/database');
 const hrAiOrchestrator = require('../services/ai/aiCopilotService');
-const { getToolsForRole, executeAuthorizedTool } = require('../services/ai/toolRegistry');
+const {
+  getToolsForRole,
+  getGeminiFunctionDeclarations,
+  getOpenAIFunctionDeclarations,
+  executeAuthorizedTool,
+  ALL_TOOLS
+} = require('../services/ai/toolRegistry');
 const { resolveRelativeDate, resolveRelativePeriod, formatDate } = require('../services/ai/dateResolver');
 const conversationState = require('../services/ai/conversationState');
 const { resolveEmployee, resolveDepartment, resolvePendingLeave } = require('../services/ai/entityResolver');
@@ -37,8 +43,18 @@ async function runTestSuite() {
     assert(adminTools.some(t => t.name === 'finalizePayroll'), 'Admin has access to finalizePayroll tool');
     assert(superAdminTools.some(t => t.name === 'getSaaSOPSOverview'), 'Super Admin has access to getSaaSOPSOverview');
 
-    // 2. Server-Enforced RBAC Block Test
-    console.log('\n--- Test Section 2: Independent Server-Side RBAC Enforcement ---');
+    // 2. Native Function Calling Declaration Schema Verification
+    console.log('\n--- Test Section 2: Native Function Calling Schema Declarations ---');
+    const geminiDeclarations = getGeminiFunctionDeclarations('admin', true);
+    assert(Array.isArray(geminiDeclarations) && geminiDeclarations[0]?.functionDeclarations?.length === ALL_TOOLS.length, 'Gemini declarations generated for all registered tools');
+    assert(geminiDeclarations[0].functionDeclarations.every(f => f.name && f.description && f.parameters?.type === 'object'), 'All Gemini declarations contain valid parameters schema');
+
+    const openaiDeclarations = getOpenAIFunctionDeclarations('admin', true);
+    assert(Array.isArray(openaiDeclarations) && openaiDeclarations.length === ALL_TOOLS.length, 'OpenAI/Groq declarations generated for all registered tools');
+    assert(openaiDeclarations.every(f => f.type === 'function' && f.function?.name && f.function?.parameters?.type === 'object'), 'All OpenAI declarations contain valid function schema');
+
+    // 3. Server-Enforced RBAC Block Test
+    console.log('\n--- Test Section 3: Independent Server-Side RBAC Enforcement ---');
     const unauthorizedAttempt = await executeAuthorizedTool(
       'finalizePayroll',
       { month: 8, year: 2026 },
@@ -47,8 +63,8 @@ async function runTestSuite() {
     );
     assert(unauthorizedAttempt.isUnauthorized === true, 'Unauthorized tool call blocked by server RBAC');
 
-    // 3. Two-Phase Sensitive Action Confirmation Gate Test
-    console.log('\n--- Test Section 3: Two-Phase Sensitive Write Confirmation Gate ---');
+    // 4. Two-Phase Sensitive Action Confirmation Gate Test
+    console.log('\n--- Test Section 4: Two-Phase Sensitive Write Confirmation Gate ---');
     const sensitiveUnconfirmed = await executeAuthorizedTool(
       'deactivateEmployee',
       { employee_id: 1, reason: 'Testing' },
@@ -59,8 +75,8 @@ async function runTestSuite() {
     assert(sensitiveUnconfirmed.requiresConfirmation === true, 'Sensitive operation halted with confirmation requirement');
     assert(!!sensitiveUnconfirmed.confirmationToken, 'Confirmation token generated for pending action');
 
-    // 4. Universal Entity Resolver & Disambiguation Test
-    console.log('\n--- Test Section 4: Universal Entity Resolver & Disambiguation ---');
+    // 5. Universal Entity Resolver & Disambiguation Test
+    console.log('\n--- Test Section 5: Universal Entity Resolver & Disambiguation ---');
     const searchRes = await resolveEmployee('a');
     if (searchRes.count > 1) {
       assert(searchRes.status === 'ambiguous', 'Disambiguation flagged when multiple employees match query');
@@ -69,8 +85,8 @@ async function runTestSuite() {
       assert(true, 'Search executed cleanly without ambiguous match conflict');
     }
 
-    // 5. Strict Department Validation Test
-    console.log('\n--- Test Section 5: Strict Department Validation ---');
+    // 6. Strict Department Validation Test
+    console.log('\n--- Test Section 6: Strict Department Validation ---');
     const invalidDeptRes = await executeAuthorizedTool(
       'createEmployee',
       {
@@ -87,16 +103,16 @@ async function runTestSuite() {
     assert(invalidDeptRes.success === false, 'createEmployee rejected non-existent department gracefully');
     assert(invalidDeptRes.message.includes('not found'), 'createEmployee provided available department list in error');
 
-    // 6. Dynamic Date & Period Resolution Test
-    console.log('\n--- Test Section 6: Deterministic Date & Period Resolution ---');
+    // 7. Deterministic Date & Period Resolution Test
+    console.log('\n--- Test Section 7: Deterministic Date & Period Resolution ---');
     const todayStr = formatDate(new Date());
     assert(resolveRelativeDate('today') === todayStr, 'resolveRelativeDate resolves "today" correctly');
     assert(typeof resolveRelativeDate('yesterday') === 'string', 'resolveRelativeDate resolves "yesterday"');
     const period = resolveRelativePeriod('last month');
     assert(typeof period.month === 'number' && typeof period.year === 'number', 'resolveRelativePeriod resolves month and year');
 
-    // 7. Pronoun Resolution & State Test
-    console.log('\n--- Test Section 7: Pronoun Resolution & Active Entity Pointer ---');
+    // 8. Pronoun Resolution & Active Entity Pointer
+    console.log('\n--- Test Section 8: Pronoun Resolution & Active Entity Pointer ---');
     const testSession = 'test_session_pronoun';
     conversationState.setActiveEntity(testSession, {
       id: 101,
@@ -107,32 +123,94 @@ async function runTestSuite() {
     const resolvedText = conversationState.resolvePronouns('What is her salary?', testSession);
     assert(resolvedText.includes('Sarah Connor'), 'Pronoun "her" resolved to active entity "Sarah Connor"');
 
-    // 8. Multi-Turn Interactive Slot Wizard Test
-    console.log('\n--- Test Section 8: Multi-Turn Conversational Slot Collector ---');
-    const turn1 = await hrAiOrchestrator.processUserMessage({
-      message: 'create a new employee named Rohan',
-      conversationHistory: [],
-      userContext: { user: { userId: 1, role: 'admin' }, isSuperAdmin: false },
-      tenantContext: { tenantId: 'test_tenant' }
-    });
-    assert(turn1.reply.includes('Work Email') || turn1.reply.includes('required details'), 'Turn 1 asks for missing required fields');
+    // 9. Fallback Word-Order Robustness (10 variations without API keys)
+    console.log('\n--- Test Section 9: Fallback Word-Order Robustness (10 variations) ---');
+    const orderVariations = [
+      'create a new employee',
+      'add a new employee',
+      'hire new worker',
+      'new employee profile',
+      'onboard a new employee',
+      'register employee profile',
+      'add employee to system',
+      'create worker profile',
+      'hire an employee',
+      'create new staff profile'
+    ];
+    let allVariationsPassed = true;
+    for (const v of orderVariations) {
+      const vRes = hrAiOrchestrator._heuristicAgentRouter(v, [], 'admin', false, 'test_order_session');
+      if (vRes.should_call_tool !== false || !vRes.direct_reply.toLowerCase().includes('required details')) {
+        allVariationsPassed = false;
+        console.error(`Variation failed: "${v}" ->`, vRes);
+      }
+    }
+    assert(allVariationsPassed, 'All 10 employee creation word-order variations triggered slot wizard in fallback router');
 
-    const testEmail = `rohan.ai.test.${Date.now()}@hrmspro.com`;
-    const turn2 = await hrAiOrchestrator.processUserMessage({
-      message: `email is ${testEmail}, salary is 55000, position is Lead DevOps Engineer, department is Engineering`,
-      conversationHistory: [
+    // 10. Multi-Turn Interactive Slot Wizard Continuation
+    console.log('\n--- Test Section 10: Multi-Turn Conversational Slot Collector ---');
+    const turn1Session = `turn_test_${Date.now()}`;
+    const turn1Res = hrAiOrchestrator._heuristicAgentRouter('create a new employee named Rohan', [], 'admin', false, turn1Session);
+    assert(turn1Res.should_call_tool === false, 'Turn 1 halts tool execution until required slots collected');
+    assert(turn1Res.direct_reply.includes('Work Email') || turn1Res.direct_reply.includes('required details'), 'Turn 1 asks for missing required fields');
+    assert(turn1Res.direct_reply.includes('Full Name:') && turn1Res.direct_reply.includes('Email:') && turn1Res.direct_reply.includes('Department:'), 'Turn 1 explicitly provides fillable copy-paste template');
+
+    // Test single-value one-by-one mode continuation
+    const singleValEmail = `rohan.single.${Date.now()}@hrmspro.com`;
+    const singleEmailRes = hrAiOrchestrator._heuristicAgentRouter(singleValEmail, [{ sender: 'user', text: 'create a new employee named Rohan' }, { sender: 'ai', text: turn1Res.direct_reply }], 'admin', false, turn1Session);
+    assert(singleEmailRes.should_call_tool === false, 'Single-value mode continues collecting remaining slots');
+
+    // Complete with remaining fields
+    const turn2Res = hrAiOrchestrator._heuristicAgentRouter(
+      `salary is 55000, position is Lead DevOps Engineer, department is Engineering`,
+      [
         { sender: 'user', text: 'create a new employee named Rohan' },
-        { sender: 'ai', text: turn1.reply }
+        { sender: 'ai', text: turn1Res.direct_reply }
       ],
-      userContext: { user: { userId: 1, role: 'admin' }, isSuperAdmin: false },
-      tenantContext: { tenantId: 'test_tenant' }
-    });
+      'admin',
+      false,
+      turn1Session
+    );
 
-    assert(turn2.tool_executed === 'createEmployee', 'Turn 2 executes createEmployee tool after all slots gathered');
-    assert(turn2.tool_result?.success === true, 'Employee created and verified in database');
+    assert(turn2Res.should_call_tool === true && turn2Res.tool_name === 'createEmployee', 'Turn 2 triggers createEmployee tool after all slots gathered');
 
-    // 9. Payroll Variance Analytics Test
-    console.log('\n--- Test Section 9: Payroll Variance Diagnostics ---');
+    // Execute the gathered slots to verify database insertion
+    const createExecRes = await executeAuthorizedTool(
+      turn2Res.tool_name,
+      turn2Res.tool_arguments,
+      { user: { userId: 1, role: 'admin' }, isSuperAdmin: false },
+      { tenantId: turn1Session }
+    );
+    assert(createExecRes.success === true, 'Employee created and verified in database');
+
+    // 11. Bulk Multi-Line Slot Parsing in a Single Turn
+    console.log('\n--- Test Section 11: Bulk Multi-Line / Pasted Slot Extraction ---');
+    const bulkEmail = `bulk.engineer.${Date.now()}@hrmspro.com`;
+    const bulkMessage = `
+Full Name: Maya Lin
+Email: ${bulkEmail}
+Department: Engineering
+Designation: Staff Architect
+Monthly Salary: 125000
+Joining Date: 2026-09-01
+Phone: +91 9876543210
+    `;
+    const bulkSession = `bulk_session_${Date.now()}`;
+    const bulkRes = hrAiOrchestrator._heuristicAgentRouter(bulkMessage, [], 'admin', false, bulkSession);
+
+    assert(bulkRes.should_call_tool === true && bulkRes.tool_name === 'createEmployee', 'Bulk multi-line message immediately triggers createEmployee');
+    assert(bulkRes.tool_arguments.first_name === 'Maya' && bulkRes.tool_arguments.salary === 125000, 'Bulk slot extractor correctly parsed all fields from template');
+
+    const bulkExecRes = await executeAuthorizedTool(
+      bulkRes.tool_name,
+      bulkRes.tool_arguments,
+      { user: { userId: 1, role: 'admin' }, isSuperAdmin: false },
+      { tenantId: bulkSession }
+    );
+    assert(bulkExecRes.success === true, 'Bulk employee created and verified in database');
+
+    // 12. Payroll Variance Analytics Test
+    console.log('\n--- Test Section 12: Payroll Variance Diagnostics ---');
     const varianceRes = await executeAuthorizedTool(
       'explainPayrollVariance',
       {},
@@ -142,8 +220,8 @@ async function runTestSuite() {
     assert(varianceRes.success === true, 'explainPayrollVariance executed successfully');
     assert(typeof varianceRes.data.new_hires_count === 'number', 'new_hires_count returned');
 
-    // 10. Audit Log Insertion Test
-    console.log('\n--- Test Section 10: Audit Logging Verification ---');
+    // 13. Audit Log Insertion Test
+    console.log('\n--- Test Section 13: Audit Logging Verification ---');
     const auditRes = await query('SELECT * FROM audit_logs WHERE action ILIKE $1 ORDER BY created_at DESC LIMIT 1', ['%AI_AGENT%']);
     assert(auditRes.rows.length > 0, 'Audit log record verified in database for AI operations');
 

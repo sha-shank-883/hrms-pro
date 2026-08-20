@@ -43,7 +43,7 @@ const getAvailableProviders = () => {
   return available;
 };
 
-const generateWithFallback = async (message, chatId = null, userId = null) => {
+const generateWithFallback = async (message, chatId = null, userId = null, options = {}) => {
   const active = getActiveProvider();
   if (!active) {
     return {
@@ -58,7 +58,12 @@ const generateWithFallback = async (message, chatId = null, userId = null) => {
   const startTime = Date.now();
 
   try {
-    const result = await active.provider.generateResponse(message, chatId, userId);
+    const providerOptions = { ...options };
+    if (options.toolsMap && options.toolsMap[active.name]) {
+      providerOptions.tools = options.toolsMap[active.name];
+    }
+
+    const result = await active.provider.generateResponse(message, chatId, userId, providerOptions);
     result.provider = active.name;
 
     if (result.success !== false) {
@@ -71,7 +76,11 @@ const generateWithFallback = async (message, chatId = null, userId = null) => {
     for (const fallback of fallbacks) {
       try {
         console.log(`[ProviderFactory] Trying fallback: ${fallback.name}`);
-        const fbResult = await fallback.provider.generateResponse(message, chatId, userId);
+        const fbOptions = { ...options };
+        if (options.toolsMap && options.toolsMap[fallback.name]) {
+          fbOptions.tools = options.toolsMap[fallback.name];
+        }
+        const fbResult = await fallback.provider.generateResponse(message, chatId, userId, fbOptions);
         if (fbResult.success !== false) {
           fbResult.provider = fallback.name;
           fbResult.fromFallback = true;
@@ -91,7 +100,11 @@ const generateWithFallback = async (message, chatId = null, userId = null) => {
     for (const fallback of fallbacks) {
       try {
         console.log(`[ProviderFactory] Trying fallback: ${fallback.name}`);
-        const fbResult = await fallback.provider.generateResponse(message, chatId, userId);
+        const fbOptions = { ...options };
+        if (options.toolsMap && options.toolsMap[fallback.name]) {
+          fbOptions.tools = options.toolsMap[fallback.name];
+        }
+        const fbResult = await fallback.provider.generateResponse(message, chatId, userId, fbOptions);
         if (fbResult.success !== false) {
           fbResult.provider = fallback.name;
           fbResult.fromFallback = true;
@@ -117,5 +130,9 @@ module.exports = {
   getAIProvider: getActiveProvider,
   getAvailableProviders,
   generateWithFallback,
-  registerProvider
+  registerProvider,
+  providers: {
+    gemini: geminiProvider,
+    groq: groqProvider
+  }
 };

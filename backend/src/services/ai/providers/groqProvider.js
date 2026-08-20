@@ -10,7 +10,7 @@ const RATE_LIMIT_WINDOW = 60000;
 const RATE_LIMIT_MAX = 60;
 const rateLimitStore = new Map();
 
-const generateResponse = async (message, chatId = null, userId = null) => {
+const generateResponse = async (message, chatId = null, userId = null, options = {}) => {
   const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) {
     return {
@@ -37,16 +37,28 @@ const generateResponse = async (message, chatId = null, userId = null) => {
   const startTime = Date.now();
 
   try {
-    const conversationHistory = chatId ? await getConversationContext(chatId) : [];
+    const conversationHistory = options.messages || (chatId ? await getConversationContext(chatId) : []);
 
-    const messages = [
-      { role: 'system', content: SYSTEM_PROMPT },
+    const messages = options.messages || [
+      { role: 'system', content: options.systemInstruction || SYSTEM_PROMPT },
       ...conversationHistory.map(m => ({
-        role: m.sender_type === 'user' ? 'user' : 'assistant',
-        content: m.message
+        role: m.role || (m.sender_type === 'user' ? 'user' : 'assistant'),
+        content: m.content || m.message
       })),
       { role: 'user', content: message }
     ];
+
+    const reqBody = {
+      model: model,
+      messages,
+      temperature: options.temperature !== undefined ? options.temperature : 0.7,
+      max_tokens: options.maxOutputTokens || 1000
+    };
+
+    if (options.tools && options.tools.length > 0) {
+      reqBody.tools = options.tools;
+      reqBody.tool_choice = 'auto';
+    }
 
     const response = await fetch(baseUrl, {
       method: 'POST',
@@ -54,12 +66,7 @@ const generateResponse = async (message, chatId = null, userId = null) => {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${apiKey}`
       },
-      body: JSON.stringify({
-        model: model,
-        messages,
-        temperature: 0.7,
-        max_tokens: 500
-      })
+      body: JSON.stringify(reqBody)
     });
 
     if (!response.ok) {
@@ -68,24 +75,44 @@ const generateResponse = async (message, chatId = null, userId = null) => {
 
       // If model not found, retry once with standard llama-3.1-8b-instant
       if (response.status === 404 && model !== 'llama-3.1-8b-instant') {
+        reqBody.model = 'llama-3.1-8b-instant';
         const retryRes = await fetch(baseUrl, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${apiKey}`
           },
-          body: JSON.stringify({
-            model: 'llama-3.1-8b-instant',
-            messages,
-            temperature: 0.7,
-            max_tokens: 500
-          })
+          body: JSON.stringify(reqBody)
         });
         if (retryRes.ok) {
           const data = await retryRes.json();
-          const text = data.choices?.[0]?.message?.content || '';
+          const choice = data.choices?.[0]?.message;
+          const toolCalls = choice?.tool_calls;
+
+          if (toolCalls && toolCalls.length > 0) {
+            const tc = toolCalls[0];
+            let parsedArgs = {};
+            try { parsedArgs = JSON.parse(tc.function?.arguments || '{}'); } catch (_) {}
+            return {
+              success: true,
+              hasFunctionCall: true,
+              functionCall: {
+                name: tc.function?.name,
+                args: parsedArgs,
+                toolCallId: tc.id
+              },
+              assistantMessage: choice,
+              messages,
+              provider: 'groq',
+              model: 'llama-3.1-8b-instant',
+              responseTimeMs: Date.now() - startTime
+            };
+          }
+
+          const text = choice?.content || '';
           return {
             success: true,
+            hasFunctionCall: false,
             response: text,
             confidence: estimateConfidence(text, message),
             provider: 'groq',
@@ -106,12 +133,36 @@ const generateResponse = async (message, chatId = null, userId = null) => {
     }
 
     const data = await response.json();
-    const text = data.choices?.[0]?.message?.content || '';
+    const choice = data.choices?.[0]?.message;
+    const toolCalls = choice?.tool_calls;
     const responseTime = Date.now() - startTime;
+
+    if (toolCalls && toolCalls.length > 0) {
+      const tc = toolCalls[0];
+      let parsedArgs = {};
+      try { parsedArgs = JSON.parse(tc.function?.arguments || '{}'); } catch (_) {}
+      return {
+        success: true,
+        hasFunctionCall: true,
+        functionCall: {
+          name: tc.function?.name,
+          args: parsedArgs,
+          toolCallId: tc.id
+        },
+        assistantMessage: choice,
+        messages,
+        provider: 'groq',
+        model,
+        responseTimeMs
+      };
+    }
+
+    const text = choice?.content || '';
     const confidence = estimateConfidence(text, message);
 
     return {
       success: true,
+      hasFunctionCall: false,
       response: text,
       confidence,
       provider: 'groq',
@@ -127,6 +178,47 @@ const generateResponse = async (message, chatId = null, userId = null) => {
       };
     }
     throw error;
+  }
+};
+
+const sendFunctionResult = async (messages, assistantMessage, toolCallId, toolResult) => {
+  const apiKey = process.env.GROQ_API_KEY;
+  if (!apiKey) return null;
+
+  const model = process.env.GROQ_MODEL || 'llama-3.1-8b-instant';
+  const baseUrl = 'https://api.groq.com/openai/v1/chat/completions';
+
+  try {
+    const updatedMessages = [
+      ...messages,
+      assistantMessage,
+      {
+        role: 'tool',
+        tool_call_id: toolCallId,
+        content: typeof toolResult === 'string' ? toolResult : JSON.stringify(toolResult)
+      }
+    ];
+
+    const response = await fetch(baseUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model,
+        messages: updatedMessages,
+        temperature: 0.7,
+        max_tokens: 1000
+      })
+    });
+
+    if (!response.ok) return null;
+    const data = await response.json();
+    return data.choices?.[0]?.message?.content || null;
+  } catch (err) {
+    console.warn('[GroqProvider] Error in sendFunctionResult:', err.message);
+    return null;
   }
 };
 
@@ -163,5 +255,6 @@ const estimateConfidence = (response, query) => {
 module.exports = {
   name: 'groq',
   generateResponse,
+  sendFunctionResult,
   estimateConfidence
 };

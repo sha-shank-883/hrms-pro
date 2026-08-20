@@ -43,6 +43,35 @@ function getToolsForRole(role = 'employee', isSuperAdmin = false) {
 }
 
 /**
+ * Format role-filtered tools into Google Gemini FunctionDeclaration objects
+ */
+function getGeminiFunctionDeclarations(role = 'employee', isSuperAdmin = false) {
+  const tools = getToolsForRole(role, isSuperAdmin);
+  const functionDeclarations = tools.map(t => ({
+    name: t.name,
+    description: t.description,
+    parameters: t.parameters || { type: 'object', properties: {} }
+  }));
+
+  return [{ functionDeclarations }];
+}
+
+/**
+ * Format role-filtered tools into OpenAI / Groq tool declarations
+ */
+function getOpenAIFunctionDeclarations(role = 'employee', isSuperAdmin = false) {
+  const tools = getToolsForRole(role, isSuperAdmin);
+  return tools.map(t => ({
+    type: 'function',
+    function: {
+      name: t.name,
+      description: t.description,
+      parameters: t.parameters || { type: 'object', properties: {} }
+    }
+  }));
+}
+
+/**
  * Record action in audit log table
  */
 async function recordAuditLog({ userId, role, action, entityType, entityId, details, tenantId }) {
@@ -155,5 +184,7 @@ module.exports = {
   ALL_TOOLS,
   TOOL_MAP,
   getToolsForRole,
+  getGeminiFunctionDeclarations,
+  getOpenAIFunctionDeclarations,
   executeAuthorizedTool
 };

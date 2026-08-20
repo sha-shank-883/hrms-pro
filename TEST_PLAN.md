@@ -444,6 +444,11 @@ This document outlines a systematic plan to test every icon, button, navigation 
 | 1.7.36 | Tenant isolation: Tenant A cannot see Tenant B's messages | Data isolated |
 | 1.7.37 | SQL injection in message text | Parameterized query, injection fails |
 | 1.7.38 | XSS in message text | Stored content sanitized or escaped |
+| 1.7.39 | WebRTC call signaling via Socket.IO (`initiate_call`, `accept_call`, `reject_call`, `ice_candidate`, `end_call`) | Real-time signaling routes to peer socket [PASSED] |
+| 1.7.40 | Database column migration `reply_to_id`, `message_type`, `call_data` across all 16 tenant schemas | Migration verified idempotent and active across all tenant schemas [PASSED] |
+| 1.7.41 | Rich Document upload and download with preview cards (PDF, Word, Excel, Images, Code) | Formats rendered with icon badges and download links [PASSED] |
+| 1.7.42 | Direct & Channel messaging with E2E encryption and real-time typing indicators | Dynamic encryption at rest and live broadcast [PASSED] |
+| 1.7.43 | Emoji reactions and thread replies with parent message quote preview | Reactions upserted and reply quote displayed [PASSED] |
 
 ### 1.8 Support Chat REST API (`/api/support`)
 | # | Test Case | Expected Result |

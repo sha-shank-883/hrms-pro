@@ -417,6 +417,105 @@ const setupChatSocket = (io, socket, connectedUsers, broadcastOnlineUsers) => {
     });
   });
 
+  // WebRTC Signaling: Initiate Call (Voice, Video, Screen Share)
+  socket.on('initiate_call', (data) => {
+    if (!data) return;
+    const { receiver_id, callType, offer, caller_name } = data;
+    const caller_id = socket.userId;
+    console.log(`[WEBRTC] User ${caller_id} (${caller_name || 'User'}) initiating ${callType || 'voice'} call to ${receiver_id}`);
+
+    const receiverSockets = connectedUsers.get(receiver_id);
+    if (receiverSockets && receiverSockets.size > 0) {
+      receiverSockets.forEach(sId => {
+        io.to(sId).emit('call_initiated', {
+          caller_id,
+          caller_name: caller_name || 'Team Member',
+          callType: callType || 'voice',
+          offer: offer || null
+        });
+      });
+    } else {
+      socket.emit('call_rejected', {
+        reason: 'User is currently offline'
+      });
+    }
+  });
+
+  // WebRTC Signaling: Accept Call
+  socket.on('accept_call', (data) => {
+    if (!data) return;
+    const { caller_id, answer, callType } = data;
+    const receiver_id = socket.userId;
+    console.log(`[WEBRTC] User ${receiver_id} accepted call from ${caller_id}`);
+
+    const callerSockets = connectedUsers.get(caller_id);
+    if (callerSockets && callerSockets.size > 0) {
+      callerSockets.forEach(sId => {
+        io.to(sId).emit('call_accepted', {
+          receiver_id,
+          answer,
+          callType
+        });
+      });
+    }
+  });
+
+  // WebRTC Signaling: Reject Call
+  socket.on('reject_call', (data) => {
+    if (!data) return;
+    const { caller_id } = data;
+    const receiver_id = socket.userId;
+    console.log(`[WEBRTC] User ${receiver_id} rejected call from ${caller_id}`);
+
+    const callerSockets = connectedUsers.get(caller_id);
+    if (callerSockets && callerSockets.size > 0) {
+      callerSockets.forEach(sId => {
+        io.to(sId).emit('call_rejected', {
+          receiver_id
+        });
+      });
+    }
+  });
+
+  // WebRTC Signaling: ICE Candidate Exchange
+  socket.on('ice_candidate', (data) => {
+    if (!data) return;
+    const target_user_id = data.target_user_id || data.receiver_id || data.caller_id;
+    const candidate = data.candidate;
+    const sender_id = socket.userId;
+
+    if (!target_user_id || !candidate) return;
+
+    const targetSockets = connectedUsers.get(target_user_id);
+    if (targetSockets && targetSockets.size > 0) {
+      targetSockets.forEach(sId => {
+        io.to(sId).emit('ice_candidate', {
+          sender_id,
+          candidate
+        });
+      });
+    }
+  });
+
+  // WebRTC Signaling: End Call
+  socket.on('end_call', (data) => {
+    if (!data) return;
+    const target_user_id = data.target_user_id || data.receiver_id || data.caller_id;
+    const sender_id = socket.userId;
+    console.log(`[WEBRTC] User ${sender_id} ended call with ${target_user_id}`);
+
+    if (target_user_id) {
+      const targetSockets = connectedUsers.get(target_user_id);
+      if (targetSockets && targetSockets.size > 0) {
+        targetSockets.forEach(sId => {
+          io.to(sId).emit('call_ended', {
+            sender_id
+          });
+        });
+      }
+    }
+  });
+
   // Disconnect
   socket.on('disconnect', () => {
     if (socket.userId && connectedUsers.has(socket.userId)) {

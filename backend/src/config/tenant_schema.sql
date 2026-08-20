@@ -351,13 +351,20 @@ CREATE TABLE IF NOT EXISTS documents (
 CREATE TABLE IF NOT EXISTS chat_messages (
   message_id SERIAL PRIMARY KEY,
   sender_id INTEGER REFERENCES users(user_id) ON DELETE CASCADE,
-  receiver_id INTEGER REFERENCES users(user_id) ON DELETE CASCADE,
+  receiver_id INTEGER REFERENCES users(user_id) ON DELETE SET NULL,
+  channel_id INTEGER,
   message TEXT NOT NULL,
   is_read BOOLEAN DEFAULT false,
   read_at TIMESTAMP,
-  attachment_url VARCHAR(500),
-  attachment_type VARCHAR(50),
+  attachment_url VARCHAR(1000),
+  attachment_type VARCHAR(100),
   attachment_name VARCHAR(255),
+  reply_to_id INTEGER,
+  is_deleted BOOLEAN DEFAULT false,
+  deleted_at TIMESTAMP,
+  is_starred BOOLEAN DEFAULT false,
+  message_type VARCHAR(50) DEFAULT 'text',
+  call_data JSONB,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -366,10 +373,38 @@ CREATE TABLE IF NOT EXISTS message_reactions (
   reaction_id SERIAL PRIMARY KEY,
   message_id INTEGER REFERENCES chat_messages(message_id) ON DELETE CASCADE,
   user_id INTEGER REFERENCES users(user_id) ON DELETE CASCADE,
-  reaction VARCHAR(10) NOT NULL,
+  reaction VARCHAR(20) NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   UNIQUE(message_id, user_id)
 );
+
+-- Chat Channels table (Group Chats / Teams Channels)
+CREATE TABLE IF NOT EXISTS chat_channels (
+  channel_id SERIAL PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  description TEXT,
+  is_private BOOLEAN DEFAULT false,
+  created_by INTEGER REFERENCES users(user_id) ON DELETE SET NULL,
+  avatar TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Chat Channel Members table
+CREATE TABLE IF NOT EXISTS chat_channel_members (
+  id SERIAL PRIMARY KEY,
+  channel_id INTEGER REFERENCES chat_channels(channel_id) ON DELETE CASCADE,
+  user_id INTEGER REFERENCES users(user_id) ON DELETE CASCADE,
+  role VARCHAR(50) DEFAULT 'member',
+  joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  last_read_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(channel_id, user_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_chat_messages_sender ON chat_messages(sender_id);
+CREATE INDEX IF NOT EXISTS idx_chat_messages_receiver ON chat_messages(receiver_id);
+CREATE INDEX IF NOT EXISTS idx_chat_messages_channel ON chat_messages(channel_id);
+CREATE INDEX IF NOT EXISTS idx_chat_messages_created ON chat_messages(created_at DESC);
 
 -- Assets table
 CREATE TABLE IF NOT EXISTS assets (

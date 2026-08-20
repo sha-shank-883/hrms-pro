@@ -176,18 +176,20 @@ const getConversations = asyncHandler(async (req, res) => {
      FROM (
        SELECT 
          CASE WHEN sender_id = $1 THEN receiver_id ELSE sender_id END as other_user_id,
-         CASE WHEN sender_id = $1 THEN ur.email ELSE us.email END as other_user_email,
-         CASE WHEN sender_id = $1 THEN ur.first_name ELSE us.first_name END as other_user_first_name,
-         CASE WHEN sender_id = $1 THEN ur.last_name ELSE us.last_name END as other_user_last_name,
+         CASE WHEN sender_id = $1 THEN u_receiver.email ELSE u_sender.email END as other_user_email,
+         CASE WHEN sender_id = $1 THEN COALESCE(ur.first_name, u_receiver.first_name, u_receiver.email) ELSE COALESCE(us.first_name, u_sender.first_name, u_sender.email) END as other_user_first_name,
+         CASE WHEN sender_id = $1 THEN COALESCE(ur.last_name, u_receiver.last_name, '') ELSE COALESCE(us.last_name, u_sender.last_name, '') END as other_user_last_name,
+         CASE WHEN sender_id = $1 THEN COALESCE(ur.profile_image, u_receiver.avatar, '') ELSE COALESCE(us.profile_image, u_sender.avatar, '') END as other_user_avatar,
          cm.message as last_message,
          cm.created_at as last_message_time,
+         cm.attachment_type,
          COUNT(CASE WHEN receiver_id = $1 AND is_read = false THEN 1 END) OVER (PARTITION BY 
            CASE WHEN sender_id = $1 THEN receiver_id ELSE sender_id END) as unread_count
        FROM chat_messages cm
        JOIN users u_sender ON cm.sender_id = u_sender.user_id
-       JOIN users u_receiver ON cm.receiver_id = u_receiver.user_id
-       JOIN employees us ON u_sender.user_id = us.user_id
-       JOIN employees ur ON u_receiver.user_id = ur.user_id
+       LEFT JOIN users u_receiver ON cm.receiver_id = u_receiver.user_id
+       LEFT JOIN employees us ON u_sender.user_id = us.user_id
+       LEFT JOIN employees ur ON u_receiver.user_id = ur.user_id
        WHERE sender_id = $1 OR receiver_id = $1
        ORDER BY cm.created_at DESC
      ) conversations

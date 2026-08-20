@@ -380,6 +380,7 @@ function App() {
                     </SuperAdminRoute>
                   } />
                   <Route path="profile" element={<Profile />} />
+                  <Route path="profile/:id" element={<Profile />} />
                   <Route path="org-chart" element={
                     <ProtectedRoute allowedRoles={['admin', 'manager', 'employee']}>
                       <OrgChart />

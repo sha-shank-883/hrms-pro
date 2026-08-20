@@ -291,7 +291,7 @@ const employeeTools = [
           type: 'employee_card',
           title: `Created: ${emp.first_name} ${emp.last_name || ''}`,
           subtitle: `${emp.position} • ${code} • ${deptRes.department?.department_name} • ₹${Number(emp.salary).toLocaleString('en-IN')}`,
-          link: `/profile?id=${emp.employee_id}`
+          link: `/employees/${emp.employee_id}`
         }
       };
     }

@@ -556,7 +556,7 @@ async function executeCopilotTool(toolName, args, userContext, tenantContext) {
           type: 'employee_card',
           title: `Created: ${emp.first_name} ${emp.last_name || ''}`,
           subtitle: `${emp.position} • ${code} • ₹${Number(emp.salary).toLocaleString('en-IN')}`,
-          link: `/profile?id=${emp.employee_id}`
+          link: `/employees/${emp.employee_id}`
         }
       };
     }
@@ -569,60 +569,51 @@ async function executeCopilotTool(toolName, args, userContext, tenantContext) {
         `SELECT e.employee_id, e.employee_code, e.first_name, e.last_name, e.email, e.phone,
                 e.position, e.hire_date, e.joining_date, e.salary, e.employment_type, e.status,
                 e.pan, e.bank_account, e.bank_name, e.ifsc_code, e.uan, e.esic,
-                d.department_name, e.user_id
+                d.department_name
          FROM employees e
          LEFT JOIN departments d ON e.department_id = d.department_id
-         WHERE (e.first_name ILIKE $1 OR e.last_name ILIKE $1 
-                OR (e.first_name || ' ' || e.last_name) ILIKE $1 
-                OR e.email ILIKE $1 OR e.employee_code ILIKE $1)
-         LIMIT 5`,
-        [`%${search_query}%`]
+         WHERE (e.first_name ILIKE $1 OR e.last_name ILIKE $1 OR (e.first_name || ' ' || e.last_name) ILIKE $1 OR e.employee_code ILIKE $1 OR e.email ILIKE $1)
+         ORDER BY e.employee_id ASC LIMIT 5`,
+        [`%${search_query.trim()}%`]
       );
 
       if (empRes.rows.length === 0) {
-        return {
-          success: false,
-          message: `No employee found matching "${search_query}".`,
-          suggestion: 'Please verify the spelling of the name or employee code.'
-        };
+        return { success: false, message: `No employees found matching "${search_query}".` };
       }
 
-      const employees = empRes.rows.map(emp => {
-        const isSelf = String(emp.user_id) === String(userId);
-        const canViewFinancials = isSuperAdmin || role === 'admin' || role === 'hr' || isSelf;
-
+      const rows = empRes.rows.map(emp => {
+        const canViewFinancials = role === 'admin' || role === 'hr';
         return {
           employee_id: emp.employee_id,
-          employee_code: emp.employee_code || `EMP${String(emp.employee_id).padStart(4, '0')}`,
-          name: `${emp.first_name} ${emp.last_name}`,
+          employee_code: emp.employee_code,
+          name: `${emp.first_name} ${emp.last_name || ''}`,
           email: emp.email,
-          phone: emp.phone,
-          position: emp.position || 'Employee',
+          phone: emp.phone || '',
+          position: emp.position,
           department: emp.department_name || 'General',
-          status: emp.status || 'active',
-          hire_date: emp.joining_date || emp.hire_date,
-          salary: canViewFinancials ? (emp.salary ? `₹${Number(emp.salary).toLocaleString('en-IN')}` : 'Not set') : '[RESTRICTED: Admin/Self Only]',
+          status: emp.status,
+          hire_date: emp.hire_date || emp.joining_date,
+          salary: canViewFinancials ? `₹${Number(emp.salary || 0).toLocaleString('en-IN')}` : '[RESTRICTED: Admin/Self Only]',
           pan: canViewFinancials ? (emp.pan || 'Not provided') : '[RESTRICTED]',
-          bank_account: canViewFinancials ? (emp.bank_account ? `••••${emp.bank_account.slice(-4)}` : 'Not provided') : '[RESTRICTED]',
+          bank_account: canViewFinancials ? (emp.bank_account || 'Not provided') : '[RESTRICTED]',
           bank_name: canViewFinancials ? emp.bank_name : '[RESTRICTED]',
           ifsc_code: canViewFinancials ? emp.ifsc_code : '[RESTRICTED]',
           uan: canViewFinancials ? emp.uan : '[RESTRICTED]',
           esic: canViewFinancials ? emp.esic : '[RESTRICTED]',
-          link: `/profile?id=${emp.employee_id}`
+          link: `/employees/${emp.employee_id}`
         };
       });
 
       return {
         success: true,
-        count: employees.length,
-        data: employees,
-        action_card: {
+        data: rows,
+        message: `Found ${rows.length} employee record(s).`,
+        action_card: rows.length === 1 ? {
           type: 'employee_card',
-          title: employees[0].name,
-          subtitle: `${employees[0].position} • ${employees[0].department}`,
-          link: employees[0].link,
-          details: employees[0]
-        }
+          title: rows[0].name,
+          subtitle: `${rows[0].position} • ${rows[0].employee_code} • ${rows[0].department}`,
+          link: rows[0].link
+        } : undefined
       };
     }
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { employeeService, authService, leaveService, documentService, payrollService, assetService, performanceService, attendanceService, taskService, auditService, uploadService, departmentService } from '../services';
 import { useAuth } from '../context/AuthContext';
 import { useSettings } from '../hooks/useSettings.jsx';
@@ -16,7 +16,9 @@ import {
 import { PERMISSION_MODULES, getAllPermissions } from '../constants/permissions';
 
 const Profile = () => {
-  const { id } = useParams();
+  const { id: paramId } = useParams();
+  const [searchParams] = useSearchParams();
+  const id = paramId || searchParams.get('id') || searchParams.get('employee_id');
   const { user } = useAuth();
   const navigate = useNavigate();
   const { settings, getSetting } = useSettings();
@@ -98,12 +100,14 @@ const Profile = () => {
     try {
       setError('');
       setTwoFALoading(true);
-      await authService.verify2FASetup(otp.trim());
-      setSuccess('Two-Factor Authentication activated successfully!');
-      setShow2FAModal(false);
-      setProfile(prev => ({ ...prev, is_two_factor_enabled: true, is_2fa_enabled: true }));
+      const res = await authService.verify2FASetup(otp.trim());
+      if (res.success) {
+        setSuccess('Two-Factor Authentication successfully enabled!');
+        setShow2FAModal(false);
+        setProfile(prev => ({ ...prev, is_two_factor_enabled: true, is_2fa_enabled: true }));
+      }
     } catch (err) {
-      setError(err.response?.data?.message || 'Invalid 2FA verification code. Please check your authenticator app.');
+      setError(err.response?.data?.message || 'Invalid verification code');
     } finally {
       setTwoFALoading(false);
     }
@@ -176,8 +180,8 @@ const Profile = () => {
   });
 
   // Determine if viewing own profile
-  const isOwnProfile = !id || (profile && profile.user_id === user.userId);
-  const canEdit = isOwnProfile || user.role === 'admin';
+  const isOwnProfile = !id || (profile && (profile.user_id === user?.userId || (user?.employee_id && profile.employee_id === user?.employee_id)));
+  const canEdit = isOwnProfile || user?.role === 'admin';
 
   useEffect(() => {
     loadProfile();
@@ -224,19 +228,15 @@ const Profile = () => {
 
       if (id) {
         // Fetch specific employee by ID
-        try {
-          const response = await employeeService.getById(id);
-          employeeData = response.data;
-        } catch (e) {
-          if (e.response && e.response.status === 404) {
-            throw e;
-          }
-          throw e;
-        }
+        const response = await employeeService.getById(id);
+        employeeData = response.data;
 
-        if (isOwnProfile) {
-          const userRes = await authService.getProfile();
-          userData = userRes.data;
+        // If this employee belongs to the current logged-in user, fetch their auth/security details too
+        if (employeeData && user?.userId && employeeData.user_id === user.userId) {
+          try {
+            const userRes = await authService.getProfile();
+            userData = userRes.data;
+          } catch (_) {}
         }
       } else {
         // Fetch current user's profile
@@ -268,15 +268,15 @@ const Profile = () => {
 
       if (employeeData || userData) {
         setProfile({
-          ...(employeeData || {}),
           ...(userData || {}),
-          // Fallback to user data if employee data missing
+          ...(employeeData || {}),
+          // Ensure correct employee attributes take precedence
           first_name: employeeData?.first_name || userData?.first_name || 'Admin',
           last_name: employeeData?.last_name || userData?.last_name || 'User',
           email: employeeData?.email || userData?.email,
           position: employeeData?.position || (userData?.role === 'super_admin' ? 'Super Admin' : (userData?.role === 'admin' ? 'Company Owner' : 'Employee')),
           status: employeeData?.status || 'active',
-          user_id: userData?.user_id || employeeData?.user_id || user?.userId,
+          user_id: employeeData?.user_id || userData?.user_id || user?.userId,
           employee_id: employeeData?.employee_id || null,
           is_two_factor_enabled: Boolean(userData?.is_two_factor_enabled || userData?.is_2fa_enabled || employeeData?.is_two_factor_enabled)
         });

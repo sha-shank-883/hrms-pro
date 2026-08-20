@@ -31,6 +31,18 @@ const PLANS = {
       INR: { pricePerSeat: 799.00, currency: 'INR', symbol: '₹' },
     },
   },
+  enterprise: {
+    id: 'enterprise',
+    name: 'Enterprise',
+    description: 'All 15 modules unlocked with Biometrics hardware sync, ATS recruitment, and Audit Logs.',
+    durationDays: 30,
+    minSeats: 1,
+    defaultSeats: 100,
+    pricing: {
+      USD: { pricePerSeat: 18.00, currency: 'USD', symbol: '$' },
+      INR: { pricePerSeat: 1499.00, currency: 'INR', symbol: '₹' },
+    },
+  },
 };
 
 // ---------------------------------------------------------------------------

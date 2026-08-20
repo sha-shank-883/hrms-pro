@@ -27,6 +27,15 @@ const PLANS = {
     defaultSeats: 25,
     pricePerSeatINR: 799.00,
   },
+  enterprise: {
+    id: 'enterprise',
+    name: 'Enterprise',
+    description: 'All 15 modules unlocked with Biometrics hardware sync, ATS recruitment, and Audit Logs.',
+    durationDays: 30,
+    minSeats: 1,
+    defaultSeats: 100,
+    pricePerSeatINR: 1499.00,
+  },
 };
 
 // ---------------------------------------------------------------------------

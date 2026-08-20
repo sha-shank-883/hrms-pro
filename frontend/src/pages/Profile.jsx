@@ -561,13 +561,21 @@ const Profile = () => {
 
       {/* 1. Header Section */}
       <div className="card mb-6 overflow-hidden">
-        <div className={`h-44 relative transition-all ${(profile.subscription_plan === 'scale' || user?.subscription_plan === 'scale')
-          ? 'bg-gradient-to-r from-amber-600 via-yellow-600 to-amber-700'
-          : (profile.subscription_plan === 'hatch' || user?.subscription_plan === 'hatch')
-            ? 'bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700'
-            : 'bg-primary-600'
+        <div className={`h-44 relative transition-all ${(profile.subscription_plan === 'enterprise' || user?.subscription_plan === 'enterprise')
+          ? 'bg-gradient-to-r from-purple-800 via-indigo-700 to-purple-900'
+          : (profile.subscription_plan === 'scale' || user?.subscription_plan === 'scale')
+            ? 'bg-gradient-to-r from-amber-600 via-yellow-600 to-amber-700'
+            : (profile.subscription_plan === 'hatch' || user?.subscription_plan === 'hatch')
+              ? 'bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700'
+              : 'bg-primary-600'
           }`}>
           <div className="absolute inset-0 opacity-15 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
+          {(profile.subscription_plan === 'enterprise' || user?.subscription_plan === 'enterprise') && (
+            <div className="absolute top-4 right-6 flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-black/40 backdrop-blur-md border border-purple-300/60 text-purple-200 text-xs font-black shadow-lg">
+              <FaCrown className="text-purple-300 text-sm" />
+              <span>ENTERPRISE ELITE MEMBER</span>
+            </div>
+          )}
           {(profile.subscription_plan === 'scale' || user?.subscription_plan === 'scale') && (
             <div className="absolute top-4 right-6 flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-black/40 backdrop-blur-md border border-amber-300/50 text-amber-200 text-xs font-black shadow-lg">
               <FaCrown className="text-amber-400 text-sm" />
@@ -584,11 +592,13 @@ const Profile = () => {
 
         <div className="px-8 pb-8 flex flex-col md:flex-row items-end -mt-16 gap-6 relative z-10">
           <div className="relative w-32 h-32 md:w-40 md:h-40">
-            <div className={`w-32 h-32 md:w-40 md:h-40 rounded-full border-4 shadow-xl bg-white p-1 overflow-hidden ${(profile.subscription_plan === 'scale' || user?.subscription_plan === 'scale')
-              ? 'border-amber-300 ring-4 ring-amber-400/40'
-              : (profile.subscription_plan === 'hatch' || user?.subscription_plan === 'hatch')
-                ? 'border-emerald-300 ring-4 ring-emerald-400/40'
-                : 'border-white'
+            <div className={`w-32 h-32 md:w-40 md:h-40 rounded-full border-4 shadow-xl bg-white p-1 overflow-hidden ${(profile.subscription_plan === 'enterprise' || user?.subscription_plan === 'enterprise')
+              ? 'border-purple-400 ring-4 ring-purple-500/40'
+              : (profile.subscription_plan === 'scale' || user?.subscription_plan === 'scale')
+                ? 'border-amber-300 ring-4 ring-amber-400/40'
+                : (profile.subscription_plan === 'hatch' || user?.subscription_plan === 'hatch')
+                  ? 'border-emerald-300 ring-4 ring-emerald-400/40'
+                  : 'border-white'
               }`}>
               <div className="w-full h-full rounded-full bg-neutral-100 flex items-center justify-center overflow-hidden relative">
                 {uploadingPhoto && (
@@ -629,7 +639,11 @@ const Profile = () => {
           <div className="flex-1 pb-2 text-center md:text-left">
             <div className="flex items-center gap-2.5 justify-center md:justify-start mb-1 flex-wrap">
               <h1 className="text-3xl font-bold text-neutral-900">{profile.first_name} {profile.last_name}</h1>
-              {(profile.subscription_plan === 'scale' || user?.subscription_plan === 'scale') ? (
+              {(profile.subscription_plan === 'enterprise' || user?.subscription_plan === 'enterprise') ? (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-black bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-xs">
+                  <FaCrown className="text-[10px]" /> ELITE
+                </span>
+              ) : (profile.subscription_plan === 'scale' || user?.subscription_plan === 'scale') ? (
                 <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-black bg-gradient-to-r from-amber-500 to-yellow-500 text-white shadow-xs">
                   <FaCrown className="text-[10px]" /> VIP
                 </span>

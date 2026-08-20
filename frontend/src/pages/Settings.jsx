@@ -589,27 +589,33 @@ const Settings = () => {
               {/* Subscription & Active Seat Capacity Meter */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {/* Active Plan & VIP Membership Card */}
-                <div className={`border rounded-3xl p-6 shadow-md relative overflow-hidden transition-all ${(subscriptionData?.plan === 'scale' || user?.subscription_plan === 'scale')
-                    ? 'bg-gradient-to-br from-amber-500/10 via-amber-500/5 to-transparent border-amber-400/50 dark:border-amber-500/30'
-                    : (subscriptionData?.plan === 'hatch' || user?.subscription_plan === 'hatch')
-                      ? 'bg-gradient-to-br from-emerald-500/10 via-emerald-500/5 to-transparent border-emerald-400/50 dark:border-emerald-500/30'
-                      : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700'
+                <div className={`border rounded-3xl p-6 shadow-md relative overflow-hidden transition-all ${(subscriptionData?.plan === 'enterprise' || user?.subscription_plan === 'enterprise')
+                    ? 'bg-gradient-to-br from-purple-500/15 via-indigo-500/10 to-transparent border-purple-400/60 dark:border-purple-500/40'
+                    : (subscriptionData?.plan === 'scale' || user?.subscription_plan === 'scale')
+                      ? 'bg-gradient-to-br from-amber-500/10 via-amber-500/5 to-transparent border-amber-400/50 dark:border-amber-500/30'
+                      : (subscriptionData?.plan === 'hatch' || user?.subscription_plan === 'hatch')
+                        ? 'bg-gradient-to-br from-emerald-500/10 via-emerald-500/5 to-transparent border-emerald-400/50 dark:border-emerald-500/30'
+                        : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700'
                   }`}>
                   <div className="flex items-center justify-between mb-3">
                     <span className="text-xs font-black uppercase tracking-wider text-gray-500 dark:text-gray-400">
                       Membership Status
                     </span>
-                    <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-black tracking-wide ${(subscriptionData?.plan === 'scale' || user?.subscription_plan === 'scale')
-                        ? 'bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300 border border-amber-300'
-                        : (subscriptionData?.plan === 'hatch' || user?.subscription_plan === 'hatch')
-                          ? 'bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300'
-                          : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
+                    <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-black tracking-wide ${(subscriptionData?.plan === 'enterprise' || user?.subscription_plan === 'enterprise')
+                        ? 'bg-purple-100 text-purple-900 dark:bg-purple-950 dark:text-purple-300 border border-purple-300 shadow-sm'
+                        : (subscriptionData?.plan === 'scale' || user?.subscription_plan === 'scale')
+                          ? 'bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300 border border-amber-300'
+                          : (subscriptionData?.plan === 'hatch' || user?.subscription_plan === 'hatch')
+                            ? 'bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300'
+                            : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
                       }`}>
-                      {(subscriptionData?.plan === 'scale' || user?.subscription_plan === 'scale')
-                        ? '👑 SCALE VIP'
-                        : (subscriptionData?.plan === 'hatch' || user?.subscription_plan === 'hatch')
-                          ? '🛡️ HATCH PRO'
-                          : 'FREE TRIAL'}
+                      {(subscriptionData?.plan === 'enterprise' || user?.subscription_plan === 'enterprise')
+                        ? '💎 ENTERPRISE ELITE'
+                        : (subscriptionData?.plan === 'scale' || user?.subscription_plan === 'scale')
+                          ? '👑 SCALE VIP'
+                          : (subscriptionData?.plan === 'hatch' || user?.subscription_plan === 'hatch')
+                            ? '🛡️ HATCH PRO'
+                            : 'FREE TRIAL'}
                     </span>
                   </div>
                   <h4 className="text-2xl font-black text-gray-900 dark:text-white capitalize flex items-center gap-2">
@@ -862,16 +868,16 @@ const Settings = () => {
                       </ul>
                     </div>
 
-                    {user?.subscription_plan === 'scale' ? (
+                    {(user?.subscription_plan === 'enterprise' || subscriptionData?.plan === 'enterprise' || user?.subscription_plan === 'scale' || subscriptionData?.plan === 'scale') ? (
                       <button
                         type="button"
                         disabled
                         className="mt-6 w-full py-2.5 px-4 rounded-xl font-bold text-xs bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 cursor-not-allowed border border-gray-200 dark:border-gray-700"
-                        title="You are currently on Scale VIP tier. Downgrades are not permitted."
+                        title="You are currently on a higher tier. Downgrades are not permitted."
                       >
-                        Active on Scale VIP (Cannot Downgrade)
+                        Active on {(user?.subscription_plan === 'enterprise' || subscriptionData?.plan === 'enterprise') ? 'Enterprise Elite' : 'Scale VIP'} (Top Tier)
                       </button>
-                    ) : user?.subscription_plan === 'hatch' ? (
+                    ) : (user?.subscription_plan === 'hatch' || subscriptionData?.plan === 'hatch') ? (
                       <button
                         type="button"
                         onClick={() => {
@@ -908,7 +914,7 @@ const Settings = () => {
                   </div>
 
                   {/* Scale Plan */}
-                  <div className="bg-white dark:bg-gray-800 border-2 border-primary-500 rounded-2xl p-6 shadow-xl relative flex flex-col justify-between">
+                  <div className={`bg-white dark:bg-gray-800 border-2 ${(subscriptionData?.plan === 'scale' || user?.subscription_plan === 'scale') ? 'border-amber-500 shadow-amber-500/20' : 'border-primary-500'} rounded-2xl p-6 shadow-xl relative flex flex-col justify-between`}>
                     <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary-500 text-white text-[10px] uppercase font-black tracking-widest py-0.5 px-3 rounded-full shadow-sm">
                       Most Popular
                     </div>
@@ -917,7 +923,7 @@ const Settings = () => {
                       <div className="flex items-center justify-between mb-2 mt-1">
                         <h5 className="text-lg font-bold text-gray-900 dark:text-white">Scale</h5>
                         {(subscriptionData?.plan === 'scale' || user?.subscription_plan === 'scale') && (
-                          <span className="text-xs font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
+                          <span className="text-xs font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full">
                             Current Tier
                           </span>
                         )}
@@ -960,7 +966,16 @@ const Settings = () => {
                       </ul>
                     </div>
 
-                    {user?.subscription_plan === 'scale' ? (
+                    {(user?.subscription_plan === 'enterprise' || subscriptionData?.plan === 'enterprise') ? (
+                      <button
+                        type="button"
+                        disabled
+                        className="mt-6 w-full py-2.5 px-4 rounded-xl font-bold text-xs bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 cursor-not-allowed border border-gray-200 dark:border-gray-700"
+                        title="You are currently on Enterprise Elite tier."
+                      >
+                        Active on Enterprise Elite (Top Tier)
+                      </button>
+                    ) : (user?.subscription_plan === 'scale' || subscriptionData?.plan === 'scale') ? (
                       <button
                         type="button"
                         onClick={() => {
@@ -973,11 +988,11 @@ const Settings = () => {
                             currency: billingCurrency,
                           });
                         }}
-                        className="mt-6 w-full py-2.5 px-4 rounded-xl font-bold text-xs bg-primary-600 hover:bg-primary-700 text-white shadow-md hover:shadow-lg transition-all"
+                        className="mt-6 w-full py-2.5 px-4 rounded-xl font-bold text-xs bg-amber-600 hover:bg-amber-700 text-white shadow-md hover:shadow-lg transition-all"
                       >
                         + Add Extra Seats (Current Scale VIP)
                       </button>
-                    ) : user?.subscription_plan === 'hatch' ? (
+                    ) : (user?.subscription_plan === 'hatch' || subscriptionData?.plan === 'hatch') ? (
                       <button
                         type="button"
                         onClick={() => {
@@ -1013,38 +1028,92 @@ const Settings = () => {
                   </div>
 
                   {/* Enterprise Plan */}
-                  <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 shadow-sm flex flex-col justify-between hover:border-gray-300 transition-all">
+                  <div className={`bg-white dark:bg-gray-800 border-2 ${(subscriptionData?.plan === 'enterprise' || user?.subscription_plan === 'enterprise') ? 'border-purple-500 shadow-purple-500/20' : 'border-purple-300 dark:border-purple-700'} rounded-2xl p-6 shadow-xl relative flex flex-col justify-between`}>
+                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white text-[10px] uppercase font-black tracking-widest py-0.5 px-3 rounded-full shadow-sm">
+                      Top Tier
+                    </div>
+
                     <div>
-                      <h5 className="text-lg font-bold text-gray-900 dark:text-white mb-2">Enterprise</h5>
+                      <div className="flex items-center justify-between mb-2 mt-1">
+                        <h5 className="text-lg font-bold text-gray-900 dark:text-white">Enterprise</h5>
+                        {(subscriptionData?.plan === 'enterprise' || user?.subscription_plan === 'enterprise') && (
+                          <span className="text-xs font-bold text-purple-700 bg-purple-100 px-2 py-0.5 rounded-full">
+                            Current Tier
+                          </span>
+                        )}
+                      </div>
                       <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
-                        Custom workflows, multi-branch, dedicated SLA, and volume scale.
+                        All 15 modules with Biometrics hardware sync, ATS, Audit logs & SLA.
                       </p>
-                      <div className="mb-6">
-                        <span className="text-3xl font-black text-gray-900 dark:text-white">Custom</span>
+
+                      <div className="mb-4 bg-purple-50/70 dark:bg-purple-950/40 p-3 rounded-xl border border-purple-200/60 dark:border-purple-800/40">
+                        <div className="text-xs text-purple-700 dark:text-purple-300 font-semibold">
+                          {billingCurrency === 'INR' ? '₹1,499' : '$18'} / employee / month
+                        </div>
+                        <div className="text-2xl font-black text-gray-900 dark:text-white mt-0.5">
+                          {billingCurrency === 'INR'
+                            ? `₹${(seatQuantity * 1499).toLocaleString('en-IN')}`
+                            : `$${(seatQuantity * 18).toFixed(2)}`}
+                          <span className="text-xs text-gray-500 font-normal"> / month</span>
+                        </div>
+                        <div className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">
+                          Total for {seatQuantity} employee seat{seatQuantity > 1 ? 's' : ''}
+                        </div>
                       </div>
 
                       <ul className="space-y-2.5 text-xs text-gray-600 dark:text-gray-300">
-                        <li className="flex items-center gap-2">
-                          <FaCheck className="text-emerald-500 shrink-0" /> Unlimited Employees & Multi-Branch
+                        <li className="flex items-center gap-2 font-bold text-gray-900 dark:text-white">
+                          <FaCheck className="text-purple-500 shrink-0" /> {seatQuantity} Employee Seats Included
                         </li>
-                        <li className="flex items-center gap-2">
-                          <FaCheck className="text-emerald-500 shrink-0" /> Custom Domain & White-label Branding
+                        <li className="flex items-center gap-2 font-semibold text-gray-900 dark:text-white">
+                          <FaCheck className="text-purple-500 shrink-0" /> Biometric Hardware Integration (ZKTeco/eSSL)
                         </li>
-                        <li className="flex items-center gap-2">
-                          <FaCheck className="text-emerald-500 shrink-0" /> 24/7 Dedicated Account Manager & SLA
+                        <li className="flex items-center gap-2 font-semibold text-gray-900 dark:text-white">
+                          <FaCheck className="text-purple-500 shrink-0" /> Live Workplace Activity & Tracking
                         </li>
-                        <li className="flex items-center gap-2">
-                          <FaCheck className="text-emerald-500 shrink-0" /> Biometric Hardware API Integration
+                        <li className="flex items-center gap-2 font-semibold text-gray-900 dark:text-white">
+                          <FaCheck className="text-purple-500 shrink-0" /> Platform Audit Trail & Compliance Logs
+                        </li>
+                        <li className="flex items-center gap-2 font-semibold text-gray-900 dark:text-white">
+                          <FaCheck className="text-purple-500 shrink-0" /> Dedicated SLA & Priority 24/7 Support
                         </li>
                       </ul>
                     </div>
 
-                    <a
-                      href="mailto:support@hrmspro.online?subject=Enterprise%20Plan%20Inquiry"
-                      className="mt-6 w-full py-2.5 px-4 rounded-xl font-bold text-xs text-center border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors block"
-                    >
-                      Contact Sales
-                    </a>
+                    {(user?.subscription_plan === 'enterprise' || subscriptionData?.plan === 'enterprise') ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCheckoutPlan({
+                            id: 'enterprise',
+                            name: 'Enterprise Plan',
+                            seats: 10,
+                            mode: 'add_seats',
+                            isAddon: true,
+                            currency: billingCurrency,
+                          });
+                        }}
+                        className="mt-6 w-full py-2.5 px-4 rounded-xl font-bold text-xs bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white shadow-md hover:shadow-lg transition-all"
+                      >
+                        + Add Extra Seats (Current Enterprise Elite)
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const seats = Math.max(1, seatQuantity || 50);
+                          setCheckoutPlan({
+                            id: 'enterprise',
+                            name: 'Enterprise Plan',
+                            seats,
+                            currency: billingCurrency,
+                          });
+                        }}
+                        className="mt-6 w-full py-2.5 px-4 rounded-xl font-bold text-xs bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white shadow-md hover:shadow-lg transition-all"
+                      >
+                        💎 Upgrade to Enterprise Elite
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>

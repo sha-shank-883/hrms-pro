@@ -8,6 +8,7 @@ const {
 } = require('./toolRegistry');
 const conversationState = require('./conversationState');
 const { resolveRelativeDate, resolveRelativePeriod, formatDate } = require('./dateResolver');
+const { getOrganizationKnowledgeContext } = require('./organizationKnowledge');
 
 const DAYS_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -68,7 +69,9 @@ class HRAIOperationsOrchestrator {
     const geminiTools = getGeminiFunctionDeclarations(role, isSuperAdmin);
     const groqTools = getOpenAIFunctionDeclarations(role, isSuperAdmin);
 
-    // 3. Construct HR AI Operations Agent System Prompt with Real-Time Calendar Grounding
+    // 3. Construct HR AI Operations Agent System Prompt with Real-Time Calendar Grounding & Organization Knowledge Context
+    const orgKnowledgeContext = getOrganizationKnowledgeContext();
+
     const systemPrompt = `You are the lead HR AI Operations Agent for an enterprise HRMS platform.
 You are assisting ${userName} whose authenticated system role is "${role.toUpperCase()}" ${isSuperAdmin ? '(GLOBAL SUPER ADMIN)' : ''}.
 
@@ -77,6 +80,8 @@ TEMPORAL & CALENDAR GROUNDING:
 - Today's Date: ${currentISODate} (${currentDayName})
 - Current Year: ${now.getFullYear()}
 - Current Month: ${now.getMonth() + 1}
+
+${orgKnowledgeContext}
 
 OPERATIONAL AGENT GUIDELINES:
 1. Understand the user's intent: Determine if the request is informational, analytical, operational/action, multi-step, or ambiguous.

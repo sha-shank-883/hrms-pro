@@ -55,7 +55,17 @@ const attendanceTools = [
 
       let sql = `
         SELECT a.status, COUNT(*) as count,
-               COALESCE(SUM(a.total_hours), 0) as total_hours,
+               COALESCE(SUM(
+                 CASE 
+                   WHEN a.clock_in IS NOT NULL AND a.clock_out IS NOT NULL 
+                   THEN EXTRACT(EPOCH FROM (a.clock_out - a.clock_in)) / 3600 
+                   WHEN (LOWER(a.status) = 'present') 
+                   THEN 8.0
+                   WHEN (LOWER(a.status) = 'half-day' OR LOWER(a.status) = 'half_day') 
+                   THEN 4.0
+                   ELSE 0 
+                 END
+               ), 0) as total_hours,
                COUNT(CASE WHEN a.clock_in IS NOT NULL AND a.clock_out IS NULL THEN 1 END) as missing_punches
         FROM attendance a
         WHERE 1=1
@@ -110,7 +120,7 @@ const attendanceTools = [
           ...summary,
           attendance_rate: `${attendancePercentage}%`
         },
-        message: `Attendance Summary (${date ? date : `${curMonth}/${curYear}`}): Present: ${summary.present}, Absent: ${summary.absent}, Half-Day: ${summary.half_day}, Attendance Rate: ${attendancePercentage}%, Missing Punches: ${summary.missing_punches}.`
+        message: `Attendance Summary (${date ? date : `${curMonth}/${curYear}`}): Present: ${summary.present}, Absent: ${summary.absent}, Half-Day: ${summary.half_day}, Attendance Rate: ${attendancePercentage}%, Total Hours: ${summary.total_hours.toFixed(1)}h, Missing Punches: ${summary.missing_punches}.`
       };
     }
   },
@@ -168,10 +178,10 @@ const attendanceTools = [
         status: { type: 'string', enum: ['present', 'absent', 'half-day'], description: 'Attendance Status' },
         reason: { type: 'string', description: 'Reason for regularization' }
       },
-      required: ['date']
+      required: ['date', 'status']
     },
     execute: async (args, context) => {
-      const { employee_id, employee_name, date, clock_in = null, clock_out = null, status = 'present' } = args;
+      const { employee_id, employee_name, date, clock_in, clock_out, status = 'present', reason } = args;
       const { user } = context;
 
       let targetEmp = null;
@@ -196,7 +206,7 @@ const attendanceTools = [
         if (myEmp.rows.length > 0) targetEmp = myEmp.rows[0];
       }
 
-      if (!targetEmp) return { success: false, message: 'Could not resolve target employee for attendance regularization.' };
+      if (!targetEmp) return { success: false, message: 'Could not identify employee to regularize attendance for.' };
 
       const empId = targetEmp.employee_id;
       const targetDate = date === 'today' ? new Date().toISOString().split('T')[0] : date;
@@ -218,30 +228,33 @@ const attendanceTools = [
       if (status === 'half-day' || status === 'half_day') calculatedHours = 4.0;
       if (status === 'absent') calculatedHours = 0.0;
 
-      // Upsert attendance record
+      // Upsert attendance record without requiring total_hours column
       const exist = await query('SELECT attendance_id FROM attendance WHERE employee_id = $1 AND date = $2', [empId, targetDate]);
       let savedId;
       if (exist.rows.length > 0) {
         savedId = exist.rows[0].attendance_id;
         await query(
-          `UPDATE attendance SET clock_in = $1, clock_out = $2, status = $3, total_hours = $4, updated_at = CURRENT_TIMESTAMP WHERE attendance_id = $5`,
-          [clock_in, clock_out, status, calculatedHours, savedId]
+          `UPDATE attendance SET clock_in = $1, clock_out = $2, status = $3, is_regularized = true, regularization_status = 'approved', updated_at = CURRENT_TIMESTAMP WHERE attendance_id = $4`,
+          [clock_in, clock_out, status, savedId]
         );
       } else {
         const ins = await query(
-          `INSERT INTO attendance (employee_id, date, clock_in, clock_out, status, total_hours) VALUES ($1, $2, $3, $4, $5, $6) RETURNING attendance_id`,
-          [empId, targetDate, clock_in, clock_out, status, calculatedHours]
+          `INSERT INTO attendance (employee_id, date, clock_in, clock_out, status, is_regularized, regularization_status) VALUES ($1, $2, $3, $4, $5, true, 'approved') RETURNING attendance_id`,
+          [empId, targetDate, clock_in, clock_out, status]
         );
         savedId = ins.rows[0].attendance_id;
       }
 
       // Verification
-      const vRes = await query('SELECT attendance_id, status, clock_in, clock_out, total_hours FROM attendance WHERE attendance_id = $1', [savedId]);
+      const vRes = await query('SELECT attendance_id, status, clock_in, clock_out FROM attendance WHERE attendance_id = $1', [savedId]);
       if (vRes.rows.length === 0) return { success: false, message: 'Database verification failed for attendance regularization.' };
 
       return {
         success: true,
-        data: vRes.rows[0],
+        data: {
+          ...vRes.rows[0],
+          calculated_hours: calculatedHours
+        },
         message: `Attendance for **${targetEmp.first_name} ${targetEmp.last_name || ''}** on **${targetDate}** regularized to **${status.toUpperCase()}** (${clock_in ? `In: ${clock_in}` : 'No In Punch'}, ${clock_out ? `Out: ${clock_out}` : 'No Out Punch'}, Total Hours: **${calculatedHours || 0}h**).`
       };
     }

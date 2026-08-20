@@ -512,12 +512,78 @@ async function autoMigrate() {
             manager_comments TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
           );
+
+          -- Ensure Chat Tables & Columns exist
+          CREATE TABLE IF NOT EXISTS "${tId}".chat_messages (
+            message_id SERIAL PRIMARY KEY,
+            sender_id INTEGER REFERENCES "${tId}".users(user_id) ON DELETE CASCADE,
+            receiver_id INTEGER REFERENCES "${tId}".users(user_id) ON DELETE SET NULL,
+            channel_id INTEGER,
+            message TEXT NOT NULL,
+            is_read BOOLEAN DEFAULT false,
+            read_at TIMESTAMP,
+            attachment_url VARCHAR(1000),
+            attachment_type VARCHAR(100),
+            attachment_name VARCHAR(255),
+            reply_to_id INTEGER,
+            is_deleted BOOLEAN DEFAULT false,
+            deleted_at TIMESTAMP,
+            is_starred BOOLEAN DEFAULT false,
+            message_type VARCHAR(50) DEFAULT 'text',
+            call_data JSONB,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          );
+
+          ALTER TABLE "${tId}".chat_messages ADD COLUMN IF NOT EXISTS reply_to_id INTEGER;
+          ALTER TABLE "${tId}".chat_messages ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN DEFAULT false;
+          ALTER TABLE "${tId}".chat_messages ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP;
+          ALTER TABLE "${tId}".chat_messages ADD COLUMN IF NOT EXISTS is_starred BOOLEAN DEFAULT false;
+          ALTER TABLE "${tId}".chat_messages ADD COLUMN IF NOT EXISTS channel_id INTEGER;
+          ALTER TABLE "${tId}".chat_messages ADD COLUMN IF NOT EXISTS message_type VARCHAR(50) DEFAULT 'text';
+          ALTER TABLE "${tId}".chat_messages ADD COLUMN IF NOT EXISTS call_data JSONB;
+          ALTER TABLE "${tId}".chat_messages ADD COLUMN IF NOT EXISTS attachment_url VARCHAR(1000);
+          ALTER TABLE "${tId}".chat_messages ADD COLUMN IF NOT EXISTS attachment_type VARCHAR(100);
+          ALTER TABLE "${tId}".chat_messages ADD COLUMN IF NOT EXISTS attachment_name VARCHAR(255);
+
+          CREATE TABLE IF NOT EXISTS "${tId}".message_reactions (
+            reaction_id SERIAL PRIMARY KEY,
+            message_id INTEGER REFERENCES "${tId}".chat_messages(message_id) ON DELETE CASCADE,
+            user_id INTEGER REFERENCES "${tId}".users(user_id) ON DELETE CASCADE,
+            reaction VARCHAR(20) NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(message_id, user_id)
+          );
+
+          CREATE TABLE IF NOT EXISTS "${tId}".chat_channels (
+            channel_id SERIAL PRIMARY KEY,
+            name VARCHAR(255) NOT NULL,
+            description TEXT,
+            is_private BOOLEAN DEFAULT false,
+            created_by INTEGER REFERENCES "${tId}".users(user_id) ON DELETE SET NULL,
+            avatar TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          );
+
+          CREATE TABLE IF NOT EXISTS "${tId}".chat_channel_members (
+            id SERIAL PRIMARY KEY,
+            channel_id INTEGER REFERENCES "${tId}".chat_channels(channel_id) ON DELETE CASCADE,
+            user_id INTEGER REFERENCES "${tId}".users(user_id) ON DELETE CASCADE,
+            role VARCHAR(50) DEFAULT 'member',
+            joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            last_read_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(channel_id, user_id)
+          );
+
+          CREATE INDEX IF NOT EXISTS idx_chat_messages_sender ON "${tId}".chat_messages(sender_id);
+          CREATE INDEX IF NOT EXISTS idx_chat_messages_receiver ON "${tId}".chat_messages(receiver_id);
+          CREATE INDEX IF NOT EXISTS idx_chat_messages_channel ON "${tId}".chat_messages(channel_id);
         `);
         } catch (tErr) {
-          console.warn(`Support schema notice for ${tId}:`, tErr.message);
+          console.warn(`Tenant schema notice for ${tId}:`, tErr.message);
         }
       }
-      console.log('✅ Support module schemas verified across all tenant schemas.');
+      console.log('✅ All tenant module schemas and chat columns verified.');
     } catch (err) {
       console.error('⚠️ Support module auto-migration notice:', err.message);
     }

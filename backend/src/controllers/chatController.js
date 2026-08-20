@@ -35,14 +35,14 @@ const getMessages = asyncHandler(async (req, res) => {
            ) as reactions
     FROM chat_messages cm
     JOIN users us ON cm.sender_id = us.user_id
-    JOIN users ur ON cm.receiver_id = ur.user_id
+    LEFT JOIN users ur ON cm.receiver_id = ur.user_id
     WHERE 1=1
   `;
   let countQueryText = `
     SELECT COUNT(*) as total
     FROM chat_messages cm
     JOIN users us ON cm.sender_id = us.user_id
-    JOIN users ur ON cm.receiver_id = ur.user_id
+    LEFT JOIN users ur ON cm.receiver_id = ur.user_id
     WHERE 1=1
   `;
   const params = [];

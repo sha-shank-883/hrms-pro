@@ -3,6 +3,70 @@ const { encrypt, decrypt } = require('../utils/crypto');
 const asyncHandler = require('../utils/asyncHandler');
 const { NotFoundError, UnauthorizedError, ForbiddenError, ValidationError, ConflictError, AppError } = require('../utils/errors');
 
+// Self-healing schema helper for chat
+const ensureChatSchema = async () => {
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS chat_messages (
+        message_id SERIAL PRIMARY KEY,
+        sender_id INTEGER,
+        receiver_id INTEGER,
+        channel_id INTEGER,
+        message TEXT NOT NULL,
+        is_read BOOLEAN DEFAULT false,
+        read_at TIMESTAMP,
+        attachment_url VARCHAR(1000),
+        attachment_type VARCHAR(100),
+        attachment_name VARCHAR(255),
+        reply_to_id INTEGER,
+        is_deleted BOOLEAN DEFAULT false,
+        deleted_at TIMESTAMP,
+        is_starred BOOLEAN DEFAULT false,
+        message_type VARCHAR(50) DEFAULT 'text',
+        call_data JSONB,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+      ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS reply_to_id INTEGER;
+      ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN DEFAULT false;
+      ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP;
+      ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS is_starred BOOLEAN DEFAULT false;
+      ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS channel_id INTEGER;
+      ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS message_type VARCHAR(50) DEFAULT 'text';
+      ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS call_data JSONB;
+      ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS attachment_url VARCHAR(1000);
+      ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS attachment_type VARCHAR(100);
+      ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS attachment_name VARCHAR(255);
+      CREATE TABLE IF NOT EXISTS message_reactions (
+        reaction_id SERIAL PRIMARY KEY,
+        message_id INTEGER REFERENCES chat_messages(message_id) ON DELETE CASCADE,
+        user_id INTEGER,
+        reaction VARCHAR(20) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(message_id, user_id)
+      );
+    `);
+  } catch (e) {
+    console.warn('ensureChatSchema notice:', e.message);
+  }
+};
+
+const safeChatQuery = async (text, params) => {
+  try {
+    return await query(text, params);
+  } catch (error) {
+    if (
+      error.code === '42703' ||
+      error.code === '42P01' ||
+      error.message?.includes('does not exist')
+    ) {
+      console.log('[CHAT] Auto-healing schema on the fly for missing column/table...');
+      await ensureChatSchema();
+      return await query(text, params);
+    }
+    throw error;
+  }
+};
+
 // Get chat messages with pagination
 const getMessages = asyncHandler(async (req, res) => {
   const { user1_id, user2_id, page = 1, limit = 20 } = req.query; // Higher limit for chat
@@ -71,12 +135,12 @@ const getMessages = asyncHandler(async (req, res) => {
   const paginatedParams = [...params, limitNum, offset];
 
   // Get total count
-  const countResult = await query(countQueryText, params);
-  const total = parseInt(countResult.rows[0].total);
+  const countResult = await safeChatQuery(countQueryText, params);
+  const total = parseInt(countResult.rows[0]?.total || 0);
   const totalPages = Math.ceil(total / limitNum);
 
   // Get paginated results
-  const result = await query(queryText, paginatedParams);
+  const result = await safeChatQuery(queryText, paginatedParams);
   
   // Decrypt messages
   const decryptedRows = result.rows.map(row => {
@@ -111,7 +175,7 @@ const sendMessage = asyncHandler(async (req, res) => {
 
   const encryptedMessage = encrypt(message);
 
-  const result = await query(
+  const result = await safeChatQuery(
     `INSERT INTO chat_messages (sender_id, receiver_id, message, attachment_url, attachment_type, attachment_name, reply_to_id) 
      VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
     [sender_id, receiver_id, encryptedMessage, attachment_url || null, attachment_type || null, attachment_name || null, reply_to_id || null]
@@ -164,7 +228,7 @@ const getUnreadCount = asyncHandler(async (req, res) => {
 const getConversations = asyncHandler(async (req, res) => {
   const userId = req.user.userId;
 
-  const result = await query(
+  const result = await safeChatQuery(
     `SELECT DISTINCT ON (other_user_id) 
             other_user_id,
             other_user_email,

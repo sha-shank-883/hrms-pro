@@ -2,6 +2,69 @@ const jwt = require('jsonwebtoken');
 const { query, tenantStorage } = require('../config/database');
 const { encrypt, decrypt } = require('../utils/crypto');
 
+const ensureChatSchema = async () => {
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS chat_messages (
+        message_id SERIAL PRIMARY KEY,
+        sender_id INTEGER,
+        receiver_id INTEGER,
+        channel_id INTEGER,
+        message TEXT NOT NULL,
+        is_read BOOLEAN DEFAULT false,
+        read_at TIMESTAMP,
+        attachment_url VARCHAR(1000),
+        attachment_type VARCHAR(100),
+        attachment_name VARCHAR(255),
+        reply_to_id INTEGER,
+        is_deleted BOOLEAN DEFAULT false,
+        deleted_at TIMESTAMP,
+        is_starred BOOLEAN DEFAULT false,
+        message_type VARCHAR(50) DEFAULT 'text',
+        call_data JSONB,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+      ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS reply_to_id INTEGER;
+      ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN DEFAULT false;
+      ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP;
+      ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS is_starred BOOLEAN DEFAULT false;
+      ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS channel_id INTEGER;
+      ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS message_type VARCHAR(50) DEFAULT 'text';
+      ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS call_data JSONB;
+      ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS attachment_url VARCHAR(1000);
+      ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS attachment_type VARCHAR(100);
+      ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS attachment_name VARCHAR(255);
+      CREATE TABLE IF NOT EXISTS message_reactions (
+        reaction_id SERIAL PRIMARY KEY,
+        message_id INTEGER REFERENCES chat_messages(message_id) ON DELETE CASCADE,
+        user_id INTEGER,
+        reaction VARCHAR(20) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(message_id, user_id)
+      );
+    `);
+  } catch (e) {
+    console.warn('ensureChatSchema socket notice:', e.message);
+  }
+};
+
+const safeChatQuery = async (text, params) => {
+  try {
+    return await query(text, params);
+  } catch (error) {
+    if (
+      error.code === '42703' ||
+      error.code === '42P01' ||
+      error.message?.includes('does not exist')
+    ) {
+      console.log('[SOCKET CHAT] Auto-healing schema on the fly for missing column/table...');
+      await ensureChatSchema();
+      return await query(text, params);
+    }
+    throw error;
+  }
+};
+
 const setupChatSocket = (io, socket, connectedUsers, broadcastOnlineUsers) => {
   // User joins with their user ID & Token for authentication
   socket.on('join', (data) => {
@@ -81,7 +144,7 @@ const setupChatSocket = (io, socket, connectedUsers, broadcastOnlineUsers) => {
 
       // Encrypt message before saving to database
       const encryptedMessage = encrypt(message);
-      query(
+      safeChatQuery(
         `INSERT INTO chat_messages (sender_id, receiver_id, message, attachment_url, attachment_type, attachment_name, reply_to_id) 
          VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING message_id, created_at`,
         [sender_id, receiver_id, encryptedMessage, attachment_url || null, attachment_type || null, attachment_name || null, reply_to_id || null]
@@ -91,7 +154,7 @@ const setupChatSocket = (io, socket, connectedUsers, broadcastOnlineUsers) => {
         // Fetch parent message details if it's a reply
         let reply_to = null;
         if (reply_to_id) {
-          const parentRes = await query('SELECT message_id, message, sender_id, attachment_url, attachment_type FROM chat_messages WHERE message_id = $1', [reply_to_id]);
+          const parentRes = await safeChatQuery('SELECT message_id, message, sender_id, attachment_url, attachment_type FROM chat_messages WHERE message_id = $1', [reply_to_id]);
           if (parentRes.rows.length > 0) {
             reply_to = parentRes.rows[0];
             reply_to.message = decrypt(reply_to.message);

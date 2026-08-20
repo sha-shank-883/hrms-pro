@@ -682,9 +682,15 @@ ${historySnippet || '(No prior conversation in this session)'}`;
       return { should_call_tool: true, tool_name: 'getSaaSOPSOverview', tool_arguments: {} };
     }
 
+    // 20. Company / Tenant Subscription Plan & Limits (handles typos like "mysusbcription")
+    if (hasAnyToken(['subscription', 'subscriptions', 'susbcription', 'mysusbcription', 'pricing', 'tier', 'upgrade plan', 'billing plan', 'employee limit', 'quota']) ||
+        (hasAnyToken(['plan', 'billing']) && hasAnyToken(['my', 'our', 'current', 'about', 'what', 'details', 'info', 'check']))) {
+      return { should_call_tool: true, tool_name: 'getTenantSubscription', tool_arguments: {} };
+    }
+
     return {
       should_call_tool: false,
-      direct_reply: 'I am your HR AI Operations Agent. You can ask me to search employees, check attendance & missing punches, view leave balances, analyze payroll costs, manage OKRs, or retrieve company policies!'
+      direct_reply: 'I am your HR AI Operations Agent. You can ask me to search employees, check attendance & missing punches, view leave balances, analyze payroll costs, check your subscription plan, manage OKRs, or retrieve company policies!'
     };
   }
 

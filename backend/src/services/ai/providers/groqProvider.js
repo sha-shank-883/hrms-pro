@@ -33,7 +33,7 @@ const generateResponse = async (message, chatId = null, userId = null, options =
     };
   }
 
-  const model = process.env.GROQ_MODEL || 'llama-3.1-8b-instant';
+  const model = process.env.GROQ_MODEL || 'openai/gpt-oss-120b';
   const baseUrl = 'https://api.groq.com/openai/v1/chat/completions';
   const startTime = Date.now();
 
@@ -154,7 +154,7 @@ const generateResponse = async (message, chatId = null, userId = null, options =
         messages,
         provider: 'groq',
         model,
-        responseTimeMs
+        responseTimeMs: responseTime
       };
     }
 

@@ -149,9 +149,35 @@ const companyTools = [
     },
     execute: async (args, context) => {
       const { tenantContext, userContext } = context;
-      const tenantId = tenantContext?.tenantId || userContext?.tenantId || userContext?.user?.tenant_id || userContext?.user?.tenantId || 'default';
+      const isSuperAdmin = !!(userContext?.isSuperAdmin || userContext?.user?.role === 'super_admin');
+      const tenantId = tenantContext?.tenantId || userContext?.tenantId || userContext?.user?.tenant_id || userContext?.user?.tenantId || 'tenant_default';
 
       try {
+        if (isSuperAdmin && (!tenantContext?.tenantId || tenantContext.tenantId === 'tenant_default')) {
+          const tRes = await query(
+            `SELECT t.tenant_id, t.name, t.subscription_plan, t.subscription_expiry, t.employee_limit, t.status,
+                    pc.name as plan_name, pc.description as plan_description
+             FROM shared.tenants t
+             LEFT JOIN shared.plan_configs pc ON t.subscription_plan = pc.plan_id
+             WHERE t.tenant_id = $1`,
+            ['tenant_default']
+          );
+          const t = tRes.rows[0] || {};
+          const planName = t.plan_name || 'ENTERPRISE ELITE';
+
+          return {
+            success: true,
+            data: { role: 'super_admin', isSuperAdmin: true, tenant: t },
+            message: `👑 **Master Platform Super Administrator**\n\n• **Privilege Level**: Global Full Access (All 15 Platform Modules Unlocked)\n• **Active Workspace**: **${t.name || 'Master Platform Workspace'}**\n• **Plan Tier**: **${planName}** (${t.employee_limit || 500} Seats)\n• **Account Status**: **ACTIVE (UNRESTRICTED)**\n\nAs a Super Admin, you have platform-wide master privileges across all organization workspaces, subscription plans, and database schemas.`,
+            action_card: {
+              type: 'subscription_card',
+              title: `Master Platform Access: ${planName}`,
+              subtitle: `Super Admin • ${t.employee_limit || 500} Seats`,
+              link: '/super-admin/billing'
+            }
+          };
+        }
+
         const tRes = await query(
           `SELECT t.tenant_id, t.name, t.subscription_plan, t.subscription_expiry, t.employee_limit, t.status,
                   pc.name as plan_name, pc.description as plan_description, pc.price_inr
@@ -164,13 +190,13 @@ const companyTools = [
         if (tRes.rows.length === 0) {
           return {
             success: true,
-            data: { plan: 'Scale Enterprise', status: 'active', employee_limit: 'Unlimited' },
-            message: `🏢 **Company Subscription Plan**: **Scale Enterprise**\n• Status: **Active**\n• Features: Full access to all 11 HRMS Pro core modules.`
+            data: { plan: 'Enterprise Elite', status: 'active', employee_limit: 'Unlimited' },
+            message: `🏢 **Company Subscription Plan**: **Enterprise Elite**\n• Status: **Active**\n• Features: Full access to all HRMS Pro modules.`
           };
         }
 
         const t = tRes.rows[0];
-        const planName = t.plan_name || (t.subscription_plan ? t.subscription_plan.toUpperCase() : 'SCALE ENTERPRISE');
+        const planName = t.plan_name || (t.subscription_plan ? t.subscription_plan.toUpperCase() : 'ENTERPRISE ELITE');
         const expiry = t.subscription_expiry ? new Date(t.subscription_expiry).toLocaleDateString('en-IN') : 'Active (Auto-Renew)';
         const limit = t.employee_limit ? `${t.employee_limit} Employees` : 'Unlimited';
 
@@ -188,8 +214,8 @@ const companyTools = [
       } catch (err) {
         return {
           success: true,
-          data: { plan: 'Scale Enterprise', status: 'active' },
-          message: `🏢 **Company Subscription Plan**: **Scale Enterprise Plan** (Active)\n• All HR, Payroll, and Attendance modules are fully operational.`
+          data: { plan: 'Enterprise Elite', status: 'active' },
+          message: `🏢 **Company Subscription Plan**: **Enterprise Elite Plan** (Active)\n• All HR, Payroll, and Attendance modules are fully operational.`
         };
       }
     }

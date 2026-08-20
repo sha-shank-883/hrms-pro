@@ -6,28 +6,77 @@ const aiCopilotService = require('../services/ai/aiCopilotService');
  * Resolve authentic user and tenant identity with strict multi-tenant isolation
  */
 async function resolveUserTenantContext(req) {
-  let resolvedTenantId = req.user?.tenant_id || req.tenant?.tenant_id || req.headers['x-tenant-id'];
   const user = req.user || {};
   const isSuperAdmin = !!(user.isSuperAdmin || user.role === 'super_admin');
 
-  // If tenantId is not in header/user, safely look up which company tenant owns this user session
-  if ((!resolvedTenantId || resolvedTenantId === 'default') && user.email) {
-    try {
-      const tenantsRes = await pool.query('SELECT tenant_id FROM shared.tenants WHERE status = $1', ['active']);
-      for (const t of tenantsRes.rows) {
-        try {
-          const uRes = await pool.query(`SELECT user_id, role FROM "${t.tenant_id}".users WHERE email = $1 LIMIT 1`, [user.email]);
-          if (uRes.rows.length > 0) {
-            resolvedTenantId = t.tenant_id;
-            break;
-          }
-        } catch (_) {}
-      }
-    } catch (_) {}
+  let resolvedTenantId = null;
+
+  // 1. If user is Super Admin, accept explicitly requested tenant or default to master tenant
+  if (isSuperAdmin) {
+    resolvedTenantId = req.headers['x-tenant-id'] || user.tenant_id || 'tenant_default';
+    if (resolvedTenantId === 'default') resolvedTenantId = 'tenant_default';
+  } else {
+    // 2. Verified JWT tenant_id (cryptographically signed, tamper-proof)
+    if (user.tenant_id && user.tenant_id !== 'default') {
+      resolvedTenantId = user.tenant_id;
+    }
+
+    // 3. Verified middleware tenant context
+    if (!resolvedTenantId && req.tenant?.tenant_id && req.tenant.tenant_id !== 'default') {
+      resolvedTenantId = req.tenant.tenant_id;
+    }
+
+    // 4. Header verification: Only trust x-tenant-id if user genuinely exists in that tenant schema
+    if (!resolvedTenantId && req.headers['x-tenant-id'] && req.headers['x-tenant-id'] !== 'default') {
+      const candidateTenant = req.headers['x-tenant-id'];
+      try {
+        const check = await pool.query(
+          `SELECT user_id FROM "${candidateTenant}".users WHERE LOWER(email) = LOWER($1) LIMIT 1`,
+          [user.email]
+        );
+        if (check.rows.length > 0) {
+          resolvedTenantId = candidateTenant;
+        }
+      } catch (_) {}
+    }
+
+    // 5. Look up by company ownership / contact_email in shared.tenants
+    if (!resolvedTenantId && user.email) {
+      try {
+        const ownerRes = await pool.query(
+          `SELECT tenant_id FROM shared.tenants WHERE LOWER(contact_email) = LOWER($1) AND status = 'active' ORDER BY created_at DESC LIMIT 1`,
+          [user.email]
+        );
+        if (ownerRes.rows.length > 0) {
+          resolvedTenantId = ownerRes.rows[0].tenant_id;
+        }
+      } catch (_) {}
+    }
+
+    // 6. Direct schema scan matching user.email (ordered by created_at DESC to prioritize active customer tenant)
+    if (!resolvedTenantId && user.email) {
+      try {
+        const tenantsRes = await pool.query(
+          `SELECT tenant_id FROM shared.tenants WHERE status = 'active' AND tenant_id NOT IN ('default') ORDER BY created_at DESC`
+        );
+        for (const t of tenantsRes.rows) {
+          try {
+            const uRes = await pool.query(
+              `SELECT user_id FROM "${t.tenant_id}".users WHERE LOWER(email) = LOWER($1) LIMIT 1`,
+              [user.email]
+            );
+            if (uRes.rows.length > 0) {
+              resolvedTenantId = t.tenant_id;
+              break;
+            }
+          } catch (_) {}
+        }
+      } catch (_) {}
+    }
   }
 
   if (!resolvedTenantId) {
-    resolvedTenantId = 'default';
+    resolvedTenantId = 'tenant_default';
   }
 
   const userContext = {

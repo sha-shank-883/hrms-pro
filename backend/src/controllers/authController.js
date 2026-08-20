@@ -882,6 +882,7 @@ const getProfile = asyncHandler(async (req, res) => {
   try {
     const tenantId = req.headers['x-tenant-id'] || req.user.tenant_id;
     if (tenantId) {
+      profileData.tenant_id = tenantId;
       const entitlement = await getTenantActiveModules(tenantId);
       profileData.subscription_plan = entitlement.plan;
       profileData.subscription_expired = entitlement.isExpired;

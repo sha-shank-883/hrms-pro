@@ -32,6 +32,9 @@ export const AuthProvider = ({ children }) => {
         const fullUser = { ...currentUser, ...res.data };
         setUser(fullUser);
         localStorage.setItem('user', JSON.stringify(fullUser));
+        if (fullUser.tenant_id) {
+          localStorage.setItem('tenant_id', fullUser.tenant_id);
+        }
       }).catch(err => console.error('Failed to sync profile on load', err));
     } else {
       setUser(null);
@@ -69,6 +72,9 @@ export const AuthProvider = ({ children }) => {
     setUser(fullUser);
     setIsAuthenticated(true);
     localStorage.setItem('user', JSON.stringify(fullUser));
+    if (fullUser.tenant_id) {
+      localStorage.setItem('tenant_id', fullUser.tenant_id);
+    }
 
     
     return data;

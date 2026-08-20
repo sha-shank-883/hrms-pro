@@ -1,4 +1,5 @@
 const { query } = require('../../../config/database');
+const { resolveEmployee, resolveDepartment } = require('../entityResolver');
 
 /**
  * Employee Domain Tools for HR AI Operations Agent
@@ -79,7 +80,7 @@ const employeeTools = [
           data: employees,
           disambiguation_options: employees.map(e => ({
             employee_id: e.employee_id,
-            employee_code: e.employee_code,
+            employee_code: e.employee_code || `EMP${e.employee_id}`,
             name: `${e.first_name} ${e.last_name || ''}`.trim(),
             department: e.department_name || 'Unassigned',
             position: e.position || 'Staff'
@@ -101,7 +102,7 @@ const employeeTools = [
   {
     name: 'getEmployeeProfile',
     domain: 'employee',
-    description: 'Retrieve full profile details for a specific employee by ID or Code.',
+    description: 'Retrieve full profile details for a specific employee by ID, Code, or Name.',
     type: 'read',
     isSensitive: false,
     requiredRole: ['employee', 'manager', 'hr', 'admin', 'super_admin'],
@@ -109,41 +110,37 @@ const employeeTools = [
       type: 'object',
       properties: {
         employee_id: { type: 'number', description: 'Employee ID' },
-        employee_code: { type: 'string', description: 'Employee Code (e.g. EMP0001)' }
+        employee_code: { type: 'string', description: 'Employee Code (e.g. EMP0001)' },
+        employee_name: { type: 'string', description: 'Employee Name' }
       }
     },
     execute: async (args, context) => {
-      const { employee_id, employee_code } = args;
+      const { employee_id, employee_code, employee_name } = args;
       const { user } = context;
       const role = user?.role || 'employee';
 
-      let sql = `
-        SELECT e.*, d.department_name, u.email as user_email, u.is_active as user_active,
-               m.first_name || ' ' || m.last_name as manager_name
-        FROM employees e
-        LEFT JOIN departments d ON e.department_id = d.department_id
-        LEFT JOIN users u ON e.user_id = u.user_id
-        LEFT JOIN employees m ON e.reporting_manager_id = m.employee_id
-        WHERE 1=1
-      `;
-      const params = [];
-      if (employee_id) {
-        sql += ` AND e.employee_id = $1`;
-        params.push(employee_id);
-      } else if (employee_code) {
-        sql += ` AND e.employee_code ILIKE $1`;
-        params.push(employee_code.trim());
-      } else {
-        return { success: false, message: 'Please provide either employee_id or employee_code.' };
+      const target = employee_id || employee_code || employee_name;
+      if (!target) {
+        return { success: false, message: 'Please provide employee_id, employee_code, or employee_name.' };
       }
 
-      const res = await query(sql, params);
-      if (res.rows.length === 0) {
-        return { success: false, message: 'Employee profile not found.' };
+      const resEmp = await resolveEmployee(target, context);
+      if (resEmp.status === 'ambiguous') {
+        return {
+          success: true,
+          disambiguation_needed: true,
+          disambiguation_options: resEmp.options,
+          count: resEmp.count,
+          message: resEmp.message
+        };
+      }
+      if (resEmp.status !== 'resolved' || !resEmp.employee) {
+        return { success: false, message: resEmp.message || 'Employee profile not found.' };
       }
 
-      const emp = res.rows[0];
-      // Role masking: Non-HR/Admins cannot view sensitive statutory or salary fields of others
+      const emp = resEmp.employee;
+
+      // Role masking: Non-HR/Admins cannot view sensitive statutory or salary fields of other employees
       if (role !== 'admin' && role !== 'hr' && !context.isSuperAdmin && emp.user_id !== user.userId) {
         delete emp.salary;
         delete emp.pan;
@@ -157,7 +154,7 @@ const employeeTools = [
       return {
         success: true,
         data: emp,
-        message: `Profile loaded for ${emp.first_name} ${emp.last_name || ''} (${emp.employee_code || 'EMP' + emp.employee_id}).`
+        message: `Profile loaded for **${emp.first_name} ${emp.last_name || ''}** (${emp.employee_code || 'EMP' + emp.employee_id}).`
       };
     }
   },
@@ -191,7 +188,7 @@ const employeeTools = [
         uan: { type: 'string', description: '12-digit UAN PF' },
         esic: { type: 'string', description: '17-digit ESIC Code' }
       },
-      required: ['first_name', 'email', 'position', 'salary']
+      required: ['first_name', 'email', 'position', 'salary', 'department_name']
     },
     execute: async (args, context) => {
       const {
@@ -203,7 +200,7 @@ const employeeTools = [
         salary,
         employment_type = 'full-time',
         phone = null,
-        gender = 'male',
+        gender = null,
         date_of_birth = null,
         joining_date = null,
         address = null,
@@ -226,16 +223,15 @@ const employeeTools = [
         };
       }
 
-      // 2. Department resolution
-      let deptId = null;
-      if (department_name) {
-        const dRes = await query('SELECT department_id FROM departments WHERE department_name ILIKE $1 LIMIT 1', [`%${department_name.trim()}%`]);
-        if (dRes.rows.length > 0) deptId = dRes.rows[0].department_id;
+      // 2. Strict Department Resolution
+      const deptRes = await resolveDepartment(department_name);
+      if (deptRes.status !== 'resolved') {
+        return {
+          success: false,
+          message: deptRes.message
+        };
       }
-      if (!deptId) {
-        const anyDept = await query('SELECT department_id FROM departments LIMIT 1');
-        if (anyDept.rows.length > 0) deptId = anyDept.rows[0].department_id;
-      }
+      const deptId = deptRes.department_id;
 
       // 3. User account creation / link
       let newUserId = null;
@@ -245,7 +241,7 @@ const employeeTools = [
           newUserId = existingUser.rows[0].user_id;
         } else {
           const bcrypt = require('bcryptjs');
-          const hash = await bcrypt.hash('employee123', 10);
+          const hash = await bcrypt.hash('Hrmspro@123', 10);
           const uRes = await query(
             'INSERT INTO users (email, password_hash, role, is_active) VALUES ($1, $2, $3, true) RETURNING user_id',
             [email.trim().toLowerCase(), hash, 'employee']
@@ -282,19 +278,19 @@ const employeeTools = [
       await query('UPDATE employees SET employee_code = $1 WHERE employee_id = $2', [code, emp.employee_id]);
 
       // 5. Post-Operation Verification
-      const verifyRes = await query('SELECT employee_id, employee_code, status FROM employees WHERE employee_id = $1', [emp.employee_id]);
+      const verifyRes = await query('SELECT employee_id, employee_code, status, department_id FROM employees WHERE employee_id = $1', [emp.employee_id]);
       if (verifyRes.rows.length === 0) {
         return { success: false, message: 'Database write verification failed. Record was not committed.' };
       }
 
       return {
         success: true,
-        data: { ...emp, employee_code: code, status: 'active' },
-        message: `Employee **${emp.first_name} ${emp.last_name || ''}** (${code}) created successfully with role **${emp.position}** and salary **₹${Number(emp.salary).toLocaleString('en-IN')}**.`,
+        data: { ...emp, employee_code: code, status: 'active', department_name: deptRes.department?.department_name },
+        message: `Employee **${emp.first_name} ${emp.last_name || ''}** (${code}) created successfully in **${deptRes.department?.department_name}** with role **${emp.position}** and salary **₹${Number(emp.salary).toLocaleString('en-IN')}**.`,
         action_card: {
           type: 'employee_card',
           title: `Created: ${emp.first_name} ${emp.last_name || ''}`,
-          subtitle: `${emp.position} • ${code} • ₹${Number(emp.salary).toLocaleString('en-IN')}`,
+          subtitle: `${emp.position} • ${code} • ${deptRes.department?.department_name} • ₹${Number(emp.salary).toLocaleString('en-IN')}`,
           link: `/profile?id=${emp.employee_id}`
         }
       };
@@ -313,28 +309,44 @@ const employeeTools = [
       properties: {
         employee_id: { type: 'number', description: 'Employee ID' },
         employee_code: { type: 'string', description: 'Employee Code' },
+        employee_name: { type: 'string', description: 'Employee Name' },
         position: { type: 'string', description: 'New Designation / Role' },
         salary: { type: 'number', description: 'New Monthly Salary (₹)' },
         department_name: { type: 'string', description: 'New Department' },
         phone: { type: 'string', description: 'New Contact Phone' },
         status: { type: 'string', enum: ['active', 'inactive', 'on_leave', 'resigned', 'terminated'] }
-      },
-      required: []
+      }
     },
     execute: async (args, context) => {
-      const { employee_id, employee_code, position, salary, department_name, phone, status } = args;
+      const { employee_id, employee_code, employee_name, position, salary, department_name, phone, status } = args;
 
-      let empId = employee_id;
-      if (!empId && employee_code) {
-        const cRes = await query('SELECT employee_id FROM employees WHERE employee_code ILIKE $1', [employee_code.trim()]);
-        if (cRes.rows.length > 0) empId = cRes.rows[0].employee_id;
+      const target = employee_id || employee_code || employee_name;
+      if (!target) return { success: false, message: 'Please specify employee_id, employee_code, or employee_name to update.' };
+
+      const resEmp = await resolveEmployee(target, context);
+      if (resEmp.status === 'ambiguous') {
+        return {
+          success: true,
+          disambiguation_needed: true,
+          disambiguation_options: resEmp.options,
+          count: resEmp.count,
+          message: resEmp.message
+        };
       }
-      if (!empId) return { success: false, message: 'Please provide a valid employee_id or employee_code to update.' };
+      if (resEmp.status !== 'resolved' || !resEmp.employee) {
+        return { success: false, message: resEmp.message || 'Employee not found for update.' };
+      }
+
+      const empId = resEmp.employee_id;
 
       let deptId = undefined;
       if (department_name) {
-        const dRes = await query('SELECT department_id FROM departments WHERE department_name ILIKE $1 LIMIT 1', [`%${department_name.trim()}%`]);
-        if (dRes.rows.length > 0) deptId = dRes.rows[0].department_id;
+        const dRes = await resolveDepartment(department_name);
+        if (dRes.status === 'resolved') {
+          deptId = dRes.department_id;
+        } else {
+          return { success: false, message: dRes.message };
+        }
       }
 
       const updates = [];
@@ -348,7 +360,7 @@ const employeeTools = [
       if (status !== undefined) { updates.push(`status = $${pIdx}`); params.push(status); pIdx++; }
 
       if (updates.length === 0) {
-        return { success: false, message: 'No updated fields provided.' };
+        return { success: false, message: 'No fields provided to update.' };
       }
 
       updates.push(`updated_at = CURRENT_TIMESTAMP`);
@@ -358,7 +370,7 @@ const employeeTools = [
       const res = await query(sql, params);
 
       if (res.rows.length === 0) {
-        return { success: false, message: 'Employee not found for update.' };
+        return { success: false, message: 'Employee update failed.' };
       }
 
       const updated = res.rows[0];
@@ -382,26 +394,31 @@ const employeeTools = [
       properties: {
         employee_id: { type: 'number', description: 'Employee ID' },
         employee_code: { type: 'string', description: 'Employee Code' },
-        employee_name: { type: 'string', description: 'Employee Name for search' },
-        reason: { type: 'string', description: 'Reason for deactivation (e.g. Resigned, Contract Complete, Terminated)' }
+        employee_name: { type: 'string', description: 'Employee Name' },
+        reason: { type: 'string', description: 'Reason for deactivation' }
       }
     },
     execute: async (args, context) => {
       const { employee_id, employee_code, employee_name, reason = 'Deactivated by HR' } = args;
 
-      let emp = null;
-      if (employee_id) {
-        const res = await query('SELECT employee_id, user_id, employee_code, first_name, last_name, position FROM employees WHERE employee_id = $1', [employee_id]);
-        if (res.rows.length > 0) emp = res.rows[0];
-      } else if (employee_code) {
-        const res = await query('SELECT employee_id, user_id, employee_code, first_name, last_name, position FROM employees WHERE employee_code ILIKE $1', [employee_code.trim()]);
-        if (res.rows.length > 0) emp = res.rows[0];
-      } else if (employee_name) {
-        const res = await query('SELECT employee_id, user_id, employee_code, first_name, last_name, position FROM employees WHERE first_name ILIKE $1 OR last_name ILIKE $1 OR (first_name || \' \' || last_name) ILIKE $1', [`%${employee_name.trim()}%`]);
-        if (res.rows.length > 0) emp = res.rows[0];
+      const target = employee_id || employee_code || employee_name;
+      if (!target) return { success: false, message: 'Please specify an employee to deactivate.' };
+
+      const resEmp = await resolveEmployee(target, context);
+      if (resEmp.status === 'ambiguous') {
+        return {
+          success: true,
+          disambiguation_needed: true,
+          disambiguation_options: resEmp.options,
+          count: resEmp.count,
+          message: resEmp.message
+        };
+      }
+      if (resEmp.status !== 'resolved' || !resEmp.employee) {
+        return { success: false, message: resEmp.message || 'Target employee not found for deactivation.' };
       }
 
-      if (!emp) return { success: false, message: 'Target employee not found for deactivation.' };
+      const emp = resEmp.employee;
 
       // Update employee status
       await query('UPDATE employees SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE employee_id = $2', ['inactive', emp.employee_id]);
@@ -420,7 +437,7 @@ const employeeTools = [
       return {
         success: true,
         data: { employee_id: emp.employee_id, employee_code: emp.employee_code, status: 'inactive' },
-        message: `Employee **${emp.first_name} ${emp.last_name || ''}** (${emp.employee_code}) has been deactivated. Reason: "${reason}". Portal login access has been suspended.`
+        message: `Employee **${emp.first_name} ${emp.last_name || ''}** (${emp.employee_code}) has been deactivated. Reason: "${reason}". Portal login access has been revoked.`
       };
     }
   }

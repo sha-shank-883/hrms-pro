@@ -55,7 +55,7 @@ const generateResponse = async (message, chatId = null, userId = null) => {
         'Authorization': `Bearer ${apiKey}`
       },
       body: JSON.stringify({
-        model,
+        model: model,
         messages,
         temperature: 0.7,
         max_tokens: 500
@@ -65,6 +65,35 @@ const generateResponse = async (message, chatId = null, userId = null) => {
     if (!response.ok) {
       const errorBody = await response.text();
       const isQuota = response.status === 429 || response.status === 402;
+
+      // If model not found, retry once with standard llama-3.1-8b-instant
+      if (response.status === 404 && model !== 'llama-3.1-8b-instant') {
+        const retryRes = await fetch(baseUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`
+          },
+          body: JSON.stringify({
+            model: 'llama-3.1-8b-instant',
+            messages,
+            temperature: 0.7,
+            max_tokens: 500
+          })
+        });
+        if (retryRes.ok) {
+          const data = await retryRes.json();
+          const text = data.choices?.[0]?.message?.content || '';
+          return {
+            success: true,
+            response: text,
+            confidence: estimateConfidence(text, message),
+            provider: 'groq',
+            model: 'llama-3.1-8b-instant',
+            responseTimeMs: Date.now() - startTime
+          };
+        }
+      }
 
       if (isQuota) {
         return {

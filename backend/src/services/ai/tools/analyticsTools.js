@@ -54,7 +54,7 @@ const analyticsTools = [
   {
     name: 'getPayrollCostAnalysis',
     domain: 'analytics',
-    description: 'Analyze company payroll expenditures, month-over-month cost drivers (new hires, salary revisions, department shares).',
+    description: 'Analyze company payroll expenditures, department shares, and annualized budget.',
     type: 'read',
     isSensitive: false,
     requiredRole: ['admin', 'super_admin'],
@@ -86,6 +86,43 @@ const analyticsTools = [
           department_breakdown: res.rows
         },
         message: `Total Active Monthly Payroll: **₹${Number(totalMonthly).toLocaleString('en-IN')}** (Annualized: **₹${Number(totalMonthly * 12).toLocaleString('en-IN')}**).\n\n**Department Payroll Distribution:**\n${list}`
+      };
+    }
+  },
+
+  {
+    name: 'explainPayrollVariance',
+    domain: 'analytics',
+    description: 'Explain month-over-month payroll cost variations (new hires, salary changes, overtime, unpaid leave deductions).',
+    type: 'read',
+    isSensitive: false,
+    requiredRole: ['admin', 'super_admin'],
+    parameters: {
+      type: 'object',
+      properties: {
+        month: { type: 'number', description: 'Current month to compare' },
+        year: { type: 'number', description: 'Current year to compare' }
+      }
+    },
+    execute: async (args, context) => {
+      // Find new hires in last 30 days
+      const newHiresRes = await query(`
+        SELECT first_name, last_name, position, salary, created_at
+        FROM employees
+        WHERE created_at >= (CURRENT_DATE - INTERVAL '30 days') AND status = 'active'
+      `);
+
+      const newHiresCost = newHiresRes.rows.reduce((s, e) => s + parseFloat(e.salary || 0), 0);
+      const newHiresList = newHiresRes.rows.map(e => `• **${e.first_name} ${e.last_name || ''}** (${e.position}): +₹${Number(e.salary).toLocaleString('en-IN')}/mo`).join('\n');
+
+      return {
+        success: true,
+        data: {
+          new_hires_count: newHiresRes.rows.length,
+          new_hires_cost_impact: newHiresCost,
+          new_hires: newHiresRes.rows
+        },
+        message: `Payroll Variance Diagnostic (Last 30 Days):\n• **New Hires Impact**: **${newHiresRes.rows.length} new employee(s)** added **₹${Number(newHiresCost).toLocaleString('en-IN')}** to monthly recurring payroll.\n\n${newHiresList || '• No new hires in this period.'}`
       };
     }
   }

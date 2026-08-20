@@ -1,4 +1,5 @@
 const { query } = require('../../../config/database');
+const { resolveEmployee } = require('../entityResolver');
 
 /**
  * Attendance Domain Tools for HR AI Operations Agent
@@ -27,12 +28,26 @@ const attendanceTools = [
       const role = user?.role || 'employee';
 
       let targetEmpId = employee_id;
-      if (!targetEmpId && role === 'employee') {
+
+      if (!targetEmpId && employee_name) {
+        const resEmp = await resolveEmployee(employee_name, context);
+        if (resEmp.status === 'ambiguous') {
+          return {
+            success: true,
+            disambiguation_needed: true,
+            disambiguation_options: resEmp.options,
+            count: resEmp.count,
+            message: resEmp.message
+          };
+        }
+        if (resEmp.status === 'resolved') {
+          targetEmpId = resEmp.employee_id;
+        } else {
+          return { success: false, message: `Employee "${employee_name}" not found.` };
+        }
+      } else if (!targetEmpId && role === 'employee') {
         const myEmp = await query('SELECT employee_id FROM employees WHERE user_id = $1', [user.userId]);
         if (myEmp.rows.length > 0) targetEmpId = myEmp.rows[0].employee_id;
-      } else if (!targetEmpId && employee_name) {
-        const found = await query('SELECT employee_id FROM employees WHERE first_name ILIKE $1 OR last_name ILIKE $1 LIMIT 1', [`%${employee_name.trim()}%`]);
-        if (found.rows.length > 0) targetEmpId = found.rows[0].employee_id;
       }
 
       const curYear = year || new Date().getFullYear();
@@ -156,21 +171,52 @@ const attendanceTools = [
       required: ['date']
     },
     execute: async (args, context) => {
-      const { employee_id, employee_name, date, clock_in = '09:30:00', clock_out = '18:30:00', status = 'present' } = args;
+      const { employee_id, employee_name, date, clock_in = null, clock_out = null, status = 'present' } = args;
       const { user } = context;
 
-      let empId = employee_id;
-      if (!empId && employee_name) {
-        const found = await query('SELECT employee_id FROM employees WHERE first_name ILIKE $1 OR last_name ILIKE $1 LIMIT 1', [`%${employee_name.trim()}%`]);
-        if (found.rows.length > 0) empId = found.rows[0].employee_id;
+      let targetEmp = null;
+      if (employee_id || employee_name) {
+        const resEmp = await resolveEmployee(employee_id || employee_name, context);
+        if (resEmp.status === 'ambiguous') {
+          return {
+            success: true,
+            disambiguation_needed: true,
+            disambiguation_options: resEmp.options,
+            count: resEmp.count,
+            message: resEmp.message
+          };
+        }
+        if (resEmp.status === 'resolved') {
+          targetEmp = resEmp.employee;
+        }
       }
-      if (!empId) {
-        const myEmp = await query('SELECT employee_id FROM employees WHERE user_id = $1', [user.userId]);
-        if (myEmp.rows.length > 0) empId = myEmp.rows[0].employee_id;
-      }
-      if (!empId) return { success: false, message: 'Could not resolve target employee for attendance regularization.' };
 
+      if (!targetEmp) {
+        const myEmp = await query('SELECT employee_id, first_name, last_name FROM employees WHERE user_id = $1', [user.userId]);
+        if (myEmp.rows.length > 0) targetEmp = myEmp.rows[0];
+      }
+
+      if (!targetEmp) return { success: false, message: 'Could not resolve target employee for attendance regularization.' };
+
+      const empId = targetEmp.employee_id;
       const targetDate = date === 'today' ? new Date().toISOString().split('T')[0] : date;
+
+      // Compute total hours dynamically if clock in/out provided
+      let calculatedHours = null;
+      if (clock_in && clock_out) {
+        try {
+          const inParts = clock_in.replace(/[^0-9:]/g, '').split(':').map(Number);
+          const outParts = clock_out.replace(/[^0-9:]/g, '').split(':').map(Number);
+          if (inParts.length >= 2 && outParts.length >= 2) {
+            const inMins = inParts[0] * 60 + inParts[1];
+            const outMins = outParts[0] * 60 + outParts[1];
+            calculatedHours = Math.max(0, parseFloat(((outMins - inMins) / 60).toFixed(2)));
+          }
+        } catch (_) {}
+      }
+      if (calculatedHours === null && status === 'present') calculatedHours = 8.0;
+      if (status === 'half-day' || status === 'half_day') calculatedHours = 4.0;
+      if (status === 'absent') calculatedHours = 0.0;
 
       // Upsert attendance record
       const exist = await query('SELECT attendance_id FROM attendance WHERE employee_id = $1 AND date = $2', [empId, targetDate]);
@@ -178,25 +224,25 @@ const attendanceTools = [
       if (exist.rows.length > 0) {
         savedId = exist.rows[0].attendance_id;
         await query(
-          `UPDATE attendance SET clock_in = $1, clock_out = $2, status = $3, total_hours = 8.5, updated_at = CURRENT_TIMESTAMP WHERE attendance_id = $4`,
-          [clock_in, clock_out, status, savedId]
+          `UPDATE attendance SET clock_in = $1, clock_out = $2, status = $3, total_hours = $4, updated_at = CURRENT_TIMESTAMP WHERE attendance_id = $5`,
+          [clock_in, clock_out, status, calculatedHours, savedId]
         );
       } else {
         const ins = await query(
-          `INSERT INTO attendance (employee_id, date, clock_in, clock_out, status, total_hours) VALUES ($1, $2, $3, $4, $5, 8.5) RETURNING attendance_id`,
-          [empId, targetDate, clock_in, clock_out, status]
+          `INSERT INTO attendance (employee_id, date, clock_in, clock_out, status, total_hours) VALUES ($1, $2, $3, $4, $5, $6) RETURNING attendance_id`,
+          [empId, targetDate, clock_in, clock_out, status, calculatedHours]
         );
         savedId = ins.rows[0].attendance_id;
       }
 
       // Verification
-      const vRes = await query('SELECT attendance_id, status, clock_in, clock_out FROM attendance WHERE attendance_id = $1', [savedId]);
+      const vRes = await query('SELECT attendance_id, status, clock_in, clock_out, total_hours FROM attendance WHERE attendance_id = $1', [savedId]);
       if (vRes.rows.length === 0) return { success: false, message: 'Database verification failed for attendance regularization.' };
 
       return {
         success: true,
         data: vRes.rows[0],
-        message: `Attendance for Date **${targetDate}** regularized to **${status.toUpperCase()}** (In: ${clock_in}, Out: ${clock_out}).`
+        message: `Attendance for **${targetEmp.first_name} ${targetEmp.last_name || ''}** on **${targetDate}** regularized to **${status.toUpperCase()}** (${clock_in ? `In: ${clock_in}` : 'No In Punch'}, ${clock_out ? `Out: ${clock_out}` : 'No Out Punch'}, Total Hours: **${calculatedHours || 0}h**).`
       };
     }
   }

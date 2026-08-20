@@ -1,6 +1,10 @@
 const { generateWithFallback } = require('./providerFactory');
 const { sanitizeInput } = require('./aiSanitizer');
 const { getToolsForRole, executeAuthorizedTool } = require('./toolRegistry');
+const conversationState = require('./conversationState');
+const { resolveRelativeDate, resolveRelativePeriod, formatDate } = require('./dateResolver');
+
+const DAYS_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 /**
  * HR AI Operations Agent Orchestrator
@@ -14,10 +18,19 @@ class HRAIOperationsOrchestrator {
   async processUserMessage({ message, conversationHistory = [], userContext, tenantContext, isConfirmed = false, confirmedAction = null }) {
     const { user, isSuperAdmin } = userContext;
     const role = user?.role || 'employee';
+    const userId = user?.userId || user?.id || 'anon';
+    const sessionId = `session_${tenantContext?.tenantId || 'default'}_${userId}`;
     const userName = `${user?.first_name || ''} ${user?.last_name || ''}`.trim() || user?.email || 'User';
 
-    // 1. Sanitize user query & prepare conversation context
-    const sanitizedQuery = sanitizeInput(message);
+    // 1. Sanitize user query and resolve active pronouns against conversational entity stack
+    const rawSanitized = sanitizeInput(message);
+    const sanitizedQuery = conversationState.resolvePronouns(rawSanitized, sessionId);
+
+    const now = new Date();
+    const currentISODate = formatDate(now);
+    const currentDayName = DAYS_NAMES[now.getDay()];
+    const currentTimestampStr = now.toISOString();
+
     const historySnippet = (conversationHistory || [])
       .slice(-8)
       .map(m => `${m.sender === 'user' ? 'User' : 'HRAgent'}: ${m.text}`)
@@ -34,6 +47,9 @@ class HRAIOperationsOrchestrator {
         true // isConfirmed = true
       );
 
+      // Clear workflow state if completed
+      conversationState.clearWorkflow(sessionId);
+
       return {
         reply: toolResult.message || `Action ${confirmedAction.toolName} executed successfully.`,
         tool_executed: confirmedAction.toolName,
@@ -46,9 +62,15 @@ class HRAIOperationsOrchestrator {
     // 2. Retrieve Role-Filtered Tool Definitions (Strict Server Authorization)
     const availableTools = getToolsForRole(role, isSuperAdmin);
 
-    // 3. Construct HR AI Operations Agent System Prompt
+    // 3. Construct HR AI Operations Agent System Prompt with Real-Time Calendar Grounding
     const systemPrompt = `You are the lead HR AI Operations Agent for an enterprise HRMS platform.
 You are assisting ${userName} whose authenticated system role is "${role.toUpperCase()}" ${isSuperAdmin ? '(GLOBAL SUPER ADMIN)' : ''}.
+
+TEMPORAL & CALENDAR GROUNDING:
+- Current Server Timestamp: ${currentTimestampStr}
+- Today's Date: ${currentISODate} (${currentDayName})
+- Current Year: ${now.getFullYear()}
+- Current Month: ${now.getMonth() + 1}
 
 OPERATIONAL AGENT GUIDELINES:
 1. Understand the user's intent: Determine if the request is informational, analytical, operational/action, multi-step, or ambiguous.
@@ -90,11 +112,11 @@ Return ONLY valid JSON.`;
       } else if (rawResponse && rawResponse.trim().length > 10 && !rawResponse.includes('{') && !rawResponse.includes('```')) {
         toolDecision = { should_call_tool: false, direct_reply: rawResponse.trim() };
       } else {
-        toolDecision = this._heuristicAgentRouter(sanitizedQuery, conversationHistory, role, isSuperAdmin);
+        toolDecision = this._heuristicAgentRouter(sanitizedQuery, conversationHistory, role, isSuperAdmin, sessionId);
       }
     } catch (e) {
       console.warn('[HR AI Agent] Provider tool selection notice:', e.message);
-      toolDecision = this._heuristicAgentRouter(sanitizedQuery, conversationHistory, role, isSuperAdmin);
+      toolDecision = this._heuristicAgentRouter(sanitizedQuery, conversationHistory, role, isSuperAdmin, sessionId);
     }
 
     let toolResult = null;
@@ -113,6 +135,19 @@ Return ONLY valid JSON.`;
 
         if (toolResult?.action_card) {
           actionCards.push(toolResult.action_card);
+        }
+
+        // Update active entity reference stack on successful employee resolution
+        if (toolResult?.data) {
+          const d = toolResult.data;
+          if (d.employee_id || d.id) {
+            conversationState.setActiveEntity(sessionId, {
+              id: d.employee_id || d.id,
+              name: d.name || `${d.first_name || ''} ${d.last_name || ''}`.trim(),
+              code: d.employee_code,
+              department: d.department_name
+            });
+          }
         }
 
         // If tool requires sensitive action confirmation
@@ -134,12 +169,12 @@ Return ONLY valid JSON.`;
 
         // If tool requires employee disambiguation
         if (toolResult?.disambiguation_needed) {
-          const optionsList = toolResult.disambiguation_options.map((opt, idx) =>
-            `${idx + 1}. **${opt.name}** (${opt.employee_code}) — *${opt.position}*, ${opt.department}`
+          const optionsList = (toolResult.disambiguation_options || []).map((opt, idx) =>
+            `${idx + 1}. **${opt.name || opt.label || opt.id}** (${opt.employee_code || ''}) — *${opt.position || ''}*, ${opt.department || ''}`
           ).join('\n');
 
           return {
-            reply: `I found **${toolResult.count}** employees matching your request:\n\n${optionsList}\n\n👉 **Which employee did you mean?** Please specify the name, code, or department.`,
+            reply: `I found **${toolResult.count}** records matching your request:\n\n${optionsList}\n\n👉 **Which one did you mean?** Please specify the name, code, or ID.`,
             tool_executed: toolDecision.tool_name,
             tool_result: toolResult,
             disambiguation_options: toolResult.disambiguation_options,
@@ -245,7 +280,7 @@ Highlight key numbers/status in bold. Never expose internal tool names or raw da
   /**
    * Deterministic Fallback & Multi-Turn Slot Collector Router
    */
-  _heuristicAgentRouter(query, conversationHistory = [], role = 'employee', isSuperAdmin = false) {
+  _heuristicAgentRouter(query, conversationHistory = [], role = 'employee', isSuperAdmin = false, sessionId = 'default') {
     const q = query.toLowerCase();
 
     // 1. Employee Creation / Onboarding Intent
@@ -256,59 +291,45 @@ Highlight key numbers/status in bold. Never expose internal tool names or raw da
     const isOngoingEmployeeWizard = lastBotMsg.includes('employee profile') || lastBotMsg.includes('Information Collected So Far') || lastBotMsg.includes('Please provide the remaining');
 
     if (isEmployeeCreation || isOngoingEmployeeWizard) {
-      const userMessages = [
-        ...(conversationHistory || []).filter(m => m.sender === 'user').map(m => m.text),
-        query
-      ];
-      const fullText = userMessages.join(' | ');
+      // Extract slots only from the current turn and update session workflow state
+      const currentTurnSlots = {};
 
-      const slots = {
-        first_name: null,
-        last_name: null,
-        email: null,
-        salary: null,
-        position: null,
-        department_name: null,
-        phone: null,
-        gender: null,
-        date_of_birth: null,
-        joining_date: null,
-        pan: null
-      };
+      const emailMatch = query.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i);
+      if (emailMatch) currentTurnSlots.email = emailMatch[1].trim();
 
-      const emailMatch = fullText.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i);
-      if (emailMatch) slots.email = emailMatch[1].trim();
-
-      const salMatch = fullText.match(/(?:sal[a-z]*|pay|ctc|wage)\s*(?:is|:|=)?\s*(?:₹|rs\.?)?\s*(\d+(?:,\d+)*(?:\.\d+)?k?)/i);
+      const salMatch = query.match(/(?:sal[a-z]*|pay|ctc|wage)\s*(?:is|:|=)?\s*(?:₹|rs\.?)?\s*(\d+(?:,\d+)*(?:\.\d+)?k?)/i);
       if (salMatch) {
         let rawVal = salMatch[1].toLowerCase().replace(/,/g, '');
-        slots.salary = rawVal.endsWith('k') ? parseFloat(rawVal.replace('k', '')) * 1000 : parseFloat(rawVal);
+        currentTurnSlots.salary = rawVal.endsWith('k') ? parseFloat(rawVal.replace('k', '')) * 1000 : parseFloat(rawVal);
       }
 
-      const posMatch = fullText.match(/(?:pos[a-z]*|desig[a-z]*|role|title|job)\s*(?:is|:|=)?\s*([A-Za-z0-9\s]+?)(?:\||,|$|\bsal|\bemail|\bdep|\bname|\bphone|\bgender)/i);
+      const posMatch = query.match(/(?:pos[a-z]*|desig[a-z]*|role|title|job)\s*(?:is|:|=)?\s*([A-Za-z0-9\s]+?)(?:\||,|$|\bsal|\bemail|\bdep|\bname|\bphone|\bgender)/i);
       if (posMatch && posMatch[1].trim().length > 1 && !['is', 'a', 'the', 'new'].includes(posMatch[1].trim().toLowerCase())) {
-        slots.position = posMatch[1].trim();
+        currentTurnSlots.position = posMatch[1].trim();
       }
 
-      const deptMatch = fullText.match(/(?:dep[a-z]*|team)\s*(?:is|:|=)?\s*([A-Za-z0-9\s]+?)(?:\||,|$|\bsal|\bemail|\bpos|\bdesig|\bname|\bphone|\bgender)/i);
+      const deptMatch = query.match(/(?:dep[a-z]*|team)\s*(?:is|:|=)?\s*([A-Za-z0-9\s]+?)(?:\||,|$|\bsal|\bemail|\bpos|\bdesig|\bname|\bphone|\bgender)/i);
       if (deptMatch && deptMatch[1].trim().length > 1 && !['is', 'a', 'the', 'new'].includes(deptMatch[1].trim().toLowerCase())) {
-        slots.department_name = deptMatch[1].trim();
+        currentTurnSlots.department_name = deptMatch[1].trim();
       }
 
-      const phoneMatch = fullText.match(/(?:phone|mob[a-z]*|contact|cell)\s*(?:is|:|=)?\s*(\+?\d[\d\s-]{8,14}\d)/i);
-      if (phoneMatch) slots.phone = phoneMatch[1].trim();
+      const phoneMatch = query.match(/(?:phone|mob[a-z]*|contact|cell)\s*(?:is|:|=)?\s*(\+?\d[\d\s-]{8,14}\d)/i);
+      if (phoneMatch) currentTurnSlots.phone = phoneMatch[1].trim();
 
-      const genderMatch = fullText.match(/(?:gender|sex)\s*(?:is|:|=)?\s*(male|female|other)/i);
-      if (genderMatch) slots.gender = genderMatch[1].toLowerCase().trim();
+      const genderMatch = query.match(/(?:gender|sex)\s*(?:is|:|=)?\s*(male|female|other)/i);
+      if (genderMatch) currentTurnSlots.gender = genderMatch[1].toLowerCase().trim();
 
-      const nameMatch = fullText.match(/(?:name\s*(?:is|:|=)?\s*|employe[a-z]*\s+)([A-Za-z]+(?:\s+[A-Za-z]+)?)/i);
+      const nameMatch = query.match(/(?:name\s*(?:is|:|=)?\s*|employe[a-z]*\s+)([A-Za-z]+(?:\s+[A-Za-z]+)?)/i);
       if (nameMatch) {
         const parts = nameMatch[1].trim().split(/\s+/);
         if (!['is', 'a', 'new', 'an', 'the'].includes(parts[0].toLowerCase())) {
-          slots.first_name = parts[0];
-          if (parts.length > 1) slots.last_name = parts.slice(1).join(' ');
+          currentTurnSlots.first_name = parts[0];
+          if (parts.length > 1) currentTurnSlots.last_name = parts.slice(1).join(' ');
         }
       }
+
+      // Update state store
+      const slots = conversationState.updateWorkflowSlots(sessionId, 'create_employee', currentTurnSlots);
 
       // Check missing mandatory fields
       const missing = [];
@@ -337,6 +358,9 @@ Highlight key numbers/status in bold. Never expose internal tool names or raw da
         return { should_call_tool: false, direct_reply: reply };
       }
 
+      // Clear workflow on completion
+      conversationState.clearWorkflow(sessionId);
+
       return {
         should_call_tool: true,
         tool_name: 'createEmployee',
@@ -353,8 +377,14 @@ Highlight key numbers/status in bold. Never expose internal tool names or raw da
 
     // 3. Employee Deactivation / Termination (Sensitive Action)
     if (q.includes('terminate') || q.includes('deactivate employee') || q.includes('remove employee') || q.includes('fire')) {
-      const words = query.split(/\s+/).filter(w => !['terminate', 'deactivate', 'remove', 'fire', 'employee', 'please'].includes(w.toLowerCase()));
-      return { should_call_tool: true, tool_name: 'deactivateEmployee', tool_arguments: { employee_name: words.join(' ') || 'Aman', reason: 'Deactivated via HR operations' } };
+      const targetName = query.split(/\s+/).filter(w => !['terminate', 'deactivate', 'remove', 'fire', 'employee', 'please', 'the', 'an', 'a', 'this'].includes(w.toLowerCase())).join(' ').trim();
+      if (!targetName) {
+        return {
+          should_call_tool: false,
+          direct_reply: `Which employee would you like to deactivate or terminate? Please specify their **Full Name** or **Employee Code**.`
+        };
+      }
+      return { should_call_tool: true, tool_name: 'deactivateEmployee', tool_arguments: { employee_name: targetName, reason: 'Deactivated via HR operations' } };
     }
 
     // 4. Attendance
@@ -363,20 +393,25 @@ Highlight key numbers/status in bold. Never expose internal tool names or raw da
     }
 
     if (q.includes('regularize') || (q.includes('mark') && q.includes('attendance'))) {
-      return { should_call_tool: true, tool_name: 'regularizeAttendance', tool_arguments: { date: 'today', status: 'present' } };
+      const relDate = resolveRelativeDate(query) || formatDate(new Date());
+      return { should_call_tool: true, tool_name: 'regularizeAttendance', tool_arguments: { date: relDate, status: 'present' } };
     }
 
     if (q.includes('attendance') || q.includes('present') || q.includes('absent') || q.includes('late')) {
-      return { should_call_tool: true, tool_name: 'getAttendanceSummary', tool_arguments: { date: q.includes('today') ? 'today' : null } };
+      const relDate = resolveRelativeDate(query);
+      return { should_call_tool: true, tool_name: 'getAttendanceSummary', tool_arguments: { date: relDate || (q.includes('today') ? formatDate(new Date()) : null) } };
     }
 
     // 5. Leaves
     if (q.includes('leave balance') || q.includes('remaining leave') || q.includes('how many leaves')) {
-      return { should_call_tool: true, tool_name: 'getLeaveBalance', tool_arguments: {} };
+      const words = query.split(/\s+/).filter(w => !['what', 'is', 'my', 'the', 'leave', 'leaves', 'balance', 'remaining', 'for', 'of'].includes(w.toLowerCase()));
+      const empTarget = words.join(' ').trim();
+      return { should_call_tool: true, tool_name: 'getLeaveBalance', tool_arguments: empTarget ? { employee_name: empTarget } : {} };
     }
 
     if (q.includes('approve leave')) {
-      return { should_call_tool: true, tool_name: 'approveLeave', tool_arguments: {} };
+      const idMatch = query.match(/#?(\d+)/);
+      return { should_call_tool: true, tool_name: 'approveLeave', tool_arguments: idMatch ? { leave_id: parseInt(idMatch[1], 10) } : {} };
     }
 
     if (q.includes('apply leave') || q.includes('take leave') || q.includes('request leave')) {
@@ -392,11 +427,14 @@ Highlight key numbers/status in bold. Never expose internal tool names or raw da
 
     // 6. Payroll & Salaries
     if (q.includes('salary') || q.includes('payslip') || q.includes('pay breakdown')) {
-      return { should_call_tool: true, tool_name: 'getSalary', tool_arguments: {} };
+      const words = query.split(/\s+/).filter(w => !['what', 'is', 'my', 'the', 'salary', 'payslip', 'breakdown', 'for', 'of'].includes(w.toLowerCase()));
+      const empTarget = words.join(' ').trim();
+      return { should_call_tool: true, tool_name: 'getSalary', tool_arguments: empTarget ? { employee_name: empTarget } : {} };
     }
 
     if (q.includes('finalize payroll') || q.includes('process payroll')) {
-      return { should_call_tool: true, tool_name: 'finalizePayroll', tool_arguments: { month: new Date().getMonth() + 1, year: new Date().getFullYear() } };
+      const period = resolveRelativePeriod(query);
+      return { should_call_tool: true, tool_name: 'finalizePayroll', tool_arguments: { month: period.month, year: period.year } };
     }
 
     if (q.includes('payroll cost') || q.includes('payroll expense') || q.includes('payroll increase')) {

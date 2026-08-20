@@ -57,9 +57,10 @@ const companyTools = [
 
       try {
         const res = await query('SELECT * FROM holidays WHERE EXTRACT(YEAR FROM holiday_date) = $1 ORDER BY holiday_date ASC', [targetYear]);
-        holidays = res.rows;
-      } catch (_) {
-        // Fallback default national holidays if table does not exist
+        if (res.rows.length > 0) holidays = res.rows;
+      } catch (_) {}
+
+      if (holidays.length === 0) {
         holidays = [
           { holiday_name: 'New Year Day', holiday_date: `${targetYear}-01-01` },
           { holiday_name: 'Republic Day', holiday_date: `${targetYear}-01-26` },
@@ -95,19 +96,35 @@ const companyTools = [
     execute: async (args, context) => {
       const { policy_name = 'all' } = args;
 
-      const policies = {
+      let dbPolicies = {};
+      try {
+        const pRes = await query('SELECT title, content, category FROM company_policies');
+        if (pRes.rows.length > 0) {
+          pRes.rows.forEach(r => {
+            const key = (r.category || r.title || '').toLowerCase().replace(/\s+/g, '_');
+            dbPolicies[key] = r.content;
+          });
+        }
+      } catch (_) {}
+
+      const standardPolicies = {
         attendance: 'Standard shift hours are 09:30 AM to 06:30 PM (Mon-Fri). Punctuality threshold for "poor attendance" is defined as below 90% in a rolling 30-day window or more than 3 unregularized missing punches.',
         leave: 'Employees are entitled to 15 Annual Leaves, 10 Sick Leaves, and 8 Casual Leaves per year. Leave requests exceeding 3 consecutive days require manager approval at least 3 days in advance.',
         probation: 'Standard probation duration is 3 months with a formal performance appraisal before confirmation.',
         overtime: 'Overtime exceeding standard 40 weekly hours is compensated at 1.5x hourly base rate upon manager sign-off.'
       };
 
-      if (policy_name && policy_name !== 'all' && policies[policy_name.toLowerCase()]) {
-        return {
-          success: true,
-          data: { policy: policy_name, content: policies[policy_name.toLowerCase()] },
-          message: `Company Policy (${policy_name.toUpperCase()}):\n${policies[policy_name.toLowerCase()]}`
-        };
+      const policies = { ...standardPolicies, ...dbPolicies };
+
+      if (policy_name && policy_name !== 'all') {
+        const matchKey = Object.keys(policies).find(k => k.includes(policy_name.toLowerCase()) || policy_name.toLowerCase().includes(k));
+        if (matchKey) {
+          return {
+            success: true,
+            data: { policy: matchKey, content: policies[matchKey] },
+            message: `Company Policy (${matchKey.toUpperCase()}):\n${policies[matchKey]}`
+          };
+        }
       }
 
       const list = Object.entries(policies).map(([k, v]) => `• **${k.toUpperCase()}**: ${v}`).join('\n\n');

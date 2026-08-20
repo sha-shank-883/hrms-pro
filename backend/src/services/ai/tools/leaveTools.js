@@ -1,4 +1,5 @@
 const { query } = require('../../../config/database');
+const { resolveEmployee, resolvePendingLeave } = require('../entityResolver');
 
 /**
  * Leave Domain Tools for HR AI Operations Agent
@@ -22,19 +23,43 @@ const leaveTools = [
       const { employee_id, employee_name } = args;
       const { user } = context;
 
-      let empId = employee_id;
-      if (!empId && employee_name) {
-        const found = await query('SELECT employee_id, first_name, last_name FROM employees WHERE first_name ILIKE $1 OR last_name ILIKE $1 LIMIT 1', [`%${employee_name.trim()}%`]);
-        if (found.rows.length > 0) empId = found.rows[0].employee_id;
+      let targetEmp = null;
+      if (employee_id || employee_name) {
+        const resEmp = await resolveEmployee(employee_id || employee_name, context);
+        if (resEmp.status === 'ambiguous') {
+          return {
+            success: true,
+            disambiguation_needed: true,
+            disambiguation_options: resEmp.options,
+            count: resEmp.count,
+            message: resEmp.message
+          };
+        }
+        if (resEmp.status === 'resolved') {
+          targetEmp = resEmp.employee;
+        }
       }
-      if (!empId) {
-        const myEmp = await query('SELECT employee_id, first_name, last_name FROM employees WHERE user_id = $1', [user.userId]);
-        if (myEmp.rows.length > 0) empId = myEmp.rows[0].employee_id;
-      }
-      if (!empId) return { success: false, message: 'Could not identify employee to look up leave balances.' };
 
-      const empRes = await query('SELECT employee_id, first_name, last_name, employee_code FROM employees WHERE employee_id = $1', [empId]);
-      const emp = empRes.rows[0];
+      if (!targetEmp) {
+        const myEmp = await query('SELECT employee_id, first_name, last_name, employee_code FROM employees WHERE user_id = $1', [user.userId]);
+        if (myEmp.rows.length > 0) targetEmp = myEmp.rows[0];
+      }
+
+      if (!targetEmp) return { success: false, message: 'Could not identify employee to look up leave balances.' };
+
+      const empId = targetEmp.employee_id;
+
+      // Dynamic tenant leave quota lookup if configured, with standard statutory fallback
+      let quotas = { annual: 15, sick: 10, casual: 8 };
+      try {
+        const qRes = await query('SELECT leave_type, total_days FROM leave_types');
+        if (qRes.rows.length > 0) {
+          qRes.rows.forEach(r => {
+            const lt = (r.leave_type || '').toLowerCase();
+            quotas[lt] = parseFloat(r.total_days || 0);
+          });
+        }
+      } catch (_) {}
 
       // Calculate consumed leaves in current year
       const usedRes = await query(`
@@ -47,30 +72,24 @@ const leaveTools = [
       const consumed = {};
       usedRes.rows.forEach(r => { consumed[r.leave_type] = parseFloat(r.days_used || 0); });
 
-      const quotas = {
-        annual: 15,
-        sick: 10,
-        casual: 8
-      };
-
       const balance = {
-        annual_available: Math.max(0, quotas.annual - (consumed.annual || 0)),
-        sick_available: Math.max(0, quotas.sick - (consumed.sick || 0)),
-        casual_available: Math.max(0, quotas.casual - (consumed.casual || 0)),
+        annual_available: Math.max(0, (quotas.annual || 15) - (consumed.annual || 0)),
+        sick_available: Math.max(0, (quotas.sick || 10) - (consumed.sick || 0)),
+        casual_available: Math.max(0, (quotas.casual || 8) - (consumed.casual || 0)),
         annual_used: consumed.annual || 0,
         sick_used: consumed.sick || 0,
         casual_used: consumed.casual || 0,
-        total_remaining: Math.max(0, quotas.annual - (consumed.annual || 0)) + Math.max(0, quotas.sick - (consumed.sick || 0)) + Math.max(0, quotas.casual - (consumed.casual || 0))
+        total_remaining: Math.max(0, (quotas.annual || 15) - (consumed.annual || 0)) + Math.max(0, (quotas.sick || 10) - (consumed.sick || 0)) + Math.max(0, (quotas.casual || 8) - (consumed.casual || 0))
       };
 
       return {
         success: true,
         data: {
-          employee_name: `${emp.first_name} ${emp.last_name || ''}`.trim(),
-          employee_code: emp.employee_code,
+          employee_name: `${targetEmp.first_name} ${targetEmp.last_name || ''}`.trim(),
+          employee_code: targetEmp.employee_code,
           ...balance
         },
-        message: `Leave Balance for **${emp.first_name} ${emp.last_name || ''}**: **${balance.annual_available}** Annual days, **${balance.sick_available}** Sick days, **${balance.casual_available}** Casual days remaining (${balance.total_remaining} total days left).`
+        message: `Leave Balance for **${targetEmp.first_name} ${targetEmp.last_name || ''}**: **${balance.annual_available}** Annual days, **${balance.sick_available}** Sick days, **${balance.casual_available}** Casual days remaining (${balance.total_remaining} total days left).`
       };
     }
   },
@@ -160,16 +179,31 @@ const leaveTools = [
       const { employee_id, employee_name, leave_type, start_date, end_date, reason = 'Personal Leave' } = args;
       const { user } = context;
 
-      let empId = employee_id;
-      if (!empId && employee_name) {
-        const found = await query('SELECT employee_id FROM employees WHERE first_name ILIKE $1 OR last_name ILIKE $1 LIMIT 1', [`%${employee_name.trim()}%`]);
-        if (found.rows.length > 0) empId = found.rows[0].employee_id;
+      let targetEmp = null;
+      if (employee_id || employee_name) {
+        const resEmp = await resolveEmployee(employee_id || employee_name, context);
+        if (resEmp.status === 'ambiguous') {
+          return {
+            success: true,
+            disambiguation_needed: true,
+            disambiguation_options: resEmp.options,
+            count: resEmp.count,
+            message: resEmp.message
+          };
+        }
+        if (resEmp.status === 'resolved') {
+          targetEmp = resEmp.employee;
+        }
       }
-      if (!empId) {
-        const myEmp = await query('SELECT employee_id FROM employees WHERE user_id = $1', [user.userId]);
-        if (myEmp.rows.length > 0) empId = myEmp.rows[0].employee_id;
+
+      if (!targetEmp) {
+        const myEmp = await query('SELECT employee_id, first_name, last_name FROM employees WHERE user_id = $1', [user.userId]);
+        if (myEmp.rows.length > 0) targetEmp = myEmp.rows[0];
       }
-      if (!empId) return { success: false, message: 'Could not identify employee to submit leave application.' };
+
+      if (!targetEmp) return { success: false, message: 'Could not identify employee to submit leave application.' };
+
+      const empId = targetEmp.employee_id;
 
       const start = new Date(start_date);
       const end = new Date(end_date);
@@ -197,7 +231,7 @@ const leaveTools = [
       return {
         success: true,
         data: req,
-        message: `Leave request for **${daysCount} day(s)** (${leave_type.toUpperCase()} from ${start_date} to ${end_date}) submitted successfully with status **PENDING** approval.`
+        message: `Leave request for **${targetEmp.first_name} ${targetEmp.last_name || ''}** (${daysCount} day(s) ${leave_type.toUpperCase()} from ${start_date} to ${end_date}) submitted successfully with status **PENDING** approval.`
       };
     }
   },
@@ -205,7 +239,7 @@ const leaveTools = [
   {
     name: 'approveLeave',
     domain: 'leave',
-    description: 'Approve a pending leave application. Restricted to Manager, HR, and Admin.',
+    description: 'Approve a pending leave application with disambiguation support if multiple pending requests exist. Restricted to Manager, HR, and Admin.',
     type: 'write',
     isSensitive: false,
     requiredRole: ['manager', 'hr', 'admin', 'super_admin'],
@@ -213,39 +247,65 @@ const leaveTools = [
       type: 'object',
       properties: {
         leave_id: { type: 'number', description: 'Leave Request ID' },
-        employee_name: { type: 'string', description: 'Employee Name (to find latest pending request)' }
+        employee_name: { type: 'string', description: 'Employee Name' }
       }
     },
     execute: async (args, context) => {
       const { leave_id, employee_name } = args;
       const { user } = context;
 
-      let targetId = leave_id;
-      if (!targetId && employee_name) {
-        const found = await query(`
-          SELECT lr.leave_id FROM leave_requests lr
-          JOIN employees e ON lr.employee_id = e.employee_id
-          WHERE (e.first_name ILIKE $1 OR e.last_name ILIKE $1) AND lr.status = 'pending'
-          ORDER BY lr.created_at DESC LIMIT 1
-        `, [`%${employee_name.trim()}%`]);
-        if (found.rows.length > 0) targetId = found.rows[0].leave_id;
+      let targetLeaveId = leave_id;
+
+      if (!targetLeaveId && employee_name) {
+        const resEmp = await resolveEmployee(employee_name, context);
+        if (resEmp.status === 'ambiguous') {
+          return {
+            success: true,
+            disambiguation_needed: true,
+            disambiguation_options: resEmp.options,
+            count: resEmp.count,
+            message: resEmp.message
+          };
+        }
+        if (resEmp.status === 'resolved') {
+          const leaveRes = await resolvePendingLeave(resEmp.employee_id);
+          if (leaveRes.status === 'ambiguous') {
+            return {
+              success: true,
+              disambiguation_needed: true,
+              disambiguation_options: leaveRes.options.map(l => ({
+                id: l.leave_id,
+                label: `#${l.leave_id}: ${l.leave_type.toUpperCase()} (${l.start_date} to ${l.end_date}) - ${l.days_count} days`
+              })),
+              count: leaveRes.count,
+              message: `**${resEmp.employee.first_name}** has ${leaveRes.count} pending leave requests:\n\n${leaveRes.options.map(l => `• **#${l.leave_id}**: ${l.leave_type.toUpperCase()} from ${l.start_date} to ${l.end_date} (${l.days_count} day(s))`).join('\n')}\n\n👉 **Which leave request ID would you like to approve?**`
+            };
+          }
+          if (leaveRes.status === 'resolved') {
+            targetLeaveId = leaveRes.leave_id;
+          } else {
+            return { success: false, message: `No pending leave requests found for ${resEmp.employee.first_name}.` };
+          }
+        } else {
+          return { success: false, message: `Employee "${employee_name}" not found.` };
+        }
       }
 
-      if (!targetId) return { success: false, message: 'Could not find a pending leave request to approve.' };
+      if (!targetLeaveId) return { success: false, message: 'Could not resolve pending leave request to approve. Please provide the leave_id.' };
 
       const up = await query(`
         UPDATE leave_requests
         SET status = 'approved', approved_by = $1, updated_at = CURRENT_TIMESTAMP
         WHERE leave_id = $2 AND status = 'pending'
         RETURNING *
-      `, [user.userId, targetId]);
+      `, [user.userId, targetLeaveId]);
 
-      if (up.rows.length === 0) return { success: false, message: 'Leave request not found or not in pending state.' };
+      if (up.rows.length === 0) return { success: false, message: `Leave request #${targetLeaveId} not found or not in pending status.` };
 
       return {
         success: true,
         data: up.rows[0],
-        message: `Leave request #${targetId} has been **APPROVED** successfully.`
+        message: `Leave request **#${targetLeaveId}** has been **APPROVED** successfully.`
       };
     }
   }

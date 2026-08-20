@@ -1,5 +1,51 @@
 const asyncHandler = require('../utils/asyncHandler');
+const { pool, tenantStorage } = require('../config/database');
 const aiCopilotService = require('../services/ai/aiCopilotService');
+
+/**
+ * Resolve authentic user and tenant identity with strict multi-tenant isolation
+ */
+async function resolveUserTenantContext(req) {
+  let resolvedTenantId = req.user?.tenant_id || req.tenant?.tenant_id || req.headers['x-tenant-id'];
+  const user = req.user || {};
+  const isSuperAdmin = !!(user.isSuperAdmin || user.role === 'super_admin');
+
+  // If tenantId is not in header/user, safely look up which company tenant owns this user session
+  if ((!resolvedTenantId || resolvedTenantId === 'default') && user.email) {
+    try {
+      const tenantsRes = await pool.query('SELECT tenant_id FROM shared.tenants WHERE status = $1', ['active']);
+      for (const t of tenantsRes.rows) {
+        try {
+          const uRes = await pool.query(`SELECT user_id, role FROM "${t.tenant_id}".users WHERE email = $1 LIMIT 1`, [user.email]);
+          if (uRes.rows.length > 0) {
+            resolvedTenantId = t.tenant_id;
+            break;
+          }
+        } catch (_) {}
+      }
+    } catch (_) {}
+  }
+
+  if (!resolvedTenantId) {
+    resolvedTenantId = 'default';
+  }
+
+  const userContext = {
+    user: {
+      ...user,
+      tenantId: resolvedTenantId
+    },
+    tenantId: resolvedTenantId,
+    isSuperAdmin
+  };
+
+  const tenantContext = {
+    tenantId: resolvedTenantId,
+    plan: req.tenantPlan || 'scale'
+  };
+
+  return { userContext, tenantContext, resolvedTenantId };
+}
 
 /**
  * Handle AI Copilot Chat Request
@@ -14,24 +60,24 @@ const chatWithCopilot = asyncHandler(async (req, res) => {
     });
   }
 
-  const userContext = {
-    user: req.user,
-    tenantId: req.tenant?.tenant_id || req.headers['x-tenant-id'] || 'default',
-    isSuperAdmin: !!(req.user?.isSuperAdmin || req.user?.role === 'super_admin')
-  };
+  const { userContext, tenantContext, resolvedTenantId } = await resolveUserTenantContext(req);
 
-  const tenantContext = {
-    tenantId: userContext.tenantId,
-    plan: req.tenantPlan || 'scale'
-  };
-
-  const result = await aiCopilotService.processUserMessage({
-    message: (message || '').trim(),
-    conversationHistory: conversationHistory || [],
-    userContext,
-    tenantContext,
-    isConfirmed: !!isConfirmed,
-    confirmedAction: confirmedAction || null
+  const result = await new Promise((resolve, reject) => {
+    tenantStorage.run(resolvedTenantId, async () => {
+      try {
+        const out = await aiCopilotService.processUserMessage({
+          message: (message || '').trim(),
+          conversationHistory: conversationHistory || [],
+          userContext,
+          tenantContext,
+          isConfirmed: !!isConfirmed,
+          confirmedAction: confirmedAction || null
+        });
+        resolve(out);
+      } catch (err) {
+        reject(err);
+      }
+    });
   });
 
   res.json({
@@ -55,31 +101,31 @@ const streamChatWithCopilot = asyncHandler(async (req, res) => {
   res.setHeader('Connection', 'keep-alive');
   res.flushHeaders?.();
 
-  const userContext = {
-    user: req.user,
-    tenantId: req.tenant?.tenant_id || req.headers['x-tenant-id'] || 'default',
-    isSuperAdmin: !!(req.user?.isSuperAdmin || req.user?.role === 'super_admin')
-  };
-
-  const tenantContext = {
-    tenantId: userContext.tenantId,
-    plan: req.tenantPlan || 'scale'
-  };
+  const { userContext, tenantContext, resolvedTenantId } = await resolveUserTenantContext(req);
 
   // 1. Emit initial thinking status
   res.write(`data: ${JSON.stringify({ type: 'status', message: 'Analyzing request & inspecting organizational context...' })}\n\n`);
 
   try {
-    const result = await aiCopilotService.processUserMessage({
-      message: (message || '').trim(),
-      conversationHistory: conversationHistory || [],
-      userContext,
-      tenantContext,
-      isConfirmed: !!isConfirmed,
-      confirmedAction: confirmedAction || null,
-      onProgress: (statusText) => {
-        res.write(`data: ${JSON.stringify({ type: 'status', message: statusText })}\n\n`);
-      }
+    const result = await new Promise((resolve, reject) => {
+      tenantStorage.run(resolvedTenantId, async () => {
+        try {
+          const out = await aiCopilotService.processUserMessage({
+            message: (message || '').trim(),
+            conversationHistory: conversationHistory || [],
+            userContext,
+            tenantContext,
+            isConfirmed: !!isConfirmed,
+            confirmedAction: confirmedAction || null,
+            onProgress: (statusText) => {
+              res.write(`data: ${JSON.stringify({ type: 'status', message: statusText })}\n\n`);
+            }
+          });
+          resolve(out);
+        } catch (err) {
+          reject(err);
+        }
+      });
     });
 
     // 2. Emit streamed text chunks if reply exists

@@ -77,6 +77,12 @@ class HRAIOperationsOrchestrator {
 
 Assisting: ${userName} | Authenticated System Role: "${role.toUpperCase()}" ${isSuperAdmin ? '(GLOBAL SUPER ADMIN)' : ''}
 
+AUTHENTICATED USER IDENTITY & TENANT BOUNDARY:
+- User Name & Email: ${userName} (${user?.email || 'N/A'})
+- Authenticated Role: "${role.toUpperCase()}"
+- Tenant Organization ID: "${tenantContext?.tenantId || 'default'}"
+- Strict Security Boundary: You are strictly isolated to Tenant "${tenantContext?.tenantId || 'default'}". You must NEVER access, expose, or mention data, employees, or subscription details belonging to other companies. All queries and tools are executed strictly within this authenticated tenant schema.
+
 TEMPORAL & CALENDAR GROUNDING:
 - Current Server Timestamp: ${currentTimestampStr}
 - Today's Date: ${currentISODate} (${currentDayName})

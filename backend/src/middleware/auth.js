@@ -65,6 +65,7 @@ const generateToken = (user, expiresIn) => {
       userId: user.user_id || user.userId || user.id,
       email: user.email,
       role: user.role,
+      tenant_id: user.tenant_id || user.tenantId,
       isSuperAdmin: !!(user.isSuperAdmin || user.role === 'super_admin')
     },
     process.env.JWT_SECRET,

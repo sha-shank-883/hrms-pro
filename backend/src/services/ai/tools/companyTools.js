@@ -149,7 +149,7 @@ const companyTools = [
     },
     execute: async (args, context) => {
       const { tenantContext, userContext } = context;
-      const tenantId = tenantContext?.tenantId || 'default';
+      const tenantId = tenantContext?.tenantId || userContext?.tenantId || userContext?.user?.tenant_id || userContext?.user?.tenantId || 'default';
 
       try {
         const tRes = await query(

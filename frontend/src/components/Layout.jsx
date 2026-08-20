@@ -919,6 +919,11 @@ const Layout = () => {
                 <FaBolt className="text-amber-500 text-[10px]" />
                 SUPER ADMIN
               </span>
+            ) : user?.subscription_plan === 'enterprise' ? (
+              <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 bg-gradient-to-r from-purple-700 via-indigo-600 to-purple-800 text-white rounded-lg text-xs font-black tracking-wide shadow-xs border border-purple-400/40">
+                <FaCrown className="text-purple-200 text-[10px]" />
+                ENTERPRISE ELITE
+              </span>
             ) : user?.subscription_plan === 'scale' ? (
               <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 bg-gradient-to-r from-amber-500 to-yellow-500 text-white rounded-lg text-xs font-black tracking-wide shadow-xs">
                 <FaCrown className="text-yellow-100 text-[10px]" />
@@ -953,7 +958,9 @@ const Layout = () => {
                 className="flex items-center gap-3 hover:bg-neutral-50 rounded-xl p-2 transition-all duration-200 border border-transparent hover:border-neutral-200"
               >
                 <div className={`w-9 h-9 rounded-full bg-neutral-200 flex items-center justify-center overflow-hidden border ${
-                  user?.subscription_plan === 'scale'
+                  user?.subscription_plan === 'enterprise'
+                    ? 'ring-2 ring-purple-500 border-purple-300 shadow-xs'
+                    : user?.subscription_plan === 'scale'
                     ? 'ring-2 ring-amber-400 border-amber-300 shadow-xs'
                     : user?.subscription_plan === 'hatch'
                     ? 'ring-2 ring-emerald-500 border-emerald-300 shadow-xs'
@@ -968,11 +975,12 @@ const Layout = () => {
                 <div className="hidden md:block text-left">
                   <div className="flex items-center gap-1.5">
                     <p className="text-sm font-semibold text-neutral-700 leading-tight">{user?.first_name}</p>
+                    {user?.subscription_plan === 'enterprise' && <FaCrown className="text-purple-600 text-[10px]" />}
                     {user?.subscription_plan === 'scale' && <FaCrown className="text-amber-500 text-[10px]" />}
                     {user?.subscription_plan === 'hatch' && <FaShieldAlt className="text-emerald-500 text-[10px]" />}
                   </div>
                   <p className="text-xs text-neutral-500 capitalize leading-tight">
-                    {user?.isSuperAdmin ? 'Super Admin' : (user?.subscription_plan === 'scale' ? 'Scale VIP Admin' : (user?.subscription_plan === 'hatch' ? 'Hatch Pro Admin' : user?.role))}
+                    {user?.isSuperAdmin ? 'Super Admin' : (user?.subscription_plan === 'enterprise' ? 'Enterprise Elite Admin' : (user?.subscription_plan === 'scale' ? 'Scale VIP Admin' : (user?.subscription_plan === 'hatch' ? 'Hatch Pro Admin' : user?.role)))}
                   </p>
                 </div>
                 <FaChevronDown className={`text-neutral-400 text-xs transition-transform duration-200 ${isProfileMenuOpen ? 'rotate-180' : ''}`} />
@@ -985,7 +993,11 @@ const Layout = () => {
                     <div className="px-4 py-3 border-b border-neutral-100 mb-1">
                       <div className="flex items-center justify-between">
                         <p className="text-sm font-semibold text-neutral-900">{user?.first_name} {user?.last_name}</p>
-                        {user?.subscription_plan === 'scale' ? (
+                        {user?.subscription_plan === 'enterprise' ? (
+                          <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-purple-100 text-purple-800 border border-purple-300 shadow-xs">
+                            💎 ENTERPRISE
+                          </span>
+                        ) : user?.subscription_plan === 'scale' ? (
                           <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-300">
                             👑 SCALE
                           </span>
